@@ -63,7 +63,8 @@ fn a_click_on_a_link_copies_it_and_a_ctrl_click_opens_its_object() {
         namespace: None,
         ..link("gra9-node-2", nodes)
     };
-    let target = Target::ResourceCopy("gra9-node-2".into(), Some(Box::new(node.clone())));
+    let opens = crate::views::session::resources::Opens::Object(node.clone());
+    let target = Target::ResourceCopy("gra9-node-2".into(), Some(Box::new(opens)));
     let (_, hits) = drawn(&app, &ui);
     let at = hits.rect_of(&target).expect("the node copies");
     let asked = click(at, &mut ui, &app, &hits);

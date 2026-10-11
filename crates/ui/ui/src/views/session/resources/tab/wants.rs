@@ -70,6 +70,9 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     if object.pod.is_some() && described && stale && !follows.asking(&pod) {
         out.push(Command::Cluster(cluster::Command::Usage { pod }));
     }
+    if let Some(part) = &object.app {
+        out.extend(super::destined::asks(app, &link.context, part));
+    }
     let owners = lineage(app, link, object);
     if let Some((namespace, name)) = helm_release(object, &owners) {
         let release = (link.context.clone(), namespace, name);

@@ -1,6 +1,8 @@
 //! The branch's history: the commits it holds, and one of them shown as a change.
 
-use groove_workspace_service::{COMMITS_MAX, at_commit, commits};
+use groove_session_service::names;
+use groove_types::CommitEntry;
+use groove_workspace_service::{COMMITS_MAX, at_commit, commits, revision as revision_at};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -27,23 +29,37 @@ pub(super) fn list(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// One commit shown as the change it made, which nothing may write.
+/// One commit of the list or of a blame shown as the change it made, which nothing may write.
 pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
+    let Some(entry) = known(state, &sha) else {
+        return;
+    };
+    read(state, spawner, Some(entry), sha);
+}
+
+fn known(state: &AppState, sha: &str) -> Option<CommitEntry> {
+    let listed = state.workspace.log.iter().find(|one| one.sha == sha);
+    listed
+        .cloned()
+        .or_else(|| state.workspace.blames.entry(sha))
+}
+
+/// `sha` read from git when the list does not hold it.
+fn read(state: &mut AppState, spawner: &dyn Spawner, entry: Option<CommitEntry>, sha: String) {
     let Some(asked) = super::Asked::now(state) else {
         return;
     };
-    let listed = state
-        .workspace
-        .log
-        .iter()
-        .find(|one| one.sha == sha)
-        .cloned();
-    let Some(entry) = listed.or_else(|| state.workspace.blames.entry(&sha)) else {
-        return;
-    };
-    let job = state.begin(format!("reading {}", entry.short_sha));
+    let short: String = sha.chars().take(7).collect();
+    let job = state.begin(format!("reading {short}"));
     spawner.spawn(Box::pin(async move {
-        let read = at_commit(&asked.dir, &sha).await;
+        let entry = match entry {
+            Some(entry) => Ok(entry),
+            None => revision_at(&asked.dir, &sha).await,
+        };
+        let read = match entry {
+            Ok(entry) => at_commit(&asked.dir, &sha).await.map(|read| (entry, read)),
+            Err(e) => Err(e),
+        };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             if !asked.holds(state) {
@@ -51,16 +67,67 @@ pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
             }
             match read {
                 Err(e) => state.failed(e),
-                Ok((files, changes)) => shown(state, entry, files, changes),
+                Ok((entry, (files, changes))) => shown(state, entry, files, changes),
             }
         }) as Continuation
     }));
 }
 
+/// A worktree of the repo `repo` names selected, the repo added from `target` when missing; then `sha` shown.
+pub(super) fn revision(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (repo, target): (String, Option<String>),
+    sha: Option<String>,
+) {
+    let Some(open) = state.session.selected() else {
+        return;
+    };
+    let (session, slug) = (open.session.id.clone(), groove_session_service::slug(&repo));
+    let held = open.repos.iter().any(|one| names(&one.id, &slug));
+    state.workspace.revision = Some((slug, sha));
+    if !held {
+        let source = (repo.as_str(), target.as_deref());
+        return crate::session::add_repo_at(state, services, spawner, &session, source);
+    }
+    due(state, services, spawner);
+}
+
+/// The repo asked for: a worktree of it selected, then, once read, its commit shown.
+pub(crate) fn due(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    let Some((slug, sha)) = state.workspace.revision.clone() else {
+        return;
+    };
+    let Some(open) = state.session.selected() else {
+        return;
+    };
+    let ours = |one: &groove_types::Worktree| names(&one.repo, &slug);
+    if state.session.selected_worktree().is_some_and(ours) {
+        if !super::stale(state) {
+            state.workspace.revision = None;
+            if let Some(sha) = sha {
+                read(state, spawner, known(state, &sha), sha);
+            }
+        }
+        return;
+    }
+    let session = open.session.id.clone();
+    let Some(worktree) = open
+        .worktrees
+        .iter()
+        .find(|one| ours(one))
+        .map(|one| one.id.clone())
+    else {
+        return;
+    };
+    crate::session::select_worktree(state, services, spawner, &session, &worktree);
+}
+
 /// What the commit changed, in place of the working tree.
 fn shown(
     state: &mut AppState,
-    entry: groove_types::CommitEntry,
+    entry: CommitEntry,
     files: Vec<groove_types::FileDiff>,
     changes: groove_workspace_service::Changes,
 ) {

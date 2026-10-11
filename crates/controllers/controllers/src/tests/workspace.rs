@@ -7,6 +7,7 @@ mod editor;
 mod gaps;
 mod git;
 mod paths;
+mod revision;
 mod search;
 
 use crate::tests::fixture::{pooled_clone, services, sh, state, until, worktree};

@@ -65,3 +65,25 @@ async fn a_stream_that_ends_opens_again_from_its_last_second_and_drops_the_lines
     assert_eq!(words, ["ready", "job 1", "job 2"], "{sent:?}");
     assert!(sent.contains(&Logged::Ended), "{sent:?}");
 }
+
+#[tokio::test]
+async fn a_stream_that_ends_with_nothing_new_waits_longer_each_time() {
+    let server = MockServer::start().await;
+    Mock::given(path("/api/v1/namespaces/paxone/pods/api-0/log"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(""))
+        .mount(&server)
+        .await;
+    let dir = tempfile::tempdir().expect("a temp dir");
+    let paths = vec![kubeconfig(dir.path(), &server.uri())];
+    let stop = Stop::new();
+    let running = tokio::spawn(logs(paths, worker(LogRange::Since(300)), &stop, |_| {}));
+    tokio::time::sleep(Duration::from_millis(2_500)).await;
+    stop.stop();
+    running.await.expect("the follower ends");
+    let asked = server.received_requests().await.expect("recorded");
+    assert_eq!(
+        asked.len(),
+        2,
+        "at once, then after 1 s; the next after 2 s more"
+    );
+}

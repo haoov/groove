@@ -28,7 +28,7 @@ async fn client(server: &MockServer) -> (tempfile::TempDir, Client) {
 }
 
 #[tokio::test]
-async fn whole_objects_list_a_page_at_a_time_without_their_managed_fields() {
+async fn whole_objects_list_from_the_cache_a_page_at_a_time_without_their_managed_fields() {
     let server = MockServer::start().await;
     let first = serde_json::json!({ "metadata": { "continue": "next", "resourceVersion": "8" },
         "items": [pod("api-0")] });
@@ -42,6 +42,8 @@ async fn whole_objects_list_a_page_at_a_time_without_their_managed_fields() {
         .await;
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
         .and(query_param("fieldSelector", "metadata.name=api-0"))
+        .and(query_param("resourceVersion", "0"))
+        .and(query_param("resourceVersionMatch", "NotOlderThan"))
         .respond_with(ResponseTemplate::new(200).set_body_json(first))
         .mount(&server)
         .await;
@@ -99,12 +101,13 @@ async fn a_watch_of_whole_objects_reads_puts_deletions_and_bookmarks() {
 }
 
 #[tokio::test]
-async fn a_metadata_list_asks_for_the_metadata_alone() {
+async fn a_metadata_list_asks_the_cache_for_the_metadata_alone() {
     let server = MockServer::start().await;
     let list = serde_json::json!({ "items": [{ "metadata": { "name": "sh.helm.release.v1.paxone.v3",
         "labels": { "owner": "helm", "name": "paxone", "version": "3" } } }] });
     Mock::given(path("/api/v1/namespaces/paxone/secrets"))
         .and(query_param("labelSelector", "owner=helm,name=paxone"))
+        .and(query_param("resourceVersion", "0"))
         .and(header("accept", crate::objects::AS_METADATA))
         .respond_with(ResponseTemplate::new(200).set_body_json(list))
         .mount(&server)

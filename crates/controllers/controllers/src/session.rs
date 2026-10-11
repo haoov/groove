@@ -19,7 +19,8 @@ pub use rail::{list, refresh_status, rename_explorer};
 pub(crate) use rail::{listed, set_auto_approve};
 pub(crate) use repos::added;
 pub use repos::{
-    add_repo, add_worktree, close_worktree, list_branches, list_repos, remove_repo, select_worktree,
+    add_repo, add_repo_at, add_worktree, close_worktree, list_branches, list_repos, remove_repo,
+    select_worktree,
 };
 pub use review::open_review;
 

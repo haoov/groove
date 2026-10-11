@@ -30,7 +30,7 @@ impl Tab {
             Tab::Overview => "overview",
             Tab::Diff => "diff",
             Tab::Files => "files",
-            Tab::Resources => "resources",
+            Tab::Resources => "k8s",
         }
     }
 

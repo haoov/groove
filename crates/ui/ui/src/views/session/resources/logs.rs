@@ -12,6 +12,7 @@ pub enum View {
     Describe,
     Yaml,
     Logs,
+    Resources,
 }
 
 impl View {
@@ -25,6 +26,7 @@ impl View {
             View::Describe => "describe",
             View::Yaml => "yaml",
             View::Logs => "logs",
+            View::Resources => "resources",
         }
     }
 }

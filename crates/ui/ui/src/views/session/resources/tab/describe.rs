@@ -4,24 +4,36 @@ use std::sync::Arc;
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Described, PodPart, Usage};
+use groove_types::{
+    AppCondition, AppSource, Container, Described, Operation, PodPart, SyncedResource, Usage,
+};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::scrolled;
 
 use super::super::opened::{Opened, Section, events_key};
-use super::card;
-use super::relations::{self, Columns};
-use super::sections::{self, ACROSS, Fact};
+use super::argo;
+use super::containers;
+use super::destined;
+use super::relations::{self, Line};
+use super::sections::{self, Fact};
 use crate::ctx::Ctx;
 use crate::hit::Scroller;
 
 /// One block of the column, stacked from the top.
-enum Block<'a> {
+pub(super) enum Block<'a> {
     Heading(Section, String),
+    Operation(&'a Operation),
+    Said(&'a str),
+    Broke(&'a SyncedResource),
+    AppCondition(&'a AppCondition),
+    Source(&'a AppSource),
     Conditions(&'a PodPart),
     Summary(Vec<Fact>),
-    Relations(Columns),
-    Card(&'a PodPart),
+    /// A line of a table, under its header when it is the first.
+    Relation(Line, bool),
+    Container(&'a Container, bool),
+    /// A line of an unfolded container.
+    Detail((&'static str, String)),
     Pair(&'a (String, String)),
     Event(&'a groove_types::EventRow),
     Gap,
@@ -37,41 +49,87 @@ pub(super) fn draw(
 ) {
     let events = events(app, tab, object);
     let blocks = blocks(app, (tab, object), &events, ctx.now);
-    let room = body.pad(Edges::all(ctx.tokens.md));
+    let md = ctx.tokens.md;
     let usage = usage(app, tab);
-    let keys = key_width(ctx, object);
-    let heights: Vec<f32> = blocks.iter().map(|one| height(ctx, tab, one)).collect();
+    let keys = key_width(ctx, object, body.w - md * 2.0);
+    let heights: Vec<f32> = blocks.iter().map(|one| height(ctx, one)).collect();
     let indexed: Vec<(usize, &Block)> = blocks.iter().enumerate().collect();
-    let last = tab.copied.as_deref();
+    let tint = tinted(object, &blocks);
+    let mut tip = None;
     let extent = scrolled(
         ctx,
-        room,
+        body,
         tab.scroll,
         &indexed,
         |(at, _)| heights[*at],
-        |ctx, rect, (_, block)| match block {
-            Block::Heading(section, count) => {
-                sections::heading(ctx, rect, (*section, tab.shut.contains(section)), count)
+        |ctx, rect, (at, block)| {
+            let rect = rect.pad(Edges::across(md, md));
+            if let Some((role, _)) = tint.filter(|(_, until)| at < until) {
+                argo::ground(ctx, rect, role);
             }
-            Block::Conditions(pod) => sections::conditions(ctx, rect, pod),
-            Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
-            Block::Relations(columns) => relations::draw(ctx, rect, columns, last),
-            Block::Card(pod) => card::draw(ctx, rect, (tab, pod), usage.as_ref()),
-            Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
-            Block::Event(row) => sections::event(ctx, rect, row, last),
-            Block::Gap => {}
-            Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
+            let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()));
+            tip = drawn.or(tip.take());
         },
     );
     ctx.app.hits.scrolls(Scroller::Resources, extent);
+    if let Some(tip) = &tip {
+        containers::tip(ctx, tip);
+    }
 }
 
-fn height(ctx: &Ctx, tab: &Opened, block: &Block) -> f32 {
+/// One block in `rect`; a container's row returns the tip under the pointer.
+fn one(
+    ctx: &mut Ctx,
+    rect: Rect,
+    block: &Block,
+    (tab, keys, usage): (&Opened, f32, Option<&Usage>),
+) -> Option<containers::Tip> {
+    let last = tab.copied.as_deref();
+    match block {
+        Block::Heading(section, count) => {
+            sections::heading(ctx, rect, (*section, tab.shut.contains(section)), count)
+        }
+        Block::Operation(_) | Block::Said(_) | Block::Broke(_) => operated(ctx, rect, block),
+        Block::AppCondition(one) => argo::condition(ctx, rect, one, ctx.now),
+        Block::Source(one) => argo::source(ctx, rect, one, last),
+        Block::Conditions(pod) => sections::conditions(ctx, rect, pod),
+        Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
+        Block::Relation(line, header) => relations::draw(ctx, rect, (line, *header), last),
+        Block::Container(one, header) => {
+            return containers::row(ctx, rect, (tab, *one, *header), usage);
+        }
+        Block::Detail(line) => containers::detail(ctx, rect, line, last),
+        Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
+        Block::Event(row) => sections::event(ctx, rect, row, last),
+        Block::Gap => {}
+        Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
+    }
+    None
+}
+
+/// The operation's colour, and the blocks it stands under: from the top to the rule after it.
+fn tinted(object: &Described, blocks: &[Block]) -> Option<(Role, usize)> {
+    let role = object.app.as_deref().and_then(argo::tint)?;
+    let until = blocks.iter().position(|one| matches!(one, Block::Rule));
+    Some((role, until.unwrap_or(blocks.len())))
+}
+
+/// A row of the operation.
+fn operated(ctx: &mut Ctx, rect: Rect, block: &Block) {
+    match block {
+        Block::Operation(one) => argo::operation(ctx, rect, one, ctx.now),
+        Block::Said(message) => argo::said(ctx, rect, message),
+        Block::Broke(one) => argo::broke(ctx, rect, one),
+        _ => {}
+    }
+}
+
+fn height(ctx: &Ctx, block: &Block) -> f32 {
     let row = ctx.tokens.row;
     match block {
-        Block::Summary(facts) => row * facts.len().div_ceil(ACROSS) as f32,
-        Block::Relations(columns) => row * columns.rows() as f32,
-        Block::Card(pod) => card::height(ctx, pod, tab),
+        Block::Summary(facts) => row * facts.len() as f32,
+        Block::Relation(_, true) | Block::Container(_, true) => row * 2.0,
+        Block::Source(one) => row * argo::source_rows(one) as f32,
         Block::Gap => ctx.tokens.md,
         Block::Rule => ctx.tokens.sm,
         _ => row,
@@ -86,9 +144,9 @@ fn blocks<'a>(
     now: groove_types::Timestamp,
 ) -> Vec<Block<'a>> {
     let parts = parts(app, (tab, object), events, now);
-    let mut out = Vec::new();
+    let mut out = vec![Block::Gap];
     for (section, count, held) in parts {
-        if !out.is_empty() {
+        if out.len() > 1 {
             out.extend([Block::Gap, Block::Rule]);
         }
         out.push(Block::Heading(section, count));
@@ -96,20 +154,21 @@ fn blocks<'a>(
             out.extend(held);
         }
     }
+    out.push(Block::Gap);
     out
 }
 
 /// Each section with what it says of itself and what it holds.
 fn parts<'a>(
-    app: &AppState,
+    state: &AppState,
     (tab, object): (&Opened, &'a Described),
     events: &'a [Arc<Described>],
     now: groove_types::Timestamp,
 ) -> Vec<(Section, String, Vec<Block<'a>>)> {
     let pod = object.pod.as_deref();
-    let rows = events.iter().filter_map(|one| one.event.as_ref());
-    let warned = rows.clone().filter(|one| one.warning).count();
+    let app = object.app.as_deref();
     let mut parts: Vec<(Section, String, Vec<Block<'a>>)> = Vec::new();
+    parts.extend(app.map(argo::parts).unwrap_or_default());
     if let Some(pod) = pod {
         parts.push((
             Section::Conditions,
@@ -117,38 +176,70 @@ fn parts<'a>(
             vec![Block::Conditions(pod)],
         ));
     }
-    parts.push((
-        Section::Summary,
-        String::new(),
-        vec![Block::Summary(sections::facts(app, tab, object, now))],
-    ));
-    parts.push((
-        Section::Relations,
-        String::new(),
-        vec![Block::Relations(relations::of(app, tab, object))],
-    ));
+    let facts = match app {
+        Some(one) => {
+            let context = destined::context(state, &tab.link.context, &one.destination);
+            argo::facts(one, context, state.cluster.found.is_some())
+        }
+        None => sections::facts(state, tab, object, now),
+    };
+    parts.push((Section::Summary, String::new(), vec![Block::Summary(facts)]));
+    parts.extend(app.map(argo::sourced));
     if let Some(pod) = pod {
         let count = pod.containers.len().to_string();
-        parts.push((Section::Containers, count, vec![Block::Card(pod)]));
+        parts.push((Section::Containers, count, contained(tab, pod)));
     }
-    let pairs = |all: &'a [(String, String)]| all.iter().map(Block::Pair).collect::<Vec<_>>();
-    parts.push((
-        Section::Labels,
-        object.labels.len().to_string(),
-        pairs(&object.labels),
-    ));
-    parts.push((
-        Section::Annotations,
-        object.annotations.len().to_string(),
-        pairs(&object.annotations),
-    ));
-    let said = format!("{} · {warned} warning", events.len());
-    parts.push((Section::Events, said, rows.map(Block::Event).collect()));
+    let [labels, annotations, events] = around(object, events);
+    parts.extend([labels, annotations]);
+    if app.is_none() {
+        let lines = relations::lines(state, tab, object);
+        let count = relations::total(&lines).to_string();
+        let blocks = lines.into_iter().enumerate();
+        let blocks = blocks.map(|(at, line)| Block::Relation(line, at == 0));
+        parts.push((Section::Relations, count, blocks.collect()));
+    }
+    parts.push(events);
     parts
 }
 
-/// The key column of labels and annotations: as wide as the widest key, within reason.
-fn key_width(ctx: &mut Ctx, object: &Described) -> f32 {
+/// A row each container, the unfolded ones followed by their lines.
+fn contained<'a>(tab: &Opened, pod: &'a PodPart) -> Vec<Block<'a>> {
+    let mut out = Vec::new();
+    for (at, one) in pod.containers.iter().enumerate() {
+        out.push(Block::Container(one, at == 0));
+        if !containers::folded(tab, one) {
+            out.extend(containers::details(one).into_iter().map(Block::Detail));
+        }
+    }
+    out
+}
+
+/// What every object has: its labels, its annotations, the events about it.
+fn around<'a>(
+    object: &'a Described,
+    events: &'a [Arc<Described>],
+) -> [(Section, String, Vec<Block<'a>>); 3] {
+    let rows = events.iter().filter_map(|one| one.event.as_ref());
+    let warned = rows.clone().filter(|one| one.warning).count();
+    let pairs = |all: &'a [(String, String)]| all.iter().map(Block::Pair).collect::<Vec<_>>();
+    let said = format!("{} · {warned} warning", events.len());
+    [
+        (
+            Section::Labels,
+            object.labels.len().to_string(),
+            pairs(&object.labels),
+        ),
+        (
+            Section::Annotations,
+            object.annotations.len().to_string(),
+            pairs(&object.annotations),
+        ),
+        (Section::Events, said, rows.map(Block::Event).collect()),
+    ]
+}
+
+/// The key column of labels and annotations: as wide as the widest key, half of `room` at most.
+fn key_width(ctx: &mut Ctx, object: &Described, room: f32) -> f32 {
     let style = ctx.styles.small(Role::Ghost);
     let keys = object
         .labels
@@ -156,7 +247,7 @@ fn key_width(ctx: &mut Ctx, object: &Described) -> f32 {
         .chain(&object.annotations)
         .map(|(key, _)| key);
     let widest = keys.map(|key| ctx.measure(key, &style)).fold(0.0, f32::max);
-    widest.min(ctx.tokens.aside_far) + ctx.tokens.lg
+    (widest + ctx.tokens.lg).min(room / 2.0)
 }
 
 /// The events about the object, warnings first, then the latest.

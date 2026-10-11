@@ -1,3 +1,4 @@
+mod argo;
 mod describe;
 mod discovery;
 mod follow;

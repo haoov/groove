@@ -278,6 +278,7 @@ fn one<'a>(
         under: Vec::new(),
         target: Some(Target::ResourceRow(row.uid.clone())),
         acts: Vec::new(),
+        band: false,
     }
 }
 

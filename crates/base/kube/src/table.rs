@@ -25,6 +25,8 @@ pub struct Row {
     pub version: String,
     pub created: Option<String>,
     pub cells: Vec<String>,
+    /// The whole object, where the query asked for it.
+    pub object: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,12 +45,18 @@ pub struct Query<'a> {
     pub kind: &'a Kind,
     pub namespace: Option<&'a str>,
     pub selector: Option<&'a str>,
+    /// Each row carries its whole object; else its metadata alone.
+    pub whole: bool,
 }
 
 impl Query<'_> {
     /// The path and query string, with `extra` pairs after the selector.
     pub(crate) fn uri(&self, extra: &[(&str, &str)]) -> String {
-        let mut pairs: Vec<(&str, &str)> = vec![("includeObject", "Metadata")];
+        let object = match self.whole {
+            true => "Object",
+            false => "Metadata",
+        };
+        let mut pairs: Vec<(&str, &str)> = vec![("includeObject", object)];
         if let Some(selector) = self.selector {
             pairs.push(("labelSelector", selector));
         }
@@ -140,6 +148,10 @@ pub(crate) mod raw {
     pub struct Object {
         #[serde(default)]
         pub metadata: Meta,
+        #[serde(default)]
+        pub spec: Option<serde_json::Value>,
+        #[serde(default)]
+        pub status: Option<serde_json::Value>,
     }
 
     #[derive(Debug, Clone, Default, Deserialize)]
@@ -186,6 +198,9 @@ impl From<raw::Row> for Row {
             version: meta.resource_version.unwrap_or_default(),
             created: meta.creation_timestamp,
             cells: raw.cells.iter().map(cell).collect(),
+            object: raw.object.spec.map(|spec| {
+                serde_json::json!({ "spec": spec, "status": raw.object.status.unwrap_or_default() })
+            }),
         }
     }
 }

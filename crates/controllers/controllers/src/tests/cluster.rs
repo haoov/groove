@@ -218,6 +218,7 @@ fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
         replicas: None,
         selector: Vec::new(),
         pod: None,
+        app: None,
         event: None,
         yaml: "metadata:\n  name: api-0\n".into(),
     };

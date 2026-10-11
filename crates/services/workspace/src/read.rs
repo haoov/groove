@@ -64,6 +64,16 @@ pub async fn commits(dir: &Path, base: Option<&str>, limit: usize) -> Result<Vec
     groove_diff::commits(dir, base.as_deref(), limit).await
 }
 
+/// One commit by its sha; origin fetched once when the clone lacks it.
+pub async fn revision(dir: &Path, sha: &str) -> Result<CommitEntry> {
+    let git = groove_git::Git::at(dir);
+    if let Ok(entry) = git.entry(sha).await {
+        return Ok(entry);
+    }
+    git.fetch(&[]).await?;
+    Ok(git.entry(sha).await?)
+}
+
 /// What one commit changed, which nothing may edit.
 pub async fn at_commit(dir: &Path, sha: &str) -> Result<(Vec<FileDiff>, Changes)> {
     groove_diff::at_commit(dir, sha).await

@@ -32,8 +32,8 @@ pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstag
 pub use paths::{PathOp, path_op};
 pub use read::{
     COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, against, at_commit, base_rev, changes, commits,
-    derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, summary,
-    summary_against,
+    derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, revision,
+    summary, summary_against,
 };
 pub use rows::Way;
 
@@ -77,6 +77,8 @@ pub struct State {
     pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
+    /// A repo's slug to select a worktree of, and a commit of it to show once read.
+    pub revision: Option<(String, Option<String>)>,
     pub watching: Option<WorktreeId>,
     /// The buffers a read of the colours and the rows is out for.
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,

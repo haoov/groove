@@ -18,6 +18,8 @@ pub struct State {
     /// What the last scan found; `None` before the first one ends.
     pub found: Option<Vec<KubeContext>>,
     pub scanning: bool,
+    /// A scan was begun once.
+    pub scanned: bool,
     logins: Vec<(String, Login)>,
     checking: Vec<String>,
     pub store: Store,
@@ -36,6 +38,7 @@ impl State {
 
     /// Marks a scan begun. False while one already runs.
     pub fn begin_scan(&mut self) -> bool {
+        self.scanned = true;
         !std::mem::replace(&mut self.scanning, true)
     }
 

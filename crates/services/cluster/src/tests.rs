@@ -350,6 +350,7 @@ fn a_followed_object_lands_changes_and_goes_with_its_last_reader() {
         replicas: None,
         selector: Vec::new(),
         pod: None,
+        app: None,
         event: None,
         yaml: "".into(),
     };
@@ -395,6 +396,7 @@ fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
         replicas: None,
         selector: Vec::new(),
         pod: None,
+        app: None,
         event: None,
         yaml: yaml.into(),
     };

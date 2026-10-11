@@ -26,6 +26,7 @@ fn base(uid: &str, name: &str) -> Described {
         replicas: None,
         selector: Vec::new(),
         pod: None,
+        app: None,
         event: None,
         yaml: "".into(),
     }
@@ -66,7 +67,11 @@ pub(super) fn crashing() -> Described {
             since: None,
         }],
         containers: vec![worker()],
-        uses: vec![("secret".into(), "paxone-db-legacy".into())],
+        uses: vec![groove_types::Used {
+            tag: "secret".into(),
+            name: "paxone-db-legacy".into(),
+            how: vec!["env worker".into()],
+        }],
     };
     Described {
         owners: vec![Owner {
@@ -111,7 +116,7 @@ pub(super) fn link(name: &str, of: groove_types::KubeKind) -> Link {
 
 /// The texts drawn on a wide screen, where the tab's columns have their room.
 fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
-    let metrics = crate::tests::metrics(1920, 1080, 1.0);
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (frame, _) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
     let small = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
@@ -125,6 +130,20 @@ fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
         );
     }
     texts.map(|one| one.text.clone()).collect()
+}
+
+/// The events unfolded by a click on their heading, as they stand folded at first.
+pub(super) fn unfold_events(app: &AppState, ui: &mut Ui) {
+    unfold(app, ui, crate::views::session::resources::Section::Events);
+}
+
+/// `section` unfolded by a click on its heading.
+fn unfold(app: &AppState, ui: &mut Ui, section: crate::views::session::resources::Section) {
+    let section = Target::ResourceSection(section);
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let (_, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
+    let heading = hits.rect_of(&section).expect("the events' heading");
+    click(heading, ui, app, &hits);
 }
 
 pub(super) fn lands(app: &mut AppState, key: &FollowKey, objects: Vec<Described>) {
@@ -151,7 +170,7 @@ fn a_row_opens_its_object_s_tab_which_follows_it_by_name() {
 }
 
 /// What the described view of the crashing pod shows.
-const DESCRIBED: [&str; 21] = [
+const DESCRIBED: [&str; 20] = [
     "CrashLoopBackOff",
     "waiting · CrashLoopBackOff",
     "worker",
@@ -162,22 +181,21 @@ const DESCRIBED: [&str; 21] = [
     "RELATIONS",
     "owned by",
     "worker-5d6b",
-    "2/3",
+    "2/3 ready",
     "uses",
     "paxone-db-legacy",
+    "env worker",
     "BackOff",
     "×187",
-    "250m",
-    "1",
-    "180m",
-    "700Mi",
+    "180m / 1",
+    "700Mi / 1Gi",
     "http 8080/TCP",
     "tls → /etc/tls ro",
 ];
 
 #[test]
 fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them() {
-    let (mut app, ui) = opened();
+    let (mut app, mut ui) = opened();
     lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
     let asked = crate::frame_commands(&app, &ui, window());
     let follows: Vec<FollowKey> = asked
@@ -252,6 +270,12 @@ fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them()
         }),
         Timestamp::new(0),
     );
+    unfold_events(&app, &mut ui);
+    unfold(
+        &app,
+        &mut ui,
+        crate::views::session::resources::Section::Relations,
+    );
     let texts = wide(&app, &ui);
     for shown in DESCRIBED {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
@@ -260,7 +284,7 @@ fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them()
 
 /// Every run drawn on a wide screen.
 pub(super) fn runs(app: &AppState, ui: &Ui) -> Vec<groove_gfx::TextRun> {
-    let metrics = crate::tests::metrics(1920, 1080, 1.0);
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (frame, _) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     frame
         .layers()
@@ -270,47 +294,37 @@ pub(super) fn runs(app: &AppState, ui: &Ui) -> Vec<groove_gfx::TextRun> {
 }
 
 #[test]
-fn the_gauges_keep_their_height_whatever_the_card_holds_and_uses_sit_by_their_names() {
-    let (mut app, ui) = opened();
+fn a_container_not_ready_stands_unfolded_and_its_usage_tells_request_and_limit_under_the_pointer() {
+    let (mut app, mut ui) = opened();
     let key = link("api-0", pods()).key();
     lands(&mut app, &key, vec![crashing()]);
-    let at = |runs: &[groove_gfx::TextRun], text: &str| {
-        runs.iter()
-            .find(|one| one.text == text)
-            .map(|one| (one.x, one.y))
-            .expect(text)
+    let shown = |app: &AppState, ui: &Ui| -> Vec<String> {
+        runs(app, ui).into_iter().map(|one| one.text).collect()
     };
-    let few = runs(&app, &ui);
-    let mut many = crashing();
-    if let Some(pod) = many.pod.as_mut() {
-        pod.containers[0].mounts = (0..12).map(|one| format!("v{one} → /v{one}")).collect();
+    let texts = shown(&app, &ui);
+    for one in ["NAME", "MEMORY", "ports", "http 8080/TCP", "mounts"] {
+        assert!(texts.iter().any(|text| text == one), "{one}: {texts:?}");
     }
-    app.cluster
-        .store
-        .follows
-        .apply(&key, Followed::Reset(vec![many]));
-    let lots = runs(&app, &ui);
-    assert_eq!(
-        at(&few, "250m").1,
-        at(&lots, "250m").1,
-        "the request's tick stands still"
-    );
-    let (tag, name) = (at(&few, "secret"), at(&few, "paxone-db-legacy"));
-    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), window().tokens());
-    let mut fonts = groove_gfx::Fonts::embedded();
-    let style = styles.small(groove_ui_kit::base::style::Role::Ghost);
-    let tag_wide = fonts.measure("secret", style.font, style.weight, style.size);
+    assert!(!texts.iter().any(|text| text == "512Mi"), "no tip at rest");
+    ui.hover = Some(Target::ContainerUsage("worker".into(), true));
+    let texts = shown(&app, &ui);
+    for one in ["used", "request", "512Mi", "limit", "1Gi"] {
+        assert!(texts.iter().any(|text| text == one), "{one}: {texts:?}");
+    }
+    ui.hover = None;
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+    let row = hits.rect_of(&Target::ResourceFold("container/worker".into()));
+    click(row.expect("the worker's row"), &mut ui, &app, &hits);
     assert!(
-        name.0 - tag.0 <= tag_wide + window().tokens().md,
-        "{} after {}",
-        name.0,
-        tag.0
+        !shown(&app, &ui).iter().any(|text| text == "http 8080/TCP"),
+        "a click folds it"
     );
 }
 
 /// The wheel turned over `at`, on a wide screen.
 pub(super) fn wheel(app: &AppState, ui: &mut Ui, at: (f32, f32), (across, down): (f32, f32)) {
-    let metrics = crate::tests::metrics(1920, 1080, 1.0);
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (_, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     let delta = crate::input::Delta::Pixels { across, down };
     let input = crate::input::Input::Scroll {
@@ -347,6 +361,10 @@ fn the_wheel_scrolls_the_one_described_column() {
         ..base(&format!("e{at}"), &format!("e{at}"))
     };
     lands(&mut app, &events, (0..40).map(event).collect());
+    let shown = ui.session.resources.tab_mut().expect("the tab");
+    shown
+        .shut
+        .remove(&crate::views::session::resources::Section::Events);
     let at = |ui: &Ui, text: &str| {
         runs(&app, ui)
             .iter()
@@ -354,7 +372,7 @@ fn the_wheel_scrolls_the_one_described_column() {
             .map(|one| one.y)
     };
     let (label, reason) = (at(&ui, "label-00"), at(&ui, "Reason39"));
-    let metrics = crate::tests::metrics(1920, 1080, 1.0);
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let middle = hits
         .rect_of(&Target::ResourceView(
@@ -395,7 +413,7 @@ fn a_section_s_heading_folds_it_and_the_annotations_start_folded() {
             .any(|one| one == "meta.helm.sh/release-name"),
         "annotations folded"
     );
-    let metrics = crate::tests::metrics(1920, 1080, 1.0);
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let annotations = hits
         .rect_of(&Target::ResourceSection(Section::Annotations))

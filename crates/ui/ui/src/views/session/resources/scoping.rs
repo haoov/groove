@@ -195,7 +195,7 @@ pub enum How {
     Detach,
 }
 
-/// The line chosen: a held one shown, hidden, alone or detached; any other attached or opened.
+/// The line chosen: a held one shown, hidden, alone or detached; any other attached, alone on Enter, or opened.
 pub fn choose(
     line: &ScopeLine,
     how: How,
@@ -217,6 +217,9 @@ pub fn choose(
         }
         ScopeLine::Free { attached, .. } => {
             held.hidden_contexts.remove(&attached.context);
+            if how == How::Alone {
+                alone(attached, open, held);
+            }
             if scoping.adding.as_ref() == Some(&attached.context) {
                 scoping.adding = None;
             }
@@ -228,6 +231,16 @@ pub fn choose(
             vec![Command::Session(attach)]
         }
     }
+}
+
+/// Hides every pair held and every context but `attached`'s.
+fn alone(attached: &Attached, open: &Open, held: &mut ResourcesUi) {
+    held.hidden = open.clusters.iter().cloned().collect();
+    held.hidden_contexts = contexts(open)
+        .into_iter()
+        .filter(|one| *one != attached.context)
+        .map(String::from)
+        .collect();
 }
 
 /// A held line shown or hidden, shown alone, or detached.

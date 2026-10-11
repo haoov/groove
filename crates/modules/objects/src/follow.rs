@@ -45,6 +45,12 @@ pub fn follow(
                 _ = stopped.wait_for(|on| *on) => return,
                 ended = cycle(&paths, &key, &send) => ended,
             };
+            if ended.is_ok() {
+                tokio::select! {
+                    _ = stopped.wait_for(|on| *on) => return,
+                    _ = tokio::time::sleep(FIRST_WAIT) => {}
+                }
+            }
             if let Err(why) = ended {
                 send(Followed::Failed(why));
                 tokio::select! {
