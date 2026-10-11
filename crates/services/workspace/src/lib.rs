@@ -21,6 +21,7 @@ mod buffers;
 mod git;
 mod paths;
 mod read;
+mod revision;
 mod rows;
 
 #[cfg(test)]
@@ -35,6 +36,7 @@ pub use read::{
     derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, revision,
     summary, summary_against,
 };
+pub use revision::{Revision, Step};
 pub use rows::Way;
 
 /// What the workspace holds for the selected worktree.
@@ -86,16 +88,6 @@ pub struct State {
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     pub blames: Blames,
     watch: Option<Watch>,
-}
-
-/// A revision a link asked for: a worktree of `slug` in `session`, then `sha` shown.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Revision {
-    pub session: groove_types::SessionId,
-    pub slug: String,
-    pub sha: Option<String>,
-    /// Its commit's read is out; the revision ends when it lands.
-    pub reading: bool,
 }
 
 impl State {

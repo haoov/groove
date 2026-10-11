@@ -22,12 +22,6 @@ pub fn slug(name: &str) -> String {
     groove_git::RemoteUrl::parse(name).map_or_else(|_| name.to_string(), |remote| remote.slug())
 }
 
-/// Whether the repo `id` is the one `slug` names, whole segments only.
-pub fn names(id: &groove_types::RepoId, slug: &str) -> bool {
-    let id = id.as_str();
-    id == slug || slug.ends_with(&format!("/{id}")) || id.ends_with(&format!("/{slug}"))
-}
-
 /// The `session` slice of `AppState`: the open sessions in the order opened.
 #[derive(Debug, Default)]
 pub struct State {

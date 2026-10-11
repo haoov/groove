@@ -1,9 +1,8 @@
 //! The branch's history: the commits it holds, and one of them shown as a change.
 
-use groove_session_service::names;
 use groove_types::CommitEntry;
 use groove_workspace_service::{
-    COMMITS_MAX, Revision, at_commit, commits, revision as revision_at,
+    COMMITS_MAX, Revision, Step, at_commit, commits, revision as revision_at,
 };
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -97,13 +96,14 @@ pub(super) fn revision(
         return;
     };
     let (session, slug) = (open.session.id.clone(), groove_session_service::slug(&repo));
-    let held = open.repos.iter().any(|one| names(&one.id, &slug));
-    state.workspace.revision = Some(Revision {
+    let pending = Revision {
         session: session.clone(),
         slug,
         sha,
         reading: false,
-    });
+    };
+    let held = open.repos.iter().any(|one| pending.names(&one.id));
+    state.workspace.revision = Some(pending);
     if !held {
         let source = (repo.as_str(), target.as_deref());
         return crate::session::add_repo_at(state, services, spawner, &session, source);
@@ -119,36 +119,21 @@ pub(crate) fn due(state: &mut AppState, services: &Services, spawner: &dyn Spawn
     let Some(open) = state.session.selected() else {
         return;
     };
-    if open.session.id != pending.session {
-        state.workspace.revision = None;
-        return;
-    }
-    let ours = |one: &groove_types::Worktree| names(&one.repo, &pending.slug);
-    if state.session.selected_worktree().is_some_and(ours) {
-        if super::stale(state) {
-            return;
-        }
-        match pending.sha {
-            Some(sha) => {
-                if let Some(one) = state.workspace.revision.as_mut() {
-                    one.reading = true;
-                }
-                read(state, spawner, known(state, &sha), (sha, true));
-            }
-            None => state.workspace.revision = None,
-        }
-        return;
-    }
     let session = open.session.id.clone();
-    let Some(worktree) = open
-        .worktrees
-        .iter()
-        .find(|one| ours(one))
-        .map(|one| one.id.clone())
-    else {
-        return;
-    };
-    crate::session::select_worktree(state, services, spawner, &session, &worktree);
+    let selected = state.session.selected_worktree();
+    match pending.step(&session, selected, &open.worktrees, super::stale(state)) {
+        Step::Wait => {}
+        Step::Drop => state.workspace.revision = None,
+        Step::Select(worktree) => {
+            crate::session::select_worktree(state, services, spawner, &session, &worktree)
+        }
+        Step::Read(sha) => {
+            if let Some(one) = state.workspace.revision.as_mut() {
+                one.reading = true;
+            }
+            read(state, spawner, known(state, &sha), (sha, true));
+        }
+    }
 }
 
 /// What the commit changed, in place of the working tree.
