@@ -170,6 +170,34 @@ fn ctrl_shift_n_then_a_name_and_enter_shows_that_namespace_alone_on_the_resource
 }
 
 #[test]
+fn enter_on_a_namespace_not_held_attaches_it_alone() {
+    let app = holding(vec![
+        on("staging", Some("paxone")),
+        on("staging", Some("cnpg")),
+    ]);
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
+    for c in "monit".chars() {
+        press(Key::Char(c), Default::default(), &mut ui, &app);
+    }
+    let attach = Session::AttachCluster {
+        session: SessionId::new("a"),
+        attached: on("staging", Some("monitoring")),
+    };
+    let sent = press(Key::Enter, Default::default(), &mut ui, &app);
+    assert_eq!(sent, [session(attach)]);
+    assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
+    let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
+    assert_eq!(
+        hidden,
+        [on("staging", Some("cnpg")), on("staging", Some("paxone"))]
+    );
+}
+
+#[test]
 fn under_a_whole_cluster_a_namespace_is_offered_and_its_small_check_is_green_its_cross_red() {
     use groove_ui_kit::base::style::{Role, Styles};
     let app = holding(vec![on("staging", None)]);

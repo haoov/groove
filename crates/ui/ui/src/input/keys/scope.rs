@@ -61,7 +61,7 @@ fn stepped(picks: &[usize], cursor: Option<usize>, down: bool) -> Option<usize> 
     next.copied().or(Some(cursor))
 }
 
-/// Line `at` chosen `how`; a held one shown alone shuts the panel onto the Resources tab.
+/// Line `at` chosen `how`; one shown alone, held or attached, shuts the panel onto the Resources tab.
 pub(in crate::input) fn pick((at, how): (usize, How), ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let Some(open) = app.session.selected() else {
         return Vec::new();
@@ -74,7 +74,7 @@ pub(in crate::input) fn pick((at, how): (usize, How), ui: &mut Ui, app: &AppStat
         return Vec::new();
     };
     let commands = choose(line, how, (open, &mut ui.session.resources, scoping));
-    if how == How::Alone && matches!(line, ScopeLine::Held(_)) {
+    if how == How::Alone && matches!(line, ScopeLine::Held(_) | ScopeLine::Free { .. }) {
         ui.overlay = None;
         ui.session.tab = crate::views::session::Tab::Resources;
     }
