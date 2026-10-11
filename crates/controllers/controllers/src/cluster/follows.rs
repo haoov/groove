@@ -27,21 +27,6 @@ pub(super) fn follow(state: &mut AppState, spawner: &dyn Spawner, reader: &str, 
     spawner.detach(Box::pin(follower));
 }
 
-/// Each object `reader` leaves unread is dropped after `IDLE`, unless read again by then.
-pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
-    for (key, released) in state.cluster.store.follows.release(reader) {
-        let sink = spawner.sink();
-        spawner.detach(Box::pin(async move {
-            tokio::time::sleep(IDLE).await;
-            sink.deliver(Box::new(
-                move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                    state.cluster.store.follows.drop_unread(&key, released)
-                },
-            ));
-        }));
-    }
-}
-
 /// One read of a pod's usage at a time; the answer lands with when it was read.
 pub(super) fn usage(state: &mut AppState, spawner: &dyn Spawner, pod: Named) {
     if !known(state, &pod.0) || !state.cluster.store.follows.begin(&pod) {

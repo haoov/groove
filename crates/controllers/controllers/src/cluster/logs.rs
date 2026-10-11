@@ -3,7 +3,7 @@
 use groove_cluster_service::Event as ClusterEvent;
 use groove_types::LogKey;
 
-use super::objects::{IDLE, known};
+use super::objects::known;
 use crate::{AppState, Event, Services, Spawner, apply};
 
 pub(super) fn follow(state: &mut AppState, spawner: &dyn Spawner, reader: &str, key: LogKey) {
@@ -25,21 +25,6 @@ pub(super) fn follow(state: &mut AppState, spawner: &dyn Spawner, reader: &str, 
     };
     let logger = groove_cluster_service::logger(paths, key, stop, send);
     spawner.detach(Box::pin(logger));
-}
-
-/// Each stream `reader` leaves unread is closed after `IDLE`, unless read again by then.
-pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
-    for (key, released) in state.cluster.store.logs.release(reader) {
-        let sink = spawner.sink();
-        spawner.detach(Box::pin(async move {
-            tokio::time::sleep(IDLE).await;
-            sink.deliver(Box::new(
-                move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                    state.cluster.store.logs.drop_unread(&key, released)
-                },
-            ));
-        }));
-    }
 }
 
 /// What the caret holds in the stream's text, to the clipboard.

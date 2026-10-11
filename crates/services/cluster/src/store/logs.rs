@@ -1,6 +1,6 @@
 //! Each pod's log stream, held as a read-only text the editor shows, capped from its start.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::VecDeque;
 
 use groove_objects::{Logged, Stop};
 use groove_text::{Buffer, Document};
@@ -27,10 +27,6 @@ pub struct Log {
     pub total: u64,
     pub state: Streaming,
     buffer: Buffer,
-    readers: BTreeSet<String>,
-    /// Moves on each time the last reader lets go.
-    released: u64,
-    stop: Stop,
 }
 
 impl Log {
@@ -82,7 +78,7 @@ fn shown(line: &LogLine) -> String {
 
 #[derive(Debug, Default)]
 pub struct Logs {
-    streams: BTreeMap<LogKey, Log>,
+    streams: super::leases::Leases<LogKey, Log>,
 }
 
 impl Logs {
@@ -91,44 +87,26 @@ impl Logs {
     }
 
     pub fn read_by<'a>(&'a self, reader: &'a str) -> impl Iterator<Item = &'a LogKey> {
-        let reads =
-            move |(key, one): (&'a LogKey, &'a Log)| one.readers.contains(reader).then_some(key);
-        self.streams.iter().filter_map(reads)
+        self.streams.read_by(reader)
     }
 
     /// `reader` reads `key`; the stop of a stream to open, when none ran for it.
     pub fn lease(&mut self, key: &LogKey, reader: &str) -> Option<&Stop> {
-        let started = !self.streams.contains_key(key);
-        let one = self.streams.entry(key.clone()).or_insert_with(|| Log {
+        let made = || Log {
             buffer: Buffer::new(Document::plain("stream.log", "")),
             ..Log::default()
-        });
-        one.readers.insert(reader.to_string());
-        started.then_some(&one.stop)
+        };
+        self.streams.lease(key, reader, made)
     }
 
     /// `reader` reads no stream any more; the keys it leaves without a reader.
     pub fn release(&mut self, reader: &str) -> Vec<(LogKey, u64)> {
-        let mut unread = Vec::new();
-        for (key, one) in &mut self.streams {
-            if one.readers.remove(reader) && one.readers.is_empty() {
-                one.released += 1;
-                unread.push((key.clone(), one.released));
-            }
-        }
-        unread
+        self.streams.release(reader)
     }
 
     /// The stream closed and its lines dropped, if nothing reads it still.
     pub fn drop_unread(&mut self, key: &LogKey, released: u64) {
-        if self
-            .streams
-            .get(key)
-            .is_some_and(|one| one.readers.is_empty() && one.released == released)
-            && let Some(one) = self.streams.remove(key)
-        {
-            one.stop.stop();
-        }
+        self.streams.drop_unread(key, released);
     }
 
     /// A batch of a stream still held; one dropped meanwhile is ignored.

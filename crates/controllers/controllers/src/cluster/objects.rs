@@ -91,21 +91,6 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, reader: &str, k
     spawner.detach(Box::pin(watcher));
 }
 
-/// Each watcher `reader` leaves unread is dropped after `IDLE`, unless read again by then.
-pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
-    for (key, released) in state.cluster.store.release(reader) {
-        let sink = spawner.sink();
-        spawner.detach(Box::pin(async move {
-            tokio::time::sleep(IDLE).await;
-            sink.deliver(Box::new(
-                move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                    state.cluster.store.drop_unread(&key, released)
-                },
-            ));
-        }));
-    }
-}
-
 pub(super) fn known(state: &mut AppState, context: &str) -> bool {
     match state.config.known_cluster(context) {
         Ok(_) => true,

@@ -12,10 +12,6 @@ pub struct Follow {
     pub objects: Vec<Arc<Described>>,
     pub synced: bool,
     pub failed: Option<String>,
-    readers: BTreeSet<String>,
-    /// Moves on each time the last reader lets go.
-    released: u64,
-    stop: Stop,
 }
 
 /// Context, namespace and name: one pod, or one Helm release.
@@ -23,7 +19,7 @@ pub type Named = (String, String, String);
 
 #[derive(Debug, Default)]
 pub struct Follows {
-    followed: BTreeMap<FollowKey, Follow>,
+    followed: super::leases::Leases<FollowKey, Follow>,
     pub yamls: super::yamls::Yamls,
     /// Each pod's last usage and when it was read; none where no metrics-server answers.
     usage: BTreeMap<Named, (Option<Usage>, Timestamp)>,
@@ -38,41 +34,22 @@ impl Follows {
 
     /// Every key `reader` reads.
     pub fn read_by<'a>(&'a self, reader: &'a str) -> impl Iterator<Item = &'a FollowKey> {
-        let reads = move |(key, one): (&'a FollowKey, &'a Follow)| {
-            one.readers.contains(reader).then_some(key)
-        };
-        self.followed.iter().filter_map(reads)
+        self.followed.read_by(reader)
     }
 
     /// `reader` reads `key`; the stop of a watcher to start, when none ran for it.
     pub fn lease(&mut self, key: &FollowKey, reader: &str) -> Option<&Stop> {
-        let started = !self.followed.contains_key(key);
-        let one = self.followed.entry(key.clone()).or_default();
-        one.readers.insert(reader.to_string());
-        started.then_some(&one.stop)
+        self.followed.lease(key, reader, Follow::default)
     }
 
     /// `reader` reads nothing any more; the keys it leaves without a reader.
     pub fn release(&mut self, reader: &str) -> Vec<(FollowKey, u64)> {
-        let mut unread = Vec::new();
-        for (key, one) in &mut self.followed {
-            if one.readers.remove(reader) && one.readers.is_empty() {
-                one.released += 1;
-                unread.push((key.clone(), one.released));
-            }
-        }
-        unread
+        self.followed.release(reader)
     }
 
     /// The watcher stopped and its objects dropped, if nothing reads it still.
     pub fn drop_unread(&mut self, key: &FollowKey, released: u64) {
-        if self
-            .followed
-            .get(key)
-            .is_some_and(|one| one.readers.is_empty() && one.released == released)
-            && let Some(one) = self.followed.remove(key)
-        {
-            one.stop.stop();
+        if self.followed.drop_unread(key, released).is_some() {
             self.yamls.drop(key);
         }
     }

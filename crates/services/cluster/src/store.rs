@@ -1,6 +1,7 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
 mod follows;
+mod leases;
 mod logs;
 mod yamls;
 
@@ -24,16 +25,12 @@ pub struct Watched {
     pub failed: Option<String>,
     /// Moves on with every change to the rows.
     pub revision: u64,
-    readers: BTreeSet<String>,
-    /// Moves on each time the last reader lets go.
-    released: u64,
-    stop: Stop,
 }
 
 /// The watchers and the kinds, beside the rest of the `cluster` slice.
 #[derive(Debug, Default)]
 pub struct Store {
-    watched: BTreeMap<WatchKey, Watched>,
+    watched: leases::Leases<WatchKey, Watched>,
     kinds: BTreeMap<String, (Vec<KubeKind>, Timestamp)>,
     discovering: BTreeSet<String>,
     /// The discoveries that failed in a row, by context, while one waits to try again.
@@ -107,42 +104,22 @@ impl Store {
 
     /// Every key `reader` reads.
     pub fn read_by<'a>(&'a self, reader: &'a str) -> impl Iterator<Item = &'a WatchKey> {
-        self.watched
-            .iter()
-            .filter(move |(_, one)| one.readers.contains(reader))
-            .map(|(key, _)| key)
+        self.watched.read_by(reader)
     }
 
     /// `reader` reads `key`; the stop of a watcher to start, when none ran for it.
     pub fn lease(&mut self, key: &WatchKey, reader: &str) -> Option<&Stop> {
-        let started = !self.watched.contains_key(key);
-        let one = self.watched.entry(key.clone()).or_default();
-        one.readers.insert(reader.to_string());
-        started.then_some(&one.stop)
+        self.watched.lease(key, reader, Watched::default)
     }
 
     /// `reader` reads nothing any more; the keys it leaves without a reader.
     pub fn release(&mut self, reader: &str) -> Vec<(WatchKey, u64)> {
-        let mut unread = Vec::new();
-        for (key, one) in &mut self.watched {
-            if one.readers.remove(reader) && one.readers.is_empty() {
-                one.released += 1;
-                unread.push((key.clone(), one.released));
-            }
-        }
-        unread
+        self.watched.release(reader)
     }
 
     /// The watcher stopped and its rows dropped, if nothing reads it still.
     pub fn drop_unread(&mut self, key: &WatchKey, released: u64) {
-        if self
-            .watched
-            .get(key)
-            .is_some_and(|one| one.readers.is_empty() && one.released == released)
-            && let Some(one) = self.watched.remove(key)
-        {
-            one.stop.stop();
-        }
+        self.watched.drop_unread(key, released);
     }
 
     pub fn due(&self) -> Option<Timestamp> {
