@@ -27,6 +27,10 @@ pub struct Watched {
     pub revision: u64,
 }
 
+/// The wait after a first failed discovery, doubled with each failure after it up to `LONGEST`.
+const RETRY: std::time::Duration = std::time::Duration::from_secs(1);
+const LONGEST: std::time::Duration = std::time::Duration::from_secs(60);
+
 /// The watchers and the kinds, beside the rest of the `cluster` slice.
 #[derive(Debug, Default)]
 pub struct Store {
@@ -82,10 +86,13 @@ impl Store {
     }
 
     /// A discovery of `context` failed and stays begun; the failures in a row.
-    pub fn refuse_discovery(&mut self, context: &str) -> u32 {
+    pub fn refuse_discovery(&mut self, context: &str) -> (u32, std::time::Duration) {
         let failures = self.refused.entry(context.to_string()).or_default();
         *failures += 1;
-        *failures
+        let wait = RETRY
+            .saturating_mul(1 << failures.saturating_sub(1).min(16))
+            .min(LONGEST);
+        (*failures, wait)
     }
 
     /// `context` may be discovered again, unless another failure or a sign-in came since `failures`.

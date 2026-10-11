@@ -10,10 +10,6 @@ use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 /// How long a watcher left unread keeps running.
 pub(super) const IDLE: Duration = Duration::from_secs(30);
 
-/// The wait after a first failed discovery, doubled with each failure after it up to `LONGEST`.
-const RETRY: Duration = Duration::from_secs(1);
-const LONGEST: Duration = Duration::from_secs(60);
-
 pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: String, again: bool) {
     if !known(state, &context) || !state.cluster.store.begin_discovery(&context) {
         return;
@@ -36,13 +32,10 @@ pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: Str
 
 /// A failed discovery: said the first time, tried again after a wait that doubles.
 fn refused(state: &mut AppState, spawner: &dyn Spawner, context: String, error: Error) {
-    let failures = state.cluster.store.refuse_discovery(&context);
+    let (failures, wait) = state.cluster.store.refuse_discovery(&context);
     if failures == 1 {
         state.failed(error);
     }
-    let wait = RETRY
-        .saturating_mul(1 << failures.saturating_sub(1).min(16))
-        .min(LONGEST);
     let sink = spawner.sink();
     spawner.detach(Box::pin(async move {
         tokio::time::sleep(wait).await;
