@@ -50,7 +50,7 @@ pub(crate) fn load_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<O
         })
 }
 
-/// A JSON file written whole, pretty, its directory made when missing.
+/// A JSON file written whole, pretty, its directory made when missing; the old one stays until the new is on disk.
 pub(crate) fn save_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
     let text = serde_json::to_string_pretty(value).map_err(|source| Error::Parse {
         path: path.to_path_buf(),
@@ -59,9 +59,20 @@ pub(crate) fn save_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(
     let written = path
         .parent()
         .map_or(Ok(()), std::fs::create_dir_all)
-        .and_then(|()| std::fs::write(path, text));
+        .and_then(|()| replaced(path, text.as_bytes()));
     written.map_err(|source| Error::Write {
         path: path.to_path_buf(),
         source,
     })
+}
+
+/// `bytes` written beside `path`, flushed, then renamed over it.
+fn replaced(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let mut beside = path.as_os_str().to_owned();
+    beside.push(".tmp");
+    let beside = std::path::PathBuf::from(beside);
+    let mut file = std::fs::File::create(&beside)?;
+    std::io::Write::write_all(&mut file, bytes)?;
+    file.sync_all()?;
+    std::fs::rename(&beside, path)
 }

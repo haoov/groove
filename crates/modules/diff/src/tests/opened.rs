@@ -109,7 +109,8 @@ fn reopening_with_the_head_side_in_hand_reads_the_same_file() {
         "src/lib.rs",
         "fn one() {}\nfn TWO() {}\nfn THREE() {}\n",
     );
-    let again = crate::reopened(dir.path(), "src/lib.rs", first.old.clone());
+    let runtime = tokio::runtime::Runtime::new().expect("a runtime");
+    let again = runtime.block_on(crate::reopened(dir.path(), "src/lib.rs", first.old.clone()));
     let fresh = open(dir.path(), "src/lib.rs");
     assert_eq!(again.hunked.layout, fresh.hunked.layout);
     assert_eq!(again.hunked.marks, fresh.hunked.marks);

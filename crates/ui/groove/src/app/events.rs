@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use groove_controllers::{Command, Event, dispatch, session, task};
+use groove_controllers::{Command, Event, Spawner, dispatch, session, task};
 use groove_gfx::{Fonts, Renderer};
 use groove_ui::input::Input;
 use winit::application::ApplicationHandler;
@@ -93,6 +93,7 @@ impl ApplicationHandler<Message> for App {
                 self.redraw();
             }
             Message::Event(event) => self.apply(event),
+            Message::Paste(text) => self.input(Input::Paste(text)),
         }
     }
 
@@ -110,10 +111,9 @@ impl ApplicationHandler<Message> for App {
                 is_synthetic: true, ..
             } => {}
             WindowEvent::KeyboardInput { event, .. } => {
-                if let Some(input) = self
-                    .pasting(&event)
-                    .or_else(|| input_of(&event, self.modifiers))
-                {
+                if self.pasting(&event) {
+                    self.paste();
+                } else if let Some(input) = input_of(&event, self.modifiers) {
                     self.input(input);
                 }
             }
@@ -137,10 +137,10 @@ impl ApplicationHandler<Message> for App {
 }
 
 impl App {
-    /// A chord the keymap binds to a paste, with what the clipboard holds in it.
-    fn pasting(&self, event: &winit::event::KeyEvent) -> Option<Input> {
+    /// A chord the keymap binds to a paste.
+    fn pasting(&self, event: &winit::event::KeyEvent) -> bool {
         if self.ui.settings.binding.is_some() {
-            return None;
+            return false;
         }
         let bound = match input_of(event, self.modifiers) {
             Some(Input::Key { key, mods }) => {
@@ -150,10 +150,18 @@ impl App {
         };
         let inserted = self.modifiers.shift_key()
             && event.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Insert);
-        if event.state != ElementState::Pressed || !(bound || inserted) {
-            return None;
-        }
-        Some(Input::Paste(self.services.clipboard.read()?))
+        event.state == ElementState::Pressed && (bound || inserted)
+    }
+
+    /// The clipboard read off the main thread; what it holds comes back as a paste.
+    fn paste(&self) {
+        let (clipboard, proxy) = (self.services.clipboard.clone(), self.proxy.clone());
+        self.spawner.detach(Box::pin(async move {
+            let read = tokio::task::spawn_blocking(move || clipboard.read()).await;
+            if let Ok(Some(text)) = read {
+                let _ = proxy.send_event(crate::Message::Paste(text));
+            }
+        }));
     }
 
     /// The pointer moved: what is under it, and the drag or the selection it carries.

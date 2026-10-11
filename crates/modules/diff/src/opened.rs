@@ -22,6 +22,8 @@ pub struct Opened {
     pub hunked: Hunked,
     /// Too long to align; the view says so instead of drawing it.
     pub long: bool,
+    /// The disk holds no text: the new side is `UNSHOWN`, and takes no edit.
+    pub unshown: bool,
 }
 
 impl Opened {
@@ -39,14 +41,18 @@ impl Opened {
 
 /// The file at `path` as it is on disk against the version in HEAD.
 pub async fn opened(dir: &Path, path: &str, rev: &str) -> Result<Opened> {
-    let before = committed(dir, path, rev).await;
-    let after = working(dir, path);
-    Ok(from_text(path, &before, &after))
+    let before = committed(dir, path, rev).await?;
+    let after = crate::working(dir, path).await;
+    let (before, after) = crate::paired(crate::committed(&before), &after);
+    Ok(from_text(path, before, after))
 }
 
 /// The file read again, against the HEAD side already read for it.
-pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
-    from_parts(path, old, &working(dir, path))
+pub async fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
+    let after = crate::working(dir, path).await;
+    let before = old.text();
+    let (_, after) = crate::paired(&before, &after);
+    from_parts(path, old, after)
 }
 
 /// The same, from two sides already in hand.
@@ -59,6 +65,7 @@ pub fn from_documents(path: &str, old: Document, new: Document) -> Opened {
     let aligned = from_sides(path, &old, &new, &[]);
     let mut open = Opened {
         path: path.to_string(),
+        unshown: new.text() == crate::UNSHOWN,
         long: aligned.long,
         old,
         new: Buffer::new(new),
@@ -88,15 +95,8 @@ pub fn derived(path: &str, old: &Document, new: Document) -> Derived {
     }
 }
 
-/// The file in HEAD, or nothing when it was never committed.
-async fn committed(dir: &Path, path: &str, rev: &str) -> String {
-    Git::at(dir)
-        .show(rev, path)
-        .await
-        .unwrap_or_else(|_| String::new())
-}
-
-/// The file on disk, or nothing when it is gone or unreadable.
-fn working(dir: &Path, path: &str) -> String {
-    std::fs::read_to_string(dir.join(path)).unwrap_or_default()
+/// The file at `rev`, or nothing when it was never committed there.
+async fn committed(dir: &Path, path: &str, rev: &str) -> Result<String> {
+    let mut held = Git::at(dir).blobs(rev, &[path.to_string()]).await?;
+    Ok(held.remove(path).unwrap_or_default())
 }

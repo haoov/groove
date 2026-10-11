@@ -344,6 +344,9 @@ fn an_unknown_repo_or_target_is_an_error_not_a_worktree() {
         state.errors[1].message
     );
     assert!(state.session.get(&id).unwrap().worktrees.is_empty());
+    let store = services.session.store();
+    let held = spawner.block_on(store.repos_of(&id)).unwrap();
+    assert!(held.is_empty(), "no repo stays attached: {held:?}");
 }
 
 #[test]

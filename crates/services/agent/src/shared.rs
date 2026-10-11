@@ -17,24 +17,60 @@ pub fn copy_of(data: &Path) -> PathBuf {
     data.join("shared")
 }
 
-/// A fresh copy of the branch, in place of any copy before it, once it reads as a marketplace.
+/// A fresh copy of the branch, in place of any copy before it once it reads as a marketplace.
 pub async fn join(data: &Path, shared: &SharedConfig) -> Result<Shared> {
     let path = copy_of(data);
-    if path.exists() {
-        std::fs::remove_dir_all(&path).map_err(|e| io(&path, e))?;
-    }
-    std::fs::create_dir_all(data).map_err(|e| io(data, e))?;
-    if let Err(e) = Git::clone_head(&shared.url, &path, &shared.branch).await {
-        let _ = std::fs::remove_dir_all(&path);
+    let fresh = data.join("shared.new");
+    cleared(&fresh).await?;
+    tokio::fs::create_dir_all(data)
+        .await
+        .map_err(|e| io(data, e))?;
+    if let Err(e) = Git::clone_head(&shared.url, &fresh, &shared.branch).await {
+        let _ = cleared(&fresh).await;
         return Err(unreached(shared, e.into()));
     }
+    if let Err(e) = groove_skills::marketplace(&fresh) {
+        let _ = cleared(&fresh).await;
+        return Err(e);
+    }
+    swapped(&fresh, &path).await?;
     named(path)
+}
+
+/// `fresh` renamed into `path`, the copy before it put aside, then taken away.
+async fn swapped(fresh: &Path, path: &Path) -> Result<()> {
+    let old = path.with_extension("old");
+    cleared(&old).await?;
+    if tokio::fs::try_exists(path).await.unwrap_or(false) {
+        tokio::fs::rename(path, &old)
+            .await
+            .map_err(|e| io(path, e))?;
+    }
+    tokio::fs::rename(fresh, path)
+        .await
+        .map_err(|e| io(path, e))?;
+    cleared(&old).await
+}
+
+async fn cleared(dir: &Path) -> Result<()> {
+    match tokio::fs::remove_dir_all(dir).await {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(io(dir, e)),
+        _ => Ok(()),
+    }
+}
+
+/// The copy taken away, when there is one.
+pub async fn forget(data: &Path) -> Result<()> {
+    cleared(&copy_of(data)).await
 }
 
 /// The copy moved to the branch's head, or made when there is none yet.
 pub async fn follow(data: &Path, shared: &SharedConfig) -> Result<Shared> {
     let path = copy_of(data);
-    if !path.join(".git").exists() {
+    if !tokio::fs::try_exists(path.join(".git"))
+        .await
+        .unwrap_or(false)
+    {
         return join(data, shared).await;
     }
     Git::at(&path).follow(&shared.branch).await?;

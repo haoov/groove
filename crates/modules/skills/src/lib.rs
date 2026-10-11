@@ -88,8 +88,12 @@ impl Dirs {
     }
 }
 
+/// Held while a build runs: one at a time.
+static BUILDING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Every plugin on disk: the core one written again, the user's made, the shared ones built.
 pub fn sync(dirs: &Dirs) -> Result<()> {
+    let _one = BUILDING.lock().unwrap_or_else(|e| e.into_inner());
     wrote_core(&dirs.core).map_err(io)?;
     made_user(&dirs.user).map_err(io)?;
     shared::build(dirs).map_err(io)?;

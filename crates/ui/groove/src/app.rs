@@ -23,6 +23,7 @@ pub struct App {
     state: AppState,
     ui: Ui,
     spawner: TokioSpawner,
+    proxy: winit::event_loop::EventLoopProxy<crate::Message>,
     services: Services,
     modifiers: ModifiersState,
     /// What the last frame drew, and where the pointer is.
@@ -40,11 +41,13 @@ pub struct App {
 
 impl App {
     pub fn new(
-        spawner: TokioSpawner,
+        (spawner, proxy): (
+            TokioSpawner,
+            winit::event_loop::EventLoopProxy<crate::Message>,
+        ),
         services: Services,
         env: Env,
-        config: Option<Config>,
-        panes: Option<Panes>,
+        (config, panes): (Option<Config>, Option<Panes>),
         explore: bool,
     ) -> Self {
         let mut state = AppState::new(env);
@@ -59,6 +62,7 @@ impl App {
             state,
             ui,
             spawner,
+            proxy,
             services,
             modifiers: ModifiersState::empty(),
             hits: Hits::default(),

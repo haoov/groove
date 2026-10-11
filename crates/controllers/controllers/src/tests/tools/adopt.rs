@@ -262,3 +262,28 @@ fn the_explorer_leaves_no_launch_file_and_no_feed_line_behind() {
         at.state.session.feed
     );
 }
+
+#[test]
+fn a_move_that_fails_leaves_the_branch_named_as_it_was() {
+    let home = tempfile::tempdir().unwrap();
+    let mut at = exploring(home.path());
+    let explorer = at.id.clone();
+    let before = at.state.session.get(&explorer).expect("open").worktrees[0].clone();
+    let (root, _) = before
+        .path
+        .split_once(&format!("/{}/", explorer.as_str()))
+        .expect("the explorer's directory");
+    std::fs::write(std::path::Path::new(root).join(TASK), "in the way").unwrap();
+
+    let answer = adopted(&mut at, ISSUE);
+    assert!(!answer.failed, "{}", answer.text);
+    crate::tests::fixture::until(&at.spawner, &at.services, &mut at.state, |s| {
+        !s.errors.is_empty()
+    });
+
+    let branch = crate::tests::fixture::sh(
+        std::path::Path::new(&before.path),
+        &["rev-parse", "--abbrev-ref", "HEAD"],
+    );
+    assert_eq!(branch.trim(), before.branch, "on its own branch again");
+}

@@ -51,7 +51,7 @@ impl Pool {
             self.tear_down(&worktree, &dir).await?;
             self.remove_worktree(&worktree.id).await?;
         }
-        remove_tree(&dir)
+        remove_tree(&dir).await
     }
 
     /// Refuses a worktree holding what `keep` names, or one git cannot answer for.
@@ -62,7 +62,8 @@ impl Pool {
         let unknown = || Error::Unknown {
             branch: worktree.branch.clone(),
         };
-        let git = match Path::new(&worktree.path).is_dir() {
+        let there = tokio::fs::metadata(&worktree.path).await;
+        let git = match there.is_ok_and(|one| one.is_dir()) {
             true => {
                 let git = Git::at(&worktree.path);
                 if !git.status().await.map_err(|_| unknown())?.is_empty() {
@@ -73,6 +74,7 @@ impl Pool {
                 }
                 git
             }
+            false if keep == Keep::Changes => return Ok(()),
             false => match self.repo(&worktree.repo).await {
                 Ok(repo) => Git::at(&repo.local_path),
                 Err(_) => return Ok(()),
@@ -95,7 +97,7 @@ impl Pool {
 
     /// The directory and its empty parents, the clone's registration, the local branch.
     async fn tear_down(&self, worktree: &Worktree, stop_at: &Path) -> Result<()> {
-        remove_dir(Path::new(&worktree.path), stop_at)?;
+        remove_dir(Path::new(&worktree.path), stop_at).await?;
         if let Ok(repo) = self.repo(&worktree.repo).await {
             let clone = Git::at(&repo.local_path);
             let _ = clone.worktree_prune().await;
@@ -106,13 +108,13 @@ impl Pool {
 }
 
 /// Deletes the tree and the empty parents above it, up to `stop_at`.
-fn remove_dir(path: &Path, stop_at: &Path) -> Result<()> {
-    remove_tree(path)?;
+async fn remove_dir(path: &Path, stop_at: &Path) -> Result<()> {
+    remove_tree(path).await?;
     let mut dir = path.parent();
     while let Some(current) = dir {
         if current == stop_at
             || !current.starts_with(stop_at)
-            || std::fs::remove_dir(current).is_err()
+            || tokio::fs::remove_dir(current).await.is_err()
         {
             break;
         }
@@ -122,8 +124,8 @@ fn remove_dir(path: &Path, stop_at: &Path) -> Result<()> {
 }
 
 /// An absent directory is success.
-fn remove_tree(path: &Path) -> Result<()> {
-    match std::fs::remove_dir_all(path) {
+async fn remove_tree(path: &Path) -> Result<()> {
+    match tokio::fs::remove_dir_all(path).await {
         Ok(()) => Ok(()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(source) => Err(Error::Io {

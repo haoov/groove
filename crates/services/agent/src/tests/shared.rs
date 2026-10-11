@@ -123,6 +123,27 @@ async fn an_http_url_that_cannot_be_read_says_to_give_the_ssh_one() {
     );
 }
 
+#[tokio::test]
+async fn a_join_that_fails_keeps_the_copy_before_it() {
+    let root = tempfile::tempdir().unwrap();
+    let (shared, _) = origin(root.path(), "wiremind");
+    let data = root.path().join("data");
+    join(&data, &shared).await.expect("a plugin");
+    let gone = SharedConfig {
+        url: "http://127.0.0.1:9/none.git".into(),
+        ..shared.clone()
+    };
+    join(&data, &gone).await.expect_err("nothing answers");
+    let (taken, _) = origin(&root.path().join("other"), "groove");
+    join(&data, &taken).await.expect_err("groove is taken");
+    let kept = crate::shared::copy_of(&data);
+    assert_eq!(
+        names(&follow(&data, &shared).await.expect("kept")),
+        ["wiremind"]
+    );
+    assert!(kept.join(".git").exists());
+}
+
 fn names(copy: &crate::shared::Shared) -> Vec<String> {
     copy.marketplace
         .plugins

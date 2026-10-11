@@ -314,6 +314,27 @@ fn a_launch_is_given_the_enabled_shared_skills_alone() {
 }
 
 #[test]
+fn builds_at_the_same_time_each_finish_whole() {
+    let home = tempfile::tempdir().unwrap();
+    let skills: Vec<String> = (0..40).map(|at| format!("skill-{at}")).collect();
+    let named: Vec<&str> = skills.iter().map(String::as_str).collect();
+    let enabled: Vec<String> = skills.iter().map(|one| format!("platform:{one}")).collect();
+    let on: Vec<&str> = enabled.iter().map(String::as_str).collect();
+    let dirs = sharing(home.path(), &named, &on);
+    let builds: Vec<_> = (0..8)
+        .map(|_| {
+            let dirs = dirs.clone();
+            std::thread::spawn(move || sync(&dirs))
+        })
+        .collect();
+    for build in builds {
+        build.join().unwrap().expect("a whole build");
+    }
+    let built = std::fs::read_dir(dirs.built.join("platform/skills")).unwrap();
+    assert_eq!(built.count(), 40);
+}
+
+#[test]
 fn a_shared_plugin_with_nothing_enabled_is_not_given_at_all() {
     let home = tempfile::tempdir().unwrap();
     let dirs = sharing(home.path(), &["rollout"], &["platform:triage"]);

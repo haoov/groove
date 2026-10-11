@@ -108,16 +108,22 @@ fn project_of(explorer_dir: &Path, worktree: &Worktree) -> String {
         })
 }
 
-/// The branch renamed, then the worktree moved.
+/// The branch renamed, then the worktree moved; a move that fails names the branch back.
 async fn walk(step: &Step) -> Result<(), Error> {
     let from = PathBuf::from(&step.worktree.path);
     let git = Git::at(&from);
-    if step.branch != step.worktree.branch {
+    let renamed = step.branch != step.worktree.branch;
+    if renamed {
         git.branch_rename(&step.worktree.branch, &step.branch)
             .await?;
     }
-    if step.path != from {
-        git.worktree_move(&from, &step.path).await?;
+    if step.path != from
+        && let Err(e) = git.worktree_move(&from, &step.path).await
+    {
+        if renamed {
+            let _ = git.branch_rename(&step.branch, &step.worktree.branch).await;
+        }
+        return Err(e.into());
     }
     Ok(())
 }

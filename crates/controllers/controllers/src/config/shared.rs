@@ -71,13 +71,18 @@ pub(super) fn leave(state: &mut AppState, spawner: &dyn Spawner) {
     if !super::written(state, Some(config)) {
         return;
     }
-    let copy = shared::copy_of(&state.env.data_dir);
-    if copy.exists()
-        && let Err(e) = std::fs::remove_dir_all(&copy)
-    {
-        state.failed(Error::new(groove_types::ErrorKind::Io, e.to_string()));
-    }
-    crate::agent::skills::list(state, spawner);
+    let data = state.env.data_dir.clone();
+    spawner.spawn(Box::pin(async move {
+        let gone = shared::forget(&data).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                if let Err(e) = gone {
+                    state.failed(e);
+                }
+                crate::agent::skills::list(state, spawner);
+            },
+        ) as Continuation
+    }));
 }
 
 /// What a follow found: the copy kept, or the last one kept and its failure said once.

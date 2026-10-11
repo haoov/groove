@@ -52,3 +52,14 @@ fn a_saved_config_loads_back_as_it_was_written() {
     crate::save(&file, &config).unwrap();
     assert_eq!(load(&file).unwrap(), Some(config));
 }
+
+#[test]
+fn a_save_that_cannot_finish_leaves_the_old_file_whole() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = path(dir.path());
+    std::fs::write(&file, FILE).unwrap();
+    let config = load(&file).unwrap().unwrap();
+    std::fs::create_dir(dir.path().join("config.json.tmp")).unwrap();
+    assert!(crate::save(&file, &config).is_err());
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), FILE);
+}

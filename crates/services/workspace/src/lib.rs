@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
-    Aligned, At, Changes, Derived, Document, Opened, aligned, column_of, display_of,
+    Aligned, At, Changes, Derived, Document, Opened, UNSHOWN, aligned, column_of, display_of,
     from_documents, from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};

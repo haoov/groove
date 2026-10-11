@@ -36,6 +36,9 @@ impl State {
     pub fn edit(&mut self, edit: &Edit) -> Option<String> {
         let stream = self.commit.is_none();
         let open = self.active_mut()?;
+        if open.unshown && !matches!(edit, Edit::Move(_) | Edit::Extend(_)) {
+            return None;
+        }
         let touched = open.new.edit(edit);
         if touched.is_empty() {
             return None;

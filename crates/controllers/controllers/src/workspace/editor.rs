@@ -49,7 +49,7 @@ pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner, path: String) 
 
 /// Writes the active buffer out.
 pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(open) = state.workspace.active() else {
+    let Some(open) = state.workspace.active().filter(|one| !one.unshown) else {
         return;
     };
     let Some(worktree) = state.session.selected_worktree() else {
@@ -209,7 +209,7 @@ pub(super) fn close_file(state: &mut AppState, path: &str) {
 /// The file's two sides, reading the old one only when it is not in hand.
 async fn sides(dir: &Path, path: &str, old: Option<Document>, rev: &str) -> Result<Opened> {
     match old {
-        Some(old) => Ok(reopened(dir, path, old)),
+        Some(old) => Ok(reopened(dir, path, old).await),
         None => opened(dir, path, rev).await,
     }
 }

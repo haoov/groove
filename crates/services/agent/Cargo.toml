@@ -17,11 +17,11 @@ groove-types = { path = "../../shared/types" }
 groove-terminal = { path = "../../modules/terminal" }
 groove-agent-launch = { path = "../../modules/agent-launch" }
 groove-hooks = { path = "../../modules/hooks" }
+tokio = { workspace = true, features = ["fs"] }
 
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
-tokio.workspace = true
 
 [lints]
 workspace = true

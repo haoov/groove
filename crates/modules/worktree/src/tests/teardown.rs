@@ -127,3 +127,21 @@ async fn close_refuses_a_worktree_git_cannot_answer_for() {
     assert!(matches!(err, Error::Unknown { .. }), "{err}");
     assert!(path.exists(), "nothing is taken away");
 }
+
+#[tokio::test]
+async fn a_merged_worktree_whose_directory_is_gone_closes() {
+    let fx = Fixture::new().await;
+    let repo = fx.repo().await;
+    let wt = fx
+        .pool
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
+        .await
+        .unwrap()
+        .worktree;
+    let path = std::path::PathBuf::from(&wt.path);
+    std::fs::write(path.join("a.txt"), "squashed\n").unwrap();
+    sh(&path, &["commit", "-am", "squashed elsewhere"]);
+    std::fs::remove_dir_all(&path).unwrap();
+    let closed = fx.pool.close(&wt.id, Keep::Changes).await;
+    assert!(closed.is_ok(), "{closed:?}");
+}

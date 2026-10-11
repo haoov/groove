@@ -21,8 +21,12 @@ pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::
         let rev = against(&asked.dir, asked.mode, asked.base.as_deref()).await;
         let read = painted(&asked.dir, missing, &rev).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if asked.holds(state) {
-                state.workspace.coloured.extend(read);
+            if !asked.holds(state) {
+                return;
+            }
+            match read {
+                Ok(read) => state.workspace.coloured.extend(read),
+                Err(e) => state.failed(e),
             }
         }) as Continuation
     }));
