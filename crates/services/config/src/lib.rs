@@ -184,17 +184,24 @@ impl State {
     }
 
     /// One skill switched on or off: a user's skill in `skills_off`, a shared one in `enabled`.
-    pub fn switch_skill(&mut self, id: &str, on: bool) -> Option<&Config> {
-        let config = self.config.as_mut()?;
+    pub fn switch_skill(&mut self, id: &str, on: bool) -> Result<&Config, Error> {
+        if id.starts_with("groove:") {
+            return Err(Error::invalid("a core skill is always on"));
+        }
+        let unknown = || {
+            let why = format!("`{id}` is no skill Groove can switch: no shared repo holds it");
+            Error::invalid(why)
+        };
+        let config = self.config.as_mut().ok_or_else(unknown)?;
         let (held, wanted) = match id.starts_with("user:") {
             true => (&mut config.skills_off, !on),
-            false => (&mut config.shared.as_mut()?.enabled, on),
+            false => (&mut config.shared.as_mut().ok_or_else(unknown)?.enabled, on),
         };
         held.retain(|one| one != id);
         if wanted {
             held.push(id.to_string());
         }
-        Some(config)
+        Ok(config)
     }
 
     /// The chords rebound, whole; the config to write, or `None` before first run.

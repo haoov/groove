@@ -128,12 +128,9 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
 
 /// One skill switched on or off, the plugins built again, and running agents marked stale.
 pub fn switch(state: &mut AppState, spawner: &dyn Spawner, id: String, on: bool) {
-    if id.starts_with("groove:") {
-        return state.failed(groove_types::Error::invalid("a core skill is always on"));
-    }
-    let Some(config) = state.config.switch_skill(&id, on).cloned() else {
-        let why = format!("`{id}` is no skill Groove can switch: no shared repo holds it");
-        return state.failed(groove_types::Error::invalid(why));
+    let config = match state.config.switch_skill(&id, on) {
+        Ok(config) => config.clone(),
+        Err(e) => return state.failed(e),
     };
     if !crate::config::written(state, Some(config)) {
         return;
