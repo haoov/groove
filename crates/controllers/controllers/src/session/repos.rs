@@ -112,11 +112,7 @@ pub fn close_worktree(
     worktree: &WorktreeId,
     force: bool,
 ) {
-    let keep = match (force, merged(state, worktree)) {
-        (true, _) => Keep::Nothing,
-        (false, true) => Keep::Changes,
-        (false, false) => Keep::Everything,
-    };
+    let keep = Keep::of(force, merged(state, worktree));
     let pending = state.begin("closing worktree");
     let (service, worktree) = (services.session.clone(), worktree.clone());
     let work = async move { service.close_worktree(&worktree, keep).await };

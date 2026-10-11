@@ -19,6 +19,17 @@ pub enum Keep {
     Nothing,
 }
 
+impl Keep {
+    /// What a close keeps: nothing when forced, changes alone once its MR merged, else everything.
+    pub fn of(force: bool, merged: bool) -> Self {
+        match (force, merged) {
+            (true, _) => Keep::Nothing,
+            (false, true) => Keep::Changes,
+            (false, false) => Keep::Everything,
+        }
+    }
+}
+
 impl Pool {
     /// Removes the directory, the local branch and the row; what `keep` names refuses it.
     pub async fn close(&self, id: &WorktreeId, keep: Keep) -> Result<Worktree> {
@@ -40,11 +51,7 @@ impl Pool {
         let dir = self.layout.session_dir(session.as_str());
         let worktrees = self.worktrees_of(session).await?;
         for worktree in &worktrees {
-            let keep = match (force, landed.contains(&worktree.id)) {
-                (true, _) => Keep::Nothing,
-                (false, true) => Keep::Changes,
-                (false, false) => Keep::Everything,
-            };
+            let keep = Keep::of(force, landed.contains(&worktree.id));
             self.refuse_loss(worktree, keep).await?;
         }
         for worktree in worktrees {
