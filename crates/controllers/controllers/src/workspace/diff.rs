@@ -60,6 +60,9 @@ pub(super) fn mark_read(
 
 /// The changed files and the open file, read at once.
 pub(super) fn reread(state: &mut AppState, spawner: &dyn Spawner) {
+    if state.workspace.readonly() {
+        return;
+    }
     load(state, spawner);
     let open = held(state);
     reopen(state, spawner, Head::Read, open);
@@ -76,6 +79,9 @@ pub(super) fn refresh(
         crate::session::refresh_status(state, services, spawner);
         return reread(state, spawner);
     }
+    if state.workspace.readonly() {
+        return;
+    }
     load(state, spawner);
     let touched = state.workspace.shows(paths);
     reopen(state, spawner, Head::Keep, touched);
@@ -84,7 +90,7 @@ pub(super) fn refresh(
 /// Reads the summary in a job; the continuation stores it against its worktree.
 /// One read is out per worktree and mode; what asks meanwhile gets one more read after it.
 pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(asked) = super::Asked::now(state) else {
+    let Some(asked) = super::Asked::now(state).filter(|_| !state.workspace.readonly()) else {
         return;
     };
     let key = (asked.worktree.clone(), asked.mode);
@@ -167,6 +173,7 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
         return state.workspace.clear();
     };
     if stale(state) {
+        state.workspace.commit = None;
         let kind = state.session.selected().map(|open| &open.session.kind);
         state.workspace.mode = opens_in(kind);
         load(state, spawner);

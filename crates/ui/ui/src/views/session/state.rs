@@ -13,6 +13,11 @@ pub struct SessionUi {
     pub tab: Tab,
     /// The tab to show once the repo asked for is selected and read, and its commit shown when one.
     pub going: Option<(Tab, Option<String>)>,
+    /// The session and the worktree selected when last settled.
+    pub seen: (
+        Option<groove_types::SessionId>,
+        Option<groove_types::WorktreeId>,
+    ),
     /// How far the sidebar's list is scrolled, in pixels.
     pub files: f32,
     /// The user folded the sidebar away.

@@ -68,7 +68,20 @@ pub(super) fn asked(state: &mut AppState, services: &Services, spawner: &dyn Spa
     if call.tool == "git_push" {
         return git::push_asked(state, spawner, Write::of(call));
     }
-    queued(state, Write::of(call));
+    let mut write = Write::of(call);
+    pinned(state, &mut write);
+    queued(state, write);
+}
+
+/// The worktree a write acts on, named in it while it waits.
+fn pinned(state: &AppState, write: &mut Write) {
+    let named = write.text("worktree_id").is_some();
+    if named || !groove_agent_service::tools::takes_worktree(&write.tool) {
+        return;
+    }
+    if let Some(one) = worktree_of(state, write) {
+        write.arguments["worktree_id"] = one.id.as_str().into();
+    }
 }
 
 fn queued(state: &mut AppState, write: Write) {
