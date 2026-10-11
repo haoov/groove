@@ -5,7 +5,7 @@ use groove_types::{Container, Pressure, State, Usage, bytes, cores, gauge, quant
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::shape::Panel;
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Column, Shown, Width};
 
 use super::super::opened::Opened;
@@ -216,7 +216,12 @@ fn ended(ctx: &Ctx, one: &Container) -> Cell<'static> {
     };
     let when = last
         .at
-        .map(|at| format!(" · {}", ago(at.age_at(ctx.now))))
+        .map(|at| {
+            format!(
+                " · {}",
+                groove_types::human_age(at.age_at(ctx.now).as_secs())
+            )
+        })
         .unwrap_or_default();
     let role = if last.exit == 0 {
         Role::Muted

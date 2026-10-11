@@ -6,7 +6,7 @@ use groove_gfx::Rect;
 use groove_types::{Described, EventRow, PodPart, Timestamp};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::text::Label;
 
 use super::super::list::plan::colour;
 use super::super::opened::{Link, Opened, Section, helm_release, lineage, served};
@@ -66,7 +66,9 @@ pub(super) fn conditions(ctx: &mut Ctx, rect: Rect, pod: &PodPart) {
         };
         Label::new(mark, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.xs);
         Label::new(&one.kind, ctx.styles.small(name)).left(ctx, &mut room, ctx.tokens.xs);
-        let since = one.since.map(|at| ago(at.age_at(ctx.now)));
+        let since = one
+            .since
+            .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()));
         let why = [one.reason.clone().filter(|_| !one.met), since];
         let why: Vec<String> = why.into_iter().flatten().collect();
         let why = why.join(" · ");
@@ -94,7 +96,10 @@ pub(super) fn facts(app: &AppState, tab: &Opened, object: &Described, now: Times
     if let Some(created) = object.created {
         add(
             "created",
-            format!("{} ago", ago(created.age_at(now))),
+            format!(
+                "{} ago",
+                groove_types::human_age(created.age_at(now).as_secs())
+            ),
             Role::Text,
             None,
         );
@@ -130,7 +135,12 @@ fn pod_facts(
         .filter_map(|one| one.last.as_ref()?.at)
         .max();
     let when = last
-        .map(|at| format!(" · last {} ago", ago(at.age_at(now))))
+        .map(|at| {
+            format!(
+                " · last {} ago",
+                groove_types::human_age(at.age_at(now).as_secs())
+            )
+        })
         .unwrap_or_default();
     add(
         "restarts",
@@ -168,7 +178,10 @@ fn placed(
     if let Some(started) = pod.started {
         add(
             "started",
-            format!("{} ago", ago(started.age_at(now))),
+            format!(
+                "{} ago",
+                groove_types::human_age(started.age_at(now).as_secs())
+            ),
             Role::Text,
             None,
         );
@@ -232,7 +245,7 @@ pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow, last: Option<&str
     Label::new(&format!("×{}", row.count), ctx.styles.small(Role::Ghost)).draw(ctx, count);
     let when = row
         .last
-        .map(|at| ago(at.age_at(ctx.now)))
+        .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()))
         .unwrap_or_default();
     Label::new(&when, ctx.styles.small(Role::Ghost)).draw(ctx, age);
     copy::Copied::new(&row.message, role, last).draw(ctx, message);

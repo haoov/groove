@@ -5,7 +5,7 @@ use groove_types::{AppCondition, AppPart, AppSource, Operation, SyncedResource, 
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, column_of, row_in};
 use groove_ui_kit::shape::Panel;
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::text::Label;
 
 use super::super::opened::{Opens, Section};
 use super::describe::Block;
@@ -81,11 +81,14 @@ pub(super) fn operation(ctx: &mut Ctx, rect: Rect, operation: &Operation, now: T
             true => String::new(),
             false => format!(" by {}", operation.by),
         };
-        about.push(format!("started {} ago{by}", ago(started.age_at(now))));
+        about.push(format!(
+            "started {} ago{by}",
+            groove_types::human_age(started.age_at(now).as_secs())
+        ));
     }
     let ended = operation.finished.or(operation.running().then_some(now));
     if let (Some(started), Some(ended)) = (operation.started, ended) {
-        about.push(ago(started.age_at(ended)));
+        about.push(groove_types::human_age(started.age_at(ended).as_secs()));
     }
     if operation.retries > 0 {
         about.push(format!("retry {}", operation.retries));
@@ -133,7 +136,7 @@ pub(super) fn condition(ctx: &mut Ctx, rect: Rect, one: &AppCondition, now: Time
     let mut room = rect;
     Label::new(&one.kind, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.md);
     if let Some(at) = one.at {
-        let since = format!("{} ago", ago(at.age_at(now)));
+        let since = format!("{} ago", groove_types::human_age(at.age_at(now).as_secs()));
         Label::new(&since, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, ctx.tokens.md);
     }
     Label::new(&one.message, ctx.styles.small(Role::Text)).draw(ctx, room);
