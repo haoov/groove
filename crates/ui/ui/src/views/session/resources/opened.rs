@@ -44,15 +44,16 @@ pub enum Section {
     Events,
 }
 
-/// One object's tab: which view, which container, how far down.
+/// One object's tab: which view, what is folded, how far down.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Opened {
     pub link: Link,
     pub view: super::View,
     pub logs: super::LogsUi,
     pub argo: super::ArgoUi,
-    pub container: Option<String>,
-    /// The sections folded shut; the annotations and the events until opened.
+    /// The groups and rows folded against how they start.
+    pub toggled: std::collections::BTreeSet<String>,
+    /// The sections folded shut; the annotations, the relations and the events until opened.
     pub shut: std::collections::BTreeSet<Section>,
     pub scroll: f32,
     /// How far the YAML is scrolled sideways.
@@ -68,12 +69,23 @@ impl Opened {
             view: super::View::Describe,
             logs: super::LogsUi::default(),
             argo: super::ArgoUi::default(),
-            container: None,
-            shut: [Section::Annotations, Section::Events].into(),
+            toggled: std::collections::BTreeSet::new(),
+            shut: [Section::Annotations, Section::Relations, Section::Events].into(),
             scroll: 0.0,
             across: 0.0,
             copied: None,
         }
+    }
+
+    pub fn fold(&mut self, key: &str) {
+        if !self.toggled.remove(key) {
+            self.toggled.insert(key.to_string());
+        }
+    }
+
+    /// Whether `key` stands folded, given whether it starts so.
+    pub fn folded(&self, key: &str, folds: bool) -> bool {
+        folds != self.toggled.contains(key)
     }
 }
 

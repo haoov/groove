@@ -51,20 +51,20 @@ fn a_crashing_pod_reads_as_its_tab_draws_it() {
     assert_eq!(part.status, "CrashLoopBackOff");
     assert_eq!(part.priority, Some(("default".into(), 0)));
     assert!(!part.conditions[0].met);
-    let uses: Vec<(&str, &str)> = part
+    let uses: Vec<(&str, &str, String)> = part
         .uses
         .iter()
-        .map(|(k, n)| (k.as_str(), n.as_str()))
+        .map(|one| (one.tag.as_str(), one.name.as_str(), one.how.join(" · ")))
         .collect();
+    let read = |tag, name, how: &str| (tag, name, how.to_string());
     assert_eq!(
         uses,
         [
-            ("sa", "paxone"),
-            ("secret", "paxone-tls"),
-            ("cm", "paxone-env"),
-            ("secret", "paxone-db-legacy"),
-            ("secret", "registry"),
-            ("node", "gra9-node-2")
+            read("sa", "paxone", "service account"),
+            read("secret", "paxone-tls", "mounted /etc/tls"),
+            read("cm", "paxone-env", "env worker"),
+            read("secret", "paxone-db-legacy", "env worker"),
+            read("secret", "registry", "image pull"),
         ]
     );
     let (init, worker) = (&part.containers[0], &part.containers[1]);

@@ -120,7 +120,7 @@ fn lines<'a>(
     let mut out = Vec::new();
     for group in groups {
         let quiet = !group.rows.iter().any(|one| part.attention(one));
-        let shut = tab.argo.shut(group.kind, filter == Filter::All && quiet);
+        let shut = tab.folded(group.kind, filter == Filter::All && quiet);
         out.push(Line::Heading(group, shut));
         if !shut {
             out.extend(group.rows.iter().map(|one| Line::Row(one)));

@@ -74,8 +74,16 @@ pub struct PodPart {
     pub conditions: Vec<Condition>,
     /// The init containers first.
     pub containers: Vec<Container>,
-    /// What it reads: `("secret", "paxone-tls")`, `("sa", "paxone")`.
-    pub uses: Vec<(String, String)>,
+    /// What it reads, each once, in the order the spec names it.
+    pub uses: Vec<Used>,
+}
+
+/// An object the pod reads: `secret paxone-tls`, and how: `mounted /etc/tls`, `env worker`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Used {
+    pub tag: String,
+    pub name: String,
+    pub how: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 //! A pod's own part: its status as `kubectl get` says it, its facts, conditions, containers and uses.
 
-use groove_types::{Condition, PodPart};
+use groove_types::{Condition, PodPart, Used};
 use serde_json::Value;
 
 use super::container::containers;
@@ -95,40 +95,68 @@ const IN_ENV: [(&str, &str); 2] = [
     ("secret", "/valueFrom/secretKeyRef/name"),
 ];
 
-/// What the pod reads, each once, in the order the spec names it.
-fn uses(spec: &Value) -> Vec<(String, String)> {
-    let volumes = list(spec, "/volumes");
-    let sources = volumes
+/// What the pod reads, each once, in the order the spec names it, with how it reads it.
+fn uses(spec: &Value) -> Vec<Used> {
+    let containers: Vec<&Value> = list(spec, "/initContainers")
         .iter()
-        .flat_map(|one| list(one, "/projected/sources"));
-    let containers = || {
-        list(spec, "/initContainers")
-            .iter()
-            .chain(list(spec, "/containers"))
-    };
-    let froms = containers().flat_map(|one| list(one, "/envFrom"));
-    let envs = containers().flat_map(|one| list(one, "/env"));
-    let pulls = list(spec, "/imagePullSecrets")
-        .iter()
-        .filter_map(|one| Some(("secret", one["name"].as_str()?)));
-    let account = spec["serviceAccountName"].as_str().map(|one| ("sa", one));
-    let node = spec["nodeName"].as_str().map(|one| ("node", one));
-    let all = account
-        .into_iter()
-        .chain(named(volumes.iter(), &IN_VOLUME))
-        .chain(named(sources, &IN_SOURCE))
-        .chain(named(froms, &IN_FROM))
-        .chain(named(envs, &IN_ENV))
-        .chain(pulls)
-        .chain(node);
-    let mut out: Vec<(String, String)> = Vec::new();
-    for (kind, name) in all.filter(|(_, name)| !name.is_empty() && !INJECTED.contains(name)) {
-        let one = (kind.to_string(), name.to_string());
-        if !out.contains(&one) {
-            out.push(one);
+        .chain(list(spec, "/containers"))
+        .collect();
+    let mut out: Vec<Used> = Vec::new();
+    let account = spec["serviceAccountName"].as_str().into_iter();
+    add(&mut out, account.map(|one| ("sa", one)), "service account");
+    for volume in list(spec, "/volumes") {
+        let how = mounted(&containers, &text(volume, "/name"));
+        add(&mut out, named([volume].into_iter(), &IN_VOLUME), &how);
+        let sources = list(volume, "/projected/sources").iter();
+        add(&mut out, named(sources, &IN_SOURCE), &how);
+    }
+    for one in &containers {
+        let how = format!("env {}", text(one, "/name"));
+        add(
+            &mut out,
+            named(list(one, "/envFrom").iter(), &IN_FROM),
+            &how,
+        );
+        add(&mut out, named(list(one, "/env").iter(), &IN_ENV), &how);
+    }
+    let pulls = list(spec, "/imagePullSecrets").iter();
+    let pulls = pulls.filter_map(|one| Some(("secret", one["name"].as_str()?)));
+    add(&mut out, pulls, "image pull");
+    out
+}
+
+/// `mounted /etc/tls`, every path the containers mount `volume` at.
+fn mounted(containers: &[&Value], volume: &str) -> String {
+    let mut paths: Vec<String> = Vec::new();
+    let mounts = containers.iter().flat_map(|one| list(one, "/volumeMounts"));
+    for mount in mounts.filter(|one| text(one, "/name") == volume) {
+        let path = text(mount, "/mountPath");
+        if !paths.contains(&path) {
+            paths.push(path);
         }
     }
-    out
+    match paths.is_empty() {
+        true => "volume".into(),
+        false => format!("mounted {}", paths.join(", ")),
+    }
+}
+
+/// Each object once; a second way of reading it joins the first.
+fn add<'a>(out: &mut Vec<Used>, found: impl Iterator<Item = (&'a str, &'a str)>, how: &str) {
+    for (tag, name) in found.filter(|(_, name)| !name.is_empty() && !INJECTED.contains(name)) {
+        let held = out
+            .iter_mut()
+            .find(|one| one.tag == tag && one.name == name);
+        match held {
+            Some(one) if !one.how.iter().any(|said| said == how) => one.how.push(how.into()),
+            Some(_) => {}
+            None => out.push(Used {
+                tag: tag.into(),
+                name: name.into(),
+                how: vec![how.into()],
+            }),
+        }
+    }
 }
 
 fn list<'a>(value: &'a Value, at: &str) -> &'a [Value] {

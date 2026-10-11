@@ -1,8 +1,10 @@
-//! The list's table under headings that fold: an Application's resources by kind, its sync by stage.
+//! The list's table under headings that fold: an Application's resources by kind, its sync by stage,
+//! and a row at a time in the described view.
 
 use std::collections::BTreeMap;
 
 use groove_gfx::Rect;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Sorted, Table, Width};
 
 use super::super::opened::Opened;
@@ -66,7 +68,7 @@ pub(super) fn heading<'a>(key: &str, cells: Vec<Cell<'a>>) -> Shown<'a, Target> 
     Shown {
         cells,
         under: Vec::new(),
-        target: Some(Target::ArgoFold(key.to_string())),
+        target: Some(Target::ResourceFold(key.to_string())),
         acts: Vec::new(),
         band: true,
     }
@@ -91,4 +93,61 @@ pub(super) fn order<R>(rows: &mut [R], tab: &Opened, key: impl Fn(&R, &str) -> S
         let order = key(a, label).cmp(&key(b, label));
         if *descending { order.reverse() } else { order }
     });
+}
+
+/// A column that neither sorts nor drags.
+pub(super) fn plain(label: &'static str, width: Width<'static>) -> Column<'static, Target> {
+    Column {
+        label,
+        width,
+        end: false,
+        sort: None,
+        edge: None,
+    }
+}
+
+/// One row as a block, its header above it when `header`; returns the row and the columns' spans.
+pub(super) fn one(
+    ctx: &mut Ctx,
+    rect: Rect,
+    (columns, header): (&[Column<'_, Target>], bool),
+    shown: Shown<'_, Target>,
+) -> (Rect, Vec<(f32, f32)>) {
+    let table = Table {
+        columns,
+        rows: Rows {
+            first: ctx.tokens.row,
+            under: 0.0,
+            ruled: true,
+        },
+        count: 1,
+        offset: 0.0,
+        selected: None,
+        sorted: header.then_some(Sorted::NONE),
+    };
+    let mut shown = Some(shown);
+    table.draw(ctx, rect, |_| {
+        shown.take().unwrap_or_else(|| row(Vec::new()))
+    });
+    let spans = spans(ctx, rect, columns);
+    let top = Spec::default().height(if header { ctx.tokens.row } else { 0.0 });
+    let [_, line] = column_in(rect, [top, Spec::fill()]);
+    (line, spans)
+}
+
+/// Each column's left edge and width across `rect`.
+pub(super) fn spans(ctx: &mut Ctx, rect: Rect, columns: &[Column<'_, Target>]) -> Vec<(f32, f32)> {
+    let table = Table {
+        columns,
+        rows: Rows {
+            first: ctx.tokens.row,
+            under: 0.0,
+            ruled: false,
+        },
+        count: 0,
+        offset: 0.0,
+        selected: None,
+        sorted: None,
+    };
+    table.spans(ctx, rect)
 }

@@ -107,7 +107,7 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
         !shown.iter().any(|text| text == "pythie-config"),
         "a kind with nothing to see stands folded"
     );
-    hit(&app, &mut ui, Target::ArgoFold("ConfigMap".into()));
+    hit(&app, &mut ui, Target::ResourceFold("ConfigMap".into()));
     let shown = texts(&app, &ui);
     assert!(
         shown.iter().any(|text| text == "pythie-config"),
@@ -200,8 +200,8 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
         "{shown:?}"
     );
     hit(&app, &mut ui, Target::ArgoFilter(Filter::Syncing));
-    hit(&app, &mut ui, Target::ArgoFold("PreSync hooks".into()));
-    hit(&app, &mut ui, Target::ArgoFold("wave 0".into()));
+    hit(&app, &mut ui, Target::ResourceFold("PreSync hooks".into()));
+    hit(&app, &mut ui, Target::ResourceFold("wave 0".into()));
     let shown = texts(&app, &ui);
     assert!(
         shown.iter().any(|text| text == "pythie-migrate"),
@@ -251,4 +251,26 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
         shown.iter().any(|text| text == "Sync Hook"),
         "its badge: {shown:?}"
     );
+}
+
+#[test]
+fn a_narrow_pane_keeps_the_application_s_badges_clear_of_its_views() {
+    let (app, ui) = opened(failing());
+    for width in [1100, 1300] {
+        let metrics = crate::tests::metrics(width, 800, 1.0);
+        let (frame, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+        let views = hits.rect_of(&Target::ResourceView(View::Describe));
+        let views = views.expect("the views drawn");
+        let mut texts = frame.layers().iter().flat_map(|layer| layer.texts.clone());
+        let badge = texts.rfind(|one| one.text == "Degraded");
+        let Some(badge) = badge else {
+            assert_eq!(width, 1100, "the badges fit at {width}");
+            continue;
+        };
+        assert!(
+            badge.clip.x + badge.clip.w <= views.x,
+            "at {width}: {:?} over {views:?}",
+            badge.clip
+        );
+    }
 }

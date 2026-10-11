@@ -63,7 +63,7 @@ pub use config::{
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use described::{
-    Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage,
+    Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage, Used,
 };
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,

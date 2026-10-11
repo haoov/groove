@@ -112,11 +112,10 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 Target::LogPrevious(previous) => tab.logs.previous = *previous,
                 Target::LogFollow => tab.logs.following = true,
                 Target::ArgoFilter(filter) => {
-                    tab.argo.pick(*filter);
-                    tab.scroll = 0.0;
+                    (tab.argo.filter, tab.scroll) = (Some(*filter), 0.0);
+                    tab.toggled.clear();
                 }
-                Target::ArgoFold(group) => tab.argo.toggle(group),
-                Target::ResourceContainer(name) => tab.container = Some(name.clone()),
+                Target::ResourceFold(key) => tab.fold(key),
                 Target::ResourceSection(section) => {
                     if !tab.shut.remove(section) {
                         tab.shut.insert(*section);

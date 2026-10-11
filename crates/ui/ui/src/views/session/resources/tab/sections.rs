@@ -1,5 +1,5 @@
-//! The parts the described view is made of: a section's heading, the conditions, the facts as a
-//! grid, a key and its value, an event.
+//! The parts the described view is made of: a section's heading, the conditions, the facts a
+//! line each, a key and its value, an event.
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;
@@ -13,9 +13,6 @@ use super::super::opened::{Link, Opened, Section, helm_release, lineage, served}
 use super::copy;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-
-/// How many facts stand on one line of the summary.
-pub(super) const ACROSS: usize = 3;
 
 /// One fact of the summary: its key, its value in its colour, the tab it opens.
 pub(super) struct Fact {
@@ -189,28 +186,27 @@ fn placed(
     }
 }
 
-/// The facts in rows of `ACROSS`, each its key then its value.
+/// One fact a line, its key then its value.
 pub(super) fn grid(ctx: &mut Ctx, rect: Rect, facts: &[Fact], last: Option<&str>) {
-    let rows = facts.len().div_ceil(ACROSS);
-    let lines = column_of(rect, &vec![Spec::default().height(ctx.tokens.row); rows]);
-    for (line, chunk) in lines.iter().zip(facts.chunks(ACROSS)) {
-        let cells = row_in(*line, [Spec::fill(), Spec::fill(), Spec::fill()]);
-        for (cell, fact) in cells.iter().zip(chunk) {
-            let [key, value] = row_in(
-                *cell,
-                [Spec::default().width(ctx.tokens.aside_near), Spec::fill()],
-            );
-            Label::new(fact.key, ctx.styles.small(Role::Ghost)).draw(ctx, key);
-            match fact.copied() {
-                Some(part) => {
-                    copy::Copied::new(&fact.value, fact.role, last)
-                        .open(fact.open.clone())
-                        .copies(part)
-                        .draw(ctx, value);
-                }
-                None => {
-                    Label::new(&fact.value, ctx.styles.small(fact.role)).draw(ctx, value);
-                }
+    let lines = column_of(
+        rect,
+        &vec![Spec::default().height(ctx.tokens.row); facts.len()],
+    );
+    for (line, fact) in lines.iter().zip(facts) {
+        let [key, value] = row_in(
+            *line,
+            [Spec::default().width(ctx.tokens.aside_near), Spec::fill()],
+        );
+        Label::new(fact.key, ctx.styles.small(Role::Ghost)).draw(ctx, key);
+        match fact.copied() {
+            Some(part) => {
+                copy::Copied::new(&fact.value, fact.role, last)
+                    .open(fact.open.clone())
+                    .copies(part)
+                    .draw(ctx, value);
+            }
+            None => {
+                Label::new(&fact.value, ctx.styles.small(fact.role)).draw(ctx, value);
             }
         }
     }

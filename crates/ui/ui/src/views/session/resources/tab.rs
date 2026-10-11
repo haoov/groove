@@ -1,7 +1,7 @@
 //! One object's tab: what it reads, and the view it shows, described or as YAML.
 
 mod argo;
-mod card;
+mod containers;
 mod copy;
 mod describe;
 mod grouped;

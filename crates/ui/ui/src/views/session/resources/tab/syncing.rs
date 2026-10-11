@@ -52,7 +52,7 @@ pub(super) fn draw(
     progress(ctx, inside, (part, operation), &stages);
     let mut lines = Vec::new();
     for stage in &stages {
-        let shut = tab.argo.shut(&stage.title, stage.settled());
+        let shut = tab.folded(&stage.title, stage.settled());
         lines.push(Line::Heading(stage, shut));
         if !shut {
             lines.extend(stage.steps.iter().map(Line::Step));

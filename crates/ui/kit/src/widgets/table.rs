@@ -112,7 +112,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
     }
 
     /// Each column's left edge and width across `rect`.
-    fn spans<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Vec<(f32, f32)> {
+    pub fn spans<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Vec<(f32, f32)> {
         let md = ctx.tokens.md;
         let (label, body) = (ctx.styles.small(Role::Faint), ctx.styles.small(Role::Text));
         let fitted: Vec<Option<f32>> = self
