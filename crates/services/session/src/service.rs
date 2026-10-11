@@ -82,13 +82,14 @@ impl Service {
     pub async fn open_review(
         &self,
         session: &Session,
-        name: &str,
+        at: &groove_types::ReviewMr,
         spec: &WorktreeSpec,
         now: Timestamp,
     ) -> Result<Added, Error> {
+        let name = at.repo_in(&self.pool.list()).ok_or_else(|| unsourced(at))?;
         self.store.create_review(session).await?;
         self.on_rail(&session.id, now).await?;
-        self.add_repo(session, name, spec, None).await
+        self.add_repo(session, &name, spec, None).await
     }
 
     /// Inserts the explorer and puts it on the rail.
@@ -219,4 +220,12 @@ impl Service {
             status,
         })
     }
+}
+
+/// A review whose page says nothing of where its repo is cloned from.
+pub fn unsourced(at: &groove_types::ReviewMr) -> Error {
+    Error::invalid(format!(
+        "{} says nothing of where {} is cloned from",
+        at.web_url, at.project
+    ))
 }

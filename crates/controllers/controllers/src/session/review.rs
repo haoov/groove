@@ -17,12 +17,9 @@ pub fn open_review(
     if state.session.get(&id).is_some() {
         return session::select(state, services, spawner, &id);
     }
-    let Some(name) = repo_name(services, at) else {
-        return state.failed(groove_types::Error::invalid(format!(
-            "{} says nothing of where {} is cloned from",
-            at.web_url, at.project
-        )));
-    };
+    if at.clone_url().is_none() {
+        return state.failed(groove_session_service::unsourced(at));
+    }
     let now = Timestamp::now();
     let session = review_session(at, now);
     let auto = session::begun(state, spawner, session.clone(), now);
@@ -33,22 +30,12 @@ pub fn open_review(
     };
     let (service, pending) = (
         services.session.clone(),
-        state.begin(format!("checking out {name}")),
+        state.begin(format!("checking out {}", at.project)),
     );
+    let at = at.clone();
     session::added(spawner, (pending, false), Asker::Ui, async move {
-        let added = service.open_review(&session, &name, &spec, now).await?;
+        let added = service.open_review(&session, &at, &spec, now).await?;
         service.set_auto_approve(&session.id, auto).await?;
         Ok(added)
     });
-}
-
-/// The pool's own name for the MR's repo, or the URL it must be cloned from.
-fn repo_name(services: &Services, at: &ReviewMr) -> Option<String> {
-    let pooled = services
-        .session
-        .list_pool()
-        .iter()
-        .find(|entry| at.held_by(entry))
-        .map(|entry| entry.slug.clone());
-    pooled.or_else(|| at.clone_url())
 }
