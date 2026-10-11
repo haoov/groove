@@ -11,18 +11,29 @@ const IN_CLUSTER: &str = "https://kubernetes.default.svc";
 pub(super) fn context(app: &AppState, own: &str, to: &Destination) -> Option<String> {
     let server = match (to.server.as_deref(), to.name.as_deref()) {
         (None, Some("in-cluster")) => return Some(own.to_string()),
-        (Some(server), _) => server.trim_end_matches('/'),
+        (Some(server), _) => normal(server),
         _ => return None,
     };
     if server == IN_CLUSTER {
         return Some(own.to_string());
     }
     let named = |one: &&KubeContext| {
-        let at = one.server.as_deref().map(|at| at.trim_end_matches('/'));
-        at == Some(server) && app.config.cluster(&one.name).is_some()
+        let at = one.server.as_deref().map(normal);
+        at.as_deref() == Some(server.as_str()) && app.config.cluster(&one.name).is_some()
     };
     let found = app.cluster.found.as_deref()?;
     found.iter().find(named).map(|one| one.name.clone())
+}
+
+/// A server address as one form: scheme and host in lower case, no default port, no trailing slash.
+fn normal(server: &str) -> String {
+    let server = server.trim_end_matches('/');
+    let (scheme, rest) = server.split_once("://").unwrap_or(("https", server));
+    let (host, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
+    let (scheme, host) = (scheme.to_ascii_lowercase(), host.to_ascii_lowercase());
+    let port = if scheme == "http" { ":80" } else { ":443" };
+    let host = host.strip_suffix(port).unwrap_or(&host);
+    format!("{scheme}://{host}{path}")
 }
 
 /// The tab a resource of the Application opens, once its context's kinds are known.

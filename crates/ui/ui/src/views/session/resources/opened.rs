@@ -218,8 +218,8 @@ pub fn lineage(
         };
         let up = Link {
             context: link.context.clone(),
+            namespace: link.namespace.clone().filter(|_| kind.namespaced),
             kind,
-            namespace: link.namespace.clone(),
             name: owner.name.clone(),
         };
         let read = up.read(app).cloned();

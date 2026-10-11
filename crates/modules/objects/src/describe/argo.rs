@@ -41,7 +41,8 @@ pub(super) fn part(app: &Value) -> AppPart {
 fn sources(spec: &Value, status: &Value) -> Vec<AppSource> {
     let several = spec["sources"]
         .as_array()
-        .map(|all| all.iter().collect::<Vec<_>>());
+        .map(|all| all.iter().collect::<Vec<_>>())
+        .filter(|all| !all.is_empty());
     let all = several.unwrap_or_else(|| vec![&spec["source"]]);
     let all = all.into_iter().filter(|one| one.is_object());
     let synced = |at: usize| match status.pointer("/sync/revisions") {

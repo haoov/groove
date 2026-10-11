@@ -203,3 +203,17 @@ fn a_source_keeps_its_whole_synced_commit_for_the_link_to_show() {
         .expect("an application's part");
     assert_eq!(part.sources[0].synced.as_deref(), Some(sha));
 }
+
+#[test]
+fn an_empty_sources_list_leaves_the_one_source_read() {
+    let app = serde_json::json!({
+        "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
+        "metadata": { "name": "pythie-cayzn-acc", "namespace": "argocd", "uid": "u1" },
+        "spec": { "sources": [], "source": { "repoURL": "https://gitlab.wiremind.io/deploy.git", "targetRevision": "main" } },
+        "status": { "sync": { "status": "Synced" } }
+    });
+    let part = crate::describe("Application", &app, false)
+        .app
+        .expect("an application's part");
+    assert_eq!(part.sources.len(), 1);
+}

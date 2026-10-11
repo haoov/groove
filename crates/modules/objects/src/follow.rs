@@ -121,9 +121,13 @@ async fn watched(
         };
         let Some(seen) = next else { break };
         match seen? {
-            Seen::Mark(at) => *version = at,
+            Seen::Mark(at) if !at.is_empty() => *version = at,
+            Seen::Mark(_) => {}
             Seen::Put(object) => {
-                version.clone_from(&crate::describe::text(&object, "/metadata/resourceVersion"));
+                let at = crate::describe::text(&object, "/metadata/resourceVersion");
+                if !at.is_empty() {
+                    *version = at;
+                }
                 held.push(Change::Put(Box::new(read(&object))));
             }
             Seen::Gone(object) => held.push(Change::Gone(crate::describe::text(

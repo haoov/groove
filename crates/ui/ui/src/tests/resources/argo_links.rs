@@ -58,6 +58,27 @@ fn a_resource_opens_on_the_context_whose_server_the_destination_names() {
     assert_eq!(shown, Some(&link));
 }
 
+#[test]
+fn a_destination_matches_its_server_written_another_way() {
+    let mut object = failing();
+    let part = object.app.as_mut().expect("its part");
+    part.destination.server = Some("https://Kube.Example.com:443".into());
+    let (mut app, ui) = opened(object);
+    app.config.add_cluster("prod");
+    app.cluster.found = Some(vec![KubeContext {
+        name: "prod".into(),
+        cluster: "prod".into(),
+        server: Some("https://kube.example.com/".into()),
+        namespace: None,
+        auth: KubeAuth::None,
+    }]);
+    let discover = Command::Cluster(cluster::Command::Discover {
+        context: "prod".into(),
+        again: false,
+    });
+    assert!(asked(&app, &ui).contains(&discover));
+}
+
 /// A ctrl+click on the source's value `text` that opens `opens`.
 fn followed(app: &AppState, ui: &mut Ui, text: &str, opens: Opens) -> Vec<Command> {
     let metrics = crate::tests::metrics(1920, 1080, 1.0);

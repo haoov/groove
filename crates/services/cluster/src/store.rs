@@ -193,7 +193,7 @@ impl Store {
 /// A batch in one pass: rows changed in place, the gone ones swept once, the new merged in.
 fn changed(one: &mut Watched, deltas: Vec<Delta>) {
     let (mut fresh, mut gone) = (Vec::<ObjectRow>::new(), Vec::new());
-    let mut born: HashMap<String, usize> = HashMap::new();
+    let mut born: HashMap<(String, String), usize> = HashMap::new();
     for delta in deltas {
         match delta {
             Delta::Columns(columns) => one.columns = columns,
@@ -202,13 +202,17 @@ fn changed(one: &mut Watched, deltas: Vec<Delta>) {
                 .binary_search_by(|held| place(held).cmp(&place(&row)))
             {
                 Ok(at) => one.rows[at] = row,
-                Err(_) => match born.get(&row.uid) {
-                    Some(at) => fresh[*at] = row,
-                    None => {
-                        born.insert(row.uid.clone(), fresh.len());
-                        fresh.push(row);
+                Err(_) => {
+                    let (namespace, name) = place(&row);
+                    let at = (namespace.to_string(), name.to_string());
+                    match born.get(&at) {
+                        Some(at) => fresh[*at] = row,
+                        None => {
+                            born.insert(at, fresh.len());
+                            fresh.push(row);
+                        }
                     }
-                },
+                }
             },
             Delta::Gone(row) => gone.push(row),
         }

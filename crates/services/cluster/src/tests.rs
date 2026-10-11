@@ -336,6 +336,31 @@ fn a_row_born_and_changed_in_one_batch_stands_once_as_it_last_read() {
 }
 
 #[test]
+fn a_row_born_gone_and_born_again_in_one_batch_stands_once() {
+    use crate::{Batch, Delta};
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    let columns = Vec::new();
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns,
+            rows: Vec::new(),
+        },
+    );
+    let changes = vec![
+        Delta::Put(row("x", "job", "Running")),
+        Delta::Gone(row("x", "job", "Running")),
+        Delta::Put(row("y", "job", "Pending")),
+    ];
+    store.apply(&key, Batch::Changes(changes));
+    let held = store.watched(&key).expect("watched");
+    let shown: Vec<&str> = held.rows.iter().map(|one| one.uid.as_str()).collect();
+    assert_eq!(shown, ["y"]);
+}
+
+#[test]
 fn a_followed_object_lands_changes_and_goes_with_its_last_reader() {
     use crate::{Change, Followed};
     use groove_types::{Described, FollowKey};
