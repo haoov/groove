@@ -84,7 +84,7 @@ pub(crate) fn revisions(status: Option<&serde_json::Value>) -> String {
         return String::new();
     };
     if let Some(one) = sync["revision"].as_str().filter(|one| !one.is_empty()) {
-        return short(one);
+        return groove_types::short_sha(one);
     }
     let all = sync["revisions"]
         .as_array()
@@ -93,16 +93,7 @@ pub(crate) fn revisions(status: Option<&serde_json::Value>) -> String {
     let all: Vec<String> = all
         .iter()
         .filter_map(|one| one.as_str())
-        .map(short)
+        .map(groove_types::short_sha)
         .collect();
     all.join(" · ")
-}
-
-/// A commit's first seven characters; a tag or a chart version as it is.
-pub(crate) fn short(revision: &str) -> String {
-    let commit = revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit());
-    match commit {
-        true => revision[..7].to_string(),
-        false => revision.to_string(),
-    }
 }

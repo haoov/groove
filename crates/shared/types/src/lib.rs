@@ -67,7 +67,7 @@ pub use described::{
 };
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
-    Row, RowKind, TEXT_MAX_BYTES, subject_of,
+    Row, RowKind, TEXT_MAX_BYTES, is_sha, short_sha, subject_of,
 };
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};

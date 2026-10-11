@@ -74,7 +74,7 @@ pub(super) fn operation(ctx: &mut Ctx, rect: Rect, operation: &Operation, now: T
     Label::new(said, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.sm);
     let mut about = Vec::new();
     if let Some(revision) = &operation.revision {
-        about.push(format!("to {}", short(revision)));
+        about.push(format!("to {}", groove_types::short_sha(revision)));
     }
     if let Some(started) = operation.started {
         let by = match operation.by.is_empty() {
@@ -225,7 +225,7 @@ pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&s
 
 /// The revision a source synced to, short; a git commit links to its diff.
 fn synced(ctx: &mut Ctx, room: &mut Rect, (one, revision): (&AppSource, &str), last: Option<&str>) {
-    let opens = (one.chart.is_none() && commit(revision)).then(|| Opens::Revision {
+    let opens = (one.chart.is_none() && groove_types::is_sha(revision)).then(|| Opens::Revision {
         repo: one.repo.clone(),
         target: one.target.clone(),
         sha: revision.to_string(),
@@ -235,7 +235,7 @@ fn synced(ctx: &mut Ctx, room: &mut Rect, (one, revision): (&AppSource, &str), l
     } else {
         Role::Text
     };
-    let shown = short(revision);
+    let shown = groove_types::short_sha(revision);
     let synced = super::copy::Copied::new(&shown, role, last).copies(revision);
     synced.opens(opens).left(ctx, room, ctx.tokens.md);
 }
@@ -273,16 +273,4 @@ fn bare(repo: &str) -> String {
         None => path,
     };
     path.trim_end_matches(".git").to_string()
-}
-
-/// A commit's first seven characters; a tag as it is.
-fn short(revision: &str) -> String {
-    match commit(revision) {
-        true => revision[..7].to_string(),
-        false => revision.to_string(),
-    }
-}
-
-fn commit(revision: &str) -> bool {
-    revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit())
 }

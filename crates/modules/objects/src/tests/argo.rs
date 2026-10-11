@@ -91,7 +91,7 @@ fn an_application_without_a_sync_policy_is_manual_and_a_tag_reads_whole() {
     );
     let partial = serde_json::json!({ "syncPolicy": { "automated": { "prune": false } } });
     assert_eq!(crate::argo::automated(Some(&partial)), "auto");
-    assert_eq!(crate::argo::short("v0.24.1"), "v0.24.1");
+    assert_eq!(groove_types::short_sha("v0.24.1"), "v0.24.1");
 }
 
 #[test]

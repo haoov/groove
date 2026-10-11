@@ -58,7 +58,7 @@ fn read(
     };
     state.workspace.opening += 1;
     let nth = state.workspace.opening;
-    let short: String = sha.chars().take(7).collect();
+    let short = groove_types::short_sha(&sha);
     let job = state.begin(format!("reading {short}"));
     spawner.spawn(Box::pin(async move {
         let entry = match entry {
