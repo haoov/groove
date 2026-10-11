@@ -28,9 +28,25 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 impl Error {
-    /// A kube-rs error, sorted for the context it came from.
+    /// A kube-rs error, sorted for the context it came from; a refused or unanswered one drops its client.
     pub(crate) fn of(context: &str, error: kube::Error) -> Self {
-        let context = context.to_string();
+        let sorted = Self::sorted(context.to_string(), error);
+        if let Error::Refused { context, .. } | Error::Unreachable { context, .. } = &sorted {
+            crate::pool::forget(context);
+        }
+        sorted
+    }
+
+    /// Nothing came back from `context` for `long`; its client is dropped.
+    pub(crate) fn silent(context: &str, long: std::time::Duration) -> Self {
+        crate::pool::forget(context);
+        Error::Unreachable {
+            context: context.to_string(),
+            detail: format!("no answer in {} s", long.as_secs()),
+        }
+    }
+
+    fn sorted(context: String, error: kube::Error) -> Self {
         match error {
             kube::Error::Api(status) if status.code == 410 => Error::Expired { context },
             kube::Error::Api(status) if status.code == 401 => Error::Refused {

@@ -2,6 +2,8 @@ mod client;
 mod kubeconfig;
 mod logs;
 mod objects;
+mod pool;
+mod quiet;
 mod table;
 
 use std::path::{Path, PathBuf};

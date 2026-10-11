@@ -6,6 +6,7 @@ mod discovery;
 mod follow;
 mod logs;
 mod reads;
+mod retry;
 mod watch;
 mod yaml;
 

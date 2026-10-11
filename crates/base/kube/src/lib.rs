@@ -6,6 +6,7 @@ mod error;
 mod kubeconfig;
 mod logs;
 mod objects;
+mod pool;
 mod table;
 mod watch;
 

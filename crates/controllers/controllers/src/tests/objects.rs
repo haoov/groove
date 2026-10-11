@@ -177,3 +177,49 @@ fn a_context_s_namespaces_are_listed_by_name() {
     let names = state.cluster.store.namespaces("kind").expect("listed");
     assert_eq!(names, ["argocd", "paxone"]);
 }
+
+#[test]
+fn a_failed_discovery_is_said_once_and_waits_before_it_is_asked_again() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let server = spawner.block_on(MockServer::start());
+    spawner.block_on(
+        Mock::given(path("/api"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&server),
+    );
+    kubeconfig(home.path(), &server.uri());
+    dispatch(
+        Cmd::Cluster(Command::ScanContexts),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    dispatch(Cmd::Config(add), &mut state, &services, &spawner);
+    let discover = || {
+        Cmd::Cluster(Command::Discover {
+            context: "kind".into(),
+            again: false,
+        })
+    };
+    let asked = || spawner.block_on(server.received_requests()).unwrap().len();
+    dispatch(discover(), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let once = asked();
+    dispatch(discover(), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert_eq!(asked(), once, "no second discovery while it waits");
+    assert!(state.cluster.store.discovering("kind"));
+    spawner.settle(Duration::from_millis(1200), &mut state, &services);
+    assert!(
+        !state.cluster.store.discovering("kind"),
+        "free to ask again"
+    );
+    dispatch(discover(), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert!(asked() > once);
+    assert_eq!(state.errors.len(), 1, "said once: {:?}", state.errors);
+}

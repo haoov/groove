@@ -1,5 +1,7 @@
 //! A kind's Table watched from a resourceVersion: each event as the change it makes to the rows.
 
+use std::time::Duration;
+
 use futures_util::io::AsyncBufReadExt;
 use futures_util::{Stream, StreamExt};
 use http::header::ACCEPT;
@@ -10,6 +12,9 @@ use crate::{Client, Column, Error, Result, Row};
 
 /// How long the server keeps one watch open before it ends it.
 pub(crate) const TIMEOUT: &str = "290";
+
+/// How long a watch may stay silent, longer than `TIMEOUT`.
+pub(crate) const QUIET: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
@@ -40,22 +45,24 @@ impl Client {
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
         let context = self.context.clone();
-        let lines = self.lines(request).await?;
+        let lines = self.lines(request, Some(QUIET)).await?;
         Ok(lines.map(move |line| line.and_then(|line| changes(&context, &line))))
     }
 
-    /// A watch's lines as they come, the blank ones skipped; the stream ends with the response.
+    /// A watch's lines as they come, the blank ones skipped, until the response ends or `quiet` passes.
     pub(crate) async fn lines(
         &self,
         request: http::Request<Vec<u8>>,
+        quiet: Option<Duration>,
     ) -> Result<impl Stream<Item = Result<String>> + use<>> {
         let context = self.context.clone();
-        let lines = self
-            .inner
-            .request_stream(request)
-            .await
-            .map_err(|e| Error::of(&context, e))?
-            .lines();
+        let opened = self
+            .answered(async {
+                let asked = self.inner.request_stream(request).await;
+                asked.map_err(|e| Error::of(&context, e))
+            })
+            .await?;
+        let lines = silenced(opened.lines(), quiet, context.clone());
         Ok(lines.filter_map(move |line| {
             let read = match line {
                 Ok(line) if line.trim().is_empty() => None,
@@ -69,6 +76,34 @@ impl Client {
             std::future::ready(read)
         }))
     }
+}
+
+/// The stream, ended by an error once `quiet` passes with nothing from it.
+pub(crate) fn silenced<T>(
+    stream: impl Stream<Item = std::io::Result<T>> + Unpin,
+    quiet: Option<Duration>,
+    context: String,
+) -> impl Stream<Item = std::io::Result<T>> {
+    futures_util::stream::unfold(Some(stream), move |held| {
+        let context = context.clone();
+        async move {
+            let mut stream = held?;
+            let next = match quiet {
+                Some(long) => tokio::time::timeout(long, stream.next()).await,
+                None => Ok(stream.next().await),
+            };
+            match next {
+                Ok(Some(item)) => Some((item, Some(stream))),
+                Ok(None) => None,
+                Err(_) => {
+                    crate::pool::forget(&context);
+                    let secs = quiet.unwrap_or_default().as_secs();
+                    let silent = std::io::Error::other(format!("no answer in {secs} s"));
+                    Some((Err(silent), None))
+                }
+            }
+        }
+    })
 }
 
 /// One line of a watch, read in one pass; a bookmark's object stays loose, its shape varies.
