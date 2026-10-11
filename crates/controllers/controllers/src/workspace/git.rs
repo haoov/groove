@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use groove_types::{TimelineKind, Worktree};
-use groove_workspace_service::{Buffer, summary};
+use groove_workspace_service::Buffer;
 
 use super::diff::{load, reread};
 use crate::asker::Asker;
@@ -39,9 +39,6 @@ impl Remote {
     }
 }
 
-const NOTHING_STAGED: &str =
-    "nothing is staged: stage what this commit holds with git add, then call again";
-
 /// The index committed, then every side of the diff read again.
 pub(crate) fn commit(
     state: &mut AppState,
@@ -58,10 +55,7 @@ pub(crate) fn commit(
     let job = state.begin("committing");
     let clears = asker.carries_a_box();
     spawner.spawn(Box::pin(async move {
-        let done = match staged(&dir).await {
-            true => groove_workspace_service::commit(&dir, message.trim()).await,
-            false => Err(groove_types::Error::invalid(NOTHING_STAGED)),
-        };
+        let done = groove_workspace_service::commit(&dir, &message).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
@@ -78,15 +72,6 @@ pub(crate) fn commit(
             },
         ) as Continuation
     }));
-}
-
-/// Whether the index holds anything at all.
-async fn staged(dir: &std::path::Path) -> bool {
-    summary(dir)
-        .await
-        .unwrap_or_default()
-        .iter()
-        .any(|file| file.staged == Some(true))
 }
 
 /// One action against the remote. HEAD may move, so everything is read again.
