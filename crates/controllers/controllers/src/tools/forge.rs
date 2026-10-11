@@ -41,13 +41,16 @@ fn live(
         return call.reply.failed(super::NO_WORKTREE);
     };
     let (service, reply) = (services.delivery.clone(), call.reply);
+    let taken = state.delivery.taken();
     spawner.spawn(Box::pin(async move {
         let read = service.read(&whose.repo, &whose.worktree).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match read {
                 Ok(Some(one)) => {
                     reply.json(&said(&one));
-                    crate::delivery::poll::took(state, services, spawner, &whose, one);
+                    if state.delivery.taken() == taken {
+                        crate::delivery::poll::took(state, services, spawner, &whose, one);
+                    }
                 }
                 Ok(None) => reply.failed(format!("{} has no MR", whose.worktree.branch)),
                 Err(e) => reply.failed(e.message),

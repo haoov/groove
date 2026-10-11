@@ -20,6 +20,8 @@ pub struct State {
     pub reviews: Vec<ReviewMr>,
     /// The review queue has been read once.
     pub reviews_read: bool,
+    /// Moves on with every answer taken.
+    taken: u64,
 }
 
 /// What an MR write does.
@@ -70,12 +72,18 @@ impl State {
         delivered: Delivered,
         now: Timestamp,
     ) -> Vec<Line> {
+        self.taken += 1;
         let before = self.held(worktree).and_then(Held::state);
         let mut held = Held::from(delivered);
         held.read_at = Some(now);
         let lines = lines(before, &held);
         self.held.insert(worktree.clone(), held);
         lines
+    }
+
+    /// How many answers were taken so far.
+    pub fn taken(&self) -> u64 {
+        self.taken
     }
 
     /// The forge has no MR for the worktree.
