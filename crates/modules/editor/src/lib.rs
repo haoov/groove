@@ -14,6 +14,7 @@ use groove_types::{Error, ErrorKind, Result};
 /// Writes `text` to `path` under `dir`.
 pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
     let full = inside(dir, path)?;
+    within(dir, &full, path)?;
     std::fs::write(&full, text).map_err(|e| failed("write", path, &e))
 }
 
@@ -42,6 +43,12 @@ pub fn rename(dir: &Path, from: &str, to: &str) -> Result<()> {
 /// One path copied to another, a directory with everything under it.
 pub fn copy(dir: &Path, from: &str, to: &str) -> Result<()> {
     let (old, new) = ends(dir, from, to)?;
+    if new.starts_with(&old) {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("{from} cannot be copied into itself"),
+        ));
+    }
     match old.is_dir() {
         true => copy_dir(&old, &new).map_err(|e| failed("copy", from, &e)),
         false => std::fs::copy(&old, &new)
@@ -120,7 +127,28 @@ fn inside(dir: &Path, path: &str) -> Result<PathBuf> {
             ErrorKind::Invalid,
             format!("`{path}` names no file in the worktree"),
         )),
-        (false, true) => Ok(dir.join(relative)),
+        (false, true) => {
+            let full = dir.join(relative);
+            match full.parent() {
+                Some(parent) => within(dir, parent, path).map(|()| full),
+                None => Ok(full),
+            }
+        }
+    }
+}
+
+/// Refuses `full` when a link resolves it, or what stands above it, outside the worktree.
+fn within(dir: &Path, full: &Path, path: &str) -> Result<()> {
+    let Some(standing) = full.ancestors().find(|one| one.exists()) else {
+        return Ok(());
+    };
+    let (root, real) = (dir.canonicalize(), standing.canonicalize());
+    match (root, real) {
+        (Ok(root), Ok(real)) if !real.starts_with(&root) => Err(Error::new(
+            ErrorKind::Invalid,
+            format!("{path} leaves the worktree through a link"),
+        )),
+        _ => Ok(()),
     }
 }
 

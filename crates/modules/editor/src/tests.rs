@@ -156,3 +156,33 @@ fn no_operation_reaches_outside_the_worktree() {
         "and nothing was written outside"
     );
 }
+
+#[test]
+fn a_folder_is_not_copied_into_itself() {
+    let dir = tempfile::tempdir().unwrap();
+    crate::create(dir.path(), "src/one.rs", false).unwrap();
+    let e = crate::copy(dir.path(), "src", "src/again").expect_err("into itself");
+    assert_eq!(e.kind, groove_types::ErrorKind::Invalid, "{e}");
+    assert!(!dir.path().join("src/again").exists());
+}
+
+#[test]
+fn a_link_out_of_the_worktree_is_not_written_through() {
+    let (dir, outside) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    std::fs::write(outside.path().join("secret"), "kept\n").unwrap();
+    std::os::unix::fs::symlink(outside.path(), dir.path().join("out")).unwrap();
+    std::os::unix::fs::symlink(outside.path().join("secret"), dir.path().join("file")).unwrap();
+    for refused in [
+        crate::save(dir.path(), "out/secret", "lost\n"),
+        crate::save(dir.path(), "file", "lost\n"),
+        crate::create(dir.path(), "out/new", false),
+        crate::delete(dir.path(), "out/secret"),
+    ] {
+        let e = refused.expect_err("it leaves through a link");
+        assert_eq!(e.kind, groove_types::ErrorKind::Invalid, "{e}");
+    }
+    let kept = std::fs::read_to_string(outside.path().join("secret")).unwrap();
+    assert_eq!(kept, "kept\n");
+    crate::delete(dir.path(), "out").expect("the link itself goes");
+    assert!(outside.path().join("secret").exists());
+}
