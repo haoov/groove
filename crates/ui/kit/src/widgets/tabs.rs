@@ -7,7 +7,7 @@ use crate::shape::{hairline, hoverable};
 use crate::text::row;
 use crate::widgets::{Button, Text};
 
-/// One tab: its label, underlined in the accent while selected, and the mark that closes it.
+/// One tab: its label, on the held ground while selected, and the mark that closes it.
 pub struct Tab<'a, T> {
     pub label: &'a str,
     pub target: T,
@@ -15,7 +15,7 @@ pub struct Tab<'a, T> {
     pub text: Text,
     /// The label's role while another tab is up.
     pub quiet: Role,
-    /// The selected tab's ground in place of the accent underline.
+    /// The selected tab's ground in place of the held one.
     pub ground: Option<Color>,
     pub tight: bool,
     pub close: Option<(Mark, T)>,
@@ -121,12 +121,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         hoverable(ctx, box_, self.target.clone());
         match (self.selected, self.ground) {
             (true, Some(ground)) => ctx.quad(box_, ground),
-            (true, None) => {
-                crate::shape::ground(ctx, box_, crate::base::ground::Ground::Held);
-                let thick = ctx.tokens.hairline * 2.0;
-                let under = Rect::new(box_.x, box_.bottom() - thick, box_.w, thick);
-                ctx.quad(under, ctx.styles.chosen());
-            }
+            (true, None) => crate::shape::ground(ctx, box_, crate::base::ground::Ground::Held),
             (false, _) => {}
         }
         let style = self.style(ctx);
@@ -139,7 +134,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     }
 }
 
-/// Tabs from the left of `rect`, the selected one underlined, a hairline under; returns their boxes.
+/// Tabs from the left of `rect`, the selected one on the held ground, a hairline under; returns their boxes.
 pub fn tabs<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,

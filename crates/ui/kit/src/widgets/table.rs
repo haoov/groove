@@ -184,11 +184,11 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         shown: Shown<'_, T>,
         selected: bool,
     ) {
-        if selected {
-            crate::shape::chosen(ctx, line);
-        }
         if shown.band {
             crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+        }
+        if selected {
+            crate::shape::chosen(ctx, line);
         }
         if let Some(target) = shown.target {
             hoverable(ctx, line, target);

@@ -194,17 +194,20 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
     let tab = hits
         .rect_of(&Target::Pane(Pane::Notes))
         .expect("the list up");
-    let underlined = frame
+    let quads: Vec<_> = frame
         .layers()
         .iter()
         .flat_map(|layer| layer.quads.iter())
-        .any(|quad| {
-            quad.color == styles.chosen()
-                && quad.rect.x == tab.x
-                && quad.rect.w == tab.w
-                && quad.rect.bottom() == tab.bottom()
-        });
-    assert!(underlined, "the one up is underlined in the accent");
+        .filter(|quad| tab.contains(quad.rect.x + 1.0, quad.rect.y + 1.0))
+        .collect();
+    assert!(
+        quads.iter().any(|quad| quad.rect == tab),
+        "the one up stands on a ground of its own"
+    );
+    assert!(
+        !quads.iter().any(|quad| quad.color == styles.chosen()),
+        "never on an underline"
+    );
     let other = hits
         .rect_of(&Target::Pane(Pane::Files))
         .expect("another list");
