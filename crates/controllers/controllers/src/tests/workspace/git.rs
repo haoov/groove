@@ -292,3 +292,33 @@ fn a_pull_from_an_origin_that_is_gone_says_so() {
         "the pull failed and the feed says so"
     );
 }
+
+#[test]
+fn words_typed_while_a_commit_runs_stay_in_the_box() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    let stage = workspace::Command::Stage {
+        path: "a.txt".into(),
+    };
+    act(&mut state, &services, &spawner, stage);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.iter().any(|f| f.staged == Some(true))
+    });
+    state
+        .workspace
+        .message
+        .edit(&Edit::Insert("fix(a): change it".into()));
+    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    state
+        .workspace
+        .message
+        .edit(&Edit::Insert(" and more".into()));
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert_eq!(state.workspace.message.text(), "fix(a): change it and more");
+}

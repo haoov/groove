@@ -69,7 +69,7 @@ pub(crate) fn commit(
                 if done.is_ok() {
                     let kind = TimelineKind::Commit;
                     crate::timeline::log(services, spawner, &session, kind, &said, &worktree.id);
-                    if clears {
+                    if clears && state.workspace.message.text() == message {
                         state.workspace.message = Buffer::default();
                     }
                     reread(state, spawner);

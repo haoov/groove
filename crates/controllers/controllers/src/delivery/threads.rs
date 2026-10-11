@@ -200,7 +200,7 @@ pub(crate) fn say_as(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if done.is_ok() {
-                    if clears {
+                    if clears && state.workspace.message.text() == body {
                         state.workspace.message = groove_workspace_service::Buffer::default();
                     }
                     let (kind, at) = (TimelineKind::Review, &whose.worktree.id);
