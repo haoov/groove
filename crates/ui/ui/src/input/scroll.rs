@@ -45,11 +45,7 @@ pub(super) fn scroll(
         return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
-        let which = match ui.session.tab {
-            Tab::Resources => Scroller::Kinds,
-            _ => Scroller::Files,
-        };
-        ui.wheeled(which, pixels(tokens.row), hits);
+        ui.wheeled(beside(ui), pixels(tokens.row), hits);
         return Vec::new();
     }
     match ui.session.tab {
@@ -62,6 +58,14 @@ pub(super) fn scroll(
         }
     }
     Vec::new()
+}
+
+/// What the sidebar holds: the kinds on the k8s tab, else the files.
+fn beside(ui: &Ui) -> Scroller {
+    match ui.session.tab {
+        Tab::Resources => Scroller::Kinds,
+        _ => Scroller::Files,
+    }
 }
 
 /// The wheel over the code surface, both ways; logs pause above their end and follow at it.
