@@ -20,7 +20,7 @@ fn config(host: &str) -> groove_types::Config {
 
 #[test]
 fn the_same_config_keeps_the_same_sources_and_a_new_one_builds_them_again() {
-    let state = State::default();
+    let mut state = State::default();
     let one = config("https://github.example");
     let first = state.sources(Some(&one));
     assert_eq!(first.len(), 1);

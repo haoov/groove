@@ -1,6 +1,6 @@
 //! The task capability: the tasks and their sources, the plan, the clock and hours, attention.
 
-use std::sync::{Arc, PoisonError};
+use std::sync::Arc;
 
 mod attention;
 mod filing;
@@ -49,7 +49,7 @@ pub struct State {
 
 /// The sources, built once for the config that turned them on.
 #[derive(Default)]
-struct Built(std::sync::Mutex<Option<Building>>);
+struct Built(Option<Building>);
 
 /// The config it was built for, the sources, and why any of them could not be.
 type Building = (SourceKey, Arc<Vec<Source>>, Vec<groove_types::Error>);
@@ -113,25 +113,25 @@ impl State {
     }
 
     /// The sources the config turns on, the same ones while the config stays the same.
-    pub fn sources(&self, config: Option<&Config>) -> Arc<Vec<Source>> {
+    pub fn sources(&mut self, config: Option<&Config>) -> Arc<Vec<Source>> {
         let key = (
             config.and_then(|one| one.github.clone()),
             config.and_then(|one| one.notion.clone()),
         );
-        let mut held = self.built.0.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some((_, sources, _)) = held.as_ref().filter(|(at, ..)| *at == key) {
+        if let Some((_, sources, _)) = self.built.0.as_ref().filter(|(at, ..)| *at == key) {
             return sources.clone();
         }
         let (sources, broken) = built(&key);
         let sources = Arc::new(sources);
-        *held = Some((key, sources.clone(), broken));
+        self.built.0 = Some((key, sources.clone(), broken));
         sources
     }
 
     /// Why a source the config turns on could not be built, as the last build found it.
     pub fn broken(&self) -> Vec<groove_types::Error> {
-        let held = self.built.0.lock().unwrap_or_else(PoisonError::into_inner);
-        held.as_ref()
+        self.built
+            .0
+            .as_ref()
             .map(|(.., broken)| broken.clone())
             .unwrap_or_default()
     }
