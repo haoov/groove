@@ -139,3 +139,18 @@ pub struct AppCondition {
     pub message: String,
     pub at: Option<Timestamp>,
 }
+
+/// `auto · prune · heal` for an automated sync policy, `manual` without one.
+pub fn sync_policy(automated: Option<(bool, bool)>) -> String {
+    let Some((prune, heal)) = automated else {
+        return "manual".to_string();
+    };
+    let mut said = "auto".to_string();
+    if prune {
+        said.push_str(" · prune");
+    }
+    if heal {
+        said.push_str(" · heal");
+    }
+    said
+}

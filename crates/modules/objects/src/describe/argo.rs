@@ -13,12 +13,17 @@ pub(super) fn is_application(kind: &str, object: &Value) -> bool {
     kind == "Application" && group.starts_with("argoproj.io/")
 }
 
-pub(super) fn part(app: &Value) -> AppPart {
-    let (spec, status) = (&app["spec"], &app["status"]);
-    let automated = spec.pointer("/syncPolicy/automated").map(|on| {
+/// Whether its sync policy prunes and heals, when it is automated at all.
+pub(crate) fn automated(spec: &Value) -> Option<(bool, bool)> {
+    spec.pointer("/syncPolicy/automated").map(|on| {
         let set = |key: &str| on[key].as_bool().unwrap_or_default();
         (set("prune"), set("selfHeal"))
-    });
+    })
+}
+
+pub(super) fn part(app: &Value) -> AppPart {
+    let (spec, status) = (&app["spec"], &app["status"]);
+    let automated = automated(spec);
     AppPart {
         project: text(spec, "/project"),
         sync: text(status, "/sync/status"),

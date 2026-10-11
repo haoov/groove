@@ -49,6 +49,7 @@ pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
     AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
+    sync_policy,
 };
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use cells::{cell_value, compare_cells};

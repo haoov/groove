@@ -64,18 +64,7 @@ pub(crate) fn row(
 
 /// `auto · prune · heal`, as its sync policy reads; `manual` without one.
 pub(crate) fn automated(spec: Option<&serde_json::Value>) -> String {
-    let Some(policy) = spec.and_then(|one| one.pointer("/syncPolicy/automated")) else {
-        return "manual".to_string();
-    };
-    let on = |key: &str| policy[key].as_bool().unwrap_or_default();
-    let mut said = "auto".to_string();
-    if on("prune") {
-        said.push_str(" · prune");
-    }
-    if on("selfHeal") {
-        said.push_str(" · heal");
-    }
-    said
+    groove_types::sync_policy(spec.and_then(crate::describe::automated))
 }
 
 /// What it synced to: its one revision, or each of its sources', shortened.

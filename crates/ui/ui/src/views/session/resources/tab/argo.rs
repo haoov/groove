@@ -148,7 +148,7 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
     let cluster = to.name.clone().or(to.server.clone()).unwrap_or_default();
     let namespace = to.namespace.clone().unwrap_or_default();
     let (said, role) = match app.automated {
-        Some((prune, heal)) => (automated(prune, heal), Role::Ok),
+        Some(on) => (groove_types::sync_policy(Some(on)), Role::Ok),
         None => ("manual".to_string(), Role::Muted),
     };
     let context = match context {
@@ -254,17 +254,6 @@ fn named(one: &AppSource) -> String {
         Some(path) => format!("{name} · {path}"),
         None => name,
     }
-}
-
-fn automated(prune: bool, heal: bool) -> String {
-    let mut said = "auto".to_string();
-    if prune {
-        said.push_str(" · prune");
-    }
-    if heal {
-        said.push_str(" · heal");
-    }
-    said
 }
 
 /// A repository's address without its scheme, its credentials and `.git`.
