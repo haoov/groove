@@ -41,7 +41,7 @@ pub(crate) fn hosts(pool: &[PoolEntry]) -> Vec<String> {
 pub(crate) fn local(mut mr: ReviewMr, pool: &[PoolEntry]) -> ReviewMr {
     mr.local_path = pool
         .iter()
-        .find(|entry| entry.holds(&mr.project))
+        .find(|entry| mr.held_by(entry))
         .map(|entry| entry.path.to_string_lossy().into_owned());
     mr
 }

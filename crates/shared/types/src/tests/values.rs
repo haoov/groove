@@ -125,20 +125,35 @@ fn an_mrs_own_page_says_where_its_repo_is_cloned_from() {
 }
 
 #[test]
-fn a_pooled_clone_holds_only_the_project_whose_whole_path_it_ends_with() {
-    let entry = crate::PoolEntry {
-        slug: "gitlab.example.com/wiremind/big/p".into(),
+fn a_review_s_repo_is_the_clone_of_its_own_host_and_project() {
+    let entry = |slug: &str| crate::PoolEntry {
+        slug: slug.into(),
         path: std::path::PathBuf::from("/pool/p"),
     };
-    assert!(entry.holds("wiremind/big/p"), "its own path");
-    assert!(entry.holds("big/p"), "the tail of it, on a segment");
-    assert!(!entry.holds("g/p"), "not half a segment");
-    assert!(!entry.holds("other/p"));
-    let bare = crate::PoolEntry {
-        slug: "acme/groove".into(),
-        path: std::path::PathBuf::from("/pool/groove"),
+    let mr = crate::ReviewMr {
+        forge: crate::Forge::Github,
+        project: "acme/groove".into(),
+        iid: 7,
+        title: String::new(),
+        author: String::new(),
+        source_branch: String::new(),
+        target_branch: String::new(),
+        draft: false,
+        web_url: "https://github.com/acme/groove/pull/7".into(),
+        updated_at: crate::Timestamp::new(0),
+        local_path: None,
+        approved: false,
+        review: None,
     };
-    assert!(bare.holds("acme/groove"), "the whole slug");
+    assert!(mr.held_by(&entry("github.com/acme/groove")));
+    assert!(
+        !mr.held_by(&entry("gitlab.com/acme/groove")),
+        "another host"
+    );
+    assert!(
+        !mr.held_by(&entry("github.com/other/acme/groove")),
+        "another path"
+    );
 }
 
 #[test]
