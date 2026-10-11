@@ -240,24 +240,7 @@ pub fn helm_release(
     owners: &[(Link, Option<Arc<Described>>)],
 ) -> Option<(String, String)> {
     let top = owners.iter().rev().find_map(|(_, read)| read.clone());
-    let marked = |one: &Described, key: &str| {
-        let mut pairs = one.annotations.iter().chain(one.labels.iter());
-        pairs
-            .find(|(at, _)| at == key)
-            .map(|(_, value)| value.clone())
-    };
-    for one in top.as_deref().into_iter().chain(std::iter::once(object)) {
-        if let Some(name) = marked(one, "meta.helm.sh/release-name") {
-            let namespace = marked(one, "meta.helm.sh/release-namespace");
-            return Some((namespace.or(one.namespace.clone())?, name));
-        }
-        if marked(one, "app.kubernetes.io/managed-by").as_deref() == Some("Helm")
-            && let Some(name) = marked(one, "app.kubernetes.io/instance")
-        {
-            return Some((one.namespace.clone()?, name));
-        }
-    }
-    None
+    object.helm_release(top.as_deref())
 }
 
 /// The events about the object, once its uid is known.
@@ -287,13 +270,10 @@ pub fn selecting(app: &AppState, link: &Link, object: &Described) -> Vec<String>
     else {
         return Vec::new();
     };
-    let picks = |one: &&Arc<Described>| {
-        !one.selector.is_empty() && one.selector.iter().all(|pair| object.labels.contains(pair))
-    };
     services
         .objects
         .iter()
-        .filter(picks)
+        .filter(|one| one.selects(object))
         .map(|one| one.name.clone())
         .collect()
 }

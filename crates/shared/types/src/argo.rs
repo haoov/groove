@@ -40,6 +40,31 @@ pub struct Destination {
     pub namespace: Option<String>,
 }
 
+/// The address an Application's own cluster goes by.
+const IN_CLUSTER: &str = "https://kubernetes.default.svc";
+
+impl Destination {
+    /// Whether it names the Application's own cluster.
+    pub fn in_cluster(&self) -> bool {
+        match (self.server.as_deref(), self.name.as_deref()) {
+            (None, Some(name)) => name == "in-cluster",
+            (Some(server), _) => server_of(server) == IN_CLUSTER,
+            _ => false,
+        }
+    }
+}
+
+/// A server address as one form: scheme and host in lower case, no default port, no trailing slash.
+pub fn server_of(server: &str) -> String {
+    let server = server.trim_end_matches('/');
+    let (scheme, rest) = server.split_once("://").unwrap_or(("https", server));
+    let (host, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
+    let (scheme, host) = (scheme.to_ascii_lowercase(), host.to_ascii_lowercase());
+    let port = if scheme == "http" { ":80" } else { ":443" };
+    let host = host.strip_suffix(port).unwrap_or(&host);
+    format!("{scheme}://{host}{path}")
+}
+
 /// The sync running, or the last one: its phase, what it said, and what it could not apply.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Operation {
