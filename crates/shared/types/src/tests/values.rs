@@ -155,6 +155,8 @@ fn a_quantity_reads_into_base_units_and_writes_back() {
     assert_eq!(cores(2.0), "2");
     assert_eq!(bytes(734_003_200.0), "700Mi");
     assert_eq!(bytes(2_147_483_648.0), "2Gi");
+    assert_eq!(bytes(1.6 * 1_073_741_824.0), "1638Mi", "never rounded to 2Gi");
+    assert_eq!(bytes(12.4 * 1_073_741_824.0), "12Gi");
 }
 
 #[test]

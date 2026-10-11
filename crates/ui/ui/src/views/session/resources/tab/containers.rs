@@ -44,7 +44,7 @@ pub(super) fn details(one: &Container) -> Vec<(&'static str, String)> {
 
 fn columns(ctx: &mut Ctx) -> Vec<Column<'static, Target>> {
     let style = ctx.styles.small(Role::Text);
-    let meter = ctx.tokens.aside_near / 2.0 + ctx.tokens.sm + ctx.measure("999Mi / 999Gi", &style);
+    let meter = ctx.tokens.aside_near / 2.0 + ctx.tokens.sm + ctx.measure("9999Mi / 999Gi", &style);
     let fit = Width::Fit;
     vec![
         grouped::plain("", fit("▾")),
