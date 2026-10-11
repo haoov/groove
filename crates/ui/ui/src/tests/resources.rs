@@ -10,6 +10,9 @@ use super::*;
 use crate::hit::Target;
 use crate::views::session::Tab;
 
+mod argo;
+mod argo_links;
+mod argo_sync;
 mod copy;
 mod list;
 mod logs;

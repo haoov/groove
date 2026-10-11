@@ -30,11 +30,28 @@ impl Link {
     }
 }
 
+/// What a ctrl+click on a value opens: an object's tab, a repo in the session, or one of its commits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Opens {
+    Object(Link),
+    Repo {
+        repo: String,
+        target: String,
+    },
+    Revision {
+        repo: String,
+        target: String,
+        sha: String,
+    },
+}
+
 /// A part of the described view, which folds under its heading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Section {
+    Operation,
     Conditions,
     Summary,
+    Sources,
     Relations,
     Containers,
     Labels,
@@ -42,14 +59,16 @@ pub enum Section {
     Events,
 }
 
-/// One object's tab: which view, which container, how far down.
+/// One object's tab: which view, what is folded, how far down.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Opened {
     pub link: Link,
     pub view: super::View,
     pub logs: super::LogsUi,
-    pub container: Option<String>,
-    /// The sections folded shut; the annotations until opened.
+    pub argo: super::ArgoUi,
+    /// The groups and rows folded against how they start.
+    pub toggled: std::collections::BTreeSet<String>,
+    /// The sections folded shut; the annotations, the relations and the events until opened.
     pub shut: std::collections::BTreeSet<Section>,
     pub scroll: f32,
     /// How far the YAML is scrolled sideways.
@@ -64,12 +83,24 @@ impl Opened {
             link,
             view: super::View::Describe,
             logs: super::LogsUi::default(),
-            container: None,
-            shut: [Section::Annotations].into(),
+            argo: super::ArgoUi::default(),
+            toggled: std::collections::BTreeSet::new(),
+            shut: [Section::Annotations, Section::Relations, Section::Events].into(),
             scroll: 0.0,
             across: 0.0,
             copied: None,
         }
+    }
+
+    pub fn fold(&mut self, key: &str) {
+        if !self.toggled.remove(key) {
+            self.toggled.insert(key.to_string());
+        }
+    }
+
+    /// Whether `key` stands folded, given whether it starts so.
+    pub fn folded(&self, key: &str, folds: bool) -> bool {
+        folds != self.toggled.contains(key)
     }
 }
 

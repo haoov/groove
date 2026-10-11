@@ -58,6 +58,8 @@ pub struct Shown<'a, T> {
     pub target: Option<T>,
     /// A button or a toggle in place of a cell's text, by column.
     pub acts: Vec<Option<Act<'a, T>>>,
+    /// A group's heading: its cells one after the other across every column, on the band's ground.
+    pub band: bool,
 }
 
 /// How tall a row stands, and whether a rule closes it.
@@ -110,7 +112,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
     }
 
     /// Each column's left edge and width across `rect`.
-    fn spans<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Vec<(f32, f32)> {
+    pub fn spans<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Vec<(f32, f32)> {
         let md = ctx.tokens.md;
         let (label, body) = (ctx.styles.small(Role::Faint), ctx.styles.small(Role::Text));
         let fitted: Vec<Option<f32>> = self
@@ -185,8 +187,15 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         if selected {
             crate::shape::chosen(ctx, line);
         }
+        if shown.band {
+            crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+        }
         if let Some(target) = shown.target {
             hoverable(ctx, line, target);
+        }
+        if shown.band {
+            under(ctx, line, line.x + ctx.tokens.md, shown.cells);
+            return hairline(ctx, line, ctx.styles.line());
         }
         let mut rest = line;
         let first = rest.take_top(self.rows.first);

@@ -98,6 +98,18 @@ pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
     up.then(|| due.into_iter().flatten().min()).flatten()
 }
 
+/// Whether the object's tab shown holds an Application syncing, whose mark turns.
+pub fn spins(app: &AppState, ui: &Ui) -> bool {
+    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let read = ui
+        .session
+        .resources
+        .tab()
+        .and_then(|one| one.link.read(app));
+    let operation = read.and_then(|one| one.app.as_ref()?.operation.as_ref());
+    up && operation.is_some_and(|one| one.running())
+}
+
 /// Each source's properties, read once while Providers shows its mapping.
 fn schemas(app: &AppState, ui: &Ui) -> Vec<Command> {
     let shown =

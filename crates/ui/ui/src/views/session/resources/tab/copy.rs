@@ -7,7 +7,7 @@ use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 
-use super::super::opened::Link;
+use super::super::opened::{Link, Opens};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
@@ -16,7 +16,7 @@ pub(super) struct Copied<'a> {
     text: &'a str,
     role: Role,
     last: Option<&'a str>,
-    open: Option<Link>,
+    open: Option<Opens>,
     copies: &'a str,
 }
 
@@ -32,7 +32,12 @@ impl<'a> Copied<'a> {
     }
 
     pub(super) fn open(mut self, open: Option<Link>) -> Self {
-        self.open = open;
+        self.open = open.map(Opens::Object);
+        self
+    }
+
+    pub(super) fn opens(mut self, opens: Option<Opens>) -> Self {
+        self.open = opens;
         self
     }
 

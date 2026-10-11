@@ -9,6 +9,7 @@ mod paths;
 mod search;
 
 use crate::asker::Asker;
+pub(crate) use commits::due as revision_due;
 pub(crate) use editor::copied;
 use groove_types::{DiffMode, Edit, Selection};
 
@@ -83,6 +84,12 @@ pub enum Command {
     OpenCommit { sha: String },
     /// `workspace.leave_commit`: the working tree shown again.
     LeaveCommit,
+    /// `workspace.show_repo`: the repo a git URL names, added from `target` when missing, and one of its commits.
+    ShowRepo {
+        repo: String,
+        target: Option<String>,
+        sha: Option<String>,
+    },
     /// `workspace.blame`: who last changed each line of one file, uncommitted lines marked.
     Blame { path: String },
 }
@@ -118,6 +125,7 @@ impl Command {
             Command::GetCommits => "workspace.get_commits",
             Command::OpenCommit { .. } => "workspace.open_commit",
             Command::LeaveCommit => "workspace.leave_commit",
+            Command::ShowRepo { .. } => "workspace.show_repo",
             Command::Blame { .. } => "workspace.blame",
         }
     }
@@ -182,6 +190,9 @@ pub fn dispatch(
         Command::GetCommits => commits::list(state, spawner),
         Command::OpenCommit { sha } => commits::open(state, spawner, sha),
         Command::LeaveCommit => commits::leave(state, spawner),
+        Command::ShowRepo { repo, target, sha } => {
+            commits::revision(state, services, spawner, (repo, target), sha)
+        }
         Command::Blame { path } => blame::blame(state, spawner, path),
     }
 }

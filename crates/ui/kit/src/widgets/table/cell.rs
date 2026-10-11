@@ -1,4 +1,4 @@
-//! One cell of a table: a text in a size and a role, a mark before it, or a badge.
+//! One cell of a table: a text in a size and a role, a mark or a bar before it, or a badge.
 
 use std::borrow::Cow;
 
@@ -16,6 +16,15 @@ pub struct Cell<'a> {
     label: bool,
     badge: bool,
     mark: Option<(Mark, u8, Role)>,
+    bar: Option<Bar>,
+}
+
+/// A short track before the text: its fill and a tick, each a part of the whole, in a role.
+#[derive(Debug, Clone, Copy)]
+struct Bar {
+    fill: Option<f32>,
+    tick: Option<f32>,
+    role: Role,
 }
 
 impl<'a> Cell<'a> {
@@ -27,6 +36,7 @@ impl<'a> Cell<'a> {
             label: false,
             badge: false,
             mark: None,
+            bar: None,
         }
     }
 
@@ -50,6 +60,12 @@ impl<'a> Cell<'a> {
         self
     }
 
+    /// A track before the text, filled to `fill` in `role`, a tick at `tick`.
+    pub fn bar(mut self, fill: Option<f32>, tick: Option<f32>, role: Role) -> Self {
+        self.bar = Some(Bar { fill, tick, role });
+        self
+    }
+
     /// Draws in `rect`, at its start or against its end; returns where its text starts and ends.
     pub(super) fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect, end: bool) -> (f32, f32) {
         if self.text.is_empty() {
@@ -70,6 +86,11 @@ impl<'a> Cell<'a> {
             false => ctx.styles.small(self.role),
         };
         let mut room = rect;
+        if let Some(bar) = self.bar {
+            let track = room.take_left(ctx.tokens.aside_near / 2.0);
+            room = room.pad(Edges::across(ctx.tokens.sm, 0.0));
+            bar.draw(ctx, track);
+        }
         if let Some((mark, turn, role)) = self.mark {
             let (size, gap) = match self.label {
                 true => (ctx.tokens.icon, ctx.tokens.sm),
@@ -91,5 +112,32 @@ impl<'a> Cell<'a> {
         };
         row(ctx, room, lead, &text, style);
         (room.x + lead, room.x + lead + wide)
+    }
+}
+
+impl Bar {
+    fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect) {
+        let thick = ctx.tokens.xs * 2.0;
+        let track = rect.align((rect.w, thick), Align::Start, Align::Center);
+        let round = thick / 2.0;
+        ctx.rounded(track, ctx.styles.line(), round);
+        if let Some(fill) = self.fill {
+            let filled = Rect {
+                w: track.w * fill.clamp(0.0, 1.0),
+                ..track
+            };
+            ctx.rounded(filled, ctx.styles.color(self.role), round);
+        }
+        if let Some(tick) = self.tick {
+            let x = track.x + track.w * tick.clamp(0.0, 1.0);
+            let tall = thick * 2.0;
+            let mark = Rect::new(
+                x - ctx.tokens.hairline,
+                track.y - thick / 2.0,
+                ctx.tokens.hairline * 2.0,
+                tall,
+            );
+            ctx.quad(mark, ctx.styles.color(Role::Text));
+        }
     }
 }

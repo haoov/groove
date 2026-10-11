@@ -1,5 +1,6 @@
 //! A whole object read into what its tab draws, off the main thread.
 
+mod argo;
 mod container;
 mod pod;
 
@@ -29,6 +30,7 @@ pub fn describe(kind: &str, object: &Value, whole: bool) -> Described {
             _ => Vec::new(),
         },
         pod: (kind == "Pod").then(|| Box::new(pod::part(object))),
+        app: argo::is_application(kind, object).then(|| Box::new(argo::part(object))),
         event: (kind == "Event").then(|| event(object)),
         yaml,
     }

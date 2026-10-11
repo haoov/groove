@@ -40,6 +40,7 @@ pub struct Described {
     /// The labels a Service picks its pods by.
     pub selector: Vec<(String, String)>,
     pub pod: Option<Box<PodPart>>,
+    pub app: Option<Box<crate::AppPart>>,
     pub event: Option<EventRow>,
     /// The object as YAML; empty where only a part of it is read.
     pub yaml: Arc<str>,
@@ -73,8 +74,16 @@ pub struct PodPart {
     pub conditions: Vec<Condition>,
     /// The init containers first.
     pub containers: Vec<Container>,
-    /// What it reads: `("secret", "paxone-tls")`, `("sa", "paxone")`.
-    pub uses: Vec<(String, String)>,
+    /// What it reads, each once, in the order the spec names it.
+    pub uses: Vec<Used>,
+}
+
+/// An object the pod reads: `secret paxone-tls`, and how: `mounted /etc/tls`, `env worker`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Used {
+    pub tag: String,
+    pub name: String,
+    pub how: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

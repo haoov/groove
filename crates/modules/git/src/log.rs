@@ -25,6 +25,19 @@ impl Git {
         Ok(entries)
     }
 
+    /// One commit by its sha, wherever it stands in the repo.
+    pub async fn entry(&self, sha: &str) -> Result<CommitEntry> {
+        let format = format!("--format={FORMAT}");
+        let at = format!("{sha}^{{commit}}");
+        let out = self
+            .text(&["log", "-z", "--no-color", &format, "-n", "1", &at, "--"])
+            .await?;
+        commits(&out).into_iter().next().ok_or(Error::Failed {
+            command: format!("git log -1 {sha}"),
+            stderr: "no such commit".into(),
+        })
+    }
+
     /// How many commits the branch has that its base does not.
     async fn ahead_of(&self, base: Option<&str>) -> Result<usize> {
         let Some(base) = base else {

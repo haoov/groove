@@ -4,6 +4,7 @@ mod activity;
 mod aging;
 mod annotation;
 mod approval;
+mod argo;
 mod attention;
 mod cells;
 mod chord;
@@ -45,6 +46,9 @@ pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, 
 pub use aging::{Aging, agings, human_age};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
+pub use argo::{
+    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
+};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use cells::{cell_value, compare_cells};
 pub use chord::{Chord, Stroke};
@@ -59,7 +63,7 @@ pub use config::{
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use described::{
-    Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage,
+    Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage, Used,
 };
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,

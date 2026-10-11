@@ -20,11 +20,12 @@ async fn client_on(server: &str) -> (tempfile::TempDir, Client) {
 }
 
 #[tokio::test]
-async fn a_signed_in_context_answers_its_version_with_the_token_of_the_file() {
+async fn a_signed_in_context_answers_its_version_with_the_token_of_the_file_as_groove() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/version"))
         .and(header("authorization", "Bearer not-a-real-token"))
+        .and(header("user-agent", crate::client::AGENT))
         .respond_with(ResponseTemplate::new(200).set_body_json(version()))
         .mount(&server)
         .await;

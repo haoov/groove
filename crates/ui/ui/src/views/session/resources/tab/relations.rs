@@ -1,68 +1,89 @@
-//! What the object stands among, in three columns: what owns it, what it uses, what uses it.
+//! What the object stands among, as the list's table: what owns it, what it uses, what uses it.
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::Described;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_of, row_in};
-use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Cell, Width};
 
 use super::super::opened::{Link, Opened, lineage, selecting, served};
-use super::copy;
+use super::{copy, grouped};
 use crate::ctx::Ctx;
 
-/// One line of a column: a tag, a name, what follows it, the tab it opens; set in by `depth`.
+/// One object it stands among: a tag, a name, what it says, the tab it opens; set in by `depth`.
 pub(super) struct Entry {
     depth: usize,
     tag: String,
     name: String,
-    aside: Option<(String, Role)>,
+    status: Option<(String, Role)>,
     open: Option<Link>,
 }
 
-pub(super) struct Columns {
-    owned: Vec<Entry>,
-    uses: Vec<Entry>,
-    used: Vec<Entry>,
+/// A line of the table: a group's heading, which folds, or one of its objects.
+pub(super) enum Line {
+    Heading {
+        title: &'static str,
+        count: usize,
+        shut: bool,
+    },
+    Entry(Box<Entry>),
 }
 
-impl Columns {
-    /// How many lines the tallest column holds, its title included.
-    pub(super) fn rows(&self) -> usize {
-        1 + self.owned.len().max(self.uses.len()).max(self.used.len())
-    }
+/// How many objects the lines' groups hold, folded or not.
+pub(super) fn total(lines: &[Line]) -> usize {
+    let counts = lines.iter().map(|one| match one {
+        Line::Heading { count, .. } => *count,
+        Line::Entry(_) => 0,
+    });
+    counts.sum()
 }
 
-pub(super) fn of(app: &AppState, tab: &Opened, object: &Described) -> Columns {
+pub(super) fn lines(app: &AppState, tab: &Opened, object: &Described) -> Vec<Line> {
     let mut uses = Vec::new();
     let mut used = Vec::new();
     if let Some(pod) = &object.pod {
-        for (tag, name) in pod.uses.iter().filter(|(tag, _)| tag != "node") {
-            uses.push(plain(tag, name, uses_link(app, &tab.link, tag, name)));
+        for one in &pod.uses {
+            let open = uses_link(app, &tab.link, &one.tag, &one.name);
+            let how = (one.how.join(" · "), Role::Muted);
+            uses.push(entry(&one.tag, &one.name, Some(how), open));
         }
         for name in selecting(app, &tab.link, object) {
             let link = link_to(app, &tab.link, "Service", &name, true);
-            used.push(plain("svc", &name, link));
+            used.push(entry("svc", &name, None, link));
         }
     }
-    Columns {
-        owned: owned(app, tab, object),
-        uses,
-        used,
+    let groups = [
+        ("owned by", owned(app, tab, object)),
+        ("uses", uses),
+        ("used by", used),
+    ];
+    let mut out = Vec::new();
+    for (title, entries) in groups.into_iter().filter(|(_, all)| !all.is_empty()) {
+        let shut = tab.folded(&key(title), false);
+        let count = entries.len();
+        out.push(Line::Heading { title, count, shut });
+        if !shut {
+            out.extend(entries.into_iter().map(|one| Line::Entry(Box::new(one))));
+        }
     }
+    out
 }
 
-fn plain(tag: &str, name: &str, open: Option<Link>) -> Entry {
+fn key(title: &str) -> String {
+    format!("relations/{title}")
+}
+
+fn entry(tag: &str, name: &str, status: Option<(String, Role)>, open: Option<Link>) -> Entry {
     Entry {
         depth: 0,
         tag: tag.to_string(),
         name: name.to_string(),
-        aside: None,
+        status,
         open,
     }
 }
 
-/// Each owner from the top down, then the object itself.
+/// Each owner from the top down.
 fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
     let owners = lineage(app, &tab.link, object);
     let mut out: Vec<Entry> = Vec::new();
@@ -76,83 +97,63 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
                 } else {
                     Role::Warn
                 };
-                (format!("{ready}/{desired}"), role)
+                (format!("{ready}/{desired} ready"), role)
             });
         let tag = short(&link.kind.kind);
         out.push(Entry {
             depth,
             tag,
             name: link.name.clone(),
-            aside,
+            status: aside,
             open: Some(link.clone()),
         });
     }
-    let tag = short(&tab.link.kind.kind);
-    out.push(Entry {
-        depth: owners.len(),
-        tag,
-        name: "this".into(),
-        aside: None,
-        open: None,
-    });
     out
 }
 
-pub(super) fn draw(ctx: &mut Ctx, rect: Rect, columns: &Columns, last: Option<&str>) {
-    let [owned, uses, used] = row_in(rect, [Spec::fill(), Spec::fill(), Spec::fill()]);
-    column(ctx, owned, ("owned by", last), &columns.owned);
-    column(ctx, uses, ("uses", last), &columns.uses);
-    column(ctx, used, ("used by", last), &columns.used);
-}
-
-fn column(ctx: &mut Ctx, rect: Rect, (title, last): (&str, Option<&str>), entries: &[Entry]) {
-    if entries.is_empty() {
-        return;
-    }
-    let row = Spec::default().height(ctx.tokens.row);
-    let lines = column_of(rect, &vec![row; entries.len() + 1]);
-    Label::new(title, ctx.styles.small(Role::Ghost)).draw(ctx, lines[0]);
-    let style = ctx.styles.small(Role::Ghost);
-    let widest = entries
-        .iter()
-        .map(|one| ctx.measure(&one.tag, &style))
-        .fold(0.0, f32::max);
-    for (line, one) in lines[1..].iter().zip(entries) {
-        entry(ctx, *line, one, (widest + ctx.tokens.sm, last));
-    }
-}
-
-fn entry(ctx: &mut Ctx, rect: Rect, one: &Entry, (tags, last): (f32, Option<&str>)) {
-    let indent = ctx.tokens.md * one.depth as f32;
-    let [_, tag, rest] = row_in(
-        rect,
-        [
-            Spec::default().width(indent),
-            Spec::default().width(tags),
-            Spec::fill(),
-        ],
-    );
-    Label::new(&one.tag, ctx.styles.small(Role::Ghost)).draw(ctx, tag);
-    let mut room = rest;
+/// One line, under the table's header when `header`.
+pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), last: Option<&str>) {
+    let columns = [
+        grouped::plain("", Width::Fit("▾")),
+        grouped::plain("KIND", Width::Fit("secret")),
+        grouped::plain("NAME", Width::Fit("paxone-worker-5d6b9c7f4")),
+        grouped::plain("STATUS", Width::Fill),
+    ];
+    let one = match line {
+        Line::Heading { title, count, shut } => {
+            let cells = vec![
+                Cell::small(if *shut { "▸" } else { "▾" }, Role::Ghost),
+                Cell::small(*title, Role::Text),
+                Cell::small(count.to_string(), Role::Ghost),
+            ];
+            grouped::one(
+                ctx,
+                rect,
+                (&columns, header),
+                grouped::heading(&key(title), cells),
+            );
+            return;
+        }
+        Line::Entry(one) => one,
+    };
+    let (said, role) = one.status.clone().unwrap_or((String::new(), Role::Muted));
+    let cells = vec![
+        Cell::small("", Role::Ghost),
+        Cell::small(one.tag.as_str(), Role::Ghost),
+        Cell::small("", Role::Text),
+        Cell::small(said, role),
+    ];
+    let (line, spans) = grouped::one(ctx, rect, (&columns, header), grouped::row(cells));
+    let (x, w) = spans[2];
+    let name = Rect { x, w, ..line }.pad(Edges::across(ctx.tokens.md * one.depth as f32, 0.0));
     let role = if one.open.is_some() {
         Role::Accent
     } else {
         Role::Text
     };
-    let style = ctx.styles.small(role);
-    match one.open.is_some() {
-        true => {
-            copy::Copied::new(&one.name, role, last)
-                .open(one.open.clone())
-                .left(ctx, &mut room, ctx.tokens.sm);
-        }
-        false => {
-            Label::new(&one.name, style).left(ctx, &mut room, ctx.tokens.sm);
-        }
-    }
-    if let Some((text, role)) = &one.aside {
-        Label::new(text, ctx.styles.small(*role)).draw(ctx, room);
-    }
+    copy::Copied::new(&one.name, role, last)
+        .open(one.open.clone())
+        .draw(ctx, name);
 }
 
 /// `Deployment` reads `deploy`, as `kubectl` shortens it; anything else in lower case.

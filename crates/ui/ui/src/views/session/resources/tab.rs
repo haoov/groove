@@ -1,22 +1,29 @@
 //! One object's tab: what it reads, and the view it shows, described or as YAML.
 
-mod card;
+mod argo;
+mod containers;
 mod copy;
 mod describe;
+mod destined;
+mod grouped;
 mod logs;
+mod managed;
 mod relations;
 mod sections;
+mod stages;
+mod syncing;
 mod wants;
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::{Described, Health};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, Tab, Text};
 
+pub use grouped::WIDTHS as ARGO_WIDTHS;
 pub use wants::{due, wants};
 
 use super::View;
@@ -37,6 +44,13 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
         View::Yaml => crate::views::session::diff::editor(ctx, app, ui, rest),
         View::Logs => logs::draw(ctx, rest, app, (ui, tab)),
         View::Describe => describe::draw(ctx, rest, app, (tab, object)),
+        View::Resources => match object.app.as_deref() {
+            Some(part) => {
+                let dragged = ui.session.resources.widths.get(ARGO_WIDTHS);
+                managed::draw(ctx, rest, (app, tab, part), dragged)
+            }
+            None => describe::draw(ctx, rest, app, (tab, object)),
+        },
     }
 }
 
@@ -44,11 +58,12 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
 fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Option<&Described>) {
     hairline(ctx, line, ctx.styles.line());
     let link = &tab.link;
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     let gap = ctx.tokens.sm;
-    let views: &[View] = match object.is_some_and(|one| one.pod.is_some()) {
-        true => &[View::Logs, View::Yaml, View::Describe],
-        false => &[View::Yaml, View::Describe],
+    let views: &[View] = match object {
+        Some(one) if one.pod.is_some() => &[View::Logs, View::Yaml, View::Describe],
+        Some(one) if one.app.is_some() => &[View::Yaml, View::Resources, View::Describe],
+        _ => &[View::Yaml, View::Describe],
     };
     for view in views {
         Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view)
@@ -56,6 +71,19 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
             .tight()
             .right(ctx, &mut room, 0.0);
     }
+    let stood = object.map(stands).unwrap_or_default();
+    let mut wide = 0.0;
+    let mut badges = Vec::new();
+    for (said, role) in &stood {
+        let badge = Badge::new(said, *role);
+        let next = wide + badge.width(ctx) + gap;
+        if next > room.w {
+            break;
+        }
+        wide = next;
+        badges.push(badge);
+    }
+    let [mut crumbs, kept] = row_in(room, [Spec::fill(), Spec::default().width(wide)]);
     let hue = app
         .config
         .cluster(&link.context)
@@ -63,31 +91,43 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
     let faint = ctx.styles.small(Role::Ghost);
     let last = tab.copied.as_deref();
     let copied = |text, role| copy::Copied::new(text, role, last);
-    copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut room, gap);
+    copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut crumbs, gap);
     if let Some(namespace) = &link.namespace {
-        Label::new("›", faint).left(ctx, &mut room, gap);
-        copied(namespace, Role::Muted).left(ctx, &mut room, gap);
+        Label::new("›", faint).left(ctx, &mut crumbs, gap);
+        copied(namespace, Role::Muted).left(ctx, &mut crumbs, gap);
     }
-    Label::new("›", faint).left(ctx, &mut room, gap);
-    Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut room, gap);
-    copied(&link.name, Role::Text).left(ctx, &mut room, gap);
-    if let Some((said, role)) = object.and_then(stands) {
-        Badge::new(&said, role).at(ctx, room, room.x);
+    Label::new("›", faint).left(ctx, &mut crumbs, gap);
+    Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut crumbs, gap);
+    copied(&link.name, Role::Text).left(ctx, &mut crumbs, gap);
+    let mut at = crumbs.x.min(kept.x);
+    for badge in badges {
+        at = badge.at(ctx, room, at).right() + gap;
     }
 }
 
-/// What the object says of itself: a pod's status, a workload's ready replicas.
-fn stands(object: &Described) -> Option<(String, Role)> {
+/// What the object says of itself: a pod's status, a workload's ready replicas, an Application's sync and health.
+fn stands(object: &Described) -> Vec<(String, Role)> {
+    let worded = |word: &str| {
+        let health = groove_types::status_health(word).unwrap_or(Health::Waiting);
+        (word.to_string(), colour(health))
+    };
     if let Some(pod) = &object.pod {
-        let health = groove_types::status_health(&pod.status).unwrap_or(Health::Waiting);
-        return Some((pod.status.clone(), colour(health)));
+        return vec![worded(&pod.status)];
     }
-    let (ready, desired) = object.replicas?;
+    if let Some(app) = &object.app {
+        let said = [&app.sync, &app.health]
+            .into_iter()
+            .filter(|one| !one.is_empty());
+        return said.map(|one| worded(one)).collect();
+    }
+    let Some((ready, desired)) = object.replicas else {
+        return Vec::new();
+    };
     let role = match ready >= desired {
         true => Role::Ok,
         false => Role::Warn,
     };
-    Some((format!("{ready}/{desired} ready"), role))
+    vec![(format!("{ready}/{desired} ready"), role)]
 }
 
 /// Why the tab holds nothing yet: the object being read, or gone, or the read refused.

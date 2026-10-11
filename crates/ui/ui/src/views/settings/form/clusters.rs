@@ -142,6 +142,7 @@ fn context<'a>(app: &AppState, one: &'a ClusterConfig) -> Shown<'a, Target> {
             None,
             Some(Act::Button("remove", Target::ClusterRemove(name.clone()))),
         ],
+        band: false,
     }
 }
 
@@ -186,6 +187,7 @@ fn unknown(ctx: &mut Ctx, rect: Rect, rest: &[&KubeContext]) {
             under: Vec::new(),
             target: Some(Target::ClusterRow(one.name.clone())),
             acts: vec![None, None, Some(Act::Button("add", add))],
+            band: false,
         }
     });
 }

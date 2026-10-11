@@ -92,17 +92,22 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// An Application's resources view: a filter picked.
+    ArgoFilter(crate::views::session::resources::Filter),
+    /// A group or a row of an object's tab, folded or unfolded.
+    ResourceFold(String),
     /// The logs view's controls: the containers read, the run, the range picker, following.
     LogSource(groove_types::LogSource),
     LogPrevious(bool),
     LogRange,
     LogFollow,
-    /// One container of the pod shown, its annotations unfolded, and another object to open.
-    ResourceContainer(String),
+    /// A container's cpu, or with `true` its memory, which shows its request and limit under the pointer.
+    ContainerUsage(String, bool),
+    /// A section of the described view folded, and another object to open.
     ResourceSection(crate::views::session::resources::Section),
     ResourceOpen(Box<crate::views::session::resources::Link>),
     /// A value of an object's tab, which a click copies; a ctrl+click opens its object.
-    ResourceCopy(String, Option<Box<crate::views::session::resources::Link>>),
+    ResourceCopy(String, Option<Box<crate::views::session::resources::Opens>>),
     /// A context's line, which only lights under the pointer.
     ClusterRow(String),
     /// A control of a Settings row: the preference a click on it sets.
