@@ -123,10 +123,7 @@ fn stands(object: &Described) -> Vec<(String, Role)> {
     let Some((ready, desired)) = object.replicas else {
         return Vec::new();
     };
-    let role = match ready >= desired {
-        true => Role::Ok,
-        false => Role::Warn,
-    };
+    let role = super::list::plan::colour(groove_types::count_health(ready, desired));
     vec![(format!("{ready}/{desired} ready"), role)]
 }
 

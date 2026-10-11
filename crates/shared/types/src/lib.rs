@@ -72,7 +72,7 @@ pub use diff::{
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
-pub use health::{Health, ready_health, status_health};
+pub use health::{Health, count_health, ready_health, status_health};
 pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use logs::{Level, LogKey, LogLine, LogRange, LogSource, LogTime, level, log_time};
 pub use mapping::{Kind, Mapped, Mapping, Property};

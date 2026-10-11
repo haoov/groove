@@ -88,11 +88,7 @@ pub(super) fn facts(app: &AppState, tab: &Opened, object: &Described, now: Times
     if let Some(pod) = &object.pod {
         pod_facts(app, tab, pod, now, &mut add);
     } else if let Some((ready, desired)) = object.replicas {
-        let role = if ready >= desired {
-            Role::Ok
-        } else {
-            Role::Warn
-        };
+        let role = colour(groove_types::count_health(ready, desired));
         add("ready", format!("{ready}/{desired}"), role, None);
     }
     if let Some(created) = object.created {
@@ -123,14 +119,10 @@ fn pod_facts(
     add("status", pod.status.clone(), colour(health), None);
     let running = pod.containers.iter().filter(|one| !one.init);
     let (ready, all) = running.fold((0, 0), |(ready, all), one| {
-        (ready + usize::from(one.ready), all + 1)
+        (ready + i64::from(one.ready), all + 1)
     });
-    add(
-        "ready",
-        format!("{ready}/{all}"),
-        if ready == all { Role::Ok } else { Role::Bad },
-        None,
-    );
+    let role = colour(groove_types::count_health(ready, all));
+    add("ready", format!("{ready}/{all}"), role, None);
     let restarts: u32 = pod.containers.iter().map(|one| one.restarts).sum();
     let last = pod
         .containers
