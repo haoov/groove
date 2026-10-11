@@ -19,7 +19,7 @@ pub(super) fn chord(
     let (open, true) = (app.session.selected()?, shown) else {
         return None;
     };
-    let up = ui.session.tab == Tab::Resources && !open.clusters.is_empty();
+    let up = ui.session.tab == Tab::Resources && open.holds_clusters();
     let held = &mut ui.session.resources;
     match () {
         _ if up && held.showing.is_none() && keymap.is(Action::Find, key, mods) => {

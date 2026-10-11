@@ -19,6 +19,11 @@ pub struct Open {
 }
 
 impl Open {
+    /// Whether it holds a cluster, which is what the k8s tab stands on.
+    pub fn holds_clusters(&self) -> bool {
+        !self.clusters.is_empty()
+    }
+
     /// Whether this file of the worktree has been marked read.
     pub fn is_read(&self, worktree: &WorktreeId, path: &str) -> bool {
         self.read

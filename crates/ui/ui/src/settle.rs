@@ -17,7 +17,7 @@ impl Ui {
         let held = app
             .session
             .selected()
-            .is_some_and(|open| !open.clusters.is_empty());
+            .is_some_and(|open| open.holds_clusters());
         if self.session.tab == Tab::Resources && !held {
             self.session.tab = Tab::Overview;
         }

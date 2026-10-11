@@ -87,7 +87,7 @@ fn parts<'a>(app: &'a AppState, open: &'a Open) -> Vec<Part<'a>> {
         parts.extend(held.map(Part::Worktree));
         parts.push(Part::Gap);
     }
-    if !open.clusters.is_empty() {
+    if open.holds_clusters() {
         parts.extend([Part::Rule, Part::Heading("Clusters")]);
         parts.extend(clusters::parts(app, open));
     }

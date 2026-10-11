@@ -64,7 +64,7 @@ impl Scoping {
 
     /// The namespace panel, or the context one while the session holds no cluster.
     pub fn asked(open: &Open) -> Self {
-        match open.clusters.is_empty() {
+        match !open.holds_clusters() {
             true => Self::new(Picks::Contexts),
             false => Self::new(Picks::Namespaces),
         }

@@ -100,5 +100,5 @@ pub(super) fn copied(app: &AppState) -> Vec<Command> {
 fn holds_clusters(app: &AppState) -> bool {
     app.session
         .selected()
-        .is_some_and(|open| !open.clusters.is_empty())
+        .is_some_and(|open| open.holds_clusters())
 }
