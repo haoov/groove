@@ -14,6 +14,9 @@ const HOLD: u32 = 4;
 /// Paths a batch holds before it reports, whatever the quiet.
 const PATHS: usize = 256;
 
+/// How long the thread waits for a first change before it looks for the stop again.
+const IDLE: Duration = Duration::from_millis(500);
+
 /// What the watching thread owns.
 pub(crate) struct Parts {
     pub(crate) watcher: RecommendedWatcher,
@@ -32,7 +35,11 @@ pub(crate) fn report(mut parts: Parts) {
         if matches!(parts.stopped.try_recv(), Err(TryRecvError::Disconnected)) {
             return;
         }
-        match parts.events.recv_timeout(parts.quiet) {
+        let wait = match paths.is_empty() {
+            true => IDLE,
+            false => parts.quiet,
+        };
+        match parts.events.recv_timeout(wait) {
             Ok(Ok(event)) if is_change(&event.kind) => {
                 paths.extend(event.paths);
                 let now = Instant::now();
