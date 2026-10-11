@@ -119,7 +119,7 @@ fn a_context_is_added_once_changed_on_its_own_and_removed() {
     assert!(written.is_some_and(|config| config.clusters[0].read_only));
     assert!(
         state
-            .change_cluster("prod", ClusterChange::ArgoHub(true))
+            .change_cluster("prod", ClusterChange::ReadOnly(true))
             .is_none()
     );
     state.remove_cluster("hub");
