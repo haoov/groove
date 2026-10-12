@@ -181,6 +181,24 @@ fn the_kind_listed_stands_on_the_held_ground_between_the_rules() {
 }
 
 #[test]
+fn the_kind_the_keys_stand_on_is_raised_as_a_selected_row_is() {
+    use crate::views::session::resources::{Line, shown};
+    use groove_ui_kit::base::style::Styles;
+    let (app, mut ui) = listing();
+    let lines = shown(&app, &ui);
+    let at = lines.iter().position(|one| matches!(one, Line::Kind(_)));
+    let Some(Line::Kind(stood)) = at.map(|at| lines[at].clone()) else {
+        panic!("a kind listed");
+    };
+    (ui.session.resources.filtering, ui.session.resources.cursor) = (true, at);
+    let (frame, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let row = hits.rect_of(&Target::ResourceKind(stood)).expect("its row");
+    let raised = Styles::new(app.config.theme(), window().tokens()).raised();
+    let mut quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
+    assert!(quads.any(|one| one.rect == row && one.color == raised));
+}
+
+#[test]
 fn a_paste_in_the_kind_search_stands_on_the_first_kind_as_typing_does() {
     use crate::views::session::resources::{Line, shown};
     let (app, mut ui) = listing();

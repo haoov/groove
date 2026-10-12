@@ -51,7 +51,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         |ctx, line, one| match one {
             Line::Heading(group, open) => {
                 if stood.as_ref() == Some(one) {
-                    groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+                    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
                 }
                 let heading = Heading::new(group.label()).fold(*open);
                 heading
@@ -77,10 +77,10 @@ fn searched(ctx: &mut Ctx, line: Rect, ui: &Ui) {
         .draw(ctx, line);
 }
 
-/// One kind at a file's depth: listed, on the held ground between the rules; stood on, hovered.
+/// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.
 fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (bool, bool)) {
     if highlighted {
-        groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+        groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
     }
     hoverable(ctx, line, Target::ResourceKind(kind.clone()));
     if picked {
