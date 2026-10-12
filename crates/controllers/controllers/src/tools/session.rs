@@ -4,7 +4,7 @@ use groove_agent_service::Call;
 use groove_agent_service::tools::answers;
 use groove_types::Repo;
 
-use crate::{AppState, Services};
+use crate::{AppState, Continuation, Services, Spawner};
 
 /// The session the call comes from, with its repos and its worktrees.
 pub(super) fn active(state: &AppState, call: Call) {
@@ -21,17 +21,21 @@ pub(super) fn active(state: &AppState, call: Call) {
 }
 
 /// Every clone in the pool, and whether this session already has it.
-pub(super) fn repos(state: &AppState, services: &Services, call: Call) {
+pub(super) fn repos(state: &AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
     let held: Vec<String> = match state.session.get(&super::session(&call)) {
         Some(open) => open.repos.iter().map(Repo::slug).collect(),
         None => Vec::new(),
     };
-    let pool = services.session.list_pool();
-    let each = pool
-        .iter()
-        .map(|entry| answers::pooled(entry, held.contains(&entry.slug)))
-        .collect();
-    call.reply.json(&answers::counted("repos", each));
+    let service = services.session.clone();
+    spawner.spawn(Box::pin(async move {
+        let pool = service.list_pool().await;
+        let each = pool
+            .iter()
+            .map(|entry| answers::pooled(entry, held.contains(&entry.slug)))
+            .collect();
+        call.reply.json(&answers::counted("repos", each));
+        Box::new(|_: &mut AppState, _: &Services, _: &dyn Spawner| {}) as Continuation
+    }));
 }
 
 /// Every skill this session can be sent, with what each one is for.

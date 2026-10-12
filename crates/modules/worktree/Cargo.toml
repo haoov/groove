@@ -12,7 +12,7 @@ groove-git = { path = "../git" }
 groove-types = { path = "../../shared/types" }
 sqlx.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["fs"] }
+tokio = { workspace = true, features = ["fs", "rt"] }
 uuid.workspace = true
 
 [dev-dependencies]

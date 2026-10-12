@@ -11,10 +11,14 @@ const WALK_DEPTH: u32 = 6;
 
 impl Pool {
     /// Every clone in the pool, by directory walk, sorted by slug. No pool is an empty list.
-    pub fn list(&self) -> Vec<PoolEntry> {
+    pub async fn list(&self) -> Vec<PoolEntry> {
         let main = self.layout.main();
-        let mut clones = Vec::new();
-        walk(&main, &main, 1, &mut clones);
+        let walked = tokio::task::spawn_blocking(move || {
+            let mut clones = Vec::new();
+            walk(&main, &main, 1, &mut clones);
+            clones
+        });
+        let mut clones = walked.await.unwrap_or_default();
         clones.sort_by_key(|c| c.slug.to_lowercase());
         clones
     }

@@ -164,7 +164,7 @@ fn taken<T: Send + 'static>(
 pub fn list_repos(services: &Services, spawner: &dyn Spawner) {
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
-        let pool = service.list_pool();
+        let pool = service.list_pool().await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.session.pool = pool
         }) as Continuation

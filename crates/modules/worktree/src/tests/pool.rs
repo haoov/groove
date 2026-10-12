@@ -4,7 +4,7 @@ use crate::{Error, Pool, PoolEntry};
 #[tokio::test]
 async fn the_pool_lists_registers_and_resolves() {
     let fx = Fixture::new().await;
-    let clones = fx.pool.list();
+    let clones = fx.pool.list().await;
     assert_eq!(clones.len(), 1);
     assert_eq!(clones[0].slug, SLUG);
     assert_eq!(clones[0].path, fx.clone);
@@ -39,7 +39,9 @@ async fn the_pool_lists_registers_and_resolves() {
     );
     assert_eq!(fx.pool.repo(&repo.id).await.unwrap(), repo);
     assert_eq!(
-        Pool::new(fx.pool.db.clone(), fx.root.path().join("nowhere")).list(),
+        Pool::new(fx.pool.db.clone(), fx.root.path().join("nowhere"))
+            .list()
+            .await,
         Vec::<PoolEntry>::new()
     );
 }
@@ -48,7 +50,7 @@ async fn the_pool_lists_registers_and_resolves() {
 async fn a_clone_without_origin_is_refused() {
     let fx = Fixture::new().await;
     sh(&fx.clone, &["remote", "remove", "origin"]);
-    let clones = fx.pool.list();
+    let clones = fx.pool.list().await;
     assert!(matches!(
         fx.pool.register(&clones[0]).await,
         Err(Error::NoOrigin { .. })
@@ -88,5 +90,5 @@ async fn clone_puts_the_repo_in_its_place_and_refuses_a_second_time() {
         .await
         .unwrap_err();
     assert!(matches!(err, Error::Exists { .. }), "{err}");
-    assert_eq!(fx.pool.list().len(), 2);
+    assert_eq!(fx.pool.list().await.len(), 2);
 }

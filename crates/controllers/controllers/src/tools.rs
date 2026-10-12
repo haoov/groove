@@ -22,7 +22,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     match call.tool.as_str() {
         "get_active_task" => session::active(state, call),
         "list_tasks" => task::tasks(state, call),
-        "list_repos" => session::repos(state, services, call),
+        "list_repos" => session::repos(state, services, spawner, call),
         "get_task_diff" => work::diff(state, spawner, call),
         "get_commit_log" => work::log(state, spawner, call),
         "get_status" => work::status(state, services, spawner, call),

@@ -86,7 +86,9 @@ impl Service {
         spec: &WorktreeSpec,
         now: Timestamp,
     ) -> Result<Added, Error> {
-        let name = at.repo_in(&self.pool.list()).ok_or_else(|| unsourced(at))?;
+        let name = at
+            .repo_in(&self.pool.list().await)
+            .ok_or_else(|| unsourced(at))?;
         self.store.create_review(session).await?;
         self.on_rail(&session.id, now).await?;
         self.add_repo(session, &name, spec, None).await
