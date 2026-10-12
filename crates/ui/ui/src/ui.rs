@@ -123,13 +123,6 @@ impl Ui {
         }
     }
 
-    pub fn scoping_mut(&mut self) -> Option<&mut views::session::resources::Scoping> {
-        match &mut self.overlay {
-            Some(Overlay::Scope(one)) => Some(one),
-            _ => None,
-        }
-    }
-
     pub fn menu(&self) -> Option<&Menu> {
         match &self.overlay {
             Some(Overlay::Menu(one)) => Some(one),

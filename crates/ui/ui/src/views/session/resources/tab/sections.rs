@@ -39,9 +39,7 @@ impl Fact {
     fn copied(&self) -> Option<&str> {
         let head = self.value.split(" · ").next();
         match self.key {
-            "node" | "pod ip" | "qos" | "repo" | "path" | "target" | "values" | "synced" => {
-                Some(&self.value)
-            }
+            "node" | "pod ip" | "qos" => Some(&self.value),
             "helm" | "priority" | "destination" => head,
             _ => None,
         }

@@ -6,12 +6,7 @@ use crate::shape::hairline;
 use crate::text::row;
 use crate::widgets::{caret_bar, text_band};
 
-/// A line of typed text with a caret after it, a hairline under it.
-pub fn input<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, prefix: &str, text: &str) {
-    input_at(ctx, rect, prefix, (text, text));
-}
-
-/// The same, its caret after `before`, the part of `text` that stands before it.
+/// A line of typed text with its caret after `before`, the part of `text` before it; a hairline under it.
 pub fn input_at<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,

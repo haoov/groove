@@ -29,7 +29,7 @@ pub use field::Field;
 pub use fold::{caret, fold, fold_box, fold_turn, folder};
 pub use heading::Heading;
 pub use icon::{busy, icon, lead, turned};
-pub use input::{caret_after, input, input_at, typed_line};
+pub use input::{caret_after, input_at, typed_line};
 pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
 pub use modal::{Corner, modal, panel_at};
