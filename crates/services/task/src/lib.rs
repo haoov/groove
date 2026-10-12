@@ -35,8 +35,9 @@ pub struct State {
     pub tasks: Vec<Task>,
     /// The body each read task carries, by short id.
     pub bodies: std::collections::BTreeMap<String, String>,
-    /// A read of the sources is out.
+    /// A read of the sources is out, and another was asked for meanwhile.
     pub reading: bool,
+    pub again: bool,
     /// The tasks a read is out for.
     pub syncing: std::collections::BTreeSet<ExternalId>,
     /// The order the user gave them.
