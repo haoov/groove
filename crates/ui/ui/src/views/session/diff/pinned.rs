@@ -82,36 +82,19 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<
     if ui.session.face() == Face::File {
         return scoped(ctx, body, app, ui, inline);
     }
-    let mut pins = Vec::new();
-    for _ in 0..=PINNED_DEEP {
-        let next = pins_under(ctx, body, app, ui, inline, pins.len());
-        if next.len() <= pins.len() {
-            return next;
-        }
-        pins = next;
-    }
-    pins
+    let named =
+        file_under(ctx, app, ui, inline, 0).and_then(|_| file_under(ctx, app, ui, inline, 1));
+    named
+        .map(|path| said(&path, Kind::Head))
+        .into_iter()
+        .collect()
 }
 
-/// The pins for the row that stands `under` rows below the top of the surface.
-fn pins_under(
-    ctx: &Ctx,
-    body: Rect,
-    app: &AppState,
-    ui: &Ui,
-    inline: &super::notes::Inline,
-    under: usize,
-) -> Vec<Pin> {
+/// The file of the row that stands `under` rows below the top of the surface.
+fn file_under(ctx: &Ctx, app: &AppState, ui: &Ui, inline: &Inline, under: usize) -> Option<String> {
     let rows = inline.total(super::row::count(app, ui, ui.session.face()));
     let at = (first(ctx.tokens.line, ui.session.scroll()) + under).min(rows.saturating_sub(1));
-    let top = inline.base(at);
-    let Some(path) = standing(app, top) else {
-        return Vec::new();
-    };
-    let mut pins: Vec<Pin> = Vec::new();
-    pins.push(said(&path, Kind::Head));
-    pins.truncate(room(ctx, body));
-    pins
+    standing(app, inline.base(at))
 }
 
 /// One pin that names something rather than holding a line of code.
