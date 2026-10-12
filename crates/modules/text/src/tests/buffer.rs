@@ -380,11 +380,11 @@ fn a_streamed_text_grows_at_its_end_and_sheds_its_first_lines_carrying_the_caret
     assert_eq!(buffer.text(), "one\ntwo\nthree\nfour\n");
     buffer.follow(Caret::new(3, 2));
     let before = buffer.painted();
-    buffer.shed(2);
+    buffer.shed("one\ntwo\n".len());
     assert_eq!(buffer.text(), "three\nfour\n");
     assert_eq!(buffer.caret(), Caret::new(1, 2));
     assert_ne!(buffer.painted(), before, "the colours are read again");
-    buffer.shed(10);
+    buffer.shed(100);
     assert_eq!(
         (buffer.text().as_str(), buffer.caret()),
         ("", Caret::new(0, 0))

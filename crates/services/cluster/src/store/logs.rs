@@ -57,7 +57,7 @@ impl Log {
                 break;
             };
             self.bytes -= one.text.len();
-            shed += 1;
+            shed += shown(&one).chars().count();
         }
         self.buffer.shed(shed);
     }
