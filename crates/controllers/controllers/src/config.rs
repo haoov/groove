@@ -21,23 +21,13 @@ pub enum Command {
     /// `config.check_environment`: each program's version and sign-in, read again.
     CheckEnvironment,
     /// `config.login`: `claude auth login` on a terminal of Setup's own.
-    Login {
-        cols: u16,
-        rows: u16,
-    },
+    Login { cols: u16, rows: u16 },
     /// What goes to the sign-in's terminal while it runs.
-    SendLogin {
-        bytes: Vec<u8>,
-    },
+    SendLogin { bytes: Vec<u8> },
     /// What is pasted into the sign-in's terminal.
-    PasteLogin {
-        text: String,
-    },
+    PasteLogin { text: String },
     /// The sign-in's terminal at a new size.
-    ResizeLogin {
-        cols: u16,
-        rows: u16,
-    },
+    ResizeLogin { cols: u16, rows: u16 },
     /// The sign-in ended before it was done.
     EndLogin,
     /// `config.set_task_source`: Notion on, once the token reads the database.
@@ -47,32 +37,21 @@ pub enum Command {
         user_id: String,
     },
     /// GitHub on, once the host answers the token `gh` holds for it.
-    ConnectGithub {
-        host: String,
-    },
+    ConnectGithub { host: String },
     /// A source off, its block gone; the last one stays.
     TurnOff(ProviderId),
     /// `config.read_schema`: the properties a source holds, for the mapping.
     ReadSchema(ProviderId),
     /// `config.map`: one name or value of a source mapped.
-    Map {
-        source: ProviderId,
-        change: Mapping,
-    },
+    Map { source: ProviderId, change: Mapping },
     /// `config.rebind`: the chords that replace the keymap's defaults, whole.
     Rebind(BTreeMap<String, Vec<String>>),
     /// `config.set_shared`: the team's repo named, once its branch reads as a plugin.
-    JoinShared {
-        url: String,
-        branch: String,
-    },
+    JoinShared { url: String, branch: String },
     /// `config.set_shared`: no shared repo any more.
     LeaveShared,
     /// `config.switch_routine`: one routine on, its scope approved, or off.
-    SwitchRoutine {
-        id: String,
-        on: bool,
-    },
+    SwitchRoutine { id: String, on: bool },
     /// `config.switch_trigger`: one trigger of a routine on or off.
     SwitchTrigger {
         id: String,
@@ -80,13 +59,9 @@ pub enum Command {
         on: bool,
     },
     /// `config.add_cluster`: a kubeconfig context Groove knows from now on, checked at once.
-    AddCluster {
-        context: String,
-    },
+    AddCluster { context: String },
     /// `config.remove_cluster`: a context Groove no longer knows.
-    RemoveCluster {
-        context: String,
-    },
+    RemoveCluster { context: String },
     /// `config.set_cluster`: one setting of an added context.
     SetCluster {
         context: String,
