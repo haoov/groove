@@ -1,4 +1,4 @@
-use groove_gfx::Rect;
+use groove_gfx::{Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
@@ -21,18 +21,28 @@ pub fn input_at<A: App>(
     let typed = format!("{prefix}{text}");
     let pad = ctx.tokens.md;
     row(ctx, rect, pad, &typed, style);
+    caret_after(ctx, rect, pad, &format!("{prefix}{before}"), style);
 
-    let width = ctx.measure(&format!("{prefix}{before}"), &style);
+    let line = ctx.styles.line();
+    hairline(ctx, rect, line);
+}
+
+/// The caret of a line typed in `style`, `indent` into `rect`, after `before`.
+pub fn caret_after<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    indent: f32,
+    before: &str,
+    style: TextStyle,
+) {
+    let width = ctx.measure(before, &style);
     let (thickness, height) = (ctx.tokens.hairline * 2.0, style.size);
     let caret = Rect::new(
-        rect.x + pad + width,
+        rect.x + indent + width,
         rect.y + (rect.h - height) / 2.0,
         thickness,
         height,
     );
     let color = ctx.styles.color(Role::Accent);
     ctx.quad(caret, color);
-
-    let line = ctx.styles.line();
-    hairline(ctx, rect, line);
 }

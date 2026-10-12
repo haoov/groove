@@ -20,7 +20,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, picker, screen};
+use groove_ui_kit::widgets::{Button, caret_after, picker, screen};
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &SettingsUi) {
     let band = Spec::default().height(ctx.tokens.header);
@@ -158,9 +158,9 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         }
         Value::Input {
             shown,
-            focused,
+            caret,
             target,
-        } => input(ctx, room, (shown, *focused), target),
+        } => input(ctx, room, (shown, caret.as_deref()), target),
         Value::Picker {
             shown,
             role,
@@ -233,15 +233,19 @@ fn held_words(
 }
 
 /// A field on its own ground, raised while it has the keys.
-fn input(ctx: &mut Ctx, room: Rect, (shown, focused): (&str, bool), target: &Target) {
+fn input(ctx: &mut Ctx, room: Rect, (shown, caret): (&str, Option<&str>), target: &Target) {
     let sm = ctx.tokens.sm;
     let field = room.pad(Edges::across(0.0, sm));
-    let (ground, role) = match focused {
-        true => (Ground::Raised, Role::Text),
-        false => (Ground::Band, Role::Muted),
+    let (ground, role) = match caret {
+        Some(_) => (Ground::Raised, Role::Text),
+        None => (Ground::Band, Role::Muted),
     };
     groove_ui_kit::shape::ground(ctx, field, ground);
     ctx.hit(field, target.clone());
     let text = field.pad(Edges::across(sm, sm));
-    Label::new(shown, ctx.styles.code(role)).draw(ctx, text);
+    let style = ctx.styles.code(role);
+    Label::new(shown, style).draw(ctx, text);
+    if let Some(before) = caret {
+        caret_after(ctx, text, 0.0, before, style);
+    }
 }

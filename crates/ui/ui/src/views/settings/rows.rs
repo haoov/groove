@@ -94,7 +94,8 @@ pub enum Value {
     /// A field being typed into, which a click gives the keys.
     Input {
         shown: String,
-        focused: bool,
+        /// What is shown before the caret, while the field has the keys.
+        caret: Option<String>,
         target: Target,
     },
     /// A skill: on, off, or `None` for always on; what it does; its delete, and that delete's question.
