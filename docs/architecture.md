@@ -84,8 +84,8 @@ Enforced by the compiler.
 
 **Every concept has one home.** Whatever needs it calls that home and never derives it
 again.
-*Example:* a worktree's base branch is `base_ref` in `git`; the diff, the teardown and
-the MR's target all ask it.
+*Example:* a worktree's base branch is `base_ref` in `git`; the diff and the teardown
+ask it, and the MR's target asks `base_branch`, the same ref named on origin.
 Not enforced by a test.
 
 **A module keeps its own error enum only when a caller matches a variant**, or its

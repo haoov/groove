@@ -67,6 +67,42 @@ async fn an_mr_opened_is_written_down_as_the_forge_answers() {
     assert_eq!(stored.map(|mr| mr.remote_id), Some("7".to_string()));
 }
 
+/// Plain git for setting a scene, with a repo-local identity and no signing.
+fn sh(dir: &std::path::Path, args: &[&str]) {
+    let out = std::process::Command::new("git")
+        .args(["-c", "user.email=t@t", "-c", "user.name=T"])
+        .args(["-c", "commit.gpgsign=false"])
+        .args(args)
+        .current_dir(dir)
+        .env("LC_ALL", "C")
+        .output()
+        .expect("git runs");
+    assert!(out.status.success(), "git {args:?}");
+}
+
+/// A clone of an origin whose only branch is `main`, `origin/HEAD` on it.
+fn cloned(root: &std::path::Path) -> std::path::PathBuf {
+    let (origin, work) = (root.join("origin.git"), root.join("work"));
+    sh(root, &["init", "-q", "--bare", "-b", "main", "origin.git"]);
+    sh(root, &["clone", "-q", &origin.to_string_lossy(), "work"]);
+    sh(&work, &["commit", "-q", "--allow-empty", "-m", "one"]);
+    sh(&work, &["push", "-q", "origin", "HEAD:main"]);
+    sh(&work, &["remote", "set-head", "origin", "main"]);
+    work
+}
+
+#[tokio::test]
+async fn an_mr_targets_the_base_the_diff_is_read_against() {
+    let root = tempfile::tempdir().unwrap();
+    let mut at = worktree();
+    let work = cloned(root.path()).to_string_lossy().into_owned();
+    (at.path, at.base_ref) = (work, Some("gone".into()));
+    let server = host("\"base\":\"main\"", wrote("createPullRequest", pr("OPEN"))).await;
+    let (repo, service) = github(&server).await;
+    let opened = service.open_mr(&repo, &at, &text()).await;
+    assert!(opened.is_ok(), "{opened:?}");
+}
+
 #[tokio::test]
 async fn a_worktree_with_no_mr_cannot_have_one_written_or_closed() {
     let server = host("updatePullRequest", wrote("updatePullRequest", pr("OPEN"))).await;
