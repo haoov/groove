@@ -165,7 +165,7 @@ before the cut, and a badge with no room left is dropped.
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the clusters it holds, each context in its hue with its namespaces under it; then the body as text | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
-| k8s | the list tab, titled by its kind and its count, over the rows of every context and namespace in scope: the server's Table columns `kubectl get` shows, behind a cluster column and a namespace column where those tell rows apart; a status and a ready count in the colour of how the object stands. A time cell, the age or a last schedule, counts up live; the age from the object's creation. A row opens its object in a tab of its own beside the list, `describe · yaml`, and `logs` for a pod. Described, it is one column of sections, each folding under its heading: conditions, a summary of facts a line each, a pod's containers, labels, annotations, relations and events. Its relations are the list's table under headings that fold (what owns it with its ready count, what it uses and how — mounted at a path, read as env by a container, pulling images —, what uses it); its containers the list's table (state, ready, restarts, the last end, CPU and memory each a bar of the usage against the limit with the request a tick, both told under the pointer) whose rows unfold into the image, probes, ports and mounts a line each, the ones not ready unfolded. Annotations, relations and events start folded. A name, an address, an image, a label or an event's message copies on a click: the copy mark shows on hover and turns to a green tick once copied. A link copies the same way; `ctrl`+click opens its object. As YAML it is the file editor's own view of the object, read-only. Its logs are the file editor's view too, read-only, at the small text size: a tab per container and one for all of them, the current run or the previous one, the last 5 minutes to 24 hours or from the start, each line after its clock; a line naming an error is red, a warning yellow. The view follows the last line until the wheel moves it up; the footer then counts the lines below and follows them again on a click. A stream holds 10 MB, its oldest lines going first, and picks up after a break from its last second. Argo CD's Applications list their project, sync, health, auto-sync and revision. An Application's describe holds its last sync, red when it failed and blue while it runs, its heading included; its conditions; where it syncs to and how; and its sources, a line each with the revision it synced to. The summary names the context the destination stands on: the Application's own for the in-cluster address, else the one added whose server matches, read once from the kubeconfig without a sign-in check. A resource's row opens its tab there. A git source's address, ctrl+clicked, opens the files on its repo, selected in the session or added from the pool, cut from the branch the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as a commit of the list does, fetched first when the clone lacks it. Its `resources` view filters by what needs attention (out of sync, to prune, or failed in the last sync), out of sync, syncing or all, each in its colour with its count; it opens on what needs attention, or on the sync while one runs. Both it and syncing are the list's table, its headers sorting each group's rows and its edges dragging widths kept for both. Resources stand by kind, each kind a heading on the band's ground, the kinds needing attention first; under all, a kind with nothing to see stands folded. Syncing shows the sync's line over a bar that fills resource by resource, then the PreSync hooks, each wave in order with its Sync hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a stage done stands folded. The tab reads the object, its events and its owners by name, and a pod's usage every 15 s, while it shows. A header sorts by its column, numbers and ages by value, and a second click turns the order round; its edge drags the column's width, kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words — `pyth-ca-st` keeps `pythie-cayzn-staging` — and `label=value` words the server filters on. `ctrl+shift+n` opens the namespace panel | a search that narrows the kinds — `ctrl+shift+p`; a word in a kind, a heading or an API group, `rbac/role` a heading and a kind — then the kinds the contexts serve, indented under headings that fold: workloads, network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by its name, then cluster for the built-in kinds not namespaced. In the search, ↑ and ↓ step through the headings and the kinds; Enter folds a heading or lists a kind. No counts, no health marks |
+| k8s | the list tab, titled by its kind and its count, and a tab for each object opened from it; [k8s tab](#k8s-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
@@ -251,6 +251,65 @@ or unstage — where its counts were. Everything else is behind the right button
 **A question takes the place of what asked it.** Discarding one file turns its row into the
 question; discarding every change turns the commit box's first line into it. Two answers at
 the end, no modal, and nothing destructive within a click of something ordinary.
+
+### k8s tab
+
+- **List.** The list tab, titled by its kind and its count, over the rows of every context
+  and namespace in scope: the server's Table columns `kubectl get` shows, behind a cluster
+  column and a namespace column where those tell rows apart; a status and a ready count in
+  the colour of how the object stands. A time cell, the age or a last schedule, counts up
+  live; the age from the object's creation. A header sorts by its column, numbers and ages
+  by value, and a second click turns the order round; its edge drags the column's width,
+  kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
+  `pyth-ca-st` keeps `pythie-cayzn-staging` — and `label=value` words the server filters
+  on. `ctrl+shift+n` opens the namespace panel.
+- **Object.** A row opens its object in a tab of its own beside the list, `describe ·
+  yaml`, and `logs` for a pod. The tab reads the object, its events and its owners by name,
+  and a pod's usage every 15 s, while it shows. As YAML it is the file editor's own view of
+  the object, read-only.
+- **Describe.** Described, it is one column of sections, each folding under its heading:
+  conditions, a summary of facts a line each, a pod's containers, labels, annotations,
+  relations and events. Its relations are the list's table under headings that fold (what
+  owns it with its ready count, what it uses and how — mounted at a path, read as env by a
+  container, pulling images —, what uses it); its containers the list's table (state,
+  ready, restarts, the last end, CPU and memory each a bar of the usage against the limit
+  with the request a tick, both told under the pointer) whose rows unfold into the image,
+  probes, ports and mounts a line each, the ones not ready unfolded. Annotations, relations
+  and events start folded. A name, an address, an image, a label or an event's message
+  copies on a click: the copy mark shows on hover and turns to a green tick once copied. A
+  link copies the same way; `ctrl`+click opens its object.
+- **Logs.** Its logs are the file editor's view too, read-only, at the small text size: a
+  tab per container and one for all of them, the current run or the previous one, the last
+  5 minutes to 24 hours or from the start, each line after its clock; a line naming an
+  error is red, a warning yellow. The view follows the last line until the wheel moves it
+  up; the footer then counts the lines below and follows them again on a click. A stream
+  holds 10 MB, its oldest lines going first, and picks up after a break from its last
+  second.
+- **Argo CD.** Argo CD's Applications list their project, sync, health, auto-sync and
+  revision. An Application's describe holds its last sync, red when it failed and blue
+  while it runs, its heading included; its conditions; where it syncs to and how; and its
+  sources, a line each with the revision it synced to. The summary names the context the
+  destination stands on: the Application's own for the in-cluster address, else the one
+  added whose server matches, read once from the kubeconfig without a sign-in check. A
+  resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
+  files on its repo, selected in the session or added from the pool, cut from the branch
+  the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
+  a commit of the list does, fetched first when the clone lacks it. Its `resources` view
+  filters by what needs attention (out of sync, to prune, or failed in the last sync), out
+  of sync, syncing or all, each in its colour with its count; it opens on what needs
+  attention, or on the sync while one runs. Both it and syncing are the list's table, its
+  headers sorting each group's rows and its edges dragging widths kept for both. Resources
+  stand by kind, each kind a heading on the band's ground, the kinds needing attention
+  first; under all, a kind with nothing to see stands folded. Syncing shows the sync's line
+  over a bar that fills resource by resource, then the PreSync hooks, each wave in order
+  with its Sync hooks on a badge, and the hooks after, each step applied, applying, waiting
+  or failed; a stage done stands folded.
+- **Sidebar.** A search that narrows the kinds — `ctrl+shift+p`; a word in a kind, a
+  heading or an API group, `rbac/role` a heading and a kind — then the kinds the contexts
+  serve, indented under headings that fold: workloads, network, config, storage, RBAC and
+  other for Kubernetes' own, one a CRD group by its name, then cluster for the built-in
+  kinds not namespaced. In the search, ↑ and ↓ step through the headings and the kinds;
+  Enter folds a heading or lists a kind. No counts, no health marks.
 
 ### Review sheet
 
