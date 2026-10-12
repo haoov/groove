@@ -81,7 +81,7 @@ fn dawning(state: &mut AppState) -> bool {
         .seen
         .as_ref()
         .is_some_and(|one| one.tasks_read);
-    let back = state.session.restored && state.agent.listed && (read || !sourced);
+    let back = state.session.restored && state.skill.listed && (read || !sourced);
     let paused = state.config.preferences().routines_paused;
     if state.routine.runs.dawned || !back || paused {
         return false;

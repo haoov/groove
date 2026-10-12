@@ -1,9 +1,7 @@
-//! The agent capability: each session's agent and its asks, the skills, the shared repo.
+//! The agent capability: each session's agent and its asks.
 
 pub(crate) mod launch;
 mod listed;
-pub mod listing;
-pub mod shared;
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +15,6 @@ pub use groove_agent_launch::{forget, fresh, hand_over};
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
-pub use groove_skills as skills;
 pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
 pub use groove_types::Screen;
@@ -25,7 +22,6 @@ pub use groove_types::Screen;
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
 pub use launch::{LaunchPaths, claude_bin, launch, login, palette};
-pub use listed::SkillOffer;
 
 /// One session's agent. `terminal` is `None` when the launch failed.
 #[derive(Debug)]
@@ -42,14 +38,6 @@ pub struct Agent {
 #[derive(Debug, Default)]
 pub struct State {
     pub agents: Vec<(SessionId, Agent)>,
-    /// Every skill both plugins offer, as the last read found them.
-    pub skills: Vec<groove_types::Skill>,
-    /// The copy of the team's shared repo, once it reads as a marketplace.
-    pub shared: Option<shared::Shared>,
-    /// When a skill was last switched on or off.
-    pub switched: Timestamp,
-    /// The skills and routines have been read once.
-    pub listed: bool,
     /// The launches numbered so far.
     launches: u64,
     /// The launch each session waits on.
@@ -61,23 +49,6 @@ pub struct State {
 }
 
 impl State {
-    /// The skills a session of this kind offers, in the order they are listed.
-    pub fn skills_for(&self, kind: &groove_types::SessionKind) -> Vec<&groove_types::Skill> {
-        self.skills
-            .iter()
-            .filter(|one| one.enabled && one.offered_to(kind))
-            .collect()
-    }
-
-    /// Whether a skill changed after this session's agent started.
-    pub fn stale(&self, session: &SessionId) -> bool {
-        let Some(agent) = self.agent(session) else {
-            return false;
-        };
-        let changed = |one: &groove_types::Skill| one.enabled && one.changed_at > agent.started_at;
-        self.switched > agent.started_at || self.skills.iter().any(changed)
-    }
-
     pub fn agent(&self, session: &SessionId) -> Option<&Agent> {
         self.agents
             .iter()

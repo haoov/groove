@@ -30,7 +30,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 /// The reload, the skills menu and the auto-approve switch, from the row's own end.
 fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let id = open.session.id.clone();
-    let stale = app.agent.stale(&id);
+    let started = app.agent.agent(&id).map(|one| one.started_at);
+    let stale = started.is_some_and(|at| app.skill.newer_than(at));
     let auto = open.state.auto_approve;
     let (ground, xs) = (ctx.styles.ground(), ctx.tokens.xs);
     let mut room = line.pad(Edges::across(0.0, xs));
@@ -74,6 +75,6 @@ fn said(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     groove_ui_kit::widgets::icon(ctx, box_, Mark::Busy, Role::Faint);
     let style = ctx.styles.small(Role::Faint);
     let at = ctx.tokens.md + size + ctx.tokens.xs;
-    let count = counted(app.agent.skills_for(&open.session.kind).len());
+    let count = counted(app.skill.skills_for(&open.session.kind).len());
     row(ctx, line, at, &count, style);
 }

@@ -270,7 +270,7 @@ fn the_agent_writes_a_skill_of_the_users_own_and_reads_it_back() {
     assert_eq!(read.text, body);
     assert!(
         state
-            .agent
+            .skill
             .skills
             .iter()
             .any(|one| one.id == "user:ship-it"),

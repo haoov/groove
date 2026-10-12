@@ -19,7 +19,7 @@ pub(super) fn shared(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
 
 /// The repo the team shares, where it is followed, and what its last read said.
 fn named(app: &AppState, settings: &SettingsUi, held: &SharedConfig) -> Vec<Row> {
-    let repo = match (settings.unsharing, app.agent.shared.as_ref()) {
+    let repo = match (settings.unsharing, app.skill.shared.as_ref()) {
         (true, _) => {
             let act = Some(("yes, stop", Target::SettingsUnshareSure));
             state(
@@ -40,14 +40,14 @@ fn named(app: &AppState, settings: &SettingsUi, held: &SharedConfig) -> Vec<Row>
         }
     };
     let mut out = vec![repo, text("url", &held.url), text("branch", &held.branch)];
-    if let Some(why) = &app.config.unshared {
+    if let Some(why) = &app.skill.unshared {
         out.push(state("read", why.clone(), Role::Bad, None));
     }
     out
 }
 
 /// `groove-agent · platform, review`, or the marketplace alone while it lists no plugin.
-fn listed(copy: &groove_controllers::agent_service::shared::Shared) -> String {
+fn listed(copy: &groove_controllers::skill_service::shared::Shared) -> String {
     let market = &copy.marketplace;
     let plugins: Vec<&str> = market.plugins.iter().map(|one| one.name.as_str()).collect();
     match plugins.is_empty() {
@@ -75,8 +75,8 @@ fn unnamed(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
 
 /// What copies the repo, and what the last copy came back with.
 fn sent(app: &AppState) -> Row {
-    let busy = app.config.joining.then_some("copying…");
-    super::drafting::sending(Section::Agent, busy, app.config.unshared.as_ref())
+    let busy = app.skill.joining.then_some("copying…");
+    super::drafting::sending(Section::Agent, busy, app.skill.unshared.as_ref())
 }
 
 fn text(label: &'static str, text: &str) -> Row {

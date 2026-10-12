@@ -57,8 +57,8 @@ fn paths(state: &AppState) -> LaunchPaths {
     LaunchPaths {
         home: state.env.home.clone(),
         launch_dir: launch_dir(state),
-        plugin_dirs: groove_agent_service::skills::plugin_dirs(&skills::dirs(state)),
-        knowledge: groove_agent_service::listing::knowledge(state.agent.shared.as_ref()),
+        plugin_dirs: groove_skill_service::skills::plugin_dirs(&skills::dirs(state)),
+        knowledge: groove_skill_service::listing::knowledge(state.skill.shared.as_ref()),
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
     }

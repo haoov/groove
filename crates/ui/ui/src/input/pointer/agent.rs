@@ -124,7 +124,7 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
     };
     let sources = groove_controllers::task_service::source_ids(app.config.config.as_ref());
     let offered: Vec<Offer> = app
-        .agent
+        .skill
         .offers(&open.session.kind, &sources)
         .into_iter()
         .map(|one| Offer {

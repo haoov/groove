@@ -10,7 +10,7 @@ code holds the how. [trace.md](trace.md) follows one action through all of it.
 flowchart TD
     ui["ui — groove (bin) · ui · ui-kit<br/>present, translate input"]
     controllers["controllers<br/>one function per user action"]
-    services["services — task · session · workspace · delivery · agent · routine · shell · config · cluster<br/>one part of the app each"]
+    services["services — task · session · workspace · delivery · agent · skill · routine · shell · config · cluster<br/>one part of the app each"]
     modules["modules<br/>one concern each"]
     base["base — db · http · exec · gfx · loopback · kube<br/>one way out of the process each"]
     shared["shared — types<br/>the vocabulary and its pure rules"]

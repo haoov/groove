@@ -301,13 +301,13 @@ fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
         enabled: Vec::new(),
     };
     app.config.config.as_mut().expect("a config").shared = Some(shared);
-    let plugin = |name: &str| groove_controllers::agent_service::skills::Plugin {
+    let plugin = |name: &str| groove_controllers::skill_service::skills::Plugin {
         name: name.into(),
         dir: format!("/data/shared/plugins/{name}").into(),
     };
-    app.agent.shared = Some(groove_controllers::agent_service::shared::Shared {
+    app.skill.shared = Some(groove_controllers::skill_service::shared::Shared {
         path: "/data/shared".into(),
-        marketplace: groove_controllers::agent_service::skills::Marketplace {
+        marketplace: groove_controllers::skill_service::skills::Marketplace {
             name: "groove-agent".into(),
             plugins: vec![plugin("platform"), plugin("review")],
         },
@@ -367,14 +367,14 @@ fn skill(id: &str, enabled: bool) -> groove_types::Skill {
 fn skilled() -> (AppState, Ui) {
     let (app, mut ui) = opened();
     let mut app = crate::tests::bar::sourced(app, false, false);
-    app.agent.skills = vec![
+    app.skill.skills = vec![
         skill("groove:save-task", true),
         skill("platform:follow-ups", false),
         skill("user:ship-it", true),
     ];
-    app.agent.shared = Some(groove_controllers::agent_service::shared::Shared {
+    app.skill.shared = Some(groove_controllers::skill_service::shared::Shared {
         path: "/data/shared".into(),
-        marketplace: groove_controllers::agent_service::skills::Marketplace {
+        marketplace: groove_controllers::skill_service::skills::Marketplace {
             name: "groove-agent".into(),
             plugins: Vec::new(),
         },

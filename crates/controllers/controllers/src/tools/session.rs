@@ -43,7 +43,7 @@ pub(super) fn skills(state: &AppState, call: Call) {
     let Some(open) = state.session.get(&super::session(&call)) else {
         return call.reply.failed(super::NO_SESSION);
     };
-    let offered = state.agent.skills_for(&open.session.kind);
+    let offered = state.skill.skills_for(&open.session.kind);
     let each = offered.iter().map(|one| answers::skill(one)).collect();
     call.reply.json(&answers::counted("skills", each));
 }
@@ -54,7 +54,7 @@ pub(super) fn skill(state: &AppState, call: Call) {
         return call.reply.failed("read_user_skill needs a name");
     };
     let dirs = crate::agent::skills::dirs(state);
-    match groove_agent_service::skills::read(&dirs, &format!("user:{name}")) {
+    match groove_skill_service::skills::read(&dirs, &format!("user:{name}")) {
         Ok(body) => call.reply.said(body),
         Err(e) => call.reply.failed(e.message),
     }

@@ -79,7 +79,7 @@ fn a_repo_that_reads_as_a_marketplace_is_named_and_written() {
         Some(&wanted),
         "main when no branch is named"
     );
-    let copy = state.agent.shared.as_ref().expect("the copy");
+    let copy = state.skill.shared.as_ref().expect("the copy");
     assert_eq!(copy.marketplace.name, "groove-agent");
     assert_eq!(copy.marketplace.plugins[0].name, "wiremind");
     let written = groove_config_service::load(&home.path().join("config")).unwrap();
@@ -96,9 +96,9 @@ fn a_repo_that_is_no_marketplace_is_refused_and_not_written() {
     let url = origin(home.path(), "groove");
     send(join(&url), &mut state, &services, &spawner);
     assert_eq!(state.config.shared(), None);
-    assert!(state.agent.shared.is_none());
+    assert!(state.skill.shared.is_none());
     let why = state
-        .config
+        .skill
         .unshared
         .clone()
         .expect("the refusal is kept for Settings");
@@ -110,10 +110,10 @@ fn letting_the_repo_go_forgets_it_and_its_copy() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
     send(join(&url), &mut state, &services, &spawner);
-    let copy = state.agent.shared.clone().expect("the copy").path;
+    let copy = state.skill.shared.clone().expect("the copy").path;
     send(Command::LeaveShared, &mut state, &services, &spawner);
     assert_eq!(state.config.shared(), None);
-    assert!(state.agent.shared.is_none());
+    assert!(state.skill.shared.is_none());
     assert!(!copy.exists(), "the copy is gone");
 }
 
@@ -133,7 +133,7 @@ fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
     send(join(&url), &mut state, &services, &spawner);
     let skill = |state: &AppState| {
         let found = state
-            .agent
+            .skill
             .skills
             .iter()
             .find(|one| one.id == "platform:rollout");
@@ -155,7 +155,7 @@ fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
         spawner.drain(&mut state, &services);
     }
     assert_eq!(skill(&state), Some(true));
-    let dirs = groove_agent_service::skills::plugin_dirs(&crate::agent::skills::dirs(&state));
+    let dirs = groove_skill_service::skills::plugin_dirs(&crate::agent::skills::dirs(&state));
     assert!(
         dirs.iter()
             .any(|one| one.ends_with("plugins/shared/platform")),
@@ -180,8 +180,8 @@ fn switch(id: &str, on: bool, state: &mut AppState, services: &Services, spawner
 fn a_skill_of_the_users_switched_off_is_written_listed_off_and_marks_agents_stale() {
     let (home, spawner, services, mut state) = fresh();
     let dirs = crate::agent::skills::dirs(&state);
-    groove_agent_service::skills::sync(&dirs).unwrap();
-    groove_agent_service::skills::save(&dirs, "ship-it", "---\n---\nGo.\n", None).unwrap();
+    groove_skill_service::skills::sync(&dirs).unwrap();
+    groove_skill_service::skills::save(&dirs, "ship-it", "---\n---\nGo.\n", None).unwrap();
     let before = groove_types::Timestamp::now();
     switch("user:ship-it", false, &mut state, &services, &spawner);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
@@ -192,13 +192,13 @@ fn a_skill_of_the_users_switched_off_is_written_listed_off_and_marks_agents_stal
         Some(vec!["user:ship-it".into()])
     );
     let held = state
-        .agent
+        .skill
         .skills
         .iter()
         .find(|one| one.id == "user:ship-it");
     assert_eq!(held.map(|one| one.enabled), Some(false));
     assert!(
-        state.agent.switched >= before,
+        state.skill.switched >= before,
         "a running agent reads as stale"
     );
 

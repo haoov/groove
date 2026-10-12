@@ -1,6 +1,6 @@
 //! The team's shared repo: named once it reads as a marketplace, followed after, or let go.
 
-use groove_agent_service::shared::{self, Shared};
+use groove_skill_service::shared::{self, Shared};
 use groove_types::{Error, Result, SharedConfig};
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -11,11 +11,11 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
         Ok(wanted) => wanted,
         Err(e) => return refused(state, e),
     };
-    if state.config.joining {
+    if state.skill.joining {
         return;
     }
-    state.config.joining = true;
-    state.config.unshared = None;
+    state.skill.joining = true;
+    state.skill.unshared = None;
     let data = state.env.data_dir.clone();
     let job = state.begin(format!("copying {}", wanted.url));
     spawner.spawn(Box::pin(async move {
@@ -23,7 +23,7 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                state.config.joining = false;
+                state.skill.joining = false;
                 match copied {
                     Ok(copy) => joined(state, services, spawner, (wanted, copy)),
                     Err(e) => refused(state, e),
@@ -45,7 +45,7 @@ fn joined(
             Error::invalid("there is no config to change before the first run"),
         );
     };
-    state.agent.shared = Some(copy);
+    state.skill.shared = Some(copy);
     if !super::written(state, services, spawner, Some(config)) {
         return;
     }
@@ -57,8 +57,8 @@ pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spa
     let Some(config) = state.config.set_shared(None).cloned() else {
         return;
     };
-    state.agent.shared = None;
-    state.config.unshared = None;
+    state.skill.shared = None;
+    state.skill.unshared = None;
     if !super::written(state, services, spawner, Some(config)) {
         return;
     }
@@ -78,23 +78,12 @@ pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spa
 
 /// What a follow found: the copy kept, or the last one kept and its failure said once.
 pub(crate) fn followed(state: &mut AppState, read: Option<Result<Shared>>) {
-    match read {
-        None => state.agent.shared = None,
-        Some(Ok(copy)) => {
-            state.agent.shared = Some(copy);
-            state.config.unshared = None;
-        }
-        Some(Err(e)) => {
-            let again = state.config.unshared.as_deref() == Some(e.message.as_str());
-            state.config.unshared = Some(e.message.clone());
-            if !again {
-                state.failed(e);
-            }
-        }
+    if let Some(e) = state.skill.followed(read) {
+        state.failed(e);
     }
 }
 
 fn refused(state: &mut AppState, e: Error) {
-    state.config.unshared = Some(e.message.clone());
+    state.skill.unshared = Some(e.message.clone());
     state.failed(e);
 }

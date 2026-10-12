@@ -1319,11 +1319,8 @@ version = "1.0.0-alpha.3"
 dependencies = [
  "groove-agent-launch",
  "groove-approvals",
- "groove-git",
  "groove-hooks",
  "groove-mcp",
- "groove-routines",
- "groove-skills",
  "groove-terminal",
  "groove-tools",
  "groove-types",
@@ -1416,6 +1413,7 @@ dependencies = [
  "groove-routine-service",
  "groove-session-service",
  "groove-shell-service",
+ "groove-skill-service",
  "groove-task-service",
  "groove-types",
  "groove-workspace-service",
@@ -1701,6 +1699,19 @@ version = "1.0.0-alpha.3"
 dependencies = [
  "groove-terminal",
  "groove-types",
+]
+
+[[package]]
+name = "groove-skill-service"
+version = "1.0.0-alpha.3"
+dependencies = [
+ "groove-git",
+ "groove-routines",
+ "groove-skills",
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

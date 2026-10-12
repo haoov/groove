@@ -1,7 +1,7 @@
 //! The skills an agent is sent: listed, written, deleted, and typed into its prompt.
 
-use groove_agent_service::listing;
-use groove_agent_service::skills::{self, Dirs};
+use groove_skill_service::listing;
+use groove_skill_service::skills::{self, Dirs};
 use groove_types::{SessionId, Skill};
 
 use crate::asker::Asker;
@@ -12,7 +12,7 @@ pub(crate) fn dirs(state: &AppState) -> Dirs {
     let at = (state.env.data_dir.as_path(), state.env.config_dir.as_path());
     let off = state.config.skills_off().to_vec();
     let plugins = state
-        .agent
+        .skill
         .shared
         .as_ref()
         .map(|one| one.marketplace.plugins.clone());
@@ -24,7 +24,7 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
     let dirs = dirs(state);
     let at = (state.env.data_dir.clone(), state.env.config_dir.clone());
     let shared = state.config.shared().cloned();
-    let held = state.agent.shared.as_ref().map(|one| one.path.clone());
+    let held = state.skill.shared.as_ref().map(|one| one.path.clone());
     spawner.spawn(Box::pin(async move {
         let found = listing::listing(dirs, at, shared, held).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
@@ -32,9 +32,9 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
             if let Err(e) = found.made {
                 state.failed(e);
             }
-            state.agent.skills = found.skills;
+            state.skill.skills = found.skills;
             state.routine.routines = found.routines;
-            state.agent.listed = true;
+            state.skill.listed = true;
         }) as Continuation
     }));
 }
@@ -89,7 +89,7 @@ pub fn save(
         let read = skills::list(&dirs);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            state.agent.skills = read;
+            state.skill.skills = read;
             let said = made.as_ref().ok().map(said);
             asker.answer(state, made.map(drop), || said.unwrap_or_default());
         }) as Continuation
@@ -103,7 +103,7 @@ fn said(one: &Skill) -> String {
 /// One skill of the user's own deleted, and the list read again.
 pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
     let own = state
-        .agent
+        .skill
         .skills
         .iter()
         .find(|one| one.id == id && one.editable);
@@ -118,7 +118,7 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
         let read = skills::list(&dirs);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            state.agent.skills = read;
+            state.skill.skills = read;
             if let Err(e) = done {
                 state.failed(e);
             }
@@ -140,7 +140,7 @@ pub fn switch(
     if !crate::config::written(state, services, spawner, Some(config)) {
         return;
     }
-    state.agent.switched = groove_types::Timestamp::now();
+    state.skill.switched = groove_types::Timestamp::now();
     let dirs = dirs(state);
     spawner.spawn(Box::pin(async move {
         let made = skills::sync(&dirs);
@@ -149,7 +149,7 @@ pub fn switch(
             if let Err(e) = made {
                 state.failed(e);
             }
-            state.agent.skills = read;
+            state.skill.skills = read;
         }) as Continuation
     }));
 }

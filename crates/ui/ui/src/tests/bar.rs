@@ -59,7 +59,7 @@ pub(super) fn session_ui() -> Ui {
 /// The fixture's session, with the skills it can be sent.
 fn offering(skills: Vec<groove_types::Skill>) -> groove_controllers::AppState {
     let mut app = asking(Vec::new());
-    app.agent.skills = skills;
+    app.skill.skills = skills;
     app
 }
 
@@ -158,7 +158,7 @@ fn a_skill_newer_than_the_agent_lights_the_reload() {
     let styles = groove_ui_kit::base::style::Styles::new(theme, crate::Tokens::new(1.0));
     let attention = styles.color(groove_ui_kit::base::style::Role::Attention);
     assert_ne!(reload(&app), attention, "no skill is newer");
-    app.agent.skills[0].changed_at = Timestamp::new(50);
+    app.skill.skills[0].changed_at = Timestamp::new(50);
     assert_eq!(reload(&app), attention);
 }
 

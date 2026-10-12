@@ -53,6 +53,7 @@ pub struct AppState {
     pub delivery: groove_delivery_service::State,
     pub agent: groove_agent_service::State,
     pub routine: groove_routine_service::State,
+    pub skill: groove_skill_service::State,
     pub shell: groove_shell_service::State,
     pub config: groove_config_service::State,
     pub cluster: groove_cluster_service::State,
