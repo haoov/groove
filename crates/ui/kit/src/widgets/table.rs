@@ -10,13 +10,14 @@ pub use cell::Cell;
 pub use laid::Laid;
 pub use shown::{Band, Line, Shown, Slot};
 
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::{hairline, hoverable};
 use laid::visible;
+use shown::{banded, under};
 
 /// How wide a column is.
 #[derive(Debug, Clone, Copy)]
@@ -25,6 +26,8 @@ pub enum Width<'a> {
     Fill,
     /// As wide as this sample in the small size or the label, whichever is wider.
     Fit(&'a str),
+    /// As wide as this sample in the body size or the label, whichever is wider.
+    FitBody(&'a str),
     /// As wide as this cell draws, no slack, or the label, whichever is wider.
     FitCell(&'a Cell<'a>),
     /// This many pixels, as the user dragged it.
@@ -144,7 +147,8 @@ impl<T: Clone + PartialEq> Table<'_, T> {
     /// Each column's left edge and width across `rect`.
     pub fn spans<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Vec<(f32, f32)> {
         let md = ctx.tokens.md;
-        let (label, body) = (ctx.styles.small(Role::Faint), ctx.styles.small(Role::Text));
+        let label = ctx.styles.small(Role::Faint);
+        let (small, body) = (ctx.styles.small(Role::Text), ctx.styles.body(Role::Text));
         let fitted: Vec<Option<f32>> = self
             .columns
             .iter()
@@ -152,7 +156,8 @@ impl<T: Clone + PartialEq> Table<'_, T> {
                 let (wide, slack) = match column.width {
                     Width::Fill => return None,
                     Width::Fixed(wide) => return Some(wide),
-                    Width::Fit(sample) => (ctx.measure(sample, &body), ctx.tokens.icon),
+                    Width::Fit(sample) => (ctx.measure(sample, &small), ctx.tokens.icon),
+                    Width::FitBody(sample) => (ctx.measure(sample, &body), ctx.tokens.icon),
                     Width::FitCell(sample) => {
                         (sample.wide(ctx).max(cell::sort_room(ctx, column)), 0.0)
                     }
@@ -259,38 +264,6 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         under(ctx, rest.take_top(self.rows.under), start, row.under);
         if self.rows.ruled && !selected {
             hairline(ctx, line, ctx.styles.line());
-        }
-    }
-}
-
-fn banded<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, band: Band<'_, A::Target>, selected: bool) {
-    crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
-    if selected {
-        crate::shape::chosen(ctx, line);
-    }
-    if let Some(target) = band.target {
-        hoverable(ctx, line, target);
-    }
-    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
-    if let Some(open) = band.open {
-        crate::widgets::fold(ctx, &mut room, open, Role::Ghost);
-    }
-    under(ctx, line, room.x, band.cells);
-    hairline(ctx, line, ctx.styles.line());
-}
-
-/// The second line's cells one after the other from `x`, a small gap between them.
-fn under<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, x: f32, cells: Vec<Cell<'_>>) {
-    if line.h <= 0.0 {
-        return;
-    }
-    let right = line.right() - ctx.tokens.md;
-    let mut at = x;
-    for cell in cells {
-        let room = Rect::new(at, line.y, (right - at).max(0.0), line.h);
-        let (from, to) = cell.draw(ctx, room, false);
-        if to > from {
-            at = to + ctx.tokens.sm;
         }
     }
 }

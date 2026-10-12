@@ -1,6 +1,11 @@
 //! One row on screen: a group's band across the columns, or a row of slots under them.
 
+use groove_gfx::{Edges, Rect};
+
 use super::{Act, Cell};
+use crate::base::ctx::{App, Ctx};
+use crate::base::style::Role;
+use crate::shape::{hairline, hoverable};
 
 pub enum Shown<'a, T> {
     Band(Band<'a, T>),
@@ -83,5 +88,42 @@ impl<'a, T> Shown<'a, T> {
             Shown::Band(_) => debug_assert!(cells.is_empty(), "a band has no second line"),
         }
         self
+    }
+}
+
+pub(super) fn banded<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    line: Rect,
+    band: Band<'_, A::Target>,
+    selected: bool,
+) {
+    crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+    if selected {
+        crate::shape::chosen(ctx, line);
+    }
+    if let Some(target) = band.target {
+        hoverable(ctx, line, target);
+    }
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    if let Some(open) = band.open {
+        crate::widgets::fold(ctx, &mut room, open, Role::Ghost);
+    }
+    under(ctx, line, room.x, band.cells);
+    hairline(ctx, line, ctx.styles.line());
+}
+
+/// The second line's cells one after the other from `x`, a small gap between them.
+pub(super) fn under<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, x: f32, cells: Vec<Cell<'_>>) {
+    if line.h <= 0.0 {
+        return;
+    }
+    let right = line.right() - ctx.tokens.md;
+    let mut at = x;
+    for cell in cells {
+        let room = Rect::new(at, line.y, (right - at).max(0.0), line.h);
+        let (from, to) = cell.draw(ctx, room, false);
+        if to > from {
+            at = to + ctx.tokens.sm;
+        }
     }
 }

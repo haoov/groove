@@ -29,7 +29,7 @@ pub(super) fn draw<'a>(
             width: match (dragged.get(*label), at == last) {
                 (Some(wide), _) => Width::Fixed(*wide),
                 (None, true) => Width::Fill,
-                (None, false) => Width::Fit(sample),
+                (None, false) => Width::FitBody(sample),
             },
             end: false,
             sort: Some(Target::ResourceSort(label.to_string())),

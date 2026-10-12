@@ -196,10 +196,10 @@ fn resource<'a>(part: &'a AppPart, one: &'a AppResource) -> Shown<'a, Target> {
     let (message, role) = status(part, one);
     Shown::row(vec![
         Cell::small(sync, synced_role),
-        Cell::small(one.name.as_str(), Role::Text),
+        Cell::body(one.name.as_str(), Role::Text),
         Cell::small(one.namespace.as_deref().unwrap_or_default(), Role::Faint),
         Cell::small(one.wave.to_string(), Role::Ghost),
-        Cell::small(message, role),
+        Cell::body(message, role),
     ])
 }
 

@@ -126,8 +126,9 @@ fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
         "WMWMWMWMWM",
         "iiiiiiiiijjj",
     ];
-    let kinds: [fn(&str) -> Cell<'_>; 4] = [
+    let kinds: [fn(&str) -> Cell<'_>; 5] = [
         |text| Cell::small(text, Role::Text),
+        |text| Cell::body(text, Role::Text),
         |text| Cell::label(text, Role::Text),
         |text| Cell::small(text, Role::Text).bar(Some(0.5), None, Role::Ok),
         |text| Cell::label(text, Role::Text).mark(Mark::Down, 0, Role::Text),
@@ -253,4 +254,36 @@ fn laid_stands_where_draw_puts_the_rows() {
     let from = laid.from(0, 1);
     assert_eq!(from.x, laid.cell(0, 1).x, "from the column's left edge");
     assert_eq!(from.right(), ROOM.right(), "to the end");
+}
+
+#[test]
+fn a_body_cell_in_a_column_fitted_to_its_sample_is_never_cut() {
+    let samples = [
+        "paxone-worker-5d6b9c7f4",
+        "waiting · CrashLoopBackOff",
+        "WMWMWMWMWM",
+    ];
+    for scale in [1.0, 1.25, 1.5, 2.0] {
+        for sample in samples {
+            let columns = [column(Width::FitBody(sample)), column(Width::Fill)];
+            let table = Table {
+                columns: &columns,
+                rows: Rows {
+                    first: 26.0 * scale,
+                    under: 0.0,
+                    ruled: false,
+                },
+                count: 1,
+                offset: 0.0,
+                selected: None,
+                sorted: None,
+            };
+            let room = Rect::new(0.0, 0.0, 1000.0 * scale, 26.0 * scale);
+            let row = Shown::row(vec![Cell::body(sample, Role::Text)]);
+            let (_, frame) = drawn_at(scale, |ctx| table.one(ctx, room, row));
+            let texts = &frame.layers()[0].texts;
+            let cut = texts.iter().find(|one| one.text.contains('…'));
+            assert!(cut.is_none(), "{sample:?} at {scale}: {cut:?}");
+        }
+    }
 }

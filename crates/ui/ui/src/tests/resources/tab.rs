@@ -16,14 +16,14 @@ fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
     let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (frame, _) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
-    let small = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
-        .small(groove_ui_kit::base::style::Role::Text)
+    let body = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
+        .body(groove_ui_kit::base::style::Role::Text)
         .size;
     for shown in ["gra9-node-2", "Ready"] {
         let one = texts.clone().find(|one| one.text == shown);
         assert!(
-            one.is_none_or(|one| one.style.size == small),
-            "{shown} at the small size"
+            one.is_none_or(|one| one.style.size == body),
+            "{shown} at the body size"
         );
     }
     texts.map(|one| one.text.clone()).collect()

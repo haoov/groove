@@ -151,8 +151,8 @@ fn step<'a>(one: &Step<'a>, turn: u8) -> Shown<'a, Target> {
     Shown::row(vec![
         marked(mark, role, turn),
         kind(one),
-        Cell::small(one.name, Role::Text),
-        Cell::small(said, tone),
+        Cell::body(one.name, Role::Text),
+        Cell::body(said, tone),
     ])
 }
 

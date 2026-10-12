@@ -68,7 +68,7 @@ pub(super) fn conditions(ctx: &mut Ctx, rect: Rect, pod: &PodPart) {
             false => ("✗", Role::Bad, Role::Text),
         };
         Label::new(mark, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.xs);
-        Label::new(&one.kind, ctx.styles.small(name)).left(ctx, &mut room, ctx.tokens.xs);
+        Label::new(&one.kind, ctx.styles.body(name)).left(ctx, &mut room, ctx.tokens.xs);
         let since = one
             .since
             .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()));
@@ -222,7 +222,7 @@ pub(super) fn grid(ctx: &mut Ctx, rect: Rect, facts: &[Fact], last: Option<&str>
                     .draw(ctx, value);
             }
             None => {
-                Label::new(&fact.value, ctx.styles.small(fact.role)).draw(ctx, value);
+                Label::new(&fact.value, ctx.styles.body(fact.role)).draw(ctx, value);
             }
         }
     }
@@ -237,7 +237,7 @@ pub(super) fn pair(
 ) {
     let [k, v] = row_in(rect, [Spec::default().width(keys), Spec::fill()]);
     let copied = |text, role| copy::Copied::new(text, role, last);
-    copied(key, Role::Ghost).draw(ctx, k);
+    copied(key, Role::Ghost).small().draw(ctx, k);
     copied(value, Role::Text).draw(ctx, v);
 }
 
@@ -252,7 +252,7 @@ pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow, last: Option<&str
         Label::new("⚠", ctx.styles.small(Role::Warn)).draw(ctx, warned);
     }
     let role = if row.warning { Role::Text } else { Role::Muted };
-    Label::new(&row.reason, ctx.styles.small(role)).draw(ctx, reason);
+    Label::new(&row.reason, ctx.styles.body(role)).draw(ctx, reason);
     Label::new(&format!("×{}", row.count), ctx.styles.small(Role::Ghost)).draw(ctx, count);
     let when = row
         .last

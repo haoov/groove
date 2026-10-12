@@ -89,7 +89,7 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
         .map(|one| Role::Hue(one.hue));
     let faint = ctx.styles.small(Role::Ghost);
     let last = tab.copied.as_deref();
-    let copied = |text, role| copy::Copied::new(text, role, last);
+    let copied = |text, role| copy::Copied::new(text, role, last).small();
     copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut crumbs, gap);
     if let Some(namespace) = &link.namespace {
         Label::new("›", faint).left(ctx, &mut crumbs, gap);

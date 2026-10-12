@@ -44,7 +44,7 @@ pub(super) fn details(one: &Container) -> Vec<(&'static str, String)> {
 
 /// The widest usage cell, which the CPU and memory columns fit.
 fn meter() -> Cell<'static> {
-    Cell::small("9999Mi / 999Gi", Role::Text).bar(None, None, Role::Text)
+    Cell::body("9999Mi / 999Gi", Role::Text).bar(None, None, Role::Text)
 }
 
 /// The fold caret's column, as wide as the caret.
@@ -53,12 +53,12 @@ fn caret() -> Cell<'static> {
 }
 
 fn columns<'a>((caret, meter): (&'a Cell<'a>, &'a Cell<'a>)) -> Vec<Column<'a, Target>> {
-    let fit = Width::Fit;
+    let fit = Width::FitBody;
     vec![
         grouped::plain("", Width::FitCell(caret)),
         grouped::plain("NAME", fit("init · statsd-exporter")),
         grouped::plain("STATE", fit("waiting · CrashLoopBackOff")),
-        grouped::plain("READY", fit("✓")),
+        grouped::plain("READY", Width::Fit("✓")),
         grouped::plain("RESTARTS", fit("14")),
         grouped::plain("LAST ENDED", fit("Error · exit 137 · 59m")),
         grouped::plain("CPU", Width::FitCell(meter)),
@@ -84,8 +84,8 @@ pub(super) fn row(
     };
     let cells = vec![
         Cell::fold(!folded(tab, one), Role::Ghost),
-        Cell::small(name, if one.init { Role::Faint } else { Role::Text }),
-        Cell::small(said, role),
+        Cell::body(name, if one.init { Role::Faint } else { Role::Text }),
+        Cell::body(said, role),
         ready(one),
         restarts(one),
         ended(ctx, one),
@@ -179,7 +179,7 @@ fn metered(
         (None, None) => "–".into(),
     };
     let part = |one: Option<f64>| one.map(|part| part as f32);
-    let cell = Cell::small(text, role).bar(part(gauge.used), part(gauge.request), role);
+    let cell = Cell::body(text, role).bar(part(gauge.used), part(gauge.request), role);
     (cell, lines)
 }
 
@@ -209,7 +209,7 @@ fn restarts(one: &Container) -> Cell<'static> {
     } else {
         Role::Muted
     };
-    Cell::small(one.restarts.to_string(), role)
+    Cell::body(one.restarts.to_string(), role)
 }
 
 /// `Error · exit 1 · 2m`.
@@ -231,5 +231,5 @@ fn ended(ctx: &Ctx, one: &Container) -> Cell<'static> {
     } else {
         Role::Bad
     };
-    Cell::small(format!("{} · exit {}{when}", last.reason, last.exit), role)
+    Cell::body(format!("{} · exit {}{when}", last.reason, last.exit), role)
 }

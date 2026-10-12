@@ -300,3 +300,21 @@ fn the_strip_names_the_cluster_tab_kubernetes_in_capitals() {
     assert!(texts.iter().any(|one| one == "KUBERNETES"), "{texts:?}");
     assert!(!texts.iter().any(|one| one == "k8s"), "{texts:?}");
 }
+
+#[test]
+fn the_list_rows_read_at_the_body_size_under_small_headers() {
+    let (app, ui) = listing();
+    use groove_ui_kit::base::style::Role;
+    let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), window().tokens());
+    let (body, small) = (styles.body(Role::Text).size, styles.small(Role::Text).size);
+    let size = |text: &str| {
+        let runs = frame.layers().iter().flat_map(|layer| layer.texts.iter());
+        runs.clone()
+            .find(|one| one.text == text)
+            .map(|one| one.style.size)
+    };
+    for (text, wanted) in [("api-0", body), ("CrashLoopBackOff", body), ("NAME", small)] {
+        assert_eq!(size(text), Some(wanted), "{text}");
+    }
+}

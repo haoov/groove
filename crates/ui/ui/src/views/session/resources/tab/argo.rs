@@ -65,7 +65,7 @@ pub(super) fn operation(ctx: &mut Ctx, rect: Rect, operation: &Operation, now: T
     if operation.running() {
         room = turning(ctx, room, role);
     }
-    Label::new(said, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.sm);
+    Label::new(said, ctx.styles.body(role)).left(ctx, &mut room, ctx.tokens.sm);
     let mut about = Vec::new();
     if let Some(revision) = &operation.revision {
         about.push(format!("to {}", groove_types::short_sha(revision)));
@@ -102,7 +102,7 @@ pub(super) fn turning(ctx: &mut Ctx, room: Rect, role: Role) -> Rect {
 }
 
 pub(super) fn said(ctx: &mut Ctx, rect: Rect, message: &str) {
-    Label::new(message, ctx.styles.small(Role::Text)).draw(ctx, rect);
+    Label::new(message, ctx.styles.body(Role::Text)).draw(ctx, rect);
 }
 
 /// A resource the sync could not apply: its kind and name, then why.
@@ -117,8 +117,8 @@ pub(super) fn broke(ctx: &mut Ctx, rect: Rect, one: &SyncedResource) {
         false => one.kind.to_lowercase(),
     };
     Label::new(&tag, ctx.styles.small(Role::Ghost)).draw(ctx, of);
-    Label::new(&one.name, ctx.styles.small(Role::Text)).draw(ctx, named);
-    Label::new(&one.message, ctx.styles.small(Role::Bad)).draw(ctx, why);
+    Label::new(&one.name, ctx.styles.body(Role::Text)).draw(ctx, named);
+    Label::new(&one.message, ctx.styles.body(Role::Bad)).draw(ctx, why);
 }
 
 /// A condition: a warning in yellow, an error in red, then what it says and since when.
@@ -128,12 +128,12 @@ pub(super) fn condition(ctx: &mut Ctx, rect: Rect, one: &AppCondition, now: Time
         false => Role::Bad,
     };
     let mut room = rect;
-    Label::new(&one.kind, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.md);
+    Label::new(&one.kind, ctx.styles.body(role)).left(ctx, &mut room, ctx.tokens.md);
     if let Some(at) = one.at {
         let since = format!("{} ago", groove_types::human_age(at.age_at(now).as_secs()));
         Label::new(&since, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, ctx.tokens.md);
     }
-    Label::new(&one.message, ctx.styles.small(Role::Text)).draw(ctx, room);
+    Label::new(&one.message, ctx.styles.body(Role::Text)).draw(ctx, room);
 }
 
 /// Where it syncs to and on which context, once the kubeconfig is `read`, and how.
@@ -194,8 +194,8 @@ pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&s
     Label::new(said, ctx.styles.small(Role::Ghost)).draw(ctx, kind);
     let mut room = head;
     let gap = ctx.tokens.md;
-    Label::new(&named(one), ctx.styles.small(Role::Text)).left(ctx, &mut room, gap);
-    Label::new(&one.target, ctx.styles.small(Role::Muted)).left(ctx, &mut room, gap);
+    Label::new(&named(one), ctx.styles.body(Role::Text)).left(ctx, &mut room, gap);
+    Label::new(&one.target, ctx.styles.body(Role::Muted)).left(ctx, &mut room, gap);
     if let Some(revision) = &one.synced {
         Label::new("synced", ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.sm);
         synced(ctx, &mut room, (one, revision), last);

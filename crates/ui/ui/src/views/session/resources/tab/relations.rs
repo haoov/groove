@@ -116,7 +116,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
     let columns = [
         grouped::plain("", Width::FitCell(&caret)),
         grouped::plain("KIND", Width::Fit("secret")),
-        grouped::plain("NAME", Width::Fit("paxone-worker-5d6b9c7f4")),
+        grouped::plain("NAME", Width::FitBody("paxone-worker-5d6b9c7f4")),
         grouped::plain("STATUS", Width::Fill),
     ];
     let one = match line {
@@ -136,7 +136,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
         Cell::small("", Role::Ghost),
         Cell::small(one.tag.as_str(), Role::Ghost),
         Cell::small("", Role::Text),
-        Cell::small(said, role),
+        Cell::body(said, role),
     ];
     let laid = grouped::single(ctx, &columns, header).one(ctx, rect, Shown::row(cells));
     let name = laid

@@ -55,7 +55,7 @@ pub(super) fn plan(app: &AppState, keys: &[WatchKey], rows: &[(&WatchKey, &Objec
     let mut reads = Vec::new();
     for at in &shown {
         let label = columns[*at].name.to_uppercase();
-        reads.push(Reads::of(&label.to_lowercase()));
+        reads.push(Reads::of(&columns[*at]));
         labels.push(label);
         samples.push(cell(*at));
     }
@@ -83,14 +83,16 @@ pub(super) enum Reads {
     Plain,
     Status,
     Ready,
+    Time,
 }
 
 impl Reads {
     /// What a column says, by its name.
-    fn of(label: &str) -> Self {
-        match label {
+    fn of(column: &groove_types::TableColumn) -> Self {
+        match column.name.to_lowercase().as_str() {
             "status" | "phase" | "sync status" | "health status" => Reads::Status,
             "ready" => Reads::Ready,
+            _ if groove_types::tells_time(column) => Reads::Time,
             _ => Reads::Plain,
         }
     }

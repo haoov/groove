@@ -14,10 +14,18 @@ use crate::widgets::Badge;
 pub struct Cell<'a> {
     text: Cow<'a, str>,
     role: Role,
-    label: bool,
+    size: Size,
     badge: bool,
     mark: Option<(Mark, u8, Role)>,
     bar: Option<Bar>,
+}
+
+/// The text's size: small, body, or label.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Size {
+    Small,
+    Body,
+    Label,
 }
 
 /// A short track before the text: its fill and a tick, each a part of the whole, in a role.
@@ -34,17 +42,25 @@ impl<'a> Cell<'a> {
         Self {
             text: text.into(),
             role,
-            label: false,
+            size: Size::Small,
             badge: false,
             mark: None,
             bar: None,
         }
     }
 
+    /// A text in the body size.
+    pub fn body(text: impl Into<Cow<'a, str>>, role: Role) -> Self {
+        Self {
+            size: Size::Body,
+            ..Self::small(text, role)
+        }
+    }
+
     /// A text in the label size, as a title is.
     pub fn label(text: impl Into<Cow<'a, str>>, role: Role) -> Self {
         Self {
-            label: true,
+            size: Size::Label,
             ..Self::small(text, role)
         }
     }
@@ -156,17 +172,18 @@ impl<'a> Cell<'a> {
     }
 
     fn style<A: App>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
-        match self.label {
-            true => ctx.styles.label(self.role),
-            false => ctx.styles.small(self.role),
+        match self.size {
+            Size::Small => ctx.styles.small(self.role),
+            Size::Body => ctx.styles.body(self.role),
+            Size::Label => ctx.styles.label(self.role),
         }
     }
 
     /// A mark's size and the gap after it, by the text's size.
     fn mark_room<A: App>(&self, ctx: &Ctx<'_, A>) -> (f32, f32) {
-        match self.label {
-            true => (ctx.tokens.icon, ctx.tokens.sm),
-            false => (ctx.tokens.small, ctx.tokens.xs),
+        match self.size {
+            Size::Small => (ctx.tokens.small, ctx.tokens.xs),
+            Size::Body | Size::Label => (ctx.tokens.icon, ctx.tokens.sm),
         }
     }
 }

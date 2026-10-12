@@ -18,6 +18,7 @@ pub(super) struct Copied<'a> {
     last: Option<&'a str>,
     open: Option<Opens>,
     copies: &'a str,
+    small: bool,
 }
 
 impl<'a> Copied<'a> {
@@ -28,7 +29,14 @@ impl<'a> Copied<'a> {
             last,
             open: None,
             copies: text,
+            small: false,
         }
+    }
+
+    /// In the small size, where the body size is the default.
+    pub(super) fn small(mut self) -> Self {
+        self.small = true;
+        self
     }
 
     pub(super) fn open(mut self, open: Option<Link>) -> Self {
@@ -52,7 +60,10 @@ impl<'a> Copied<'a> {
         let (icon, gap) = (ctx.tokens.small, ctx.tokens.xs);
         let fixed = |width: f32| Spec::default().width(width);
         let [room, _] = row_in(rect, [Spec::fill(), fixed(gap + icon)]);
-        let style = ctx.styles.small(self.role);
+        let style = match self.small {
+            true => ctx.styles.small(self.role),
+            false => ctx.styles.body(self.role),
+        };
         let wide = ctx.measure(self.text, &style).min(room.w);
         let [_, _, mark, _] = row_in(rect, [fixed(wide), fixed(gap), fixed(icon), Spec::fill()]);
         let [spot, _] = row_in(rect, [fixed(wide + gap + icon), Spec::fill()]);
@@ -76,7 +87,10 @@ impl<'a> Copied<'a> {
 
     /// Draws at the left of `room`, which gives up the text, the mark and `gap`.
     pub(super) fn left(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
-        let style = ctx.styles.small(self.role);
+        let style = match self.small {
+            true => ctx.styles.small(self.role),
+            false => ctx.styles.body(self.role),
+        };
         let wide = ctx.measure(self.text, &style) + ctx.tokens.xs + ctx.tokens.small;
         let fixed = |width: f32| Spec::default().width(width);
         let [at, _, rest] = row_in(*room, [fixed(wide.min(room.w)), fixed(gap), Spec::fill()]);

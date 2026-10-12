@@ -213,7 +213,7 @@ fn listed(
             let width = match (dragged.and_then(|one| one.get(label)), at == named) {
                 (Some(wide), _) => Width::Fixed(*wide),
                 (None, true) => Width::Fill,
-                (None, false) => Width::Fit(sample),
+                (None, false) => Width::FitBody(sample),
             };
             column(label, width)
         })
@@ -265,14 +265,17 @@ fn one<'a>(
             Reads::Status => groove_types::status_health(text),
             Reads::Ready if ended => Some(Health::Done),
             Reads::Ready => groove_types::ready_health(text),
-            Reads::Plain => None,
+            Reads::Plain | Reads::Time => None,
         };
         let role = match (place, health) {
             (0, _) => Role::Text,
             (_, Some(health)) => colour(health),
             _ => Role::Muted,
         };
-        cells.push(Cell::small(text, role));
+        cells.push(match reads {
+            Reads::Time => Cell::small(text, role),
+            _ => Cell::body(text, role),
+        });
     }
     Shown::row(cells).target(Target::ResourceRow(row.uid.clone()))
 }
