@@ -30,7 +30,7 @@ use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
 pub(in crate::input) use resources::{kinds_changed, search_changed};
-pub(in crate::input) use scope::pick;
+pub(in crate::input) use scope::{pick, scope_changed};
 
 pub(super) fn key_input(
     key: Key,

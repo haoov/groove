@@ -240,3 +240,27 @@ fn under_a_whole_cluster_a_namespace_is_offered_and_its_small_check_is_green_its
     assert!(sized(groove_gfx::Icon::Ticked), "the check is small");
     assert!(sized(groove_gfx::Icon::Cross), "the cross is small");
 }
+
+#[test]
+fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
+    let app = holding(vec![
+        on("staging", Some("paxone")),
+        on("staging", Some("cnpg")),
+    ]);
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
+    let asked = crate::input::handle(
+        crate::input::Input::Paste("cnp".into()),
+        &mut ui,
+        &app,
+        &Hits::default(),
+        crate::tests::window(),
+    );
+    assert!(asked.is_empty(), "nothing else takes it: {asked:?}");
+    press(Key::Enter, Default::default(), &mut ui, &app);
+    let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
+    assert_eq!(hidden, [on("staging", Some("paxone"))]);
+}

@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command, agent, workspace};
 use super::keys;
 use super::typed::{self, Typed};
 use crate::hit::Hits;
-use crate::{Focus, Surface, Ui};
+use crate::{Focus, Overlay, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
 type Seen<'a> = (&'a Hits, Metrics);
@@ -13,6 +13,11 @@ type Seen<'a> = (&'a Hits, Metrics);
 /// The clipboard into whatever holds the keyboard: a field here, a buffer by command.
 pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Command> {
     if text.trim().is_empty() {
+        return Vec::new();
+    }
+    if let Some(Overlay::Scope(scoping)) = &mut ui.overlay {
+        scoping.query.paste(text);
+        keys::scope_changed(ui, app);
         return Vec::new();
     }
     if let Some(palette) = ui.palette_mut() {
