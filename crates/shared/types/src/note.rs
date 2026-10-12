@@ -18,6 +18,17 @@ impl Anchor {
         }
     }
 
+    /// Lines numbered from 1, in either order; `None` past what a file can number.
+    pub fn numbered(path: impl Into<String>, line: i64, end: Option<i64>) -> Option<Self> {
+        let row = |one: i64| u32::try_from(one.max(1) - 1).ok();
+        let (start, end) = (row(line)?, row(end.unwrap_or(line))?);
+        Some(Anchor {
+            path: path.into(),
+            start_line: start.min(end),
+            end_line: start.max(end),
+        })
+    }
+
     pub fn rows(&self) -> std::ops::RangeInclusive<u32> {
         self.start_line..=self.end_line
     }
