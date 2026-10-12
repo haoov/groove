@@ -128,9 +128,12 @@ fn a_paste_with_no_text_on_the_clipboard_reaches_the_agent_as_the_key() {
         ctrl: true,
         ..Default::default()
     };
-    let mut unpasted = Some(Input::Key {
-        key: groove_ui::input::Key::Char('v'),
-        mods,
+    let mut unpasted = Some(crate::app::events::Unpasted {
+        key: Some(Input::Key {
+            key: groove_ui::input::Key::Char('v'),
+            mods,
+        }),
+        aim: groove_ui::input::aim(&ui, &state),
     });
     let read = groove_controllers::workspace::Command::ReadClipboard;
     run(
@@ -141,7 +144,9 @@ fn a_paste_with_no_text_on_the_clipboard_reaches_the_agent_as_the_key() {
     );
     spawner.drain(&mut state, &services);
 
-    let input = crate::app::events::landed(&mut state, &mut unpasted).expect("the key comes back");
+    let aim = groove_ui::input::aim(&ui, &state);
+    let input =
+        crate::app::events::landed(&mut state, &mut unpasted, aim).expect("the key comes back");
     let (_, hits) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let asked = handle(input, &mut ui, &state, &hits, window());
     let session = state.session.selected.clone().expect("a session");
@@ -150,4 +155,34 @@ fn a_paste_with_no_text_on_the_clipboard_reaches_the_agent_as_the_key() {
         bytes: vec![0x16],
     };
     assert_eq!(asked, vec![groove_controllers::Command::Agent(ctrl_v)]);
+}
+
+#[test]
+fn a_paste_that_lands_after_the_keys_moved_is_dropped() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let (mut state, _services) = working(home.path(), &spawner);
+    let mut ui = Ui {
+        surface: groove_ui::Surface::Session,
+        focus: groove_ui::Focus::Agent,
+        overlay: Some(groove_ui::Overlay::Palette(Default::default())),
+        ..Ui::default()
+    };
+    let asked = |ui: &Ui, state: &AppState| {
+        Some(crate::app::events::Unpasted {
+            key: None,
+            aim: groove_ui::input::aim(ui, state),
+        })
+    };
+    let mut unpasted = asked(&ui, &state);
+    ui.overlay = None;
+    state.pasted = Some(Some("git@host:g/r.git".into()));
+    let aim = groove_ui::input::aim(&ui, &state);
+    let landed = crate::app::events::landed(&mut state, &mut unpasted, aim);
+    assert_eq!(landed, None, "the agent never gets the palette's text");
+
+    let mut unpasted = asked(&ui, &state);
+    state.pasted = Some(Some("one".into()));
+    let landed = crate::app::events::landed(&mut state, &mut unpasted, aim);
+    assert_eq!(landed, Some(Input::Paste("one".into())));
 }

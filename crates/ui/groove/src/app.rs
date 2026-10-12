@@ -36,8 +36,8 @@ pub struct App {
     started: Instant,
     /// When the paced redraw is next due.
     tick: Option<Instant>,
-    /// The key that asked for the clipboard, while the read is out.
-    unpasted: Option<Input>,
+    /// The paste asked for, while the read is out.
+    unpasted: Option<events::Unpasted>,
 }
 
 impl App {

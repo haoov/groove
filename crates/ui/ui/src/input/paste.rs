@@ -1,4 +1,4 @@
-//! The clipboard into whatever holds the keyboard.
+//! The clipboard into whatever holds the keyboard, and where a paste would land.
 
 use groove_controllers::{AppState, Command, agent, workspace};
 
@@ -10,91 +10,143 @@ use groove_ui_kit::base::ctx::Metrics;
 
 type Seen<'a> = (&'a Hits, Metrics);
 
+/// What holds the keyboard for a paste.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Sink {
+    Scope,
+    Palette,
+    Settings,
+    Board,
+    Field(Typed),
+    Find,
+    Message,
+    Agent,
+    Terminal,
+    Buffer,
+}
+
+/// Where a paste would land now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Aim(Option<Sink>);
+
+pub fn aim(ui: &Ui, app: &AppState) -> Aim {
+    Aim(sink(ui, app))
+}
+
+fn sink(ui: &Ui, app: &AppState) -> Option<Sink> {
+    if matches!(ui.overlay, Some(Overlay::Scope(_))) {
+        return Some(Sink::Scope);
+    }
+    if ui.palette().is_some() {
+        return Some(Sink::Palette);
+    }
+    if ui.settings.open {
+        return Some(Sink::Settings);
+    }
+    if ui.showing(app) == Surface::Board {
+        return ui.board.typing.then_some(Sink::Board);
+    }
+    if let Some(typed) = typed::keyed(&ui.session) {
+        return Some(Sink::Field(typed));
+    }
+    let session = &ui.session;
+    if session.find.as_ref().is_some_and(|find| find.typing) {
+        return Some(Sink::Find);
+    }
+    if session.composing && ui.focus == Focus::Sidebar {
+        return Some(Sink::Message);
+    }
+    Some(match ui.focus {
+        Focus::Agent => Sink::Agent,
+        Focus::Terminal => Sink::Terminal,
+        _ => Sink::Buffer,
+    })
+}
+
 /// The clipboard into whatever holds the keyboard: a field here, a buffer by command.
 pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Command> {
     if text.trim().is_empty() {
         return Vec::new();
     }
-    if let Some(Overlay::Scope(scoping)) = &mut ui.overlay {
-        scoping.query.paste(text);
-        keys::scope_changed(ui, app);
-        return Vec::new();
-    }
-    if let Some(palette) = ui.palette_mut() {
-        palette.query.paste(text);
-        palette.selected = 0;
-        return Vec::new();
-    }
-    if ui.settings.open {
-        return pasted_in_settings(text, ui, app);
-    }
-    match ui.showing(app) {
-        Surface::Board => {
-            if ui.board.typing {
-                ui.board.filter.paste(text);
-                ui.board.offer = 0;
+    match sink(ui, app) {
+        Some(Sink::Scope) => {
+            if let Some(Overlay::Scope(scoping)) = &mut ui.overlay {
+                scoping.query.paste(text);
             }
-            Vec::new()
+            keys::scope_changed(ui, app);
         }
-        Surface::Session => pasted_in_session(text, ui, app, seen),
+        Some(Sink::Palette) => {
+            if let Some(palette) = ui.palette_mut() {
+                palette.query.paste(text);
+                palette.selected = 0;
+            }
+        }
+        Some(Sink::Settings) => return pasted_in_settings(text, ui, app),
+        Some(Sink::Board) => {
+            ui.board.filter.paste(text);
+            ui.board.offer = 0;
+        }
+        Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui, app),
+        Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
+        Some(Sink::Message) => {
+            let edit = groove_types::Edit::Insert(text.to_string());
+            return vec![Command::Workspace(workspace::Command::Message(edit))];
+        }
+        Some(Sink::Agent) => return typed_at_agent(text, app),
+        Some(Sink::Terminal) => return typed_at_shell(text, app),
+        Some(Sink::Buffer) => return pasted_in_buffer(text, ui, app),
+        None => {}
     }
+    Vec::new()
 }
 
-/// The clipboard into the session's field that has the keys, as typing it would; else the pane.
-fn pasted_in_session(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Command> {
+/// The clipboard into the session's field that has the keys, as typing it would.
+fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let session = &mut ui.session;
-    match typed::keyed(session) {
-        Some(Typed::Naming) => {
+    match typed {
+        Typed::Naming => {
             if let Some(naming) = session.naming.as_mut() {
                 naming.field.paste(text);
             }
         }
-        Some(Typed::Noting) => {
+        Typed::Noting => {
             if let Some(noting) = session.noting.as_mut() {
                 let text = text.trim().replace('\r', "");
                 noting.buffer.edit(&groove_types::Edit::Insert(text));
             }
         }
-        Some(Typed::Bar(term)) => {
+        Typed::Bar(term) => {
             session.bar.of(term).paste(text);
             return keys::searches(ui);
         }
-        Some(Typed::Kinds) => {
+        Typed::Kinds => {
             session.resources.filter.paste(text);
             keys::kinds_changed(ui, app);
         }
-        Some(Typed::Search) => {
+        Typed::Search => {
             session.resources.search.paste(text);
             keys::search_changed(ui);
         }
-        None => return pasted_in_pane(text, ui, app, seen),
     }
     Vec::new()
 }
 
-/// The clipboard into the find bar, the commit message, or the pane that has the keys.
-fn pasted_in_pane(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Command> {
-    if let Some(find) = ui.session.find.as_mut().filter(|find| find.typing) {
+fn pasted_in_find(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Command> {
+    if let Some(find) = ui.session.find.as_mut() {
         find.query.paste(text);
-        return keys::refound(ui, app, seen);
     }
-    if ui.session.composing && ui.focus == Focus::Sidebar {
-        let edit = groove_types::Edit::Insert(text.to_string());
-        return vec![Command::Workspace(workspace::Command::Message(edit))];
-    }
-    match ui.focus {
-        Focus::Agent => typed_at_agent(text, app),
-        Focus::Terminal => typed_at_shell(text, app),
-        _ => {
-            let file = ui.session.tab != crate::views::session::Tab::Resources;
-            let editing = crate::editor::Editing::keyed(app, ui);
-            let editing = editing.or(file.then_some(crate::editor::Editing::File));
-            editing
-                .and_then(|one| one.pasted(text))
-                .into_iter()
-                .collect()
-        }
-    }
+    keys::refound(ui, app, seen)
+}
+
+/// The clipboard into the buffer the keyboard edits, else the open file.
+fn pasted_in_buffer(text: &str, ui: &Ui, app: &AppState) -> Vec<Command> {
+    let file = ui.session.tab != crate::views::session::Tab::Resources;
+    let editing = crate::editor::Editing::keyed(app, ui);
+    let editing = editing.or(file.then_some(crate::editor::Editing::File));
+    editing
+        .and_then(|one| one.pasted(text))
+        .into_iter()
+        .collect()
 }
 
 /// The clipboard in the search while typing, else at a running sign-in.

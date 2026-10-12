@@ -16,6 +16,7 @@ use groove_ui_kit::base::ctx::Metrics;
 
 pub use follow::follow;
 pub use keys::encode;
+pub use paste::{Aim, aim};
 pub use rest::{rest, resting};
 
 /// A key as the ui reads it, free of the window library's types.

@@ -89,7 +89,8 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Continue(continuation) => {
                 continuation(&mut self.state, &self.services, &self.spawner);
-                if let Some(input) = landed(&mut self.state, &mut self.unpasted) {
+                let aim = groove_ui::input::aim(&self.ui, &self.state);
+                if let Some(input) = landed(&mut self.state, &mut self.unpasted, aim) {
                     self.input(input);
                 }
                 self.watch();
@@ -157,7 +158,8 @@ impl App {
 
     /// The clipboard read off the main thread; what it holds comes back as a paste.
     fn paste(&mut self, key: Option<Input>) {
-        self.unpasted = key;
+        let aim = groove_ui::input::aim(&self.ui, &self.state);
+        self.unpasted = Some(Unpasted { key, aim });
         let read = Command::Workspace(groove_controllers::workspace::Command::ReadClipboard);
         dispatch(read, &mut self.state, &self.services, &self.spawner);
     }
@@ -197,11 +199,26 @@ impl App {
     }
 }
 
-/// A finished clipboard read as input: its text as a paste, else the key that asked.
-pub(crate) fn landed(state: &mut AppState, unpasted: &mut Option<Input>) -> Option<Input> {
+/// A clipboard read in flight: the key that asked, and where its text would land then.
+pub(crate) struct Unpasted {
+    pub(crate) key: Option<Input>,
+    pub(crate) aim: groove_ui::input::Aim,
+}
+
+/// A finished clipboard read as input: its text as a paste where it was aimed, else the key that asked.
+pub(crate) fn landed(
+    state: &mut AppState,
+    unpasted: &mut Option<Unpasted>,
+    now: groove_ui::input::Aim,
+) -> Option<Input> {
     let text = state.pasted.take()?;
-    let key = unpasted.take();
-    text.map(Input::Paste).or(key)
+    let asked = unpasted.take();
+    let moved = asked.as_ref().is_some_and(|one| one.aim != now);
+    match text {
+        Some(text) if !moved => Some(Input::Paste(text)),
+        Some(_) => None,
+        None => asked.and_then(|one| one.key),
+    }
 }
 
 /// A wheel notch is lines; a trackpad is pixels, and up is away from the user.
