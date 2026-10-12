@@ -27,12 +27,15 @@ impl Service {
                 path,
             })
             .collect();
+        if let Err(e) = self.pool.made_session_dir(&session.id).await {
+            relocated.put_back().await;
+            return Err(e.into());
+        }
         if let Err(e) = self.store.promote(explorer, &session, task, &moved).await {
             relocated.put_back().await;
             return Err(e.into());
         }
         self.pool.prune(explorer).await;
-        self.pool.session_dir(&session.id)?;
         let worktrees = relocated.landed(&session);
         Ok((session, worktrees))
     }

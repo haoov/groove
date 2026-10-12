@@ -46,6 +46,18 @@ impl Pool {
         &self.layout.root
     }
 
+    /// The session's own directory, made off the calling thread when it is missing.
+    pub async fn made_session_dir(&self, session: &SessionId) -> Result<PathBuf> {
+        let dir = self.layout.session_dir(session.as_str());
+        tokio::fs::create_dir_all(&dir)
+            .await
+            .map_err(|source| Error::Io {
+                path: dir.clone(),
+                source,
+            })?;
+        Ok(dir)
+    }
+
     /// The session's own directory, made when it is missing.
     pub fn session_dir(&self, session: &SessionId) -> Result<PathBuf> {
         let dir = self.layout.session_dir(session.as_str());

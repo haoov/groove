@@ -281,3 +281,29 @@ fn a_move_that_fails_leaves_the_branch_named_as_it_was() {
     );
     assert_eq!(branch.trim(), before.branch, "on its own branch again");
 }
+
+#[test]
+fn a_promotion_whose_directory_cannot_be_made_leaves_the_explorer_on_disk() {
+    let mut at = exploring();
+    let held = at.state.session.get(&at.id).expect("open").worktrees[0].clone();
+    let mut up = std::path::Path::new(&held.path).ancestors();
+    let worktrees = up.find(|one| one.ends_with("worktrees")).expect("the root");
+    std::fs::write(worktrees.join(TASK), "in the way").unwrap();
+    let open = crate::session::Command::OpenExplorer { title: None };
+    let (state, services, spawner) = (&mut at.state, &at.services, &at.spawner);
+    crate::dispatch(crate::Command::Session(open), state, services, spawner);
+    spawner.drain(state, services);
+    let bare = state.session.selected.clone().expect("a bare explorer");
+    crate::tests::fixture::auto_approve(state, &bare);
+
+    adopted_from(&mut at, &bare, ISSUE);
+    crate::tests::fixture::until(&at.spawner, &at.services, &mut at.state, |s| {
+        !s.errors.is_empty()
+    });
+    let opened = at.spawner.block_on(at.services.session.opened()).unwrap();
+    let kept = opened.iter().find(|(one, _)| one.id == bare);
+    assert!(
+        kept.is_some_and(|(one, _)| one.kind == SessionKind::Explorer),
+        "{opened:?}"
+    );
+}
