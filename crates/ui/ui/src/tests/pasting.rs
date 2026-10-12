@@ -3,8 +3,8 @@
 use groove_controllers::{Command, workspace};
 use groove_gfx::Fonts;
 
-use crate::input::{Input, handle};
-use crate::tests::{full_app, window};
+use crate::input::{Input, Key, Modifiers, handle};
+use crate::tests::{full_app, press, window};
 use crate::views::session::{Tab, Term};
 use crate::{Surface, Ui, view};
 
@@ -106,7 +106,7 @@ fn the_commit_box_takes_it_as_an_edit_of_its_own() {
 
 #[test]
 fn with_nothing_typing_the_open_file_takes_it() {
-    let app = full_app();
+    let app = crate::tests::diff::opened();
     let mut ui = Ui {
         focus: crate::Focus::Workspace,
         ..Ui::default()
@@ -233,4 +233,32 @@ fn the_note_and_the_commit_box_take_a_paste_alike_without_its_carriage_returns()
     paste("  one\r\n  two\r\n", &mut ui, &app);
     let typed = ui.session.noting.as_ref().map(|one| one.buffer.text());
     assert_eq!(typed.as_deref(), Some("  one\n  two\n"));
+}
+
+#[test]
+fn on_the_overview_the_hidden_open_file_takes_no_key_and_no_paste() {
+    let app = crate::tests::diff::opened();
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    ui.session.tab = Tab::Overview;
+    assert!(paste("one", &mut ui, &app).is_empty(), "no paste edits it");
+    let keys = [
+        (Key::Char('a'), Modifiers::default()),
+        (Key::Enter, Modifiers::default()),
+        (Key::Tab, Modifiers::default()),
+        (Key::Backspace, Modifiers::default()),
+        (
+            Key::Char('v'),
+            Modifiers {
+                ctrl: true,
+                ..Modifiers::default()
+            },
+        ),
+    ];
+    for (key, mods) in keys {
+        let asked = press(key, mods, &mut ui, &app);
+        assert!(asked.is_empty(), "{key:?} edits nothing: {asked:?}");
+    }
 }

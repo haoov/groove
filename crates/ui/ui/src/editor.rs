@@ -36,7 +36,11 @@ pub struct Editor<'a> {
 
 impl Editing {
     /// The buffer the keyboard edits: an object's YAML while its tab shows it, else the open file.
+    /// None on the overview, which draws no buffer.
     pub fn keyed(app: &AppState, ui: &Ui) -> Option<Editing> {
+        if ui.session.tab == Tab::Overview {
+            return None;
+        }
         if ui.session.tab == Tab::Resources {
             let tab = ui.session.resources.tab()?;
             return match tab.view {

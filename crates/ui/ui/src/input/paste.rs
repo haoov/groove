@@ -141,12 +141,9 @@ fn pasted_in_find(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Co
     keys::refound(ui, app, seen)
 }
 
-/// The clipboard into the buffer the keyboard edits, else the open file.
+/// The clipboard into the buffer the keyboard edits.
 fn pasted_in_buffer(text: &str, ui: &Ui, app: &AppState) -> Vec<Command> {
-    let file = ui.session.tab != crate::views::session::Tab::Resources;
-    let editing = crate::editor::Editing::keyed(app, ui);
-    let editing = editing.or(file.then_some(crate::editor::Editing::File));
-    editing
+    crate::editor::Editing::keyed(app, ui)
         .and_then(|one| one.pasted(text))
         .into_iter()
         .collect()
