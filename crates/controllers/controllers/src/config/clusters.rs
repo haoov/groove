@@ -6,8 +6,7 @@ use crate::{AppState, Spawner};
 
 /// A context the kubeconfig names, added and checked at once; one it does not name is refused.
 pub(super) fn add(state: &mut AppState, spawner: &dyn Spawner, context: &str) {
-    let found = state.cluster.found.iter().flatten();
-    if !found.into_iter().any(|one| one.name == context) {
+    if !state.cluster.names(context) {
         let why = format!("no kubeconfig names the context `{context}`");
         return state.failed(Error::invalid(why));
     }

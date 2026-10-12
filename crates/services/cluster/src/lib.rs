@@ -26,6 +26,11 @@ pub struct State {
 }
 
 impl State {
+    /// Whether the last scan found a kubeconfig context named `context`.
+    pub fn names(&self, context: &str) -> bool {
+        self.found.iter().flatten().any(|one| one.name == context)
+    }
+
     /// What the last check of `context` found.
     pub fn login(&self, context: &str) -> Option<&Login> {
         let held = self.logins.iter().find(|(name, _)| name == context);
