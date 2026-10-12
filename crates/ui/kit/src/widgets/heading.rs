@@ -8,6 +8,9 @@ use crate::shape::hoverable;
 use crate::text::Label;
 use crate::widgets::fold;
 
+#[cfg(test)]
+mod tests;
+
 pub struct Heading<'a, T> {
     label: &'a str,
     count: Option<usize>,

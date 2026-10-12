@@ -239,3 +239,43 @@ fn an_event_on_a_session_with_auto_approve_off_starts_nothing() {
     assert!(state.routine.runs.running.is_empty() && state.routine.runs.waiting.is_empty());
     assert!(!state.routine.runs.queued_since_seen("user:notes", &away));
 }
+
+const DAILY: &str = "---\nskills: platform:follow-ups\nkind: standalone\non: daily\n---\nSum up.\n";
+
+#[test]
+fn the_daily_routine_runs_on_the_day_s_first_look_and_not_again_that_day() {
+    let (home, spawner, services, mut state) = fresh();
+    listed(&mut state, "user:daily", DAILY);
+    on("user:daily", &mut state, &services, &spawner);
+    let id = state
+        .session
+        .routine_session("user:daily")
+        .expect("its session");
+    until(&spawner, &services, &mut state, |s| {
+        s.agent.terminal(&id).is_some()
+    });
+    auto(&mut state, &id, true);
+    routine::watch(&mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert!(
+        state.routine.runs.running.is_empty(),
+        "the rail is not back"
+    );
+
+    (state.session.restored, state.skill.listed) = (true, true);
+    routine::watch(&mut state, &services, &spawner);
+    let first = "ready Routine `daily`, started by daily.";
+    until(&spawner, &services, &mut state, |s| {
+        s.agent
+            .terminal(&id)
+            .is_some_and(|t| t.screen().line(0) == first)
+    });
+    let day = std::fs::read_to_string(home.path().join("data/routines/day"));
+    assert!(day.is_ok_and(|one| !one.is_empty()), "the day written down");
+
+    state.routine.runs.dawned = false;
+    routine::watch(&mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.routine.runs.running.len(), 1, "once a day");
+    assert!(state.routine.runs.waiting.is_empty(), "once a day");
+}

@@ -160,6 +160,36 @@ fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
 }
 
 #[test]
+fn a_selected_band_stands_on_the_held_ground_between_the_chosen_rules() {
+    let columns = [column(Width::Fill)];
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: 24.0,
+            under: 0.0,
+            ruled: false,
+        },
+        count: 1,
+        offset: 0.0,
+        selected: Some(0),
+        sorted: None,
+    };
+    let band = Shown::band(vec![Cell::small("pods", Role::Text)]);
+    let ((held, chosen), frame) = drawn(|ctx| {
+        table.one(ctx, ROOM, band);
+        (ctx.styles.held(), ctx.styles.chosen())
+    });
+    let quads = &frame.layers()[0].quads;
+    let line = Rect { h: 24.0, ..ROOM };
+    assert!(
+        quads
+            .iter()
+            .any(|one| one.rect == line && one.color == held)
+    );
+    assert_eq!(quads.iter().filter(|one| one.color == chosen).count(), 2);
+}
+
+#[test]
 fn a_folding_band_leads_with_the_kit_caret() {
     let columns = [column(Width::Fill)];
     let table = Table {

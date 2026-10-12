@@ -241,3 +241,22 @@ fn a_session_that_goes_takes_its_runs_with_it() {
     assert!(runs.waiting.is_empty() && runs.running.is_empty());
     assert!(!runs.queued_since_seen("user:fix", &id("s")));
 }
+
+#[test]
+fn a_bound_run_is_typed_or_asked_a_standalone_one_starts_afresh_an_action_sends_nothing() {
+    use crate::runs::{Deliver, deliver};
+    assert_eq!(deliver(RoutineKind::Bound, true), Deliver::Type);
+    assert_eq!(deliver(RoutineKind::Bound, false), Deliver::Ask);
+    assert_eq!(deliver(RoutineKind::Standalone, true), Deliver::Fresh);
+    assert_eq!(deliver(RoutineKind::Standalone, false), Deliver::Fresh);
+    assert_eq!(deliver(RoutineKind::Action, true), Deliver::Nothing);
+}
+
+#[test]
+fn an_ending_says_what_the_run_did() {
+    assert_eq!(Ending::Done.said(0), "done");
+    assert_eq!(Ending::Done.said(1), "done · 1 commit");
+    assert_eq!(Ending::Done.said(2), "done · 2 commits");
+    assert_eq!(Ending::Gone.said(3), "its agent stopped");
+    assert_eq!(Ending::Stalled.said(0), "its agent never started");
+}
