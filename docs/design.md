@@ -1,8 +1,8 @@
 # Design
 
 Three surfaces, three scopes, and settings beside them. Information never leaks upward:
-what belongs in the session does not reach the rail; what belongs on the board does not
-reach the rail.
+what belongs in a session does not reach the board, and what belongs on the board reaches
+the rail only as its attention count.
 
 | Surface | Scope | Holds | Capability |
 |---|---|---|---|
