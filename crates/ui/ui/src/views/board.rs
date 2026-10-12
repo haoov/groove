@@ -11,6 +11,7 @@ pub mod review;
 mod row;
 mod state;
 
+pub use row::card;
 pub use state::BoardUi;
 
 use groove_controllers::AppState;

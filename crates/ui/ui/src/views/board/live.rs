@@ -45,7 +45,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
         columns: &columns,
         rows: Rows {
             first,
-            under: super::review::height(&tokens) - first,
+            under: super::row::card(&tokens) - first,
             ruled: true,
         },
         count: living.len(),

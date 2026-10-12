@@ -14,7 +14,6 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::{ago, row};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
@@ -61,7 +60,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
         columns: &columns,
         rows: Rows {
             first,
-            under: height(&tokens) - first,
+            under: super::row::card(&tokens) - first,
             ruled: true,
         },
         count: asked.len(),
@@ -74,10 +73,6 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
     ctx.app
         .hits
         .scrolls(Scroller::Column(List::Review as u8), laid.extent);
-}
-
-pub fn height(tokens: &Tokens) -> f32 {
-    super::row::item(tokens) + tokens.line + tokens.xs
 }
 
 fn columns() -> [Column<'static, Target>; 2] {

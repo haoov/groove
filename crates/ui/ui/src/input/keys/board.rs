@@ -40,7 +40,7 @@ pub(super) fn chosen(
         _ => return Vec::new(),
     };
     ui.board.chosen = Some((asked[next].project.clone(), asked[next].iid));
-    let row = crate::views::board::review::height(&metrics.tokens());
+    let row = crate::views::board::card(&metrics.tokens());
     let extent = hits.extent(Scroller::Column(List::Review as u8));
     ui.board.review = kept(ui.board.review, (next, row), (asked.len(), extent));
     Vec::new()
