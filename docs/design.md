@@ -145,7 +145,7 @@ sidebar folds from the far end of the tab strip or with `alt+shift+b`.
 
 ### Workspace
 
-**Header.** Two lines, above the workspace alone — not the agent pane, not the sidebar.
+**Header.** Three lines, above the workspace alone — not the agent pane, not the sidebar.
 The first holds the type icon and the title, with the task actions at its right: finish,
 and a menu with delete and open in provider. The second holds the repo and worktree
 pickers as buttons — the session's selector, which every tab and the manual section
@@ -165,8 +165,8 @@ before the cut, and a badge with no room left is dropped.
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the clusters it holds, each context in its hue with its namespaces under it; then the body as text | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
-| k8s | the list tab, titled by its kind and its count, and a tab for each object opened from it; [k8s tab](#k8s-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
+| k8s | the list tab, titled by its kind and its count, and a tab for each object opened from it; [k8s tab](#k8s-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
 which the gutter holds together.
