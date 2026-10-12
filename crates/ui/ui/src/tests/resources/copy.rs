@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 use groove_gfx::Icon;
 use groove_ui_kit::base::style::{Role, Styles};
 
-use super::tab::{crashing, lands, link, opened};
+use super::fixture::{crashing, lands, link, opened};
 use super::{kind, pods};
 use crate::Ui;
 use crate::hit::Target;

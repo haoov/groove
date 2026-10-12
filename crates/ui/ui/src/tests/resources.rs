@@ -14,6 +14,7 @@ mod argo;
 mod argo_links;
 mod argo_sync;
 mod copy;
+mod fixture;
 mod list;
 mod load;
 mod logs;

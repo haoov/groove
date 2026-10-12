@@ -48,7 +48,7 @@ fn kinds_older_than_the_cache_are_discovered_again() {
 
 #[test]
 fn a_group_opened_stays_open_when_its_default_turns() {
-    let (_, mut ui) = super::argo_sync::opened(super::argo::failing());
+    let (_, mut ui) = super::argo_sync::opened_application(super::argo::failing());
     let tab = &mut ui.session.resources.opened[0];
     assert!(tab.folded("Deployment", true), "it starts folded");
     tab.fold("Deployment", true);
@@ -74,7 +74,7 @@ fn the_kinds_scroll_on_their_own_and_leave_the_file_tree_where_it_was() {
     let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let sidebar = crate::layout::Layout::of(metrics, &ui).sidebar;
     let at = (sidebar.x + sidebar.w / 2.0, sidebar.y + sidebar.h / 2.0);
-    super::tab::wheel(&app, &mut ui, at, (0.0, -200.0));
+    super::fixture::wheel(&app, &mut ui, at, (0.0, -200.0));
     assert!(ui.session.resources.kinds > 0.0, "the kinds moved");
     assert_eq!(ui.session.files, 0.0, "the file tree did not");
 }

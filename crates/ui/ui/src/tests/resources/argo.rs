@@ -7,7 +7,7 @@ use groove_types::{
     TableColumn, WatchKey,
 };
 
-use super::tab::runs;
+use super::fixture::runs;
 use super::{kind, listing};
 use crate::Ui;
 use crate::hit::Target;

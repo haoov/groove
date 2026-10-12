@@ -5,8 +5,8 @@ use groove_controllers::cluster_service::Logged;
 use groove_controllers::{AppState, Command};
 use groove_types::{LogKey, LogLine, LogRange, LogSource};
 
+use super::fixture::{crashing, lands, link, opened, runs, wheel};
 use super::pods;
-use super::tab::{crashing, lands, link, opened, runs, wheel};
 use crate::Ui;
 use crate::hit::Target;
 use crate::tests::{click, typed, window};

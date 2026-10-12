@@ -4,8 +4,8 @@ use groove_controllers::Command;
 use groove_controllers::session::Command as Session;
 use groove_types::{SessionId, Timestamp};
 
+use super::fixture::{crashing, lands, link, opened};
 use super::pods;
-use super::tab::{crashing, lands, link, opened};
 use crate::hit::Target;
 use crate::tests::click;
 use crate::tests::settings::drawn;

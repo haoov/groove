@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 use groove_types::{AppResource, Described, SyncedResource};
 
 use super::argo::{applications, failing, listed};
-use super::tab::runs;
+use super::fixture::runs;
 use crate::Ui;
 use crate::hit::Target;
 use crate::tests::click;
@@ -39,7 +39,7 @@ fn result(kind: &str, name: &str, hook: bool, hook_phase: &str) -> SyncedResourc
 }
 
 /// The Application's tab open on its resources view.
-pub(super) fn opened(object: Described) -> (AppState, Ui) {
+pub(super) fn opened_application(object: Described) -> (AppState, Ui) {
     let (mut app, mut ui) = listed();
     let link = Link {
         context: "staging".into(),
@@ -83,7 +83,7 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
         managed("ConfigMap", "pythie-config", "Synced", 0),
         managed("Service", "pythie", "Synced", 0),
     ];
-    let (app, mut ui) = opened(object);
+    let (app, mut ui) = opened_application(object);
     let shown = texts(&app, &ui);
     for one in [
         "resources",
@@ -134,7 +134,7 @@ fn a_running_sync_opens_on_its_stages_and_counts_what_it_has_applied() {
         managed("Deployment", "pythie-api", "OutOfSync", 0),
         managed("ConfigMap", "pythie-config", "OutOfSync", 1),
     ];
-    let (app, ui) = opened(object);
+    let (app, ui) = opened_application(object);
     let shown = texts(&app, &ui);
     for one in [
         "syncing · 2",
@@ -164,7 +164,7 @@ fn a_header_sorts_each_kind_s_rows_and_leaves_the_list_s_order_be() {
         managed("Deployment", "pythie-api", "OutOfSync", 0),
         managed("Deployment", "pythie-worker", "OutOfSync", 0),
     ];
-    let (app, mut ui) = opened(object);
+    let (app, mut ui) = opened_application(object);
     let at = |app: &AppState, ui: &Ui, name: &str| {
         let drawn = runs(app, ui);
         drawn.iter().find(|one| one.text == name).map(|one| one.y)
@@ -197,7 +197,7 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
     let mut job = managed("Job", "pythie-migrate", "OutOfSync", 0);
     job.hook = true;
     part.resources = vec![managed("Deployment", "pythie-api", "Synced", 0), job];
-    let (app, mut ui) = opened(object);
+    let (app, mut ui) = opened_application(object);
     let shown = texts(&app, &ui);
     assert!(
         shown.iter().any(|text| text == "out of sync · 0"),
@@ -239,7 +239,7 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
         managed("ConfigMap", "pythie-config", "OutOfSync", 1),
         listed,
     ];
-    let (app, ui) = opened(object);
+    let (app, ui) = opened_application(object);
     let shown = texts(&app, &ui);
     assert!(!shown.iter().any(|text| text == "Sync hooks"), "{shown:?}");
     let at = |text: &str| {
@@ -263,7 +263,7 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
 
 #[test]
 fn a_narrow_pane_keeps_the_application_s_badges_clear_of_its_views() {
-    let (app, ui) = opened(failing());
+    let (app, ui) = opened_application(failing());
     for width in [1100, 1300] {
         let metrics = crate::tests::metrics(width, 800, 1.0);
         let (frame, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
@@ -288,7 +288,7 @@ fn a_source_s_credentials_are_never_drawn() {
     let mut object = super::argo::failing();
     let part = object.app.as_mut().expect("its part");
     part.sources[0].repo = "https://ci:s3cr3t@gitlab.wiremind.io/pythie-cayzn-deploy.git".into();
-    let (app, mut ui) = opened(object);
+    let (app, mut ui) = opened_application(object);
     ui.session.resources.opened[0].view = crate::views::session::resources::View::Describe;
     let shown = texts(&app, &ui);
     assert!(!shown.iter().any(|one| one.contains("s3cr3t")), "{shown:?}");
