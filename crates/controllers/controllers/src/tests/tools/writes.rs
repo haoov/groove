@@ -341,6 +341,32 @@ fn the_agent_cuts_a_second_worktree_and_gets_its_id() {
 }
 
 #[test]
+fn a_repo_name_two_repos_answer_to_asks_for_the_slug() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    fixture::pooled_clone(home.path());
+    fixture::worktree(&mut state, &services, &spawner);
+    let id = state.session.selected.clone().expect("a session");
+    crate::tests::fixture::auto_approve(&mut state, &id);
+    let open = state.session.get_mut(&id).expect("the session");
+    let mut twin = open.repos[0].clone();
+    twin.id = groove_types::RepoId::new("twin");
+    let project = twin.project.clone();
+    open.repos.push(twin);
+
+    let asks = json!({ "repo": project, "branch": "explorer/second" });
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "add_task_worktree",
+        asks,
+    );
+    assert!(answer.failed);
+    assert!(answer.text.contains("slug"), "{}", answer.text);
+}
+
+#[test]
 fn the_agent_and_the_surface_commit_through_the_same_function() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
