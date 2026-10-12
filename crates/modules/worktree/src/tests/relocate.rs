@@ -43,3 +43,22 @@ async fn an_explorer_s_worktree_lands_under_the_task_on_the_task_s_branch_and_ca
     );
     assert_eq!(head.trim(), worktree.branch);
 }
+
+#[tokio::test]
+async fn a_task_branch_the_clone_already_holds_takes_a_number_and_the_move_goes_on() {
+    let fx = Fixture::new().await;
+    let repo = fx.repo().await;
+    let spec = WorktreeSpec::default();
+    let cut = fx.pool.provision(&fx.session, &repo, &spec, None).await;
+    let worktree = cut.unwrap().worktree;
+    let to = task_session();
+    let wanted = crate::naming::session_branch(&to, Some("g-7"));
+    sh(std::path::Path::new(&worktree.path), &["branch", &wanted]);
+    let relocated = fx
+        .pool
+        .relocate(&fx.session.id, &to, std::slice::from_ref(&worktree), "g-7")
+        .await
+        .expect("the move goes on");
+    let (_, branch, _) = relocated.moves().next().unwrap();
+    assert_eq!(branch, format!("{wanted}-2"));
+}

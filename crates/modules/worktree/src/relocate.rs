@@ -30,7 +30,7 @@ impl Pool {
         tag: &str,
     ) -> Result<Relocated> {
         let relocated = Relocated {
-            steps: self.plan(from, to, worktrees, tag),
+            steps: self.plan(from, to, worktrees, tag).await?,
         };
         for (at, step) in relocated.steps.iter().enumerate() {
             if let Err(e) = walk(step).await {
@@ -47,26 +47,31 @@ impl Pool {
         let _ = tokio::task::spawn_blocking(move || emptied(&dir)).await;
     }
 
-    fn plan(&self, from: &SessionId, to: &Session, worktrees: &[Worktree], tag: &str) -> Vec<Step> {
+    async fn plan(
+        &self,
+        from: &SessionId,
+        to: &Session,
+        worktrees: &[Worktree],
+        tag: &str,
+    ) -> Result<Vec<Step>> {
         let old = self.layout.session_dir(from.as_str());
         let wanted = session_branch(to, Some(tag));
         let mut taken: Vec<(String, String)> = Vec::new();
-        worktrees
-            .iter()
-            .map(|one| {
-                let project = project_of(&old, one);
-                let branch = match groove_types::is_explorer_branch(&one.branch) {
-                    true => free(&mut taken, one.repo.as_str(), &wanted),
-                    false => one.branch.clone(),
-                };
-                let path = self.layout.worktree_dir(to.id.as_str(), &project, &branch);
-                Step {
-                    worktree: one.clone(),
-                    branch,
-                    path,
-                }
-            })
-            .collect()
+        let mut steps = Vec::new();
+        for one in worktrees {
+            let project = project_of(&old, one);
+            let branch = match groove_types::is_explorer_branch(&one.branch) {
+                true => free(&mut taken, one, &wanted).await?,
+                false => one.branch.clone(),
+            };
+            let path = self.layout.worktree_dir(to.id.as_str(), &project, &branch);
+            steps.push(Step {
+                worktree: one.clone(),
+                branch,
+                path,
+            });
+        }
+        Ok(steps)
     }
 }
 
@@ -97,20 +102,27 @@ impl Relocated {
 }
 
 /// The name the repo does not hold yet: the wanted one, or it with a number after it.
-fn free(taken: &mut Vec<(String, String)>, repo: &str, wanted: &str) -> String {
-    let used = |name: &str, taken: &[(String, String)]| {
-        taken
-            .iter()
-            .any(|(held, branch)| held == repo && branch == name)
-    };
+async fn free(
+    taken: &mut Vec<(String, String)>,
+    worktree: &Worktree,
+    wanted: &str,
+) -> Result<String> {
+    let (repo, git) = (worktree.repo.as_str(), Git::at(&worktree.path));
     let mut name = wanted.to_string();
     let mut at = 2;
-    while used(&name, taken) {
+    loop {
+        let picked = taken
+            .iter()
+            .any(|(held, branch)| held == repo && *branch == name);
+        let held = git.ref_exists(&format!("refs/heads/{name}")).await?;
+        if !picked && !held {
+            break;
+        }
         name = format!("{wanted}-{at}");
         at += 1;
     }
     taken.push((repo.to_string(), name.clone()));
-    name
+    Ok(name)
 }
 
 /// The project a worktree stands in: the first directory under the old session's own.
