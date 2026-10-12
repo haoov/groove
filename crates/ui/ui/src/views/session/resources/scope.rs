@@ -228,22 +228,15 @@ fn discoveries(app: &AppState, open: &Open, now: Timestamp) -> Vec<Command> {
     contexts(open).into_iter().filter_map(asked).collect()
 }
 
-/// Nothing while the keys held are the keys wanted; else let go of them all and read the new.
+/// The watchers held while they are the ones wanted; else the new ones.
 fn leases(app: &AppState, wanted: Vec<WatchKey>) -> Vec<Command> {
     let held: BTreeSet<&WatchKey> = app.cluster.store.read_by(READER).collect();
-    if held == wanted.iter().collect() {
-        return Vec::new();
-    }
-    let release = cluster::Command::Release {
-        reader: READER.into(),
-    };
+    let same = held == wanted.iter().collect();
     let watch = |key| {
         Command::Cluster(cluster::Command::Watch {
             reader: READER.into(),
             key,
         })
     };
-    std::iter::once(Command::Cluster(release))
-        .chain(wanted.into_iter().map(watch))
-        .collect()
+    super::leases(READER, same, wanted.into_iter().map(watch))
 }

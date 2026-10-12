@@ -83,17 +83,11 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     out
 }
 
-/// Nothing while the keys held are the keys wanted; else let go of them all and read the new.
+/// The followers and the log stream held while they are the ones wanted; else the new ones.
 fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Command> {
     let held: BTreeSet<&FollowKey> = app.cluster.store.follows.read_by(READER).collect();
     let logs: Vec<&LogKey> = app.cluster.store.logs.read_by(READER).collect();
-    let same = logs == log.iter().collect::<Vec<_>>();
-    if held == wanted.iter().collect() && same {
-        return Vec::new();
-    }
-    let release = cluster::Command::Release {
-        reader: READER.into(),
-    };
+    let same = logs == log.iter().collect::<Vec<_>>() && held == wanted.iter().collect();
     let follow = |key| {
         Command::Cluster(cluster::Command::Follow {
             reader: READER.into(),
@@ -106,10 +100,8 @@ fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Co
             key: Box::new(key),
         })
     });
-    std::iter::once(Command::Cluster(release))
-        .chain(wanted.into_iter().map(follow))
-        .chain(stream)
-        .collect()
+    let reads = wanted.into_iter().map(follow).chain(stream);
+    super::super::leases(READER, same, reads)
 }
 
 /// When the tab shown next wants a pod's usage read.

@@ -19,3 +19,18 @@ pub use scope::{Dragged, Pick, ResourcesUi, contexts, held, kind, offered, wants
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, shown};
 pub use tab::{due as tab_due, wants as tab_wants};
+
+use groove_controllers::{Command, cluster};
+
+/// Nothing while `reader` holds what it wants; else let go of all it holds and take `reads`.
+fn leases(reader: &str, same: bool, reads: impl Iterator<Item = Command>) -> Vec<Command> {
+    if same {
+        return Vec::new();
+    }
+    let release = cluster::Command::Release {
+        reader: reader.into(),
+    };
+    std::iter::once(Command::Cluster(release))
+        .chain(reads)
+        .collect()
+}
