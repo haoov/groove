@@ -10,7 +10,7 @@ use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usag
 
 pub use groove_contexts::paths;
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
-pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Watched, Yamls};
+pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -26,6 +26,25 @@ pub struct State {
 }
 
 impl State {
+    /// The context `to` stands on: `own` in-cluster, else the one `known` whose server it names.
+    pub fn destination(
+        &self,
+        own: &str,
+        to: &groove_types::Destination,
+        known: impl Fn(&str) -> bool,
+    ) -> Option<String> {
+        if to.in_cluster() {
+            return Some(own.to_string());
+        }
+        let server = groove_types::server_of(to.server.as_deref()?);
+        let named = |one: &&KubeContext| {
+            let at = one.server.as_deref().map(groove_types::server_of);
+            at.as_deref() == Some(server.as_str()) && known(&one.name)
+        };
+        let found = self.found.as_deref()?;
+        found.iter().find(named).map(|one| one.name.clone())
+    }
+
     /// Whether the last scan found a kubeconfig context named `context`.
     pub fn names(&self, context: &str) -> bool {
         self.found.iter().flatten().any(|one| one.name == context)

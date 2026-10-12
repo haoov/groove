@@ -3,10 +3,12 @@
 mod follows;
 mod leases;
 mod logs;
+mod related;
 mod yamls;
 
 pub use follows::{Follow, Follows, Named};
 pub use logs::{CAP, Log, Logs, Streaming};
+pub use related::Up;
 pub use yamls::Yamls;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};

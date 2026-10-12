@@ -1,22 +1,14 @@
 //! Where an Application's resources stand: the context its destination names, and the links into it.
 
 use groove_controllers::{AppState, Command, cluster};
-use groove_types::{AppPart, AppResource, Destination, KubeContext, server_of};
+use groove_types::{AppPart, AppResource, Destination};
 
 use super::super::opened::{Link, served};
 
 /// The context the destination stands on: the Application's own in-cluster, else the one added whose server it names.
 pub(super) fn context(app: &AppState, own: &str, to: &Destination) -> Option<String> {
-    if to.in_cluster() {
-        return Some(own.to_string());
-    }
-    let server = server_of(to.server.as_deref()?);
-    let named = |one: &&KubeContext| {
-        let at = one.server.as_deref().map(server_of);
-        at.as_deref() == Some(server.as_str()) && app.config.cluster(&one.name).is_some()
-    };
-    let found = app.cluster.found.as_deref()?;
-    found.iter().find(named).map(|one| one.name.clone())
+    let known = |name: &str| app.config.cluster(name).is_some();
+    app.cluster.destination(own, to, known)
 }
 
 /// The tab a resource of the Application opens, once its context's kinds are known.

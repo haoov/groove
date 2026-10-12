@@ -26,7 +26,7 @@ impl Link {
 
     /// The object as last read, once its watcher has listed it.
     pub fn read<'a>(&self, app: &'a AppState) -> Option<&'a Arc<Described>> {
-        app.cluster.store.follows.get(&self.key())?.objects.first()
+        app.cluster.store.object(&self.key())
     }
 }
 
@@ -198,9 +198,7 @@ pub fn row_link(
 
 /// The kind `context` serves in `group` named `kind`.
 pub fn served(app: &AppState, context: &str, group: &str, kind: &str) -> Option<KubeKind> {
-    let kinds = app.cluster.store.kinds(context)?;
-    let same = |one: &&KubeKind| one.group == group && one.kind == kind;
-    kinds.iter().find(same).cloned()
+    app.cluster.store.served(context, group, kind)
 }
 
 /// The object's owners, nearest first, as far as each has been read.
@@ -209,29 +207,18 @@ pub fn lineage(
     link: &Link,
     object: &Described,
 ) -> Vec<(Link, Option<Arc<Described>>)> {
-    let mut out: Vec<(Link, Option<Arc<Described>>)> = Vec::new();
-    let mut owners = object.owners.clone();
-    while let Some(owner) = owners.first().cloned() {
-        let Some(kind) = served(app, &link.context, owner.group(), &owner.kind) else {
-            break;
-        };
-        let up = Link {
+    let store = &app.cluster.store;
+    let ups = store.lineage(&link.context, link.namespace.as_deref(), object);
+    let up = |one: groove_controllers::cluster_service::Up| {
+        let link = Link {
             context: link.context.clone(),
-            namespace: link.namespace.clone().filter(|_| kind.namespaced),
-            kind,
-            name: owner.name.clone(),
+            kind: one.kind,
+            namespace: one.namespace,
+            name: one.name,
         };
-        let read = up.read(app).cloned();
-        owners = read
-            .as_ref()
-            .map(|one| one.owners.clone())
-            .unwrap_or_default();
-        out.push((up, read));
-        if out.len() > 4 {
-            break;
-        }
-    }
-    out
+        (link, one.read)
+    };
+    ups.into_iter().map(up).collect()
 }
 
 /// The Helm release an object or its topmost owner was installed by: its namespace and name.
@@ -245,35 +232,18 @@ pub fn helm_release(
 
 /// The events about the object, once its uid is known.
 pub fn events_key(app: &AppState, link: &Link, uid: &str) -> Option<FollowKey> {
-    Some(FollowKey {
-        context: link.context.clone(),
-        kind: served(app, &link.context, "", "Event")?,
-        namespace: link.namespace.clone(),
-        fields: Some(format!("involvedObject.uid={uid}")),
-    })
+    let store = &app.cluster.store;
+    store.events_key(&link.context, link.namespace.as_deref(), uid)
 }
 
 /// Every Service of the object's namespace.
 pub fn services_key(app: &AppState, link: &Link) -> Option<FollowKey> {
-    Some(FollowKey {
-        context: link.context.clone(),
-        kind: served(app, &link.context, "", "Service")?,
-        namespace: link.namespace.clone(),
-        fields: None,
-    })
+    let store = &app.cluster.store;
+    store.services_key(&link.context, link.namespace.as_deref())
 }
 
 /// The Services whose selector picks the object by its labels.
 pub fn selecting(app: &AppState, link: &Link, object: &Described) -> Vec<String> {
-    let Some(services) =
-        services_key(app, link).and_then(|key| app.cluster.store.follows.get(&key))
-    else {
-        return Vec::new();
-    };
-    services
-        .objects
-        .iter()
-        .filter(|one| one.selects(object))
-        .map(|one| one.name.clone())
-        .collect()
+    let store = &app.cluster.store;
+    store.selecting(&link.context, link.namespace.as_deref(), object)
 }
