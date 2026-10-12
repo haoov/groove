@@ -19,6 +19,7 @@ fn sh(dir: &Path, args: &[&str]) {
         ])
         .args(args)
         .current_dir(dir)
+        .env("LC_ALL", "C")
         .output()
         .expect("git runs");
     assert!(

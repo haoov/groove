@@ -215,7 +215,9 @@ pub fn send(
     command: impl Routed,
 ) {
     dispatch(command.routed(), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
+    until(spawner, services, state, |s| {
+        s.pending.is_empty() && spawner.idle()
+    });
 }
 
 #[track_caller]

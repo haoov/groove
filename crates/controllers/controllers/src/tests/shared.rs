@@ -5,7 +5,7 @@ use std::path::Path;
 use groove_types::SharedConfig;
 
 use crate::config::Command;
-use crate::tests::fixture::{fresh, sh};
+use crate::tests::fixture::{fresh, send, sh, until};
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
 /// A bare origin whose `main` holds a marketplace of one plugin named `name`; its URL.
@@ -49,13 +49,6 @@ fn origin(home: &Path, name: &str) -> String {
     format!("file://{}", bare.display())
 }
 
-fn send(command: Command, state: &mut AppState, services: &Services, spawner: &SyncSpawner) {
-    dispatch(Cmd::Config(command), state, services, spawner);
-    for _ in 0..4 {
-        spawner.drain(state, services);
-    }
-}
-
 fn join(url: &str) -> Command {
     Command::JoinShared {
         url: url.to_string(),
@@ -67,7 +60,7 @@ fn join(url: &str) -> Command {
 fn a_repo_that_reads_as_a_marketplace_is_named_and_written() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
-    send(join(&url), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, join(&url));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let wanted = SharedConfig {
         url: url.clone(),
@@ -94,7 +87,7 @@ fn a_repo_that_reads_as_a_marketplace_is_named_and_written() {
 fn a_repo_that_is_no_marketplace_is_refused_and_not_written() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "groove");
-    send(join(&url), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, join(&url));
     assert_eq!(state.config.shared(), None);
     assert!(state.skill.shared.is_none());
     let why = state
@@ -109,9 +102,9 @@ fn a_repo_that_is_no_marketplace_is_refused_and_not_written() {
 fn letting_the_repo_go_forgets_it_and_its_copy() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
-    send(join(&url), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
-    send(Command::LeaveShared, &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, Command::LeaveShared);
     assert_eq!(state.config.shared(), None);
     assert!(state.skill.shared.is_none());
     assert!(!copy.exists(), "the copy is gone");
@@ -121,15 +114,13 @@ fn letting_the_repo_go_forgets_it_and_its_copy() {
 fn a_listing_out_when_the_repo_is_let_go_brings_neither_it_nor_its_copy_back() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
-    send(join(&url), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     let late = SyncSpawner::new().unwrap();
     let list = Cmd::Agent(crate::agent::Command::ListSkills);
     dispatch(list, &mut state, &services, &late);
-    send(Command::LeaveShared, &mut state, &services, &spawner);
-    for _ in 0..4 {
-        late.drain(&mut state, &services);
-    }
+    send(&mut state, &services, &spawner, Command::LeaveShared);
+    until(&late, &services, &mut state, |_| late.idle());
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     assert!(state.skill.shared.is_none(), "the older listing is dropped");
     assert!(!copy.exists(), "the copy is gone");
@@ -139,10 +130,10 @@ fn a_listing_out_when_the_repo_is_let_go_brings_neither_it_nor_its_copy_back() {
 fn the_copy_stays_while_the_config_without_it_cannot_be_written() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
-    send(join(&url), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     std::fs::create_dir(home.path().join("config/config.json.tmp")).unwrap();
-    send(Command::LeaveShared, &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, Command::LeaveShared);
     assert_eq!(state.errors.len(), 1, "the failed write is said");
     assert!(copy.exists(), "the copy the file still names stays");
 }
@@ -160,7 +151,7 @@ fn a_follow_that_keeps_failing_is_said_once() {
 fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "platform");
-    send(join(&url), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, join(&url));
     let skill = |state: &AppState| {
         let found = state
             .skill
@@ -181,9 +172,7 @@ fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
     }
     let list = crate::agent::Command::ListSkills;
     dispatch(Cmd::Agent(list), &mut state, &services, &spawner);
-    for _ in 0..4 {
-        spawner.drain(&mut state, &services);
-    }
+    until(&spawner, &services, &mut state, |_| spawner.idle());
     assert_eq!(skill(&state), Some(true));
     let dirs = crate::agent::skills::dirs(&state);
     let dirs = spawner.block_on(groove_skill_service::skills::plugin_dirs(&dirs));
@@ -202,9 +191,7 @@ fn switch(id: &str, on: bool, state: &mut AppState, services: &Services, spawner
         services,
         spawner,
     );
-    for _ in 0..4 {
-        spawner.drain(state, services);
-    }
+    until(spawner, services, state, |_| spawner.idle());
 }
 
 #[test]

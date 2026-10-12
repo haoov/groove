@@ -4,7 +4,7 @@ use super::*;
 
 const URL: &str = "https://gitlab.example.com/g/mayo.git";
 
-fn send(
+fn until_revision_ends(
     state: &mut crate::AppState,
     services: &Services,
     spawner: &SyncSpawner,
@@ -33,7 +33,7 @@ fn a_commit_pushed_after_the_worktree_was_cut_is_fetched_and_shown() {
         target: Some("main".into()),
         sha: Some(sha.clone()),
     };
-    send(&mut state, &services, &spawner, show);
+    until_revision_ends(&mut state, &services, &spawner, show);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let shown = state.workspace.commit.as_ref();
     assert_eq!(shown.map(|one| one.message.as_str()), Some("deployed"));
@@ -64,7 +64,7 @@ fn a_repo_the_session_lacks_is_added_from_the_pool_and_selected() {
         target: Some("release/1.0".into()),
         sha: None,
     };
-    send(&mut state, &services, &spawner, show);
+    until_revision_ends(&mut state, &services, &spawner, show);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let selected = state.session.selected_worktree().expect("a worktree");
     assert_eq!(selected.repo.as_str(), "gitlab.example.com/g/mayo");
@@ -85,7 +85,7 @@ fn a_commit_that_cannot_be_read_ends_the_revision_and_says_why() {
         target: Some("main".into()),
         sha: Some("0123456789abcdef0123456789abcdef01234567".into()),
     };
-    send(&mut state, &services, &spawner, show);
+    until_revision_ends(&mut state, &services, &spawner, show);
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     let said = state.errors.iter().map(|one| one.what.message.as_str());
     let named = said.collect::<Vec<_>>().join("\n");
@@ -107,7 +107,7 @@ fn a_revision_asked_in_one_session_is_dropped_once_another_is_selected() {
         sha: Some("0123456789abcdef0123456789abcdef01234567".into()),
         reading: false,
     });
-    send(&mut state, &services, &spawner, workspace::Command::Load);
+    until_revision_ends(&mut state, &services, &spawner, workspace::Command::Load);
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     assert_eq!(state.workspace.revision, None);
     assert!(
