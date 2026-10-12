@@ -172,14 +172,13 @@ pub(crate) fn say_as(
     whose: Whose,
     asker: Asker,
 ) {
-    if say == Say::Comment && body.is_empty() {
-        return asker.refused(state, "a comment needs a body");
-    }
     let notes = state.delivery.unposted(&whose.session, &whose.repo.id);
-    let commenting = say == Say::Review(ReviewVerdict::Comment);
-    if commenting && body.is_empty() && notes.is_empty() {
-        let why = "a review needs words in the box or a note to post";
-        return asker.failed(state, groove_types::Error::invalid(why));
+    let verdict = match &say {
+        Say::Comment => None,
+        Say::Review(verdict) => Some(*verdict),
+    };
+    if let Err(e) = Said::empty(verdict, &body, &notes) {
+        return asker.failed(state, e);
     }
     let (service, job) = (services.delivery.clone(), state.begin(say.label()));
     let clears = asker.carries_a_box();
