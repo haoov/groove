@@ -79,7 +79,7 @@ pub(super) fn order<R>(rows: &mut [R], tab: &Opened, key: impl Fn(&R, &str) -> S
 }
 
 /// A column that neither sorts nor drags.
-pub(super) fn plain(label: &'static str, width: Width<'static>) -> Column<'static, Target> {
+pub(super) fn plain<'a>(label: &'static str, width: Width<'a>) -> Column<'a, Target> {
     Column {
         label,
         width,

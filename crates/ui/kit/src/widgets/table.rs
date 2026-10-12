@@ -23,8 +23,10 @@ use laid::visible;
 pub enum Width<'a> {
     /// A share of what the fitted columns leave.
     Fill,
-    /// As wide as this sample or the label, whichever is wider.
+    /// As wide as this sample in the small size or the label, whichever is wider.
     Fit(&'a str),
+    /// As wide as this cell draws or the label, whichever is wider.
+    FitCell(&'a Cell<'a>),
     /// This many pixels, as the user dragged it.
     Fixed(f32),
 }
@@ -137,13 +139,14 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         let fitted: Vec<Option<f32>> = self
             .columns
             .iter()
-            .map(|column| match column.width {
-                Width::Fill => None,
-                Width::Fixed(wide) => Some(wide),
-                Width::Fit(sample) => {
-                    let wide = ctx.measure(sample, &body);
-                    Some(wide.max(ctx.measure(column.label, &label)) + ctx.tokens.icon)
-                }
+            .map(|column| {
+                let wide = match column.width {
+                    Width::Fill => return None,
+                    Width::Fixed(wide) => return Some(wide),
+                    Width::Fit(sample) => ctx.measure(sample, &body),
+                    Width::FitCell(sample) => sample.wide(ctx),
+                };
+                Some(wide.max(ctx.measure(column.label, &label)) + ctx.tokens.icon)
             })
             .collect();
         let room = (rect.w - md * (self.columns.len() + 1) as f32).max(0.0);
@@ -276,3 +279,6 @@ fn under<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, x: f32, cells: Vec<Cell<'_>>)
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

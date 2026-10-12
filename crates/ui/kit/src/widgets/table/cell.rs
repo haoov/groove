@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use groove_gfx::{Align, Edges, Rect};
+use groove_gfx::{Align, Edges, Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
@@ -10,6 +10,7 @@ use crate::base::style::Role;
 use crate::text::{elide, row};
 use crate::widgets::Badge;
 
+#[derive(Debug)]
 pub struct Cell<'a> {
     text: Cow<'a, str>,
     role: Role,
@@ -66,36 +67,55 @@ impl<'a> Cell<'a> {
         self
     }
 
+    /// How wide it draws in full.
+    pub fn wide<A: App>(&self, ctx: &mut Ctx<'_, A>) -> f32 {
+        if self.badge && !self.text.is_empty() {
+            return Badge::new(&self.text, self.role).width(ctx);
+        }
+        let bar = match self.bar {
+            Some(_) => ctx.tokens.aside_near / 2.0 + ctx.tokens.sm,
+            None => 0.0,
+        };
+        let (size, gap) = self.mark_room(ctx);
+        let mark = match (self.mark, self.text.is_empty()) {
+            (None, _) => 0.0,
+            (Some(_), true) => size,
+            (Some(_), false) => size + gap,
+        };
+        let text = ctx.measure(&self.text, &self.style(ctx));
+        bar + mark + text
+    }
+
     /// Draws in `rect`, at its start or against its end; returns where its text starts and ends.
     pub(super) fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect, end: bool) -> (f32, f32) {
-        if self.text.is_empty() {
-            let Some((mark, turn, role)) = self.mark else {
-                return (rect.x, rect.x);
+        if self.badge && !self.text.is_empty() {
+            let badge = Badge::new(&self.text, self.role);
+            let x = match end {
+                true => rect.right() - badge.width(ctx),
+                false => rect.x,
             };
-            let size = ctx.tokens.small;
-            let box_ = rect.align((size, size), Align::Center, Align::Center);
-            crate::widgets::turned(ctx, box_, mark, turn, role);
+            let box_ = badge.at(ctx, rect, x);
             return (box_.x, box_.right());
         }
-        if self.badge {
-            let box_ = Badge::new(&self.text, self.role).at(ctx, rect, rect.x);
-            return (box_.x, box_.right());
-        }
-        let style = match self.label {
-            true => ctx.styles.label(self.role),
-            false => ctx.styles.small(self.role),
-        };
         let mut room = rect;
+        let mut drawn = (rect.x, rect.x);
         if let Some(bar) = self.bar {
             let track = room.take_left(ctx.tokens.aside_near / 2.0);
             room = room.pad(Edges::across(ctx.tokens.sm, 0.0));
             bar.draw(ctx, track);
+            drawn = (track.x, track.right());
+        }
+        let (size, gap) = self.mark_room(ctx);
+        if self.text.is_empty() {
+            let Some((mark, turn, role)) = self.mark else {
+                return drawn;
+            };
+            let across = if end { Align::End } else { Align::Center };
+            let box_ = room.align((size, size), across, Align::Center);
+            crate::widgets::turned(ctx, box_, mark, turn, role);
+            return (box_.x, box_.right());
         }
         if let Some((mark, turn, role)) = self.mark {
-            let (size, gap) = match self.label {
-                true => (ctx.tokens.icon, ctx.tokens.sm),
-                false => (ctx.tokens.small, ctx.tokens.xs),
-            };
             let (at, pad) = match end {
                 true => (room.take_right(size), Edges::across(0.0, gap)),
                 false => (room.take_left(size), Edges::across(gap, 0.0)),
@@ -104,6 +124,7 @@ impl<'a> Cell<'a> {
             let box_ = crate::shape::square(at, size);
             crate::widgets::turned(ctx, box_, mark, turn, role);
         }
+        let style = self.style(ctx);
         let text = elide(ctx, &self.text, &style, room.w);
         let wide = ctx.measure(&text, &style);
         let lead = match end {
@@ -112,6 +133,21 @@ impl<'a> Cell<'a> {
         };
         row(ctx, room, lead, &text, style);
         (room.x + lead, room.x + lead + wide)
+    }
+
+    fn style<A: App>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
+        match self.label {
+            true => ctx.styles.label(self.role),
+            false => ctx.styles.small(self.role),
+        }
+    }
+
+    /// A mark's size and the gap after it, by the text's size.
+    fn mark_room<A: App>(&self, ctx: &Ctx<'_, A>) -> (f32, f32) {
+        match self.label {
+            true => (ctx.tokens.icon, ctx.tokens.sm),
+            false => (ctx.tokens.small, ctx.tokens.xs),
+        }
     }
 }
 

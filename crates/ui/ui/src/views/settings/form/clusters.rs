@@ -89,9 +89,10 @@ fn table<'a>(columns: &'a [Column<'a, Target>], count: usize, line: f32) -> Tabl
 /// One line an added context: its hue and context, its switches, its login and its removal.
 fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
     let contexts = widest(added.iter().map(|one| one.context.clone()));
+    let sample = Cell::label(contexts, Role::Text);
     let columns = [
         column("", Width::Fit("")),
-        column("context", Width::Fit(&contexts)),
+        column("context", Width::FitCell(&sample)),
         column("read-only", Width::Fit("read-only")),
         column(
             "login",

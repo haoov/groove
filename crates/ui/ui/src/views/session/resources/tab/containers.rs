@@ -42,9 +42,12 @@ pub(super) fn details(one: &Container) -> Vec<(&'static str, String)> {
     out
 }
 
-fn columns(ctx: &mut Ctx) -> Vec<Column<'static, Target>> {
-    let style = ctx.styles.small(Role::Text);
-    let meter = ctx.tokens.aside_near / 2.0 + ctx.tokens.sm + ctx.measure("9999Mi / 999Gi", &style);
+/// The widest usage cell, which the CPU and memory columns fit.
+fn meter() -> Cell<'static> {
+    Cell::small("9999Mi / 999Gi", Role::Text).bar(None, None, Role::Text)
+}
+
+fn columns<'a>(meter: &'a Cell<'a>) -> Vec<Column<'a, Target>> {
     let fit = Width::Fit;
     vec![
         grouped::plain("", fit("▾")),
@@ -53,8 +56,8 @@ fn columns(ctx: &mut Ctx) -> Vec<Column<'static, Target>> {
         grouped::plain("READY", fit("✓")),
         grouped::plain("RESTARTS", fit("14")),
         grouped::plain("LAST ENDED", fit("Error · exit 137 · 59m")),
-        grouped::plain("CPU", Width::Fixed(meter)),
-        grouped::plain("MEMORY", Width::Fixed(meter)),
+        grouped::plain("CPU", Width::FitCell(meter)),
+        grouped::plain("MEMORY", Width::FitCell(meter)),
         grouped::plain("", Width::Fill),
     ]
 }
@@ -85,7 +88,8 @@ pub(super) fn row(
         memory,
     ];
     let shown = Shown::row(cells).target(Target::ResourceFold(key(one), folded(tab, one)));
-    let columns = columns(ctx);
+    let meter = meter();
+    let columns = columns(&meter);
     let laid = grouped::single(ctx, &columns, header).one(ctx, rect, shown);
     let cell = |at: usize| laid.cell(0, at);
     let mut tip = None;
@@ -108,7 +112,8 @@ pub(super) fn detail(
     (key, value): &(&'static str, String),
     last: Option<&str>,
 ) {
-    let columns = columns(ctx);
+    let meter = meter();
+    let columns = columns(&meter);
     let from = grouped::single(ctx, &columns, false).spans(ctx, rect)[1].0;
     let rect = rect.pad(Edges::across(from - rect.x, 0.0));
     let keyed = Spec::default().width(ctx.tokens.aside_near);
