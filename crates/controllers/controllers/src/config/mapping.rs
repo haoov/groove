@@ -35,7 +35,7 @@ pub(super) fn map(
         Ok(config) => config.clone(),
         Err(e) => return state.failed(e),
     };
-    if !super::written(state, Some(config)) {
+    if !super::written(state, services, spawner, Some(config)) {
         return;
     }
     crate::task::load(state, services, spawner);

@@ -10,6 +10,7 @@ pub struct Services {
     pub session: groove_session_service::Service,
     pub task: groove_task_service::Service,
     pub delivery: groove_delivery_service::Service,
+    pub config: groove_config_service::Keeper,
     /// What the open file copies through.
     pub clipboard: Arc<dyn Clipboard>,
 }
@@ -22,6 +23,7 @@ impl Services {
             delivery: groove_delivery_service::Service::beside(session.store()),
             session,
             task: groove_task_service::Service::in_memory().await?,
+            config: groove_config_service::Keeper::default(),
             clipboard: Arc::new(Memory::default()),
         })
     }

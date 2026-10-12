@@ -81,7 +81,7 @@ fn set(state: &mut AppState, services: &Services, spawner: &dyn Spawner, source:
         Err(e) => return refused(state, e),
     };
     state.config.refused = None;
-    if !super::written(state, Some(config)) {
+    if !super::written(state, services, spawner, Some(config)) {
         return;
     }
     crate::task::load(state, services, spawner);

@@ -17,7 +17,7 @@ pub(super) fn switch(
         return state.failed(Error::invalid(why));
     }
     let config = state.config.switch_routine(id, on).cloned();
-    super::written(state, config);
+    super::written(state, services, spawner, config);
     match (on, routine) {
         (true, Some(one)) if one.kind == RoutineKind::Standalone => {
             made(state, services, spawner, &one)
@@ -50,7 +50,12 @@ fn made(state: &mut AppState, services: &Services, spawner: &dyn Spawner, routin
 }
 
 /// One trigger of a routine on or off.
-pub(super) fn trigger(state: &mut AppState, id: &str, trigger: Trigger, on: bool) {
+pub(super) fn trigger(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (id, trigger, on): (&str, Trigger, bool),
+) {
     let config = state.config.switch_trigger(id, trigger, on).cloned();
-    super::written(state, config);
+    super::written(state, services, spawner, config);
 }

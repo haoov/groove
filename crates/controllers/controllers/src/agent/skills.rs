@@ -127,12 +127,17 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
 }
 
 /// One skill switched on or off, the plugins built again, and running agents marked stale.
-pub fn switch(state: &mut AppState, spawner: &dyn Spawner, id: String, on: bool) {
+pub fn switch(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (id, on): (String, bool),
+) {
     let config = match state.config.switch_skill(&id, on) {
         Ok(config) => config.clone(),
         Err(e) => return state.failed(e),
     };
-    if !crate::config::written(state, Some(config)) {
+    if !crate::config::written(state, services, spawner, Some(config)) {
         return;
     }
     state.agent.switched = groove_types::Timestamp::now();

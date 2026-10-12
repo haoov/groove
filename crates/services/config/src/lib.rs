@@ -2,6 +2,7 @@
 
 mod clusters;
 mod families;
+mod keeper;
 mod plugins;
 mod sources;
 #[cfg(test)]
@@ -10,6 +11,7 @@ mod tests;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+pub use keeper::Keeper;
 pub use sources::Source;
 
 use groove_types::{Config, Error, FontFamily, Preferences, ThemeName, Tool, UiConfig};
@@ -66,6 +68,8 @@ pub struct State {
     /// What each source was last read to hold, and the sources being read.
     pub schemas: Vec<(groove_types::ProviderId, Vec<groove_types::Property>)>,
     pub reading: Vec<groove_types::ProviderId>,
+    /// The last revision handed to a write.
+    pub revision: u64,
 }
 
 /// Every program the app runs, checked; `claude` is the path the agent launches.
@@ -83,12 +87,6 @@ pub fn path(config_dir: &Path) -> std::path::PathBuf {
     groove_config::path(config_dir)
 }
 
-/// A change made to the config, written to its file; there is none to change before the first run.
-pub fn keep(config_dir: &Path, changed: Option<&Config>) -> Result<(), Error> {
-    let none = || Error::invalid("there is no config to change before the first run");
-    save(config_dir, changed.ok_or_else(none)?)
-}
-
 /// Where the window's boundaries stand, for the next run.
 pub fn keep_panes(data_dir: &Path, panes: &groove_types::Panes) -> Result<(), Error> {
     Ok(groove_config::panes::save(
@@ -97,14 +95,13 @@ pub fn keep_panes(data_dir: &Path, panes: &groove_types::Panes) -> Result<(), Er
     )?)
 }
 
-pub fn save(config_dir: &Path, config: &Config) -> Result<(), Error> {
-    Ok(groove_config::save(
-        &groove_config::path(config_dir),
-        config,
-    )?)
-}
-
 impl State {
+    /// The next revision a changed config is written at.
+    pub fn revised(&mut self) -> u64 {
+        self.revision += 1;
+        self.revision
+    }
+
     pub fn preferences(&self) -> Preferences {
         let held = self.config.as_ref().map(|c| c.preferences.clone());
         held.unwrap_or_default()

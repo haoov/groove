@@ -10,7 +10,7 @@ mod sources;
 use std::collections::BTreeMap;
 
 use groove_config_service::Preference;
-use groove_types::{ClusterChange, Mapping, ProviderId, Secret};
+use groove_types::{ClusterChange, Error, Mapping, ProviderId, Secret};
 
 use crate::{AppState, Services, Spawner};
 
@@ -128,7 +128,7 @@ pub fn dispatch(
     spawner: &dyn Spawner,
 ) {
     match command {
-        Command::SetPreference(one) => set_preference(state, one),
+        Command::SetPreference(one) => set_preference(state, services, spawner, one),
         Command::CheckEnvironment => environment::check(state, spawner),
         Command::Login { cols, rows } => environment::login(state, spawner, (cols, rows)),
         Command::SendLogin { bytes } => environment::send(state, &bytes),
@@ -144,14 +144,18 @@ pub fn dispatch(
         Command::TurnOff(id) => sources::off(state, services, spawner, id),
         Command::ReadSchema(source) => mapping::read(state, spawner, source),
         Command::Map { source, change } => mapping::map(state, services, spawner, (source, change)),
-        Command::Rebind(keymap) => rebind(state, keymap),
+        Command::Rebind(keymap) => rebind(state, services, spawner, keymap),
         Command::JoinShared { url, branch } => shared::join(state, spawner, (url, branch)),
-        Command::LeaveShared => shared::leave(state, spawner),
+        Command::LeaveShared => shared::leave(state, services, spawner),
         Command::SwitchRoutine { id, on } => routines::switch(state, services, spawner, (&id, on)),
-        Command::SwitchTrigger { id, trigger, on } => routines::trigger(state, &id, trigger, on),
-        Command::AddCluster { context } => clusters::add(state, spawner, &context),
-        Command::RemoveCluster { context } => clusters::remove(state, &context),
-        Command::SetCluster { context, change } => clusters::change(state, &context, change),
+        Command::SwitchTrigger { id, trigger, on } => {
+            routines::trigger(state, services, spawner, (&id, trigger, on))
+        }
+        Command::AddCluster { context } => clusters::add(state, services, spawner, &context),
+        Command::RemoveCluster { context } => clusters::remove(state, services, spawner, &context),
+        Command::SetCluster { context, change } => {
+            clusters::change(state, services, spawner, (&context, change))
+        }
         Command::KeepPanes(panes) => keep_panes(state, spawner, panes),
     }
 }
@@ -169,22 +173,52 @@ fn keep_panes(state: &mut AppState, spawner: &dyn Spawner, panes: groove_types::
     }));
 }
 
-/// The config as changed, written to its file; whether it was.
-pub(crate) fn written(state: &mut AppState, changed: Option<groove_types::Config>) -> bool {
-    let kept = groove_config_service::keep(&state.env.config_dir, changed.as_ref());
-    kept.map_err(|e| state.failed(e)).is_ok()
+/// The config as changed, written to its file in a job; whether there was one to write.
+pub(crate) fn written(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    changed: Option<groove_types::Config>,
+) -> bool {
+    let Some(config) = changed else {
+        state.failed(Error::invalid(
+            "there is no config to change before the first run",
+        ));
+        return false;
+    };
+    let (keeper, revision) = (services.config.clone(), state.config.revised());
+    let dir = state.env.config_dir.clone();
+    spawner.spawn(Box::pin(async move {
+        let kept = keeper.keep(&dir, &config, revision).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = kept {
+                state.failed(e);
+            }
+        }) as crate::Continuation
+    }));
+    true
 }
 
 /// The next key reads the new chords; the file follows.
-fn rebind(state: &mut AppState, keymap: BTreeMap<String, Vec<String>>) {
+fn rebind(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    keymap: BTreeMap<String, Vec<String>>,
+) {
     let changed = state.config.rebind(keymap).cloned();
-    written(state, changed);
+    written(state, services, spawner, changed);
 }
 
 /// The change reaches every reader at once; the file follows, written on the spot.
-fn set_preference(state: &mut AppState, one: Preference) {
+fn set_preference(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    one: Preference,
+) {
     let changed = state.config.set(one).cloned();
-    if !written(state, changed) {
+    if !written(state, services, spawner, changed) {
         return;
     }
     if let Preference::Theme(theme) = one {

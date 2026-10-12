@@ -30,6 +30,30 @@ pub fn save(path: &Path, config: &Config) -> Result<()> {
     save_json(path, config)
 }
 
+/// The whole file written again off the calling thread; the old one stays until the new is on disk.
+pub async fn write(path: &Path, config: &Config) -> Result<()> {
+    let text = serde_json::to_string_pretty(config).map_err(|source| Error::Parse {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    let failed = |source| Error::Write {
+        path: path.to_path_buf(),
+        source,
+    };
+    if let Some(dir) = path.parent() {
+        tokio::fs::create_dir_all(dir).await.map_err(failed)?;
+    }
+    let mut beside = path.as_os_str().to_owned();
+    beside.push(".tmp");
+    let beside = std::path::PathBuf::from(beside);
+    let mut file = tokio::fs::File::create(&beside).await.map_err(failed)?;
+    tokio::io::AsyncWriteExt::write_all(&mut file, text.as_bytes())
+        .await
+        .map_err(failed)?;
+    file.sync_all().await.map_err(failed)?;
+    tokio::fs::rename(&beside, path).await.map_err(failed)
+}
+
 /// A JSON file read back, or `None` when there is none yet.
 pub(crate) fn load_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<Option<T>> {
     let text = match std::fs::read_to_string(path) {

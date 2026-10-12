@@ -21,11 +21,11 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
     spawner.spawn(Box::pin(async move {
         let copied = shared::join(&data, &wanted).await;
         Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 state.config.joining = false;
                 match copied {
-                    Ok(copy) => joined(state, spawner, wanted, copy),
+                    Ok(copy) => joined(state, services, spawner, (wanted, copy)),
                     Err(e) => refused(state, e),
                 }
             },
@@ -33,7 +33,12 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
     }));
 }
 
-fn joined(state: &mut AppState, spawner: &dyn Spawner, wanted: SharedConfig, copy: Shared) {
+fn joined(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (wanted, copy): (SharedConfig, Shared),
+) {
     let Some(config) = state.config.set_shared(Some(wanted)).cloned() else {
         return refused(
             state,
@@ -41,20 +46,20 @@ fn joined(state: &mut AppState, spawner: &dyn Spawner, wanted: SharedConfig, cop
         );
     };
     state.agent.shared = Some(copy);
-    if !super::written(state, Some(config)) {
+    if !super::written(state, services, spawner, Some(config)) {
         return;
     }
     crate::agent::skills::list(state, spawner);
 }
 
 /// No shared repo any more: the config forgets it and the copy goes.
-pub(super) fn leave(state: &mut AppState, spawner: &dyn Spawner) {
+pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let Some(config) = state.config.set_shared(None).cloned() else {
         return;
     };
     state.agent.shared = None;
     state.config.unshared = None;
-    if !super::written(state, Some(config)) {
+    if !super::written(state, services, spawner, Some(config)) {
         return;
     }
     let data = state.env.data_dir.clone();

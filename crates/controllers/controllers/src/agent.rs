@@ -150,7 +150,7 @@ pub fn dispatch(
             skills::send(state, spawner, &session, &id, args.as_deref())
         }
         Command::DeleteSkill { id } => skills::delete(state, spawner, &id),
-        Command::SwitchSkill { id, on } => skills::switch(state, spawner, id, on),
+        Command::SwitchSkill { id, on } => skills::switch(state, services, spawner, (id, on)),
         Command::RunRoutine { id } => crate::routine::button(state, services, spawner, &id),
         pointing => pointer::acted(state, services, spawner, pointing),
     }
