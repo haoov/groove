@@ -46,11 +46,11 @@ fn a_template_asked_of_no_source_in_particular_names_the_ones_to_pick_from() {
     .map(Some)
     .expect("a notion config");
     let sources = State::default().sources(Some(&both));
-    let said = crate::unpicked(&sources, None);
+    let said = crate::asked::unpicked(&sources, None);
     assert!(
         said.to_string().contains("notion, github") || said.to_string().contains("github, notion"),
         "{said}"
     );
-    let none = crate::unpicked(&[], None);
+    let none = crate::asked::unpicked(&[], None);
     assert!(none.to_string().contains("no source is set up"), "{none}");
 }

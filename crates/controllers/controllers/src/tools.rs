@@ -54,12 +54,7 @@ pub(crate) fn about<'a>(state: &'a AppState, call: &Call) -> Option<&'a Open> {
     let Some(task) = call.text("task_id") else {
         return state.session.get(&session(call));
     };
-    let external = state
-        .task
-        .get(task)
-        .map(|one| one.external_id.clone())
-        .unwrap_or_else(|| ExternalId::new(task));
-    state.session.working(&external)
+    state.session.working(&state.task.resolve(task))
 }
 
 /// The task a read is about: the one its `task_id` names, or the session's own.
@@ -67,8 +62,7 @@ pub(crate) fn task_of(state: &AppState, call: &Call) -> Option<ExternalId> {
     let Some(named) = call.text("task_id") else {
         return about(state, call).and_then(|open| open.session.kind.task().cloned());
     };
-    let known = state.task.get(named).map(|one| one.external_id.clone());
-    Some(known.unwrap_or_else(|| ExternalId::new(named)))
+    Some(state.task.resolve(named))
 }
 
 /// Every worktree of that session.
