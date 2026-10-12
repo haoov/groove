@@ -6,7 +6,7 @@ use crate::views::session::Tab;
 use crate::{Overlay, Surface, Ui};
 
 impl Ui {
-    /// What the layout reads from the state: a routine's session selected, a commit shown.
+    /// Reads the layout's state, drops what a move left, lands a pending tab, and leaves k8s with no cluster.
     pub fn settle(&mut self, app: &AppState) {
         let selected = app.session.selected().map(|open| &open.session.kind);
         self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());

@@ -17,7 +17,7 @@ pub enum Target {
     Mode(groove_types::DiffMode),
     /// A tab of the workspace.
     Tab(Tab),
-    /// One of the header's two pickers.
+    /// One of the header's pickers.
     Picker(Picks),
     /// An overview row.
     Worktree(WorktreeId),

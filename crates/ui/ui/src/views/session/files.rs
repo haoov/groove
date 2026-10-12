@@ -161,7 +161,6 @@ pub(crate) fn needs_walk(app: &AppState, ui: &Ui) -> bool {
     browsing(ui) && holds(app) && app.workspace.paths().is_empty() && !app.workspace.walking
 }
 
-/// Whether a worktree is selected at all.
 fn holds(app: &AppState) -> bool {
     app.session.selected_worktree().is_some()
 }

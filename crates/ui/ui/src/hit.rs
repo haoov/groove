@@ -13,7 +13,7 @@ use groove_gfx::Rect;
 pub enum Picks {
     Repo,
     Branch,
-    /// The Resources tab's contexts, and its namespaces.
+    /// The scope's contexts, and its namespaces.
     Contexts,
     Namespaces,
 }
