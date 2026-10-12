@@ -121,7 +121,7 @@ impl Service {
         text: &crate::Text,
     ) -> Result<Delivered> {
         let remote = self.remote(repo)?;
-        let git = groove_git::Git::at(&worktree.dir());
+        let git = groove_git::Git::at(worktree.dir());
         let base = git.base_branch(worktree.base_ref.as_deref()).await.ok();
         let proposed = Proposed {
             head: &worktree.branch,
