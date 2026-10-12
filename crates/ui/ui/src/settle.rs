@@ -1,6 +1,7 @@
 //! What the layout reads from the state each frame, and what ends when the selection moves.
 
 use groove_controllers::AppState;
+use groove_types::SessionId;
 
 use crate::views::session::Tab;
 use crate::{Overlay, Surface, Ui};
@@ -67,7 +68,7 @@ impl Ui {
         }
     }
 
-    /// A question or a draft about the worktree, or the session, left behind, dropped.
+    /// A question or a draft about the worktree, or the session, left behind, dropped; the Resources tab kept per session.
     fn moved(&mut self, app: &AppState) {
         let session = app.session.selected.clone();
         let worktree = app.session.selected_worktree().map(|one| one.id.clone());
@@ -80,6 +81,7 @@ impl Ui {
         let session_left = was.0 != now.0;
         if session_left {
             self.session.going = None;
+            self.swap_resources(app, was.0, now.0.clone());
         }
         let ends = |one: &Overlay| match one {
             Overlay::Losing(_) | Overlay::Menu(_) => true,
@@ -89,5 +91,19 @@ impl Ui {
         if self.overlay.as_ref().is_some_and(ends) {
             self.overlay = None;
         }
+    }
+
+    fn swap_resources(&mut self, app: &AppState, was: Option<SessionId>, now: Option<SessionId>) {
+        let Some(was) = was else {
+            return;
+        };
+        let session = &mut self.session;
+        let left = std::mem::take(&mut session.resources);
+        session.resources_of.insert(was, left);
+        let back = now.and_then(|id| session.resources_of.remove(&id));
+        session.resources = back.unwrap_or_default();
+        session
+            .resources_of
+            .retain(|id, _| app.session.get(id).is_some());
     }
 }

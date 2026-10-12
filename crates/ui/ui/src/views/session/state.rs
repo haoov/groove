@@ -63,6 +63,11 @@ pub struct SessionUi {
     /// A note being typed, on the lines it will stand on.
     pub noting: Option<Noting>,
     pub resources: crate::views::session::resources::ResourcesUi,
+    /// The Resources tab of each other session, as it was left.
+    pub resources_of: std::collections::BTreeMap<
+        groove_types::SessionId,
+        crate::views::session::resources::ResourcesUi,
+    >,
 }
 
 /// A note being typed in the surface: the lines it is about, and its words.
