@@ -218,8 +218,10 @@ fn synced(one: &AppResource) -> (&'static str, Role) {
     if one.hook {
         return ("hook", Role::Ghost);
     }
+    if !one.out_of_sync() {
+        return ("✓", Role::Ok);
+    }
     match one.sync.as_str() {
-        "Synced" => ("✓", Role::Ok),
         "OutOfSync" => ("◐", Role::Warn),
         _ => ("?", Role::Ghost),
     }
