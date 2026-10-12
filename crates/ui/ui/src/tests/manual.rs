@@ -162,3 +162,39 @@ fn the_copy_chord_on_a_terminal_copies_that_terminal() {
     };
     assert_eq!(copied, [Command::Shell(copy)]);
 }
+
+#[test]
+fn a_program_that_reads_the_mouse_hears_it_and_shift_selects_instead() {
+    let mut app = full_app();
+    let id = app.shell.reserve(&session(&app), false);
+    let reader = super::agent::mouse_reader();
+    app.shell.started(&session(&app), id, Ok(reader));
+    let mut ui = Ui::default();
+    ui.session.manual = true;
+    let hits = drawn(&app, &ui);
+    let grid = hits.rect_of(&Target::Shell(id)).expect("its grid");
+    let (x, y) = (grid.x + grid.w / 2.0, grid.y + grid.h / 2.0);
+    let act = |input: Input, ui: &mut Ui| -> Vec<&'static str> {
+        let out = handle(input, ui, &app, &hits, window());
+        out.iter().map(|one| one.id()).collect()
+    };
+    let press = |shift| Input::Press {
+        x,
+        y,
+        mods: Modifiers {
+            shift,
+            ..Modifiers::default()
+        },
+    };
+    assert_eq!(act(press(false), &mut ui), ["shell.focus", "shell.click"]);
+    let moved = Input::Move { x: x + 40.0, y };
+    assert_eq!(act(moved.clone(), &mut ui), ["shell.drag"]);
+    assert_eq!(act(Input::Release, &mut ui), ["shell.click"]);
+    assert_eq!(act(press(true), &mut ui), ["shell.focus", "shell.select"]);
+    assert_eq!(
+        act(moved, &mut ui),
+        ["shell.select"],
+        "shift drags a selection"
+    );
+    assert_eq!(act(Input::Release, &mut ui), ["shell.copy"]);
+}

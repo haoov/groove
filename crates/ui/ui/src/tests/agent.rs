@@ -18,7 +18,8 @@ fn session_ui() -> Ui {
     }
 }
 
-fn reading_mouse(app: &mut groove_controllers::AppState) {
+/// A terminal whose program has asked for the mouse.
+pub(super) fn mouse_reader() -> groove_controllers::agent_service::Terminal {
     use groove_controllers::agent_service::{Hooks, PtySpec, Terminal};
     let spec = PtySpec {
         program: "sh".into(),
@@ -50,7 +51,11 @@ fn reading_mouse(app: &mut groove_controllers::AppState) {
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
     assert!(terminal.reads_mouse(), "the program asked for the mouse");
-    app.agent.agents[0].1.terminal = Some(terminal);
+    terminal
+}
+
+fn reading_mouse(app: &mut groove_controllers::AppState) {
+    app.agent.agents[0].1.terminal = Some(mouse_reader());
 }
 
 #[test]

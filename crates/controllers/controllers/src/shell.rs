@@ -65,6 +65,21 @@ pub enum Command {
         kind: Select,
         from: bool,
     },
+    /// `shell.click`: the left button on a terminal, for the program that reads it.
+    Click {
+        session: SessionId,
+        id: u64,
+        col: usize,
+        row: usize,
+        down: bool,
+    },
+    /// `shell.drag`: the pointer moved with the button down, for that same program.
+    Drag {
+        session: SessionId,
+        id: u64,
+        col: usize,
+        row: usize,
+    },
     /// `shell.copy`: what is selected on a terminal's grid, to the clipboard.
     Copy { session: SessionId, id: u64 },
 }
@@ -83,6 +98,8 @@ impl Command {
             Command::Resize { .. } => "shell.resize",
             Command::Scroll { .. } => "shell.scroll",
             Command::Select { .. } => "shell.select",
+            Command::Click { .. } => "shell.click",
+            Command::Drag { .. } => "shell.drag",
             Command::Copy { .. } => "shell.copy",
         }
     }
@@ -125,7 +142,9 @@ fn to_terminal(state: &AppState, command: Command) {
         | Command::Paste { session, id, .. }
         | Command::Resize { session, id, .. }
         | Command::Scroll { session, id, .. }
-        | Command::Select { session, id, .. } => (session, *id),
+        | Command::Select { session, id, .. }
+        | Command::Click { session, id, .. }
+        | Command::Drag { session, id, .. } => (session, *id),
         _ => return,
     };
     let Some(terminal) = state.shell.terminal(session, id) else {
@@ -138,6 +157,8 @@ fn to_terminal(state: &AppState, command: Command) {
         Command::Scroll {
             lines, col, row, ..
         } => terminal.wheel(*lines, (*col, *row)),
+        Command::Click { col, row, down, .. } => terminal.click((*col, *row), *down),
+        Command::Drag { col, row, .. } => terminal.drag((*col, *row)),
         Command::Select {
             col,
             row,

@@ -4,9 +4,9 @@ use groove_controllers::{AppState, Command, agent};
 use groove_types::SessionId;
 
 use crate::hit::{Hits, Target};
-use crate::input::selection::{agent_cell, begun};
+use crate::input::selection::{agent_cell, pressed as pressed_on};
 use crate::layout::Layout;
-use crate::{Corner, Grid, Held, Menu, Of, Offer, Ui};
+use crate::{Corner, Grid, Menu, Of, Offer, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
 /// The agent's own targets; anything else is not its to answer.
@@ -27,58 +27,10 @@ pub(super) fn acted(
     }
 }
 
-/// A press on the screen: the program that reads the mouse is sent it, shift aside.
+/// A press on the screen, through the grid's own rule.
 fn pressed(ui: &mut Ui, app: &AppState, point: (f32, f32), metrics: Metrics) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    let (col, row) = agent_cell(point, ui, metrics);
-    if reads_mouse(app, &session) && !ui.agent.bypassed {
-        ui.held = Some(Held::AgentClick);
-        return vec![Command::Agent(agent::Command::Click {
-            session,
-            col,
-            row,
-            down: true,
-        })];
-    }
-    begun(ui, app, Grid::Agent, (col, row))
-}
-
-/// The pointer moved while it is down, sent on to the program that was sent the press.
-pub(super) fn dragged(
-    ui: &Ui,
-    app: &AppState,
-    point: (f32, f32),
-    metrics: Metrics,
-) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    let (col, row) = agent_cell(point, ui, metrics);
-    vec![Command::Agent(agent::Command::Drag { session, col, row })]
-}
-
-/// The button let go where it stands, for the program that was sent the press.
-pub(crate) fn released(ui: &Ui, app: &AppState, metrics: Metrics) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    let (col, row) = agent_cell(ui.at, ui, metrics);
-    vec![Command::Agent(agent::Command::Click {
-        session,
-        col,
-        row,
-        down: false,
-    })]
-}
-
-/// Whether the program in the agent reads the mouse itself.
-fn reads_mouse(app: &AppState, session: &SessionId) -> bool {
-    app.agent
-        .agent(session)
-        .and_then(|one| one.terminal.as_ref())
-        .is_some_and(|one| one.reads_mouse())
+    let cell = agent_cell(point, ui, metrics);
+    pressed_on(ui, app, Grid::Agent, cell)
 }
 
 /// What the agent can be sent, under the word that opened it.

@@ -61,8 +61,8 @@ pub enum Held {
     Task(groove_types::ExternalId),
     /// A selection of our own on a terminal's grid.
     Selecting(Grid),
-    /// The agent's screen, its program sent the reports.
-    AgentClick,
+    /// A terminal's grid, its program sent the reports.
+    Clicking(Grid),
     /// A column of the Resources list being made wider or narrower.
     Column(views::session::resources::Dragged),
 }

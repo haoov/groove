@@ -3,7 +3,7 @@
 use groove_controllers::{AppState, Command, shell};
 
 use crate::hit::{Hits, Target};
-use crate::input::selection::{begun, shell_cell};
+use crate::input::selection::{pressed as pressed_on, shell_cell};
 use crate::layout::{Layout, grid_in};
 use crate::{Focus, Grid, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -66,7 +66,7 @@ fn pressed(
     ui.focus = Focus::Terminal;
     let mut out = vec![Command::Shell(shell::Command::Focus { session, id })];
     if let Some(cell) = shell_cell(id, point, hits, metrics) {
-        out.extend(begun(ui, app, Grid::Shell(id), cell));
+        out.extend(pressed_on(ui, app, Grid::Shell(id), cell));
     }
     out
 }

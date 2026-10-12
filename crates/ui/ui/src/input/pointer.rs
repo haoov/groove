@@ -59,8 +59,6 @@ pub(super) fn press(
     }
 }
 
-pub(crate) use agent::released as agent_released;
-
 /// The pointer moved: a boundary follows it, or the open file holds more.
 pub(super) fn moved(
     x: f32,
@@ -74,8 +72,9 @@ pub(super) fn moved(
         Some(Held::Edge(_)) => drag_to(ui, x, y, metrics),
         Some(Held::Task(_)) => carried(x, y, ui, app, metrics),
         Some(Held::Lens) => lensed(y, ui, app, hits, metrics),
-        Some(Held::AgentClick) => return agent::dragged(ui, app, (x, y), metrics),
-        Some(Held::Selecting(_)) => return selection::carried(ui, app, (x, y), hits, metrics),
+        Some(Held::Clicking(_) | Held::Selecting(_)) => {
+            return selection::carried(ui, app, (x, y), hits, metrics);
+        }
         Some(Held::Text) => return extended(x, y, ui, app, hits, metrics),
         Some(Held::Column(_)) => resources::dragged(ui, x, metrics),
         None => {}

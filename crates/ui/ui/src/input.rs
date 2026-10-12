@@ -130,7 +130,9 @@ pub fn handle(
         Input::Release => {
             let mut out = pointer::dropped(ui, app);
             match ui.held.take() {
-                Some(Held::AgentClick) => out.extend(pointer::agent_released(ui, app, metrics)),
+                Some(Held::Clicking(grid)) => {
+                    out.extend(selection::let_go(ui, app, grid, hits, metrics))
+                }
                 Some(Held::Selecting(grid)) => out.extend(selection::copied(app, grid)),
                 _ => {}
             }
