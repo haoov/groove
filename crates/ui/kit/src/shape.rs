@@ -64,7 +64,17 @@ pub fn ruled<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
 
 /// What a list marks as the one it stands on: the held ground between the chosen rules.
 pub fn chosen<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    chosen_ground(ctx, rect);
+    chosen_rules(ctx, rect);
+}
+
+/// The ground of [`chosen`] alone.
+pub fn chosen_ground<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     ground(ctx, rect, Ground::Held);
+}
+
+/// The rules of [`chosen`].
+pub fn chosen_rules<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     ruled(ctx, rect, ctx.styles.chosen());
 }
 

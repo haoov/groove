@@ -9,7 +9,7 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{after_mark, hairline, ruled, square};
+use groove_ui_kit::shape::{after_mark, hairline, square};
 use groove_ui_kit::text::{Label, ago};
 use groove_ui_kit::widgets::{Button, lead};
 
@@ -27,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
     let up = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
     if up {
-        groove_ui_kit::shape::ground(ctx, rect, Ground::Held);
+        groove_ui_kit::shape::chosen_ground(ctx, rect);
     }
     groove_ui_kit::shape::hoverable(ctx, rect, Target::Session(id.clone()));
     if let Some(role) = tinted(app, id) {
@@ -59,7 +59,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     }
     hairline(ctx, rect, ctx.styles.line());
     if up {
-        ruled(ctx, rect, ctx.styles.chosen());
+        groove_ui_kit::shape::chosen_rules(ctx, rect);
     }
 }
 

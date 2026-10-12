@@ -22,6 +22,7 @@ reach the rail.
 - **Everything is reachable from the keyboard.** The palette is the front door to every
   action. The mouse is a shortcut.
 - **Selection is a background**, one step above its ground — never an underline or a bar.
+  A selected tab is the exception: it keeps its accent underline.
 
 ## Limits
 
