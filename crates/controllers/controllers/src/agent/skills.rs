@@ -21,13 +21,36 @@ pub(crate) fn dirs(state: &AppState) -> Dirs {
 
 /// The shared copy followed and every plugin written, then every skill and routine onto the slice.
 pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
+    if state.skill.listing {
+        state.skill.again = true;
+        return;
+    }
+    state.skill.listing = true;
+    let generation = state.skill.generation;
     let dirs = dirs(state);
     let at = (state.env.data_dir.clone(), state.env.config_dir.clone());
     let shared = state.config.shared().cloned();
     let held = state.skill.shared.as_ref().map(|one| one.path.clone());
     spawner.spawn(Box::pin(async move {
         let found = listing::listing(dirs, at, shared, held).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                listed(state, (services, spawner), generation, found)
+            },
+        ) as Continuation
+    }));
+}
+
+/// A listing landed: taken unless the shared repo changed meanwhile; then what waited on it.
+fn listed(
+    state: &mut AppState,
+    (services, spawner): (&Services, &dyn Spawner),
+    generation: u64,
+    found: listing::Listing,
+) {
+    state.skill.listing = false;
+    match state.skill.generation == generation {
+        true => {
             crate::config::shared::followed(state, found.followed);
             if let Err(e) = found.made {
                 state.failed(e);
@@ -35,8 +58,15 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
             state.skill.skills = found.skills;
             state.routine.routines = found.routines;
             state.skill.listed = true;
-        }) as Continuation
-    }));
+        }
+        false => state.skill.again = true,
+    }
+    if std::mem::take(&mut state.skill.unsharing) {
+        return crate::config::shared::forget(state, services, spawner);
+    }
+    if std::mem::take(&mut state.skill.again) {
+        list(state, spawner);
+    }
 }
 
 /// One skill typed into the agent's prompt, then the return a beat later, once its menu settles.

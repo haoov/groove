@@ -45,7 +45,7 @@ fn joined(
             Error::invalid("there is no config to change before the first run"),
         );
     };
-    state.skill.shared = Some(copy);
+    state.skill.reshared(Some(copy));
     super::write(state, services, spawner, config, None);
     crate::agent::skills::list(state, spawner);
 }
@@ -55,12 +55,17 @@ pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spa
     let Some(config) = state.config.set_shared(None).cloned() else {
         return;
     };
-    state.skill.shared = None;
+    state.skill.reshared(None);
     state.skill.unshared = None;
     super::write(state, services, spawner, config, Some(Box::new(forget)));
 }
 
-fn forget(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
+/// The copy taken away once no listing is out, then the skills listed again.
+pub(crate) fn forget(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
+    if state.skill.listing {
+        state.skill.unsharing = true;
+        return;
+    }
     let data = state.env.data_dir.clone();
     spawner.spawn(Box::pin(async move {
         let gone = shared::forget(&data).await;

@@ -26,6 +26,13 @@ pub struct State {
     pub switched: Timestamp,
     /// The skills and routines have been read once.
     pub listed: bool,
+    /// A listing is out, and another was asked for meanwhile.
+    pub listing: bool,
+    pub again: bool,
+    /// Moves on each time the shared repo is joined or left.
+    pub generation: u64,
+    /// The copy waits to be taken away until the listing out lands.
+    pub unsharing: bool,
 }
 
 impl State {
@@ -35,6 +42,12 @@ impl State {
             .iter()
             .filter(|one| one.enabled && one.offered_to(kind))
             .collect()
+    }
+
+    /// The shared repo joined with its copy, or left with none.
+    pub fn reshared(&mut self, copy: Option<shared::Shared>) {
+        self.shared = copy;
+        self.generation += 1;
     }
 
     /// What a follow found kept: the copy, or the last one; a failure to say, once.

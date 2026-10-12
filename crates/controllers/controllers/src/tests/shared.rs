@@ -118,6 +118,24 @@ fn letting_the_repo_go_forgets_it_and_its_copy() {
 }
 
 #[test]
+fn a_listing_out_when_the_repo_is_let_go_brings_neither_it_nor_its_copy_back() {
+    let (home, spawner, services, mut state) = fresh();
+    let url = origin(home.path(), "wiremind");
+    send(join(&url), &mut state, &services, &spawner);
+    let copy = state.skill.shared.clone().expect("the copy").path;
+    let late = SyncSpawner::new().unwrap();
+    let list = Cmd::Agent(crate::agent::Command::ListSkills);
+    dispatch(list, &mut state, &services, &late);
+    send(Command::LeaveShared, &mut state, &services, &spawner);
+    for _ in 0..4 {
+        late.drain(&mut state, &services);
+    }
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(state.skill.shared.is_none(), "the older listing is dropped");
+    assert!(!copy.exists(), "the copy is gone");
+}
+
+#[test]
 fn the_copy_stays_while_the_config_without_it_cannot_be_written() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
