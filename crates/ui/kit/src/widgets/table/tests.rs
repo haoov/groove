@@ -87,6 +87,36 @@ fn a_fitted_cell_counts_its_size_and_its_bar() {
 }
 
 #[test]
+fn a_sortable_column_fitted_to_its_cells_has_room_for_its_sort_mark() {
+    let sample = Cell::small("", Role::Text);
+    let sortable = Column {
+        label: "AGE",
+        sort: Some(()),
+        ..column(Width::FitCell(&sample))
+    };
+    let columns = [sortable, column(Width::Fill)];
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: 24.0,
+            under: 0.0,
+            ruled: false,
+        },
+        count: 0,
+        offset: 0.0,
+        selected: None,
+        sorted: None,
+    };
+    let wide = Rect { w: 1000.0, ..ROOM };
+    let (width, head) = drawn(|ctx| {
+        let head = Cell::small("AGE", Role::Faint).mark(Mark::Down, 0, Role::Faint);
+        (table.spans(ctx, wide)[0].1, head.wide(ctx))
+    })
+    .0;
+    assert!(width >= head, "{width} holds {head}");
+}
+
+#[test]
 fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
     let samples = [
         "0.25 / 2",

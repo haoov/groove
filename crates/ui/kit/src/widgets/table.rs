@@ -153,7 +153,9 @@ impl<T: Clone + PartialEq> Table<'_, T> {
                     Width::Fill => return None,
                     Width::Fixed(wide) => return Some(wide),
                     Width::Fit(sample) => (ctx.measure(sample, &body), ctx.tokens.icon),
-                    Width::FitCell(sample) => (sample.wide(ctx), 0.0),
+                    Width::FitCell(sample) => {
+                        (sample.wide(ctx).max(cell::sort_room(ctx, column)), 0.0)
+                    }
                 };
                 Some(wide.max(ctx.measure(column.label, &label)) + slack)
             })

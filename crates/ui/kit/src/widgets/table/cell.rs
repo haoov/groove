@@ -197,3 +197,13 @@ impl Bar {
         }
     }
 }
+
+/// A sortable column's label with its sort mark; nothing for any other.
+pub(super) fn sort_room<A: App, T>(ctx: &mut Ctx<'_, A>, column: &super::Column<'_, T>) -> f32 {
+    match column.sort {
+        Some(_) => Cell::small(column.label, Role::Faint)
+            .mark(Mark::Down, 0, Role::Faint)
+            .wide(ctx),
+        None => 0.0,
+    }
+}
