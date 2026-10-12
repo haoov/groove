@@ -7,9 +7,10 @@ use crate::base::ctx::{App, Ctx};
 #[cfg(test)]
 mod tests;
 
-/// The caret: a bar at `x`, as tall as `span`.
+/// The caret: a bar at `x`, as tall as `span` and kept within it.
 pub fn caret_bar<A: App>(ctx: &mut Ctx<'_, A>, x: f32, span: Rect, color: Color) {
     let width = ctx.tokens.hairline * 2.0;
+    let x = x.min(span.right() - width).max(span.x);
     ctx.quad(Rect::new(x, span.y, width, span.h), color);
 }
 

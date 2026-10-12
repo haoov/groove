@@ -8,13 +8,25 @@ const ROOM: Rect = Rect::new(100.0, 40.0, 300.0, 24.0);
 
 #[test]
 fn a_caret_is_a_bar_at_its_place_as_tall_as_its_span() {
-    let span = Rect::new(0.0, 44.0, 10.0, 16.0);
+    let span = Rect::new(100.0, 44.0, 50.0, 16.0);
     let (width, frame) = drawn(|ctx| {
         caret_bar(ctx, 120.0, span, Color::WHITE);
         ctx.tokens.hairline * 2.0
     });
     let quad = frame.layers()[0].quads[0];
     assert_eq!(quad.rect, Rect::new(120.0, 44.0, width, 16.0));
+}
+
+#[test]
+fn a_caret_past_its_span_stands_at_the_span_s_end() {
+    let span = Rect::new(100.0, 40.0, 50.0, 16.0);
+    let (width, frame) = drawn(|ctx| {
+        caret_bar(ctx, 400.0, span, Color::WHITE);
+        ctx.tokens.hairline * 2.0
+    });
+    let quad = frame.layers()[0].quads[0];
+    assert_eq!(quad.rect.right(), span.right());
+    assert_eq!(quad.rect.w, width);
 }
 
 #[test]
