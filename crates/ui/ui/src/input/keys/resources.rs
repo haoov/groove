@@ -1,4 +1,4 @@
-//! The chords the Resources tab hears while the workspace has the keys.
+//! The Resources tab's chords while the workspace has the keys, and typing in its searches.
 
 use groove_controllers::{AppState, Command};
 

@@ -49,7 +49,7 @@ pub struct Fired {
     pub about: String,
 }
 
-/// The `runs` part of the agent slice.
+/// The `runs` part of the routine slice.
 #[derive(Debug, Default)]
 pub struct Runs {
     pub running: Vec<Run>,

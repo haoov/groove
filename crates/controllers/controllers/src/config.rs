@@ -29,9 +29,11 @@ pub enum Command {
     SendLogin {
         bytes: Vec<u8>,
     },
+    /// What is pasted into the sign-in's terminal.
     PasteLogin {
         text: String,
     },
+    /// The sign-in's terminal at a new size.
     ResizeLogin {
         cols: u16,
         rows: u16,

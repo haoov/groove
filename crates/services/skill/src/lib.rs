@@ -24,7 +24,7 @@ pub struct State {
     pub unshared: Option<String>,
     /// When a skill was last switched on or off.
     pub switched: Timestamp,
-    /// The skills and routines have been read once.
+    /// The skills have been read once.
     pub listed: bool,
     /// A listing is out, and another was asked for meanwhile.
     pub listing: bool,
