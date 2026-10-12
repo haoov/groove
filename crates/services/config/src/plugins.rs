@@ -91,7 +91,8 @@ impl State {
             let why = format!("`{id}` is no skill Groove can switch: no shared repo holds it");
             Error::invalid(why)
         };
-        let config = self.config.as_mut().ok_or_else(unknown)?;
+        let first = || Error::invalid("there is no config to change before the first run");
+        let config = self.config.as_mut().ok_or_else(first)?;
         let (held, wanted) = match id.starts_with("user:") {
             true => (&mut config.skills_off, !on),
             false => (&mut config.shared.as_mut().ok_or_else(unknown)?.enabled, on),

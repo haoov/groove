@@ -179,3 +179,11 @@ async fn after_a_failed_write_an_older_config_is_never_written() {
     assert!(crate::load(dir.path()).unwrap().is_none());
     assert_eq!(keeper.kept(), 0);
 }
+
+#[test]
+fn a_skill_switched_before_the_first_run_says_there_is_no_config() {
+    let mut state = State::default();
+    let refused = state.switch_skill("user:mine", false).map(drop);
+    let said = refused.expect_err("nothing to write").message;
+    assert!(said.contains("first run"), "{said}");
+}
