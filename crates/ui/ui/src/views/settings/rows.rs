@@ -147,6 +147,27 @@ impl Row {
         }
     }
 
+    /// A value read only here, in mono.
+    pub fn text(
+        section: Section,
+        label: &'static str,
+        words: &'static str,
+        text: impl Into<String>,
+    ) -> Self {
+        let text = text.into();
+        Self::new(section, label, words, Value::Text { text, mono: true })
+    }
+
+    /// A state in its colour, with what a click beside it does.
+    pub fn state(
+        section: Section,
+        (label, words): (&'static str, &'static str),
+        (shown, role): (String, Role),
+        act: Option<(&'static str, Target)>,
+    ) -> Self {
+        Self::new(section, label, words, Value::State { shown, role, act })
+    }
+
     /// Whether every word of the query is in its section, group, label or words.
     pub fn matches(&self, query: &str) -> bool {
         let (section, group) = (self.section.label(), self.group);
