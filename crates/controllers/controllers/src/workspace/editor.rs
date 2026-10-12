@@ -56,14 +56,14 @@ pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
         return;
     };
     let (id, dir) = (worktree.id.clone(), worktree.dir());
-    let (path, text) = (open.path.clone(), open.new.text());
+    let (path, text, revision) = (open.path.clone(), open.new.text(), open.new.revision());
     let job = state.begin(format!("saving {path}"));
     spawner.spawn(Box::pin(async move {
         let written = groove_workspace_service::save(&dir, &path, &text);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match written {
-                Ok(()) => state.workspace.saved(&id, &path),
+                Ok(()) => state.workspace.saved(&id, &path, revision),
                 Err(e) => state.failed(e),
             }
         }) as Continuation

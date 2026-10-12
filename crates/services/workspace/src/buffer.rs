@@ -74,12 +74,13 @@ impl State {
         }
     }
 
-    /// The buffer marked as what the disk holds.
-    pub fn saved(&mut self, worktree: &WorktreeId, path: &str) {
+    /// The buffer marked as what the disk holds, unless it changed since `revision` was written.
+    pub fn saved(&mut self, worktree: &WorktreeId, path: &str, revision: u64) {
         let held = self
             .buffers
             .get_mut(worktree)
-            .and_then(|one| one.get_mut(path));
+            .and_then(|one| one.get_mut(path))
+            .filter(|open| open.new.revision() == revision);
         if let Some(open) = held {
             open.new.saved();
         }

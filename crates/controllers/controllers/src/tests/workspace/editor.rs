@@ -321,6 +321,19 @@ fn a_file_saved_back_to_what_it_was_stays_open() {
     );
 }
 
+#[test]
+fn words_typed_while_a_save_is_out_still_owe_the_disk() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    editing(&mut state, &services, &spawner);
+    keyed(&mut state, &services, &spawner, Edit::Insert("a".into()));
+    let save = Cmd::Workspace(workspace::Command::SaveFile);
+    dispatch(save, &mut state, &services, &spawner);
+    keyed(&mut state, &services, &spawner, Edit::Insert("b".into()));
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.workspace.dirty(), ["a.txt"], "the b is not on disk");
+}
+
 fn keyed(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, edit: Edit) {
     let command = Cmd::Workspace(workspace::Command::Edit(edit));
     dispatch(command, state, services, spawner);
