@@ -15,7 +15,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading};
+use groove_ui_kit::shape::{after_mark, hairline, hoverable, square};
 use groove_ui_kit::text::{Label, row};
 use groove_ui_kit::widgets::lead;
 use groove_ui_kit::widgets::{Side, pane};
@@ -153,7 +153,7 @@ fn footer(ctx: &mut Ctx, rect: Rect) {
     hoverable(ctx, rect, Target::SettingsOpen);
     let style = ctx.styles.small(Role::Faint);
     let md = ctx.tokens.md;
-    let mark = leading(ctx, rect, rect.x + md);
+    let mark = square(rect.pad(Edges::across(md, 0.0)), ctx.tokens.icon);
     groove_ui_kit::widgets::icon(ctx, mark, Mark::Settings, Role::Faint);
     row(ctx, rect, after_mark(ctx, md), "settings", style);
 }

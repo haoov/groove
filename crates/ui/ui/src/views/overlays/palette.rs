@@ -118,10 +118,8 @@ fn input_line(
 /// The rows' own room, inside the panel's edges.
 fn inset(ctx: &Ctx, body: Rect, shown: usize) -> Rect {
     let hairline = ctx.tokens.hairline;
-    let rows = Rect {
-        h: ctx.tokens.row * shown as f32,
-        ..body
-    };
+    let tall = Spec::default().height(ctx.tokens.row * shown as f32);
+    let [rows, _] = column_in(body, [tall, Spec::fill()]);
     rows.pad(Edges::across(hairline, hairline))
 }
 

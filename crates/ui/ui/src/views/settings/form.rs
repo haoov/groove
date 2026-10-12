@@ -26,7 +26,8 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
     let band = Spec::default().height(ctx.tokens.header);
     let [bar, area] = column_in(area, [band, Spec::fill()]);
     super::back(ctx, bar);
-    let [head, mut body] = column_in(area.pad(Edges::all(ctx.tokens.md)), [band, Spec::fill()]);
+    let inner = area.pad(Edges::all(ctx.tokens.md));
+    let [head, mut body] = column_in(inner, [band, Spec::fill()]);
     let query = settings.search.text();
     let searching = !query.is_empty();
     let shown: Vec<Row> = rows(app, settings)
@@ -46,9 +47,7 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
     }
     let login = app.config.login.as_ref();
     if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
-        let pane = super::login_pane(ctx.window, &ctx.tokens);
-        body = body.until_y(pane.y);
-        signing_in(ctx, pane, terminal);
+        body = signing_in(ctx, inner, terminal);
     }
     let lines = lines(&shown, searching);
     let (row, heading) = (
@@ -101,12 +100,18 @@ fn group(ctx: &mut Ctx, rect: Rect, name: &str) {
     Label::new(name, ctx.styles.label(Role::Faint)).draw(ctx, line);
 }
 
-/// The sign-in's terminal, which has the keys while it runs.
-fn signing_in(ctx: &mut Ctx, pane: Rect, terminal: &Terminal) {
+/// The sign-in's terminal, which has the keys while it runs; returns the form's body above it.
+fn signing_in(ctx: &mut Ctx, inner: Rect, terminal: &Terminal) -> Rect {
+    let pane = super::login_pane(ctx.window, &ctx.tokens);
     groove_ui_kit::shape::ground(ctx, pane, Ground::Deep);
     ctx.hit(pane, Target::Login);
-    let origin = (pane.x + ctx.tokens.sm, pane.y + ctx.tokens.sm);
+    let inside = pane.pad(Edges::all(ctx.tokens.sm));
+    let origin = (inside.x, inside.y);
     screen(ctx, pane, origin, (&terminal.screen(), true));
+    let [upper, _] = column_in(inner, [Spec::fill(), Spec::fill()]);
+    let band = Spec::default().height(ctx.tokens.header);
+    let [_, body] = column_in(upper, [band, Spec::fill()]);
+    body
 }
 
 /// One row: its label, its group when a search mixes them, its value at the right.

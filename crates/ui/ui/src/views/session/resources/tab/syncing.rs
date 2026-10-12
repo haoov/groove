@@ -49,7 +49,7 @@ pub(super) fn draw(
         grouped::order(&mut stage.steps, tab, key);
     }
     hairline(ctx, line, ctx.styles.line());
-    progress(ctx, inside, (part, operation), &stages);
+    progress(ctx, line, (part, operation), &stages);
     let mut lines = Vec::new();
     for stage in &stages {
         let shut = tab.folded(&stage.title, stage.settled());
@@ -85,7 +85,7 @@ fn progress(
     let steps = stages.iter().flat_map(|stage| &stage.steps);
     let total = steps.clone().count().max(1);
     let done = steps.filter(|one| one.state == State::Done).count();
-    let mut room = line;
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let said = format!("{done} of {total}");
     Label::new(&said, ctx.styles.small(Role::Faint)).right(ctx, &mut room, ctx.tokens.sm);
     let gap = Spec::default().width(ctx.tokens.md);
@@ -94,10 +94,8 @@ fn progress(
     let thick = Spec::default().height(ctx.tokens.sm);
     let [_, track, _] = column_in(bar, [Spec::fill(), thick, Spec::fill()]);
     Panel::default().ground(ctx.styles.line()).draw(ctx, track);
-    let filled = Rect {
-        w: track.w * done as f32 / total as f32,
-        ..track
-    };
+    let part = Spec::default().width(track.w * done as f32 / total as f32);
+    let [filled, _] = row_in(track, [part, Spec::fill()]);
     let working = ctx.styles.color(Role::Working);
     Panel::default().ground(working).draw(ctx, filled);
     argo::operation(ctx, room, operation, ctx.now);

@@ -85,24 +85,14 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         rect: Rect,
         mut shown: impl FnMut(usize) -> Shown<'r, T>,
     ) -> Laid {
-        let mut body = rect;
-        let spans = self.spans(ctx, rect);
+        let laid = self.laid(ctx, rect);
         if self.sorted.is_some() {
-            let header = body.take_top(ctx.tokens.row);
-            self.header(ctx, header, &spans);
+            let mut head = rect;
+            let header = head.take_top(ctx.tokens.row);
+            self.header(ctx, header, &laid.spans);
         }
-        let height = self.rows.first + self.rows.under;
-        let extent = (self.count as f32 * height - body.h).max(0.0);
-        let offset = self.offset.min(extent);
-        let laid = Laid {
-            extent,
-            spans,
-            body,
-            offset,
-            height,
-            first: self.rows.first,
-        };
-        let (first, last) = visible(offset, body.h, height, self.count);
+        let body = laid.body;
+        let (first, last) = visible(laid.offset, body.h, laid.height, self.count);
         ctx.clipped(body, |ctx| {
             for at in first..last {
                 let selected = self.selected == Some(at);
@@ -110,6 +100,25 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             }
         });
         laid
+    }
+
+    /// Where the header and the rows would stand in `rect`, drawing nothing.
+    pub fn laid<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Laid {
+        let mut body = rect;
+        let spans = self.spans(ctx, rect);
+        if self.sorted.is_some() {
+            body.take_top(ctx.tokens.row);
+        }
+        let height = self.rows.first + self.rows.under;
+        let extent = (self.count as f32 * height - body.h).max(0.0);
+        Laid {
+            extent,
+            spans,
+            body,
+            offset: self.offset.min(extent),
+            height,
+            first: self.rows.first,
+        }
     }
 
     /// One row alone at the top of `rect`, under the header when there is one.

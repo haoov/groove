@@ -50,22 +50,12 @@ impl<'a> Copied<'a> {
     /// Draws in `rect`, keeping room for the mark at the text's end; returns the box the text took.
     pub(super) fn draw(self, ctx: &mut Ctx, rect: Rect) -> Rect {
         let (icon, gap) = (ctx.tokens.small, ctx.tokens.xs);
-        let room = Rect {
-            w: (rect.w - icon - gap).max(0.0),
-            ..rect
-        };
+        let fixed = |width: f32| Spec::default().width(width);
+        let [room, _] = row_in(rect, [Spec::fill(), fixed(gap + icon)]);
         let style = ctx.styles.small(self.role);
         let wide = ctx.measure(self.text, &style).min(room.w);
-        let text = Rect { w: wide, ..rect };
-        let mark = Rect {
-            x: text.right() + gap,
-            w: icon,
-            ..rect
-        };
-        let spot = Rect {
-            w: wide + gap + icon,
-            ..rect
-        };
+        let [_, _, mark, _] = row_in(rect, [fixed(wide), fixed(gap), fixed(icon), Spec::fill()]);
+        let [spot, _] = row_in(rect, [fixed(wide + gap + icon), Spec::fill()]);
         let link = self.open.map(Box::new);
         let on = ctx.interact(spot, Target::ResourceCopy(self.copies.to_string(), link));
         if on {

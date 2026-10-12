@@ -22,8 +22,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     if ui.losing() == Some(&Losing::Everything) {
         super::files::asking(ctx, top, "discard every change?");
     } else {
-        let acts = acts(ctx, app, top);
-        state_of(ctx, app, top.until(acts));
+        let rest = acts(ctx, app, top);
+        state_of(ctx, app, rest);
     }
     typed(ctx, app, ui, message);
 }
@@ -36,7 +36,8 @@ fn state_of(ctx: &mut Ctx, app: &AppState, line: Rect) {
         (Mark::Staged, count(files, true), Role::Ok),
         (Mark::Modified, count(files, false), Role::Warn),
     ];
-    counts(ctx, line, line.x + ctx.tokens.md, &items);
+    let room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    counts(ctx, line, room.x, &items);
 }
 
 fn count(files: &[FileDiff], staged: bool) -> u32 {
@@ -80,10 +81,10 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     });
     ctx.hit(box_, Target::Message);
     if buffer.text().is_empty() && !composing {
-        let line = Rect {
-            h: ctx.tokens.line,
-            ..box_
-        };
+        let [line, _] = column_in(
+            box_,
+            [Spec::default().height(ctx.tokens.line), Spec::fill()],
+        );
         Label::new("a message", ctx.styles.code(Role::Ghost)).draw(ctx, line);
     }
 }
@@ -130,8 +131,8 @@ fn label(step: Step) -> &'static str {
     }
 }
 
-/// One button for what to do now, a caret for the rest; returns where it starts.
-fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
+/// One button for what to do now, a caret for the rest; returns the room left of them.
+fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> Rect {
     let act = step(app);
     let can = act.is_some_and(|one| one != Step::Commit { ready: false });
     let role = match can {
@@ -146,7 +147,8 @@ fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
     let run = Button::new(word, Target::Do, role, raised)
         .lit(role)
         .hover(action);
-    run.inert(!can).right(ctx, &mut room, 0.0).x
+    run.inert(!can).right(ctx, &mut room, 0.0);
+    room
 }
 
 /// What git says about the selected worktree.

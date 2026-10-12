@@ -5,7 +5,7 @@ use groove_gfx::{Edges, Rect};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
-use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, Corner, Row, Text, input_at, list, panel_at};
 
@@ -47,11 +47,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
     let query = &scoping.query;
     input_at(ctx, line, prefix, (query.text(), query.before()));
     let hairline = ctx.tokens.hairline;
-    let body = Rect {
-        h: ctx.tokens.row * shown as f32,
-        ..rest
-    }
-    .pad(Edges::across(hairline, hairline));
+    let [rows_room, _] = column_in(rest, [tall(ctx.tokens.row * shown as f32), Spec::fill()]);
+    let body = rows_room.pad(Edges::across(hairline, hairline));
     if lines.is_empty() {
         let hint = match scoping.which {
             Picks::Contexts => "no context in Settings",
@@ -129,20 +126,16 @@ fn rows(
         .collect();
     let selected = scoping.cursor.map(|at| at - first);
     list(ctx, body, &items, selected);
-    for (row, (at, line)) in lines
-        .iter()
-        .enumerate()
-        .skip(first)
-        .take(PALETTE_ROWS)
-        .enumerate()
+    let slots = column_of(
+        body,
+        &vec![Spec::default().height(ctx.tokens.row); PALETTE_ROWS],
+    );
+    for (slot, (at, line)) in slots
+        .into_iter()
+        .zip(lines.iter().enumerate().skip(first).take(PALETTE_ROWS))
     {
         if matches!(line, ScopeLine::Held(Pick::Context(_) | Pick::Pair(_))) {
-            let line = Rect {
-                y: body.y + ctx.tokens.row * row as f32,
-                h: ctx.tokens.row,
-                ..body
-            };
-            let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
+            let mut room = slot.pad(Edges::across(0.0, ctx.tokens.sm));
             let close = Button::icon(Mark::Close, 0, Target::ScopeDetach(at), Role::Bad);
             close
                 .text(Text::Small)

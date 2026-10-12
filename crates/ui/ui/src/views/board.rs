@@ -45,7 +45,11 @@ impl List {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.app.layout.board;
     groove_ui_kit::shape::ground(ctx, area, Ground::Work);
-    let field = header::draw(ctx, area.until_y(area.y + ctx.tokens.header), app, ui);
+    let [line, _] = column_in(
+        area,
+        [Spec::default().height(ctx.tokens.header), Spec::fill()],
+    );
+    let field = header::draw(ctx, line, app, ui);
     for list in List::ALL {
         column::draw(ctx, column_of(&ctx.tokens, area, list), app, ui, list);
     }

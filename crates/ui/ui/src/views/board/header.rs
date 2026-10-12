@@ -21,7 +21,7 @@ const NEW: &str = "+ explorer";
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> Rect {
     groove_ui_kit::shape::ground(ctx, line, Ground::Work);
     hairline(ctx, line, ctx.styles.line());
-    let mut room = line.until(new_task(ctx, line));
+    let mut room = new_task(ctx, line);
     if app.task.reading {
         let [rest, _] = row_in(room, [Spec::fill(), Spec::default().width(ctx.tokens.md)]);
         room = rest;
@@ -50,7 +50,8 @@ pub(super) fn offers(ctx: &mut Ctx, field: Rect, app: &AppState, ui: &Ui) {
     if shown.is_empty() {
         return;
     }
-    let at = (field.x + ctx.tokens.md, field.bottom());
+    let from = field.pad(Edges::across(ctx.tokens.md, 0.0));
+    let at = (from.x, from.bottom());
     let size = (ctx.tokens.modal / 2.0, ctx.tokens.row * shown.len() as f32);
     let whole = groove_ui_kit::shape::kept_in(at, size, ctx.window);
     ctx.layer();
@@ -83,12 +84,13 @@ fn hovered(ctx: &Ctx) -> Option<usize> {
     }
 }
 
-/// The button that opens an explorer, at the right end. Returns where it starts.
-fn new_task(ctx: &mut Ctx, line: Rect) -> f32 {
+/// The button that opens an explorer, at the right end. Returns the room left of it.
+fn new_task(ctx: &mut Ctx, line: Rect) -> Rect {
     let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
     let new = Button::new(NEW, Target::AddTask, Role::Working, band)
         .text(Text::Label)
         .hover(hover);
     let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
-    new.right(ctx, &mut room, 0.0).x
+    new.right(ctx, &mut room, 0.0);
+    room
 }

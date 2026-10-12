@@ -4,7 +4,7 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{Container, Pressure, State, Usage, bytes, cores, gauge, quantity};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
-use groove_ui_kit::shape::Panel;
+use groove_ui_kit::shape::{Panel, hung_under};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Column, Shown, Width};
 
@@ -119,8 +119,8 @@ pub(super) fn detail(
 ) {
     let (caret, meter) = (caret(), meter());
     let columns = columns((&caret, &meter));
-    let from = grouped::single(ctx, &columns, false).spans(ctx, rect)[1].0;
-    let rect = rect.pad(Edges::across(from - rect.x, 0.0));
+    let laid = grouped::single(ctx, &columns, false).laid(ctx, rect);
+    let rect = laid.from(0, 1);
     let keyed = Spec::default().width(ctx.tokens.aside_near);
     let [k, v] = row_in(rect, [keyed, Spec::fill()]);
     Label::new(key, ctx.styles.small(Role::Ghost)).draw(ctx, k);
@@ -131,12 +131,11 @@ pub(super) fn detail(
 pub(super) fn tip(ctx: &mut Ctx, tip: &Tip) {
     ctx.layer();
     let (sm, row) = (ctx.tokens.sm, ctx.tokens.row);
-    let box_ = Rect {
-        y: tip.under.bottom(),
-        w: ctx.tokens.aside_mid,
-        h: row * tip.lines.len() as f32 + sm * 2.0,
-        ..tip.under
-    };
+    let size = (
+        ctx.tokens.aside_mid,
+        row * tip.lines.len() as f32 + sm * 2.0,
+    );
+    let box_ = hung_under(tip.under, size);
     Panel::default()
         .ground(ctx.styles.deep())
         .border(ctx.styles.line())

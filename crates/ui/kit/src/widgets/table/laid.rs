@@ -25,6 +25,12 @@ impl Laid {
         let (x, w) = self.spans[column];
         Rect::new(x, self.line(row).y, w, self.first)
     }
+
+    /// The first line of row `row` from column `column`'s left edge to the end.
+    pub fn from(&self, row: usize, column: usize) -> Rect {
+        let (x, _) = self.spans[column];
+        Rect::new(x, self.line(row).y, self.body.right() - x, self.first)
+    }
 }
 
 /// The first row on screen and the one past the last.

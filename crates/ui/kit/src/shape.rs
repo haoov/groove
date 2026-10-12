@@ -17,6 +17,11 @@ pub fn box_in(row: Rect, x: f32, size: f32) -> Rect {
     Rect::new(x, row.y + (row.h - size) / 2.0, size, size)
 }
 
+/// A box of `size` hanging under `rect`, at its left.
+pub fn hung_under(rect: Rect, (width, height): (f32, f32)) -> Rect {
+    Rect::new(rect.x, rect.bottom(), width, height)
+}
+
 /// A square of `size` centred down `slot`, at its start.
 pub fn square(slot: Rect, size: f32) -> Rect {
     slot.align((size, size), Align::Start, Align::Center)

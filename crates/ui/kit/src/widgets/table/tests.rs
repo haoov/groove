@@ -159,3 +159,30 @@ fn a_folding_band_leads_with_the_kit_caret() {
         "no caret unless it folds"
     );
 }
+
+#[test]
+fn laid_stands_where_draw_puts_the_rows() {
+    let columns = [column(Width::Fit("kind")), column(Width::Fill)];
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: 24.0,
+            under: 0.0,
+            ruled: true,
+        },
+        count: 1,
+        offset: 0.0,
+        selected: None,
+        sorted: Some(super::Sorted::NONE),
+    };
+    let (laid, drawn) = drawn(|ctx| {
+        let laid = table.laid(ctx, ROOM);
+        (laid, table.one(ctx, ROOM, Shown::row(Vec::<Cell>::new())))
+    })
+    .0;
+    assert_eq!(laid.spans, drawn.spans);
+    assert_eq!(laid.body, drawn.body);
+    let from = laid.from(0, 1);
+    assert_eq!(from.x, laid.cell(0, 1).x, "from the column's left edge");
+    assert_eq!(from.right(), ROOM.right(), "to the end");
+}

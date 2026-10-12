@@ -46,16 +46,10 @@ pub(super) fn tint(app: &AppPart) -> Option<Role> {
 }
 
 /// A row of the operation, on its colour from the panel's edge to the other.
-pub(super) fn ground(ctx: &mut Ctx, rect: Rect, role: Role) {
-    let md = ctx.tokens.md;
-    let wide = Rect {
-        x: rect.x - md,
-        w: rect.w + md * 2.0,
-        ..rect
-    };
+pub(super) fn ground(ctx: &mut Ctx, line: Rect, role: Role) {
     Panel::default()
         .ground(ctx.styles.tint(role))
-        .draw(ctx, wide);
+        .draw(ctx, line);
 }
 
 /// `✗ Sync failed to a1b2c3d · started 4m ago by auto-sync · 38s · retry 2`.

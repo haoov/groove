@@ -68,11 +68,11 @@ pub(super) fn draw(
         tab.scroll,
         &indexed,
         |(at, _)| heights[*at],
-        |ctx, rect, (at, block)| {
-            let rect = rect.pad(Edges::across(md, md));
+        |ctx, line, (at, block)| {
             if let Some((role, _)) = tint.filter(|(_, until)| at < until) {
-                argo::ground(ctx, rect, role);
+                argo::ground(ctx, line, role);
             }
+            let rect = line.pad(Edges::across(md, md));
             let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()));
             tip = drawn.or(tip.take());
         },
