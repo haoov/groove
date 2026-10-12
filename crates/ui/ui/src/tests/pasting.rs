@@ -163,8 +163,19 @@ fn on_the_board_a_paste_reaches_no_hidden_session_field() {
 fn the_resources_search_takes_what_is_pasted_into_it() {
     let app = full_app();
     let mut ui = Ui::default();
+    ui.session.tab = Tab::Resources;
     ui.session.resources.typing = true;
     let asked = paste("app=web", &mut ui, &app);
     assert!(asked.is_empty());
     assert_eq!(ui.session.resources.search.text(), "app=web");
+}
+
+#[test]
+fn a_field_on_a_tab_not_shown_takes_no_paste() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Overview;
+    ui.session.bar.open(Term::Path);
+    paste("src/one", &mut ui, &app);
+    assert_eq!(ui.session.bar.path.text(), "", "the bar is not drawn");
 }

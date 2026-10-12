@@ -5,12 +5,14 @@ mod keys;
 mod pointer;
 mod rest;
 mod scroll;
+mod typed;
 
 use groove_controllers::{AppState, Command, agent, workspace};
 
 use crate::hit::{Cursor, Hits};
 use crate::{Focus, Held, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
+use typed::Typed;
 
 pub use follow::follow;
 pub use keys::encode;
@@ -132,20 +134,21 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
 
 /// The clipboard into the session's field that has the keys, else the pane that has them.
 fn pasted_in_session(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let keyed = typed::keyed(&ui.session);
     let session = &mut ui.session;
-    let field = match () {
-        _ if session.naming.is_some() => session.naming.as_mut().map(|one| &mut one.field),
-        _ if session.noting.is_some() => {
+    let field = match keyed {
+        Some(Typed::Naming) => session.naming.as_mut().map(|one| &mut one.field),
+        Some(Typed::Noting) => {
             if let Some(noting) = session.noting.as_mut() {
                 let text = text.trim().replace('\r', "");
                 noting.buffer.edit(&groove_types::Edit::Insert(text));
             }
             return Vec::new();
         }
-        _ if session.bar.typing.is_some() => session.bar.typing.map(|term| session.bar.of(term)),
-        _ if session.resources.filtering => Some(&mut session.resources.filter),
-        _ if session.resources.typing => Some(&mut session.resources.search),
-        _ => session
+        Some(Typed::Bar(term)) => Some(session.bar.of(term)),
+        Some(Typed::Kinds) => Some(&mut session.resources.filter),
+        Some(Typed::Search) => Some(&mut session.resources.search),
+        None => session
             .find
             .as_mut()
             .filter(|find| find.typing)

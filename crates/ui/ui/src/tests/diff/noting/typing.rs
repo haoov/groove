@@ -139,3 +139,17 @@ fn ctrl_moves_the_caret_and_deletes_in_a_note_as_the_key_alone_does() {
     typed("?", &mut ui, &app);
     assert_eq!(said(&ui), "c?!");
 }
+
+#[test]
+fn a_note_on_a_tab_not_shown_takes_no_keys_and_keeps_its_words() {
+    let (app, mut ui) = noting("half");
+    ui.session.tab = crate::views::session::Tab::Overview;
+    typed("x", &mut ui, &app);
+    let posted = chord(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert!(
+        !posted.iter().any(|one| matches!(one, Command::Delivery(_))),
+        "{posted:?}"
+    );
+    ui.session.tab = crate::views::session::Tab::Files;
+    assert_eq!(said(&ui), "half", "the words wait for the tab");
+}

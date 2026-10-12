@@ -14,6 +14,7 @@ mod worded;
 
 use groove_controllers::{AppState, Command};
 
+use super::typed::Typed;
 use super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
 use crate::views::session::Term;
@@ -75,17 +76,12 @@ fn in_session(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    if ui.session.naming.is_some() {
-        return in_name(key, mods, ui);
-    }
-    if ui.session.noting.is_some() {
-        return in_note(key, mods, ui, keymap);
-    }
-    if ui.session.bar.typing.is_some() {
-        return in_bar(key, mods, ui, app, keymap);
-    }
-    if ui.session.resources.typing || ui.session.resources.filtering {
-        return resources::in_resources(key, mods, ui, app);
+    match super::typed::keyed(&ui.session) {
+        Some(Typed::Naming) => return in_name(key, mods, ui),
+        Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
+        Some(Typed::Bar(_)) => return in_bar(key, mods, ui, app, keymap),
+        Some(Typed::Kinds | Typed::Search) => return resources::in_resources(key, mods, ui, app),
+        None => {}
     }
     if let Some(commands) = finding((key, mods), ui, app, keymap, seen) {
         return commands;
