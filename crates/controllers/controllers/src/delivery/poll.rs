@@ -73,13 +73,16 @@ fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, worktr
         return;
     };
     state.delivery.poll.sent(worktree);
+    let taken = state.delivery.taken(worktree);
     let service = services.delivery.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.read(&whose.repo, &whose.worktree).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.delivery.poll.answered(&whose.worktree.id);
-                answered(state, (services, spawner), &whose, read);
+                if !state.delivery.overtaken(&whose.worktree.id, taken) {
+                    answered(state, (services, spawner), &whose, read);
+                }
             },
         ) as Continuation
     }));
