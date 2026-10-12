@@ -77,6 +77,7 @@ fn the_commit_box_keeps_every_line_of_what_is_pasted() {
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     ui.session.composing = true;
+    ui.focus = crate::Focus::Sidebar;
     let asked = paste("feat: one\n\nthe body", &mut ui, &app);
     assert_eq!(
         asked,
@@ -93,6 +94,7 @@ fn the_commit_box_takes_it_as_an_edit_of_its_own() {
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     ui.session.composing = true;
+    ui.focus = crate::Focus::Sidebar;
     let asked = paste("feat: one", &mut ui, &app);
     assert_eq!(
         asked,
@@ -178,4 +180,18 @@ fn a_field_on_a_tab_not_shown_takes_no_paste() {
     ui.session.bar.open(Term::Path);
     paste("src/one", &mut ui, &app);
     assert_eq!(ui.session.bar.path.text(), "", "the bar is not drawn");
+}
+
+#[test]
+fn the_commit_box_takes_no_paste_once_another_pane_has_the_keys() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    ui.session.composing = true;
+    ui.focus = crate::Focus::Agent;
+    let asked = paste("one", &mut ui, &app);
+    assert!(
+        matches!(asked.as_slice(), [Command::Agent(_)]),
+        "the agent takes it: {asked:?}"
+    );
 }

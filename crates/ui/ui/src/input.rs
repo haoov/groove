@@ -158,7 +158,7 @@ fn pasted_in_session(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         field.paste(text);
         return Vec::new();
     }
-    if ui.session.composing {
+    if ui.session.composing && ui.focus == Focus::Sidebar {
         let edit = groove_types::Edit::Insert(text.to_string());
         return vec![Command::Workspace(workspace::Command::Message(edit))];
     }
