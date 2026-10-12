@@ -10,7 +10,7 @@ pub use cell::Cell;
 pub use laid::Laid;
 pub use shown::{Band, Line, Shown, Slot};
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
@@ -260,7 +260,11 @@ fn banded<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, band: Band<'_, A::Target>, s
     if let Some(target) = band.target {
         hoverable(ctx, line, target);
     }
-    under(ctx, line, line.x + ctx.tokens.md, band.cells);
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    if let Some(open) = band.open {
+        crate::widgets::fold(ctx, &mut room, open, Role::Ghost);
+    }
+    under(ctx, line, room.x, band.cells);
     hairline(ctx, line, ctx.styles.line());
 }
 

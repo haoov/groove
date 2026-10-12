@@ -1,7 +1,7 @@
 use groove_gfx::{CellSize, Color, Fonts, Frame, Rect, Size};
 use groove_types::{ThemeName, Timestamp};
 
-use super::{Cell, Column, Rows, Table, Width};
+use super::{Cell, Column, Rows, Shown, Table, Width};
 use crate::base::ctx::{App, Ctx, Metrics};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
@@ -120,4 +120,42 @@ fn a_fitted_cell_counts_its_size_and_its_bar() {
     let tokens = Tokens::new(1.0);
     let meter = tokens.aside_near / 2.0 + tokens.sm + small;
     assert_eq!(fitted(Width::FitCell(&barred)), meter, "the meter's width");
+}
+
+#[test]
+fn a_folding_band_leads_with_the_kit_caret() {
+    let columns = [column(Width::Fill)];
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: 24.0,
+            under: 0.0,
+            ruled: false,
+        },
+        count: 1,
+        offset: 0.0,
+        selected: None,
+        sorted: None,
+    };
+    let band = |open| Shown::band(vec![Cell::small("pods", Role::Text)]).fold(open);
+    let (_, frame) = drawn(|ctx| table.one(ctx, ROOM, band(false)));
+    let layer = &frame.layers()[0];
+    let [caret] = layer.icons.as_slice() else {
+        panic!("one caret: {:?}", layer.icons.len());
+    };
+    assert_eq!(caret.turn, Mark::RIGHTWARDS, "shut points right");
+    let text = layer
+        .texts
+        .iter()
+        .find(|one| one.text == "pods")
+        .expect("its name");
+    assert!(text.x >= caret.rect.right(), "the name after the caret");
+    let (_, plain) = drawn(|ctx| {
+        let shown = Shown::band(vec![Cell::small("pods", Role::Text)]);
+        table.one(ctx, ROOM, shown)
+    });
+    assert!(
+        plain.layers()[0].icons.is_empty(),
+        "no caret unless it folds"
+    );
 }

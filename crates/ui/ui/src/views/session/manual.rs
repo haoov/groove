@@ -11,9 +11,8 @@ use crate::hit::Target;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Tab, fold, screen};
+use groove_ui_kit::widgets::{Button, Tab, fold_box, screen};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -52,10 +51,8 @@ fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
     let splits = Button::new("split", Target::ShellSplit, Role::Muted, ground);
     splits.right(ctx, &mut room, ctx.tokens.xs);
     Button::new("+", Target::ShellNew, Role::Muted, ground).right(ctx, &mut room, sm);
-    let mut folds = room.take_left(line.h);
-    hoverable(ctx, folds, Target::ShellFold);
-    folds.take_left((line.h - ctx.tokens.small) / 2.0);
-    fold(ctx, &mut folds, ui.session.manual, Role::Faint);
+    let folding = (ui.session.manual, Target::ShellFold);
+    fold_box(ctx, &mut room, folding, Role::Faint);
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.left(ctx, &mut room, md);
     let Some(shells) = shells else {

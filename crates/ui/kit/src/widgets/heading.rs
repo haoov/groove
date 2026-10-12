@@ -11,6 +11,7 @@ use crate::widgets::fold;
 pub struct Heading<'a, T> {
     label: &'a str,
     count: Option<usize>,
+    note: Option<&'a str>,
     /// Whether what it heads is open, when it folds.
     fold: Option<bool>,
     target: Option<T>,
@@ -22,6 +23,7 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
         Self {
             label,
             count: None,
+            note: None,
             fold: None,
             target: None,
             role: Role::Faint,
@@ -31,6 +33,12 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
     /// Shown after the name; nothing when it is zero.
     pub fn count(mut self, count: usize) -> Self {
         self.count = Some(count);
+        self
+    }
+
+    /// Shown after the name when there is no count; nothing when it is empty.
+    pub fn note(mut self, note: &'a str) -> Self {
+        self.note = Some(note);
         self
     }
 
@@ -65,9 +73,10 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
             fold(ctx, &mut room, open, self.role);
         }
         let name = self.label.to_uppercase();
-        let text = match self.count {
-            None | Some(0) => name,
-            Some(n) => format!("{name} · {n}"),
+        let text = match (self.count, self.note) {
+            (Some(n), _) if n > 0 => format!("{name} · {n}"),
+            (_, Some(note)) if !note.is_empty() => format!("{name} · {note}"),
+            _ => name,
         };
         Label::new(&text, ctx.styles.heading(self.role)).draw(ctx, room);
     }

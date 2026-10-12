@@ -110,8 +110,9 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
 
 /// One line, under the table's header when `header`.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), last: Option<&str>) {
+    let caret = Cell::fold(true, Role::Ghost);
     let columns = [
-        grouped::plain("", Width::Fit("▾")),
+        grouped::plain("", Width::FitCell(&caret)),
         grouped::plain("KIND", Width::Fit("secret")),
         grouped::plain("NAME", Width::Fit("paxone-worker-5d6b9c7f4")),
         grouped::plain("STATUS", Width::Fill),
@@ -119,7 +120,6 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
     let one = match line {
         Line::Heading { title, count, shut } => {
             let cells = vec![
-                Cell::small(if *shut { "▸" } else { "▾" }, Role::Ghost),
                 Cell::small(*title, Role::Text),
                 Cell::small(count.to_string(), Role::Ghost),
             ];

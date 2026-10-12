@@ -188,11 +188,11 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
     for shown in [
         "OutOfSync",
         "Degraded",
-        "OPERATION",
+        "OPERATION · last sync",
         "✗ Sync failed",
         "pythie-migrate",
         "auto · prune · heal",
-        "SOURCES",
+        "SOURCES · 1",
         "pythie-cayzn-deploy · envs/acc",
         "gitlab.wiremind.io/pythie-cayzn-deploy",
         "e9f8a7b",
@@ -200,7 +200,7 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
         assert!(texts.contains(&shown), "{shown}: {texts:?}");
     }
     assert!(
-        !texts.contains(&"RELATIONS"),
+        !texts.iter().any(|one| one.starts_with("RELATIONS")),
         "an Application stands among no owners"
     );
     let events = crate::views::session::resources::Section::Events;

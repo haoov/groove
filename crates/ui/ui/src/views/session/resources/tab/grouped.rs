@@ -62,9 +62,11 @@ pub(super) fn draw<'a>(
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
 
-/// A group's heading, which folds it on a click.
+/// A group's heading behind its fold caret, which folds it on a click.
 pub(super) fn heading<'a>((key, shut): (&str, bool), cells: Vec<Cell<'a>>) -> Shown<'a, Target> {
-    Shown::band(cells).target(Target::ResourceFold(key.to_string(), shut))
+    Shown::band(cells)
+        .fold(!shut)
+        .target(Target::ResourceFold(key.to_string(), shut))
 }
 
 /// The order a column picks, rows of one group compared by `key`.

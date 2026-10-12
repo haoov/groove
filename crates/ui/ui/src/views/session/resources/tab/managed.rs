@@ -147,12 +147,10 @@ fn shown<'a>(part: &'a AppPart, line: &Line<'a>) -> Shown<'a, Target> {
     }
 }
 
-/// `▾ Deployments 4 1 out of sync · 1 failed`.
+/// `Deployments 4 1 out of sync · 1 failed`, after the fold caret.
 fn heading<'a>(part: &AppPart, group: &Group<'a>, shut: bool) -> Shown<'a, Target> {
-    let mark = if shut { "▸" } else { "▾" };
     let (said, role) = note(part, &group.rows);
     let cells = vec![
-        Cell::small(mark, Role::Ghost),
         Cell::small(group.kind, Role::Text),
         Cell::small(group.rows.len().to_string(), Role::Ghost),
         Cell::small(said, role),

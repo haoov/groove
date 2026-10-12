@@ -178,7 +178,7 @@ const DESCRIBED: [&str; 20] = [
     "gra9-node-2",
     "CONDITIONS",
     "SUMMARY",
-    "RELATIONS",
+    "RELATIONS · 2",
     "owned by",
     "worker-5d6b",
     "2/3 ready",

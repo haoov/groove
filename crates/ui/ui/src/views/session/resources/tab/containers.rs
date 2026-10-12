@@ -47,10 +47,15 @@ fn meter() -> Cell<'static> {
     Cell::small("9999Mi / 999Gi", Role::Text).bar(None, None, Role::Text)
 }
 
-fn columns<'a>(meter: &'a Cell<'a>) -> Vec<Column<'a, Target>> {
+/// The fold caret's column, as wide as the caret.
+fn caret() -> Cell<'static> {
+    Cell::fold(true, Role::Ghost)
+}
+
+fn columns<'a>((caret, meter): (&'a Cell<'a>, &'a Cell<'a>)) -> Vec<Column<'a, Target>> {
     let fit = Width::Fit;
     vec![
-        grouped::plain("", fit("▾")),
+        grouped::plain("", Width::FitCell(caret)),
         grouped::plain("NAME", fit("init · statsd-exporter")),
         grouped::plain("STATE", fit("waiting · CrashLoopBackOff")),
         grouped::plain("READY", fit("✓")),
@@ -78,7 +83,7 @@ pub(super) fn row(
         false => one.name.clone(),
     };
     let cells = vec![
-        Cell::small(if folded(tab, one) { "▸" } else { "▾" }, Role::Ghost),
+        Cell::fold(!folded(tab, one), Role::Ghost),
         Cell::small(name, if one.init { Role::Faint } else { Role::Text }),
         Cell::small(said, role),
         ready(one),
@@ -88,8 +93,8 @@ pub(super) fn row(
         memory,
     ];
     let shown = Shown::row(cells).target(Target::ResourceFold(key(one), folded(tab, one)));
-    let meter = meter();
-    let columns = columns(&meter);
+    let (caret, meter) = (caret(), meter());
+    let columns = columns((&caret, &meter));
     let laid = grouped::single(ctx, &columns, header).one(ctx, rect, shown);
     let cell = |at: usize| laid.cell(0, at);
     let mut tip = None;
@@ -112,8 +117,8 @@ pub(super) fn detail(
     (key, value): &(&'static str, String),
     last: Option<&str>,
 ) {
-    let meter = meter();
-    let columns = columns(&meter);
+    let (caret, meter) = (caret(), meter());
+    let columns = columns((&caret, &meter));
     let from = grouped::single(ctx, &columns, false).spans(ctx, rect)[1].0;
     let rect = rect.pad(Edges::across(from - rect.x, 0.0));
     let keyed = Spec::default().width(ctx.tokens.aside_near);

@@ -49,6 +49,11 @@ impl<'a> Cell<'a> {
         }
     }
 
+    /// A fold caret alone, down while open, right while shut.
+    pub fn fold(open: bool, role: Role) -> Self {
+        Self::small("", role).mark(Mark::Down, crate::widgets::fold_turn(open), role)
+    }
+
     /// The text as a badge in its role's colour.
     pub fn badge(mut self) -> Self {
         self.badge = true;

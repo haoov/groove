@@ -103,9 +103,8 @@ fn progress(
     argo::operation(ctx, room, operation, ctx.now);
 }
 
-/// `▾ ⟳ wave 0 38 16 applied · 2 applying · 20 waiting`.
+/// `⟳ wave 0 38 16 applied · 2 applying · 20 waiting`, after the fold caret.
 fn heading<'a>(stage: &'a Stage<'a>, shut: bool, turn: u8) -> Shown<'a, Target> {
-    let fold = if shut { "▸" } else { "▾" };
     let (mark, role) = match () {
         _ if stage.count(State::Failed) > 0 => ("✗", Role::Bad),
         _ if stage.count(State::Applying) > 0 => ("⟳", Role::Working),
@@ -126,7 +125,6 @@ fn heading<'a>(stage: &'a Stage<'a>, shut: bool, turn: u8) -> Shown<'a, Target> 
     .map(|state| format!("{} {}", stage.count(state), word(state)))
     .collect();
     let cells = vec![
-        Cell::small(fold, Role::Ghost),
         marked(mark, role, turn),
         Cell::small(stage.title.as_str(), Role::Text),
         Cell::small(stage.steps.len().to_string(), Role::Ghost),

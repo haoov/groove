@@ -7,10 +7,12 @@ use groove_types::{Described, EventRow, PodPart, Timestamp};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::Heading;
 
 use super::super::list::plan::colour;
 use super::super::opened::{Link, Opened, Section, helm_release, lineage, served};
 use super::copy;
+use super::describe::Tally;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
@@ -45,15 +47,17 @@ impl Fact {
     }
 }
 
-/// The fold mark, the section's name and what it holds; a click folds it.
-pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool), count: &str) {
-    let mut room = rect;
-    let mark = if shut { "▸" } else { "▾" };
-    Label::new(mark, ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.sm);
-    let title = format!("{section:?}").to_uppercase();
-    Label::new(&title, ctx.styles.small(Role::Faint)).left(ctx, &mut room, ctx.tokens.sm);
-    Label::new(count, ctx.styles.small(Role::Ghost)).draw(ctx, room);
-    ctx.hit(rect, Target::ResourceSection(section));
+/// The fold caret, the section's name and what it holds; a click folds it.
+pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool), tally: &Tally) {
+    let title = format!("{section:?}");
+    let heading = Heading::new(&title)
+        .fold(!shut)
+        .target(Target::ResourceSection(section));
+    let heading = match tally {
+        Tally::Count(count) => heading.count(*count),
+        Tally::Note(note) => heading.note(note),
+    };
+    heading.within(ctx, rect, rect);
 }
 
 /// Every condition on one line: a mark, its name, and why and since when where it is not met.

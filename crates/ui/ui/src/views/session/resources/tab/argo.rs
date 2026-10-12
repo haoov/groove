@@ -8,12 +8,12 @@ use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 
 use super::super::opened::{Opens, Section};
-use super::describe::Block;
+use super::describe::{Block, Tally};
 use super::sections::Fact;
 use crate::ctx::Ctx;
 
 /// The operation, then the conditions where there are some.
-pub(super) fn parts(app: &AppPart) -> Vec<(Section, String, Vec<Block<'_>>)> {
+pub(super) fn parts(app: &AppPart) -> Vec<(Section, Tally, Vec<Block<'_>>)> {
     let mut out = Vec::new();
     if let Some(operation) = &app.operation {
         let mut held = vec![Block::Operation(operation)];
@@ -25,10 +25,10 @@ pub(super) fn parts(app: &AppPart) -> Vec<(Section, String, Vec<Block<'_>>)> {
             true => "running",
             false => "last sync",
         };
-        out.push((Section::Operation, said.to_string(), held));
+        out.push((Section::Operation, Tally::Note(said.to_string()), held));
     }
     if !app.conditions.is_empty() {
-        let count = app.conditions.len().to_string();
+        let count = Tally::Count(app.conditions.len());
         let held = app.conditions.iter().map(Block::AppCondition).collect();
         out.push((Section::Conditions, count, held));
     }
@@ -174,8 +174,8 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
 }
 
 /// What it syncs from: a row a source, each with the revision it synced to.
-pub(super) fn sourced(app: &AppPart) -> (Section, String, Vec<Block<'_>>) {
-    let count = app.sources.len().to_string();
+pub(super) fn sourced(app: &AppPart) -> (Section, Tally, Vec<Block<'_>>) {
+    let count = Tally::Count(app.sources.len());
     (
         Section::Sources,
         count,

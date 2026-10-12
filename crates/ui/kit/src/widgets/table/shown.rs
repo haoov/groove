@@ -10,6 +10,8 @@ pub enum Shown<'a, T> {
 /// A group's heading: its cells one after the other across every column, on the band's ground.
 pub struct Band<'a, T> {
     pub cells: Vec<Cell<'a>>,
+    /// Whether what it heads is open, when it folds.
+    pub open: Option<bool>,
     pub target: Option<T>,
 }
 
@@ -52,6 +54,7 @@ impl<'a, T> Shown<'a, T> {
     pub fn band(cells: Vec<Cell<'a>>) -> Self {
         Shown::Band(Band {
             cells,
+            open: None,
             target: None,
         })
     }
@@ -62,6 +65,14 @@ impl<'a, T> Shown<'a, T> {
         match &mut self {
             Shown::Band(band) => band.target = target,
             Shown::Row(row) => row.target = target,
+        }
+        self
+    }
+
+    /// A caret before a band's cells; a row folds through `Cell::fold`.
+    pub fn fold(mut self, open: bool) -> Self {
+        if let Shown::Band(band) = &mut self {
+            band.open = Some(open);
         }
         self
     }

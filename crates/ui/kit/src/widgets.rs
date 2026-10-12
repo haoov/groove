@@ -25,7 +25,7 @@ pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
 pub use counts::{changes, counts, counts_room};
 pub use field::Field;
-pub use fold::{caret, fold, folder};
+pub use fold::{caret, fold, fold_box, fold_turn, folder};
 pub use heading::Heading;
 pub use icon::{busy, icon, lead, turned};
 pub use input::{input, input_at};
