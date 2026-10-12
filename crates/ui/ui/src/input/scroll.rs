@@ -8,7 +8,9 @@ use crate::layout::Layout;
 use crate::views::session::Tab;
 use crate::views::session::resources::View;
 use crate::{Surface, Ui};
+use groove_gfx::Rect;
 use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::tokens::Tokens;
 
 /// The column under the pointer scrolls; wheel down is rows up.
 pub(super) fn scroll(
@@ -41,7 +43,7 @@ pub(super) fn scroll(
         return shelled(ui, app, delta, point, hits, metrics);
     }
     if ui.showing(app) == Surface::Board {
-        column(x, pixels(tokens.row), ui, hits, layout);
+        column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));
         return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
@@ -183,8 +185,8 @@ fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
     }
 }
 
-fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, layout: Layout) {
-    if let Some(list) = crate::views::board::list_at(layout.board, x) {
+fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, (board, tokens): (Rect, &Tokens)) {
+    if let Some(list) = crate::views::board::list_at(tokens, board, x) {
         ui.wheeled(Scroller::Column(list as u8), pixels, hits);
     }
 }

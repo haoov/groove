@@ -66,10 +66,12 @@ pub fn column_of(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, list:
 }
 
 /// The list whose column stands at `x`.
-pub fn list_at(area: Rect, x: f32) -> Option<List> {
-    let width = (area.w / List::ALL.len() as f32).floor().max(1.0);
-    let at = ((x - area.x) / width).floor().max(0.0) as usize;
-    List::ALL.get(at).copied()
+pub fn list_at(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, x: f32) -> Option<List> {
+    let within = |list: &List| {
+        let column = column_of(tokens, area, *list);
+        x >= column.x && x < column.right()
+    };
+    List::ALL.into_iter().find(within)
 }
 
 /// The room the three columns share under the header.
