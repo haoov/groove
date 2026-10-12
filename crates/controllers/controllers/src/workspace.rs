@@ -9,7 +9,7 @@ mod paths;
 mod search;
 
 use crate::asker::Asker;
-pub(crate) use commits::due as revision_due;
+pub(crate) use commits::{due as revision_due, ended as revision_ended};
 pub(crate) use editor::copied;
 use groove_types::{DiffMode, Edit, Selection};
 

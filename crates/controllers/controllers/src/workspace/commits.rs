@@ -55,6 +55,7 @@ fn read(
     let Some(asked) = super::Asked::now(state) else {
         return;
     };
+    let began = revision.then(|| reading(state)).flatten();
     state.workspace.opening += 1;
     let nth = state.workspace.opening;
     let short = groove_types::short_sha(&sha);
@@ -70,8 +71,8 @@ fn read(
         };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            if revision {
-                state.workspace.revision = None;
+            if let Some(began) = &began {
+                ended(state, began);
             }
             if state.workspace.opening != nth || !asked.holds_place(state) {
                 return;
@@ -127,12 +128,26 @@ pub(crate) fn due(state: &mut AppState, services: &Services, spawner: &dyn Spawn
         Step::Select(worktree) => {
             crate::session::select_worktree(state, services, spawner, &session, &worktree)
         }
-        Step::Read(sha) => {
-            if let Some(one) = state.workspace.revision.as_mut() {
-                one.reading = true;
-            }
-            read(state, spawner, known(state, &sha), (sha, true));
-        }
+        Step::Read(sha) => read(state, spawner, known(state, &sha), (sha, true)),
+    }
+}
+
+/// The held revision marked as read, as it stands.
+fn reading(state: &mut AppState) -> Option<Revision> {
+    let held = state.workspace.revision.as_mut()?;
+    held.reading = true;
+    Some(held.clone())
+}
+
+/// The revision `began` over, unless a newer one was asked since.
+pub(crate) fn ended(state: &mut AppState, began: &Revision) {
+    if state
+        .workspace
+        .revision
+        .as_ref()
+        .is_some_and(|held| held.same(began))
+    {
+        state.workspace.revision = None;
     }
 }
 

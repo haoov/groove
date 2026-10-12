@@ -116,3 +116,50 @@ fn a_revision_asked_in_one_session_is_dropped_once_another_is_selected() {
         .map(|one| one.path.clone());
     assert_eq!(selected.as_deref(), Some(before.as_str()));
 }
+
+/// A revision of a repo the session lacks, asked while another one's work is out.
+fn newer(state: &crate::AppState) -> groove_workspace_service::Revision {
+    groove_workspace_service::Revision {
+        session: state.session.selected.clone().expect("a session"),
+        slug: "gitlab.example.com/g/other".into(),
+        sha: Some("89abcdef0123456789abcdef0123456789abcdef".into()),
+        reading: false,
+    }
+}
+
+#[test]
+fn a_read_that_lands_after_a_newer_revision_was_asked_leaves_the_newer_one() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    let show = workspace::Command::ShowRepo {
+        repo: URL.into(),
+        target: Some("main".into()),
+        sha: Some("0123456789abcdef0123456789abcdef01234567".into()),
+    };
+    dispatch(Cmd::Workspace(show), &mut state, &services, &spawner);
+    let asked = newer(&state);
+    state.workspace.revision = Some(asked.clone());
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.workspace.revision, Some(asked));
+}
+
+#[test]
+fn an_add_that_fails_after_a_newer_revision_was_asked_leaves_the_newer_one() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    let show = workspace::Command::ShowRepo {
+        repo: "https://gitlab.example.com/g/nowhere.git".into(),
+        target: Some("main".into()),
+        sha: None,
+    };
+    dispatch(Cmd::Workspace(show), &mut state, &services, &spawner);
+    let asked = newer(&state);
+    state.workspace.revision = Some(asked.clone());
+    spawner.drain(&mut state, &services);
+    assert!(!state.errors.is_empty(), "the add failed");
+    assert_eq!(state.workspace.revision, Some(asked));
+}

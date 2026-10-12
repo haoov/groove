@@ -33,7 +33,7 @@ pub fn open_review(
         state.begin(format!("checking out {}", at.project)),
     );
     let at = at.clone();
-    session::added(spawner, (pending, false), Asker::Ui, async move {
+    session::added(spawner, (pending, None), Asker::Ui, async move {
         let added = service.open_review(&session, &at, &spec, now).await?;
         service.set_auto_approve(&session.id, auto).await?;
         Ok(added)

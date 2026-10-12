@@ -32,6 +32,11 @@ impl Revision {
         id == slug || slug.ends_with(&format!("/{id}")) || id.ends_with(&format!("/{slug}"))
     }
 
+    /// Whether `other` asks for the same commit of the same repo in the same session.
+    pub fn same(&self, other: &Revision) -> bool {
+        (&self.session, &self.slug, &self.sha) == (&other.session, &other.slug, &other.sha)
+    }
+
     /// The next step, with `session` up, `selected` its worktree, read unless `stale`.
     pub fn step(
         &self,
