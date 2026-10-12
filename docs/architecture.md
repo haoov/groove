@@ -105,8 +105,9 @@ Growth is answered inside the services and controllers that exist.
 - **A view file draws one region.** Over the ceiling it becomes a directory named after
   the region, one file per part. No bucket names: a directory is a region, never
   `components`.
-- **Ui state sits with its view.** `Ui` keeps only what crosses views: focus, the splits,
-  the palette, the colour cache.
+- **Ui state sits with its view.** `Ui` holds one part per view. Beside those parts it
+  keeps only what crosses views: the surface, focus, the splits, the overlay the palette
+  stands in, what the pointer holds and where, and the caches the frames build.
 - **One module convention: `name.rs` beside `name/`.** No `mod.rs`. Not enforced by a test.
 - **Ceilings:** 300 lines a file, 50 lines a function; a test file may stand to 500 and a
   test to 100, since a test is one scenario. Examples are exempt.

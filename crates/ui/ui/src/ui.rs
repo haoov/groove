@@ -6,7 +6,7 @@ use crate::{
     BoardUi, Drag, Focus, Menu, RailUi, SessionUi, Split, Surface, Target, palette, views,
 };
 
-/// What is the ui's alone: focus, folds, the palette, the splits. Never in `AppState`.
+/// What is the ui's alone: each view's part, focus, the overlay, the pointer, the caches. Never in `AppState`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ui {
     /// Which surface the window is showing.
