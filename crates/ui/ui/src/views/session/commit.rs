@@ -59,12 +59,16 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let held: Vec<String> = (0..buffer.lines().max(1))
         .map(|at| buffer.line(at).unwrap_or_default().to_string())
         .collect();
+    let selection = buffer.selections().first().filter(|_| composing);
     let lines: Vec<Line<'_>> = held
         .iter()
         .enumerate()
         .map(|(at, text)| {
             let on = composing && caret.line == at;
-            Line::new(text).caret(on.then_some(caret.column))
+            let chars = text.chars().count();
+            Line::new(text)
+                .caret(on.then_some(caret.column))
+                .held(selection.and_then(|one| one.on(at, chars)))
         })
         .collect();
     ctx.clipped(box_, |ctx| {

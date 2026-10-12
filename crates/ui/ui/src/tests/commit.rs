@@ -1,5 +1,7 @@
 //! The commit box: its message, its one button, and the menu behind it.
 
+mod typing;
+
 use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Fonts;
 use groove_types::{FileDiff, FileStatus};

@@ -10,6 +10,7 @@ mod noting;
 mod panes;
 mod resources;
 mod scope;
+mod worded;
 
 use groove_controllers::{AppState, Command};
 
