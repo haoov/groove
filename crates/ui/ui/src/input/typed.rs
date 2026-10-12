@@ -15,8 +15,7 @@ pub(super) enum Typed {
     Search,
 }
 
-/// The field typed in, when the tab that draws it is up; a hidden one keeps its text.
-/// A name or a note keeps its draft while another pane has the keys.
+/// The field typed in, while it is drawn; a hidden one keeps its text.
 pub(super) fn keyed(ui: &Ui, app: &AppState) -> Option<Typed> {
     let session = &ui.session;
     let tab = session.tab;

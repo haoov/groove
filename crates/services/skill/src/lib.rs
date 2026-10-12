@@ -31,8 +31,7 @@ pub struct State {
     /// A listing is out, and another was asked for meanwhile.
     pub listing: bool,
     pub again: bool,
-    /// Moves on each time the shared repo is joined or left,
-    /// or a skill is written, deleted or switched.
+    /// Moves on with each join, leave, and skill written, deleted or switched.
     pub generation: u64,
     /// The copy waits to be taken away until the listing or the copy out lands.
     pub unsharing: bool,

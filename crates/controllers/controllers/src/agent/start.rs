@@ -12,8 +12,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
     asking(state, spawner, id, size, None);
 }
 
-/// The session's agent launched with `prompt` as its first message.
-/// The launch writes its files on the session's write line, so a forget asked meanwhile runs after.
+/// The session's agent launched with `prompt` as its first message, on the session's write line.
 pub(crate) fn asking(
     state: &mut AppState,
     spawner: &dyn Spawner,
@@ -88,8 +87,7 @@ async fn launched_in(one: Launch) -> Result<groove_agent_service::Terminal, Erro
     .await
 }
 
-/// The launch kept on its session; ended when the session went or a newer launch stands.
-/// A start asked while it wrote its files runs now.
+/// The launch kept on its session, or ended when the session went; a start held meanwhile runs.
 fn stored(
     (id, launched): (SessionId, u64),
     result: Result<groove_agent_service::Terminal, Error>,
@@ -123,8 +121,7 @@ fn paths(state: &AppState) -> LaunchPaths {
     }
 }
 
-/// A write of `session`'s launch files; a start asked meanwhile waits, then `then` runs.
-/// A write that panics ends as an error, so the start it held still runs.
+/// A write of `session`'s launch files, a panic read as an error; a start asked meanwhile waits.
 pub(crate) fn rewrite(
     state: &mut AppState,
     spawner: &dyn Spawner,

@@ -112,8 +112,7 @@ impl Ui {
         }
     }
 
-    /// Each session's Kubernetes tab under its id now: a promoted explorer's under its task's.
-    /// A closed session's goes.
+    /// Each open session's Kubernetes tab under its id, a promoted explorer's under its task's.
     fn kept_resources(&mut self, app: &AppState) {
         let resources_of = &mut self.session.resources_of;
         for (from, to) in &app.session.promoted {

@@ -12,8 +12,7 @@ impl State {
         Some(config)
     }
 
-    /// The shared repo asked for, on `main` unless named, keeping its skills while the URL stays.
-    /// Refused before the first run, which has no config to name it in.
+    /// The shared repo asked for, on `main` unless named, its skills kept while the URL stays.
     pub fn wanted_shared(
         &self,
         url: &str,

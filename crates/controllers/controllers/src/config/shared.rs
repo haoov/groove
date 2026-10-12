@@ -70,8 +70,7 @@ pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spa
     super::write(state, services, spawner, config, Some(Box::new(forget)));
 }
 
-/// The copy taken away once no listing or copy is out, then the skills listed again.
-/// Kept when a repo was joined again meanwhile.
+/// The copy taken away once no listing or copy is out and no repo was joined again.
 pub(crate) fn forget(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
     if state.config.shared().is_some() {
         return;

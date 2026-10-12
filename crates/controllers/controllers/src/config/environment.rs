@@ -22,8 +22,7 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The sign-in on its own terminal, spawned in a job; the check runs again when it exits.
-/// Only the terminal of the sign-in asked last is kept.
+/// The sign-in asked last, on its own terminal; the check runs again when it exits.
 pub(super) fn login(state: &mut AppState, spawner: &dyn Spawner, size: (u16, u16)) {
     if state.config.login.is_some() || state.config.signing_in {
         return;
