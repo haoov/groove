@@ -51,6 +51,16 @@ pub struct Living {
 }
 
 impl State {
+    /// The commits `session` logged on the feed since `since`.
+    pub fn commits_since(&self, session: &SessionId, since: groove_types::Timestamp) -> usize {
+        let made = |one: &&groove_types::TimelineEvent| {
+            one.session == *session
+                && one.kind == groove_types::TimelineKind::Commit
+                && one.at >= since
+        };
+        self.feed.iter().filter(made).count()
+    }
+
     pub fn get(&self, id: &SessionId) -> Option<&Open> {
         self.open.iter().find(|o| &o.session.id == id)
     }

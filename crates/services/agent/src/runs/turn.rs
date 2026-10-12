@@ -18,6 +18,19 @@ pub enum Ending {
     Stalled,
 }
 
+impl Ending {
+    /// `done · 2 commits`, `its agent stopped`.
+    pub fn said(self, commits: usize) -> String {
+        match (self, commits) {
+            (Ending::Done, 0) => "done".to_string(),
+            (Ending::Done, 1) => "done · 1 commit".to_string(),
+            (Ending::Done, n) => format!("done · {n} commits"),
+            (Ending::Gone, _) => "its agent stopped".to_string(),
+            (Ending::Stalled, _) => "its agent never started".to_string(),
+        }
+    }
+}
+
 impl Runs {
     /// The runs waiting their turn that the cap and their agents allow now, moved to running.
     pub fn due(
