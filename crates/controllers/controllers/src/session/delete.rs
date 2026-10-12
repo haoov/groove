@@ -14,6 +14,21 @@ pub fn delete(
     id: &SessionId,
     force: bool,
 ) {
+    delete_then(
+        state,
+        (services, spawner),
+        (id, force),
+        Box::new(|_, _, _| {}),
+    );
+}
+
+/// The same, then `then` once the delete landed.
+pub(crate) fn delete_then(
+    state: &mut AppState,
+    (services, spawner): (&Services, &dyn Spawner),
+    (id, force): (&SessionId, bool),
+    then: Continuation,
+) {
     let running = state.agent.agent(id).is_some();
     agent::end(state, id);
     crate::shell::end(state, id);
@@ -34,11 +49,15 @@ pub fn delete(
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(pending);
+                let landed = removed.is_ok();
                 match removed {
                     Ok(()) => gone(state, spawner, &at),
                     Err(e) => kept(state, spawner, &at, running, e),
                 }
                 list(services, spawner);
+                if landed {
+                    then(state, services, spawner);
+                }
             },
         ) as Continuation
     }));

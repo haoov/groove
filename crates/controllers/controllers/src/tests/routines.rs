@@ -100,11 +100,40 @@ fn a_standalone_routine_switched_on_has_its_session_on_the_rail_and_off_loses_it
         .collect();
     assert_eq!(routines.len(), 1, "switched on twice, one session");
     let opened = spawner.block_on(services.session.opened()).unwrap();
-    assert!(opened.iter().any(|(one, _)| one.kind.routine() == Some(id)));
+    assert!(
+        opened.iter().any(|(one, _)| one.kind.routine() == Some(id)),
+        "{opened:?}"
+    );
 
     send(&mut state, &services, &spawner, switch(id, false));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     assert!(state.session.open.is_empty());
     let living = spawner.block_on(services.session.living()).unwrap();
     assert!(living.is_empty(), "{living:?}");
+}
+
+#[test]
+fn a_standalone_routine_switched_on_while_its_delete_is_out_keeps_a_session() {
+    let (_home, spawner, services, mut state) = fresh();
+    let id = "user:digest";
+    state.routine.routines = vec![Listed {
+        id: id.into(),
+        read: parse(id, "digest", DIGEST),
+    }];
+    send(&mut state, &services, &spawner, switch(id, true));
+    let off = crate::Command::Config(switch(id, false));
+    crate::dispatch(off, &mut state, &services, &spawner);
+    let on = crate::Command::Config(switch(id, true));
+    crate::dispatch(on, &mut state, &services, &spawner);
+    crate::tests::fixture::until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(
+        state.session.routine_session(id).is_some(),
+        "on, it has one"
+    );
+    let opened = spawner.block_on(services.session.opened()).unwrap();
+    assert!(
+        opened.iter().any(|(one, _)| one.kind.routine() == Some(id)),
+        "{opened:?}"
+    );
 }

@@ -24,7 +24,13 @@ pub(super) fn switch(
         }
         (false, _) => {
             if let Some(session) = state.session.routine_session(id) {
-                crate::session::delete(state, services, spawner, &session, true);
+                let id = id.to_string();
+                let then = Box::new(
+                    move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                        remade(state, services, spawner, &id)
+                    },
+                );
+                crate::session::delete_then(state, (services, spawner), (&session, true), then);
             }
         }
         _ => {}
@@ -33,9 +39,12 @@ pub(super) fn switch(
 
 /// The routine's session, written and on the rail with its agent, the selection kept.
 fn made(state: &mut AppState, services: &Services, spawner: &dyn Spawner, routine: &Routine) {
-    if state.session.routine_session(&routine.id).is_some() {
-        return;
+    if state.session.routine_session(&routine.id).is_none() {
+        begun(state, services, spawner, routine);
     }
+}
+
+fn begun(state: &mut AppState, services: &Services, spawner: &dyn Spawner, routine: &Routine) {
     let now = Timestamp::now();
     let session = groove_session_service::routine_session(routine, now);
     let beside = crate::session::Start {
@@ -47,6 +56,15 @@ fn made(state: &mut AppState, services: &Services, spawner: &dyn Spawner, routin
     crate::session::listed(spawner, async move {
         service.create_routine(&session, now).await
     });
+}
+
+/// A standalone routine switched on again while its session was being deleted, given a fresh one.
+fn remade(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &str) {
+    let on = state.config.routines().on.iter().any(|one| one == id);
+    let routine = state.routine.routine(id).cloned();
+    if let Some(one) = routine.filter(|one| on && one.kind == RoutineKind::Standalone) {
+        begun(state, services, spawner, &one);
+    }
 }
 
 /// One trigger of a routine on or off.
