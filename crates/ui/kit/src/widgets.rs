@@ -20,6 +20,7 @@ mod table;
 mod tabs;
 mod terminal;
 mod toggle;
+mod typed;
 
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
@@ -41,3 +42,4 @@ pub use tabs::{Tab, tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;
 pub use toggle::Toggle;
+pub use typed::{caret_bar, text_band};

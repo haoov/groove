@@ -4,6 +4,7 @@ use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::shape::hairline;
 use crate::text::row;
+use crate::widgets::{caret_bar, text_band};
 
 /// A line of typed text with a caret after it, a hairline under it.
 pub fn input<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, prefix: &str, text: &str) {
@@ -36,15 +37,14 @@ pub fn caret_after<A: App>(
     style: TextStyle,
 ) {
     let width = ctx.measure(before, &style);
-    let (thickness, height) = (ctx.tokens.hairline * 2.0, style.size);
-    let caret = Rect::new(
-        rect.x + indent + width,
-        rect.y + (rect.h - height) / 2.0,
-        thickness,
-        height,
+    let span = Rect::new(
+        rect.x,
+        rect.y + (rect.h - style.size) / 2.0,
+        rect.w,
+        style.size,
     );
     let color = ctx.styles.color(Role::Accent);
-    ctx.quad(caret, color);
+    caret_bar(ctx, rect.x + indent + width, span, color);
 }
 
 /// A buffer's line in `style`: what is held under it, its text, the caret over it.
@@ -60,15 +60,19 @@ pub fn typed_line<A: App>(
     };
     if let Some((from, to, through)) = held {
         let start = upto(ctx, from);
-        let end = upto(ctx, to) + if through { ctx.advance } else { 0.0 };
-        let band = Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h);
+        let past = if through {
+            ctx.measure(" ", &style)
+        } else {
+            0.0
+        };
+        let end = upto(ctx, to) + past;
         let color = ctx.styles.held();
-        ctx.quad(band, color);
+        text_band(ctx, rect, (start, end), color);
     }
     row(ctx, rect, 0.0, text, style);
     if let Some(column) = caret {
         let at = rect.x + upto(ctx, column);
-        let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
-        ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
+        let color = ctx.styles.caret();
+        caret_bar(ctx, at, rect, color);
     }
 }
