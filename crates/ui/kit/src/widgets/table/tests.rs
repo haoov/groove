@@ -104,15 +104,20 @@ fn a_lone_mark_takes_the_label_size_and_the_end() {
 
 #[test]
 fn a_fitted_cell_counts_its_size_and_its_bar() {
-    let sample = "a long enough sample";
-    let small = fitted(Width::Fit(sample));
+    let sample = "9999Mi / 999Gi";
     let label = Cell::label(sample, Role::Text);
+    let (wide, small) = drawn(|ctx| {
+        let small = ctx.measure(sample, &ctx.styles.small(Role::Text));
+        (label.wide(ctx), small)
+    })
+    .0;
+    assert!(wide > small, "the label size is wider");
     assert!(
-        fitted(Width::FitCell(&label)) > small,
-        "the label size is wider"
+        fitted(Width::FitCell(&label)) >= wide,
+        "the label text fits"
     );
     let barred = Cell::small(sample, Role::Text).bar(None, None, Role::Text);
     let tokens = Tokens::new(1.0);
-    let bar = tokens.aside_near / 2.0 + tokens.sm;
-    assert!((fitted(Width::FitCell(&barred)) - small - bar).abs() < 0.5);
+    let meter = tokens.aside_near / 2.0 + tokens.sm + small;
+    assert_eq!(fitted(Width::FitCell(&barred)), meter, "the meter's width");
 }
