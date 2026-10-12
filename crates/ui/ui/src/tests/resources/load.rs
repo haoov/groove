@@ -21,7 +21,7 @@ fn a_label_word_still_typed_asks_for_no_watcher_until_the_search_is_left() {
 
 #[test]
 fn a_context_removed_from_groove_is_neither_discovered_nor_watched() {
-    let (mut app, ui) = listing();
+    let (mut app, mut ui) = listing();
     let open = app
         .session
         .get_mut(&SessionId::new("a"))
@@ -30,6 +30,22 @@ fn a_context_removed_from_groove_is_neither_discovered_nor_watched() {
     assert!(clustered(&app, &ui).is_empty(), "no discovery of gone");
     app.cluster.store.set_kinds("gone", vec![pods()]);
     assert!(clustered(&app, &ui).is_empty(), "no watcher on gone");
+    ui.session
+        .resources
+        .open(crate::views::session::resources::Link {
+            context: "gone".into(),
+            kind: pods(),
+            namespace: Some("paxone".into()),
+            name: "api-0".into(),
+        });
+    let asked = clustered(&app, &ui);
+    let follows = |one: &Command| {
+        matches!(
+            one,
+            Command::Cluster(cluster::Command::Follow { .. } | cluster::Command::FollowLogs { .. })
+        )
+    };
+    assert!(!asked.iter().any(follows), "no follower on gone: {asked:?}");
 }
 
 #[test]

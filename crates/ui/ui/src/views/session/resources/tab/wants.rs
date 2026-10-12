@@ -17,7 +17,8 @@ pub const USAGE_EVERY: i64 = 15;
 
 /// The watchers the tab shown wants, and the reads it lacks; `up` while the tab is on screen.
 pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Vec<Command> {
-    let tab = held.tab().filter(|_| up);
+    let added = |tab: &&Opened| app.config.cluster(&tab.link.context).is_some();
+    let tab = held.tab().filter(|_| up).filter(added);
     let mut out = Vec::new();
     let (keys, log) = match tab {
         Some(tab) => {
