@@ -182,7 +182,8 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
         state.workspace.mode = opens_in(kind);
         load(state, spawner);
     }
-    if state.workspace.watching.as_ref() != Some(&worktree) {
+    let asked = state.workspace.watch_asked.as_ref() == Some(&worktree);
+    if state.workspace.watching.as_ref() != Some(&worktree) && !asked {
         watch(state, spawner, worktree);
     }
 }
@@ -192,10 +193,14 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: Workt
         return;
     };
     let on_change = reload(spawner.sink(), worktree.clone());
+    state.workspace.watch_asked = Some(worktree.clone());
     spawner.spawn(Box::pin(async move {
         let git = groove_workspace_service::git_dir(&dir).await;
-        let watched = groove_workspace_service::watcher(&dir, git, on_change);
+        let watched = groove_workspace_service::watcher(&dir, git, on_change).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if state.workspace.watch_asked.as_ref() == Some(&worktree) {
+                state.workspace.watch_asked = None;
+            }
             let selected = state.session.selected_worktree().map(|one| &one.id);
             if selected != Some(&worktree) {
                 return;

@@ -13,11 +13,17 @@ impl State {
     }
 
     /// The shared repo asked for, on `main` unless named, keeping its skills while the URL stays.
+    /// Refused before the first run, which has no config to name it in.
     pub fn wanted_shared(
         &self,
         url: &str,
         branch: &str,
     ) -> Result<groove_types::SharedConfig, Error> {
+        if self.config.is_none() {
+            return Err(Error::invalid(
+                "there is no config to change before the first run",
+            ));
+        }
         let url = url.trim().to_string();
         if url.is_empty() {
             return Err(Error::invalid("a shared repo needs its URL"));

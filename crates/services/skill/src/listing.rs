@@ -24,7 +24,7 @@ pub fn dirs(
 pub struct Listing {
     pub followed: Option<Result<Shared, Error>>,
     pub made: Result<(), Error>,
-    pub skills: Vec<Skill>,
+    pub skills: Result<Vec<Skill>, Error>,
     pub routines: Vec<Listed>,
 }
 

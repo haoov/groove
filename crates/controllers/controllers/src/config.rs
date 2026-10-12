@@ -151,6 +151,28 @@ fn keep_panes(
 /// What waits for the config file, run once it is on disk.
 pub(crate) type Then = Box<dyn FnOnce(&mut AppState, &Services, &dyn Spawner) + Send>;
 
+/// What waits for a config revision to reach the disk, by that revision.
+#[derive(Default)]
+pub(crate) struct Waiting(Vec<(u64, Then)>);
+
+impl std::fmt::Debug for Waiting {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let revisions: Vec<u64> = self.0.iter().map(|(at, _)| *at).collect();
+        f.debug_tuple("Waiting").field(&revisions).finish()
+    }
+}
+
+impl Waiting {
+    /// What waits for `kept` or an older revision, taken out in the order it came.
+    fn due(&mut self, kept: u64) -> Vec<Then> {
+        let (due, left) = std::mem::take(&mut self.0)
+            .into_iter()
+            .partition(|(at, _)| *at <= kept);
+        self.0 = left;
+        due.into_iter().map(|(_, then)| then).collect()
+    }
+}
+
 /// The config as changed, written in a job; false, and said, when there is none before the first run.
 pub(crate) fn written(
     state: &mut AppState,
@@ -168,7 +190,7 @@ pub(crate) fn written(
     true
 }
 
-/// `config` written in a job; `then` runs only once it, or a later config, is on disk.
+/// `config` written in a job; `then` runs once it, or a later config, is on disk, by any write.
 pub(crate) fn write(
     state: &mut AppState,
     services: &Services,
@@ -188,13 +210,15 @@ fn flushed(services: &Services, spawner: &dyn Spawner, revision: u64, then: Opti
     let keeper = services.config.clone();
     spawner.spawn(Box::pin(async move {
         let flushed = keeper.flush().await;
-        let kept = keeper.kept() >= revision;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 if let Err(e) = flushed {
                     state.failed(e);
                 }
-                if let Some(then) = then.filter(|_| kept) {
+                if let Some(then) = then {
+                    state.waiting.0.push((revision, then));
+                }
+                for then in state.waiting.due(services.config.kept()) {
                     then(state, services, spawner);
                 }
             },

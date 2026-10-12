@@ -63,7 +63,7 @@ fn listed(
             if let Err(e) = found.made {
                 state.failed(e);
             }
-            state.skill.skills = found.skills;
+            relisted(state, found.skills);
             state.routine.routines = found.routines;
             state.skill.listed = true;
         }
@@ -74,6 +74,14 @@ fn listed(
     }
     if std::mem::take(&mut state.skill.again) || state.skill.queued.is_some() {
         list(state, spawner);
+    }
+}
+
+/// The skills read again, or the last list kept and why said.
+pub(crate) fn relisted(state: &mut AppState, read: groove_types::Result<Vec<Skill>>) {
+    match read {
+        Ok(skills) => state.skill.skills = skills,
+        Err(e) => state.failed(e),
     }
 }
 
@@ -120,6 +128,7 @@ pub fn save(
     instead_of: Option<String>,
     asker: Asker,
 ) {
+    state.skill.generation += 1;
     let dirs = dirs(state);
     let job = state.begin(format!("writing the skill {name}"));
     spawner.spawn(Box::pin(async move {
@@ -127,7 +136,7 @@ pub fn save(
         let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            state.skill.skills = read;
+            relisted(state, read);
             let said = made.as_ref().ok().map(said);
             asker.answer(state, made.map(drop), || said.unwrap_or_default());
         }) as Continuation
@@ -149,6 +158,7 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
         let why = format!("`{id}` is no skill of your own to delete");
         return state.failed(groove_types::Error::invalid(why));
     };
+    state.skill.generation += 1;
     let dirs = dirs(state);
     let job = state.begin(format!("deleting the skill {name}"));
     spawner.spawn(Box::pin(async move {
@@ -156,7 +166,7 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
         let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            state.skill.skills = read;
+            relisted(state, read);
             if let Err(e) = done {
                 state.failed(e);
             }
@@ -177,6 +187,7 @@ pub fn switch(
     };
     crate::config::write(state, services, spawner, config, None);
     state.skill.switched = groove_types::Timestamp::now();
+    state.skill.generation += 1;
     let dirs = dirs(state);
     spawner.spawn(Box::pin(async move {
         let made = skills::sync(&dirs).await;
@@ -185,7 +196,7 @@ pub fn switch(
             if let Err(e) = made {
                 state.failed(e);
             }
-            state.skill.skills = read;
+            relisted(state, read);
         }) as Continuation
     }));
 }

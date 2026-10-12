@@ -43,6 +43,31 @@ impl Keeper {
         self.kept.load(Ordering::SeqCst)
     }
 
+    /// A config that failed to write, held again for the next flush unless a newer one is held.
+    fn held_back(&self, failed: (PathBuf, Config, u64)) {
+        let mut held = self.held.lock().unwrap_or_else(PoisonError::into_inner);
+        if held.config.as_ref().is_none_or(|(_, _, at)| *at < failed.2) {
+            held.config = Some(failed);
+        }
+    }
+
+    /// The last flush, at quit: an error too when a config tried before never reached the disk.
+    pub async fn quit(&self) -> Result<(), Error> {
+        self.flush().await?;
+        let tried = self
+            .held
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .tried;
+        match tried > self.kept() {
+            true => Err(Error::new(
+                groove_types::ErrorKind::Io,
+                format!("config revision {tried} never reached the disk"),
+            )),
+            false => Ok(()),
+        }
+    }
+
     /// Everything held, written; the first failure of this flush.
     pub async fn flush(&self) -> Result<(), Error> {
         let _writing = self.writing.lock().await;
@@ -57,7 +82,10 @@ impl Keeper {
         if let Some((dir, config, revision)) = config {
             match groove_config::write(&groove_config::path(&dir), &config).await {
                 Ok(()) => _ = self.kept.fetch_max(revision, Ordering::SeqCst),
-                Err(e) => flushed = Err(e.into()),
+                Err(e) => {
+                    self.held_back((dir, config, revision));
+                    flushed = Err(e.into());
+                }
             }
         }
         if let Some((dir, panes)) = panes {

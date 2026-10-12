@@ -33,7 +33,7 @@ pub(super) fn setup(app: &AppState) -> Vec<Row> {
         ),
     ];
     let tools = app.config.tools.iter().flatten();
-    let signing_in = app.config.login.is_some();
+    let signing_in = app.config.login.is_some() || app.config.signing_in;
     let checks = std::iter::once(checked(app)).chain(tools.map(|one| tool(one, signing_in)));
     let mut out = grouped("Paths", paths);
     out.extend(grouped("Environment", checks.collect()));

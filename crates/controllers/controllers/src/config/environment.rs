@@ -23,21 +23,26 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
 }
 
 /// The sign-in on its own terminal, spawned in a job; the check runs again when it exits.
+/// Only the terminal of the sign-in asked last is kept.
 pub(super) fn login(state: &mut AppState, spawner: &dyn Spawner, size: (u16, u16)) {
     if state.config.login.is_some() || state.config.signing_in {
         return;
     }
     state.config.signing_in = true;
+    state.config.sign_in += 1;
+    let generation = state.config.sign_in;
     let palette = groove_agent_service::palette(state.config.theme());
-    let (home, hooks) = (state.env.home.clone(), hooks(spawner));
+    let (home, hooks) = (state.env.home.clone(), hooks(spawner, generation));
     spawner.spawn(Box::pin(async move {
         let result = groove_config_service::login(&home, size, palette, hooks).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            let asked = std::mem::take(&mut state.config.signing_in);
+            let current = state.config.sign_in == generation;
+            state.config.signing_in &= !current;
             match result {
-                Ok(terminal) if asked => state.config.login = Some(terminal),
+                Ok(terminal) if current => state.config.login = Some(terminal),
                 Ok(orphan) => drop(orphan.terminate()),
-                Err(e) => state.failed(e),
+                Err(e) if current => state.failed(e),
+                Err(_) => {}
             }
         }) as Continuation
     }));
@@ -63,20 +68,23 @@ pub(super) fn resize(state: &AppState, (cols, rows): (u16, u16)) {
 
 pub(super) fn end(state: &mut AppState) {
     state.config.signing_in = false;
+    state.config.sign_in += 1;
     if let Some(terminal) = state.config.login.take() {
         let _ = terminal.terminate();
     }
 }
 
-fn hooks(spawner: &dyn Spawner) -> Hooks {
+fn hooks(spawner: &dyn Spawner, generation: u64) -> Hooks {
     let sink = spawner.sink();
     let on_damage = Box::new(coalesced(sink.clone(), || {
         Box::new(|_: &mut AppState, _: &Services, _: &dyn Spawner| {})
     }));
     let on_exit = Box::new(move |_code| {
         sink.deliver(Box::new(
-            |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
-                state.config.login = None;
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                if state.config.sign_in == generation {
+                    state.config.login = None;
+                }
                 check(state, spawner);
             },
         ));

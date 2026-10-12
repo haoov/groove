@@ -4,12 +4,12 @@ use groove_workspace_service::{PathOp, path_op};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// One path operation, then the worktree read again.
+/// One path operation, behind the worktree's file operations out; then the worktree read again.
 pub(super) fn act(state: &mut AppState, spawner: &dyn Spawner, op: PathOp) {
-    let Some(dir) = state
+    let Some((id, dir)) = state
         .session
         .selected_worktree()
-        .map(groove_types::Worktree::dir)
+        .map(|one| (one.id.clone(), one.dir()))
     else {
         return;
     };
@@ -18,8 +18,11 @@ pub(super) fn act(state: &mut AppState, spawner: &dyn Spawner, op: PathOp) {
         PathOp::Delete { path } => Some(path.clone()),
         _ => None,
     };
+    let mut turn = state.workspace.filing(&id);
     spawner.spawn(Box::pin(async move {
+        turn.wait().await;
         let done = path_op(&dir, &op).await;
+        drop(turn);
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.end(job);

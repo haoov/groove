@@ -18,6 +18,7 @@ use groove_watch::{QUIET, Watch};
 mod blame;
 mod buffer;
 mod buffers;
+mod filing;
 mod git;
 mod paths;
 mod read;
@@ -29,6 +30,7 @@ mod tests;
 
 pub use blame::{Blames, Read, blame};
 pub use buffers::Buffers;
+pub use filing::Filing;
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{
@@ -84,10 +86,14 @@ pub struct State {
     /// Moves on with each commit asked to show; only the last one asked lands.
     pub opening: u64,
     pub watching: Option<WorktreeId>,
+    /// The worktree a watch is being built for.
+    pub watch_asked: Option<WorktreeId>,
     /// The buffers a read of the colours and the rows is out for.
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     pub blames: Blames,
     watch: Option<Watch>,
+    /// The end of each worktree's last file operation, which the next one waits for.
+    filings: BTreeMap<WorktreeId, tokio::sync::oneshot::Receiver<()>>,
 }
 
 impl State {
@@ -234,7 +240,7 @@ pub async fn git_dir(dir: &Path) -> Option<PathBuf> {
 }
 
 /// A watch on `dir` and git's own directory; `None` when `dir` is gone.
-pub fn watcher(
+pub async fn watcher(
     dir: &Path,
     git: Option<PathBuf>,
     on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
@@ -242,7 +248,10 @@ pub fn watcher(
     if !dir.exists() {
         return Ok(None);
     }
-    groove_watch::watch(dir, git.into_iter().collect(), QUIET, on_change).map(Some)
+    let also = git.into_iter().collect();
+    groove_watch::watching(dir.to_path_buf(), also, QUIET, on_change)
+        .await
+        .map(Some)
 }
 
 /// The watch held until the state is cleared, in place of the last one.

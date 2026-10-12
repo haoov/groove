@@ -33,16 +33,11 @@ pub(crate) fn copy(state: &mut AppState, spawner: &dyn Spawner, wanted: SharedCo
                 state.end(job);
                 state.skill.joining = false;
                 match copied {
-                    Ok(copy) => {
-                        state.skill.again = false;
-                        joined(state, services, spawner, (wanted, copy))
-                    }
-                    Err(e) => {
-                        refused(state, e);
-                        if std::mem::take(&mut state.skill.again) {
-                            crate::agent::skills::list(state, spawner);
-                        }
-                    }
+                    Ok(copy) => joined(state, services, spawner, (wanted, copy)),
+                    Err(e) => refused_listing(state, spawner, e),
+                }
+                if std::mem::take(&mut state.skill.unsharing) {
+                    forget(state, services, spawner);
                 }
             },
         ) as Continuation
@@ -56,11 +51,10 @@ fn joined(
     (wanted, copy): (SharedConfig, Shared),
 ) {
     let Some(config) = state.config.set_shared(Some(wanted)).cloned() else {
-        return refused(
-            state,
-            Error::invalid("there is no config to change before the first run"),
-        );
+        let first = Error::invalid("there is no config to change before the first run");
+        return refused_listing(state, spawner, first);
     };
+    state.skill.again = false;
     state.skill.reshared(Some(copy));
     super::write(state, services, spawner, config, None);
     crate::agent::skills::list(state, spawner);
@@ -76,9 +70,13 @@ pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spa
     super::write(state, services, spawner, config, Some(Box::new(forget)));
 }
 
-/// The copy taken away once no listing is out, then the skills listed again.
+/// The copy taken away once no listing or copy is out, then the skills listed again.
+/// Kept when a repo was joined again meanwhile.
 pub(crate) fn forget(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
-    if state.skill.listing {
+    if state.config.shared().is_some() {
+        return;
+    }
+    if state.skill.listing || state.skill.joining {
         state.skill.unsharing = true;
         return;
     }
@@ -100,6 +98,14 @@ pub(crate) fn forget(state: &mut AppState, _: &Services, spawner: &dyn Spawner) 
 pub(crate) fn followed(state: &mut AppState, read: Option<Result<Shared>>) {
     if let Some(e) = state.skill.followed(read) {
         state.failed(e);
+    }
+}
+
+/// A join refused, then the listing asked for while it was out.
+fn refused_listing(state: &mut AppState, spawner: &dyn Spawner, e: Error) {
+    refused(state, e);
+    if std::mem::take(&mut state.skill.again) {
+        crate::agent::skills::list(state, spawner);
     }
 }
 

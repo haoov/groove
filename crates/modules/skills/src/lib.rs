@@ -99,17 +99,15 @@ pub async fn sync(dirs: &Dirs) -> Result<()> {
 }
 
 /// The `--plugin-dir` arguments for one launch. A plugin with no skill is left out.
-pub async fn plugin_dirs(dirs: &Dirs) -> Vec<PathBuf> {
+pub async fn plugin_dirs(dirs: &Dirs) -> Result<Vec<PathBuf>> {
     let dirs = dirs.clone();
-    off(move || Ok(disk::plugin_dirs(&dirs)))
-        .await
-        .unwrap_or_default()
+    off(move || Ok(disk::plugin_dirs(&dirs))).await
 }
 
 /// Every skill the plugins offer: the core ones, the shared ones, then the user's own.
-pub async fn list(dirs: &Dirs) -> Vec<Skill> {
+pub async fn list(dirs: &Dirs) -> Result<Vec<Skill>> {
     let dirs = dirs.clone();
-    off(move || Ok(disk::list(&dirs))).await.unwrap_or_default()
+    off(move || Ok(disk::list(&dirs))).await
 }
 
 /// One skill's own `SKILL.md`, whichever plugin holds it.

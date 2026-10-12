@@ -1838,6 +1838,7 @@ dependencies = [
  "ignore",
  "notify",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1851,6 +1852,7 @@ dependencies = [
  "groove-text",
  "groove-types",
  "groove-watch",
+ "tokio",
 ]
 
 [[package]]

@@ -147,7 +147,7 @@ fn hand_over(state: &mut AppState, spawner: &dyn Spawner, explorer: &SessionId, 
         let handed = groove_agent_service::hand_over(&dir, from.as_str(), at.as_str()).await;
         let forgot = groove_agent_service::forget(&dir, from.as_str()).await;
         turn.end();
-        handed.and(forgot)
+        both(handed, forgot)
     };
     let (explorer, to) = (explorer.clone(), to.clone());
     crate::agent::rewrite(
@@ -160,4 +160,18 @@ fn hand_over(state: &mut AppState, spawner: &dyn Spawner, explorer: &SessionId, 
             crate::agent::start(state, spawner, to, crate::session::FIRST_SIZE);
         },
     );
+}
+
+/// The hand-over's result, and the forget's failure said beside its own.
+fn both(
+    handed: groove_types::Result<()>,
+    forgot: groove_types::Result<()>,
+) -> groove_types::Result<()> {
+    match (handed, forgot) {
+        (Err(mut e), Err(also)) => {
+            e.message = format!("{}; and its launch files stay: {}", e.message, also.message);
+            Err(e)
+        }
+        (handed, forgot) => handed.and(forgot),
+    }
 }

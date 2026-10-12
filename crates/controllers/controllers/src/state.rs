@@ -59,6 +59,8 @@ pub struct AppState {
     pub cluster: groove_cluster_service::State,
     /// What the clipboard held when the surface asked; `Some(None)` when it held no text.
     pub pasted: Option<Option<String>>,
+    /// What waits for a config revision to reach the disk.
+    pub(crate) waiting: crate::config::Waiting,
 }
 
 /// One job in flight, as the feed names it.

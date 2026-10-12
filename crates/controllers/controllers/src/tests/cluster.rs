@@ -178,22 +178,6 @@ fn a_session_attaches_a_known_context_on_a_namespace_or_whole_each_replacing_the
     assert!(held(&state).is_empty());
 }
 
-/// Holds every job, to run them in any order.
-#[derive(Default)]
-struct Held(std::sync::Mutex<Vec<crate::spawn::Job>>);
-
-impl crate::Spawner for Held {
-    fn spawn(&self, job: crate::spawn::Job) {
-        self.0.lock().expect("the jobs").push(job);
-    }
-
-    fn detach(&self, _: crate::Detached) {}
-
-    fn sink(&self) -> std::sync::Arc<dyn crate::Deliver> {
-        unreachable!("no job here reports through the sink")
-    }
-}
-
 #[test]
 fn a_session_s_clusters_are_written_in_the_order_they_changed_whichever_job_runs_first() {
     use crate::session::Command as Session;
@@ -218,13 +202,13 @@ fn a_session_s_clusters_are_written_in_the_order_they_changed_whichever_job_runs
         context: "kind".into(),
         namespace: namespace.map(str::to_string),
     };
-    let held = Held::default();
+    let held = crate::tests::fixture::Held::default();
     for attached in [on(None), on(Some("paxone"))] {
         let session = session.clone();
         let attach = Cmd::Session(Session::AttachCluster { session, attached });
         dispatch(attach, &mut state, &services, &held);
     }
-    let jobs = std::mem::take(&mut *held.0.lock().expect("the jobs"));
+    let jobs = held.take();
     for job in jobs.into_iter().rev() {
         spawner.block_on(job)(&mut state, &services, &spawner);
     }

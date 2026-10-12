@@ -307,3 +307,22 @@ fn a_promotion_whose_directory_cannot_be_made_leaves_the_explorer_on_disk() {
         "{opened:?}"
     );
 }
+
+#[test]
+fn a_hand_over_that_fails_says_the_forget_that_failed_too() {
+    let mut at = exploring();
+    let launch = at.home.path().join("data/agent-launch");
+    let _ = std::fs::remove_dir_all(&launch);
+    std::fs::write(&launch, "not a directory").unwrap();
+    promoted(&mut at);
+    let said: Vec<&str> = at
+        .state
+        .errors
+        .iter()
+        .map(|one| one.what.message.as_str())
+        .collect();
+    assert!(
+        said.iter().any(|one| one.contains("launch files stay")),
+        "{said:?}"
+    );
+}

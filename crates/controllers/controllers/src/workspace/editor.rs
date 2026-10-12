@@ -47,7 +47,7 @@ pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner, path: String) 
     }));
 }
 
-/// Writes the active buffer out.
+/// Writes the active buffer out, after the worktree's file operations asked before.
 pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(open) = state.workspace.active().filter(|one| !one.unshown) else {
         return;
@@ -58,8 +58,11 @@ pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
     let (id, dir) = (worktree.id.clone(), worktree.dir());
     let (path, text, revision) = (open.path.clone(), open.new.text(), open.new.revision());
     let job = state.begin(format!("saving {path}"));
+    let mut turn = state.workspace.filing(&id);
     spawner.spawn(Box::pin(async move {
+        turn.wait().await;
         let written = groove_workspace_service::save(&dir, &path, &text).await;
+        drop(turn);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match written {

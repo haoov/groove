@@ -176,8 +176,44 @@ async fn after_a_failed_write_an_older_config_is_never_written() {
     std::fs::remove_dir(&blocker).unwrap();
     keeper.hold(dir.path(), with(12.0, 13.0).config.unwrap(), 1);
     keeper.flush().await.unwrap();
-    assert!(crate::load(dir.path()).unwrap().is_none());
-    assert_eq!(keeper.kept(), 0);
+    let kept = crate::load(dir.path())
+        .unwrap()
+        .expect("the failed one, tried again");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (14.0, 2));
+}
+
+#[tokio::test]
+async fn a_failed_write_is_tried_again_unless_a_newer_one_is_held() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    let blocker = dir.path().join("config.json.tmp");
+    std::fs::create_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    assert!(keeper.flush().await.is_err());
+    std::fs::remove_dir(&blocker).unwrap();
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path()).unwrap().expect("tried again");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (14.0, 2));
+    assert!(keeper.quit().await.is_ok(), "nothing is lost");
+
+    std::fs::create_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(15.0, 13.0).config.unwrap(), 3);
+    assert!(keeper.flush().await.is_err());
+    keeper.hold(dir.path(), with(16.0, 13.0).config.unwrap(), 4);
+    std::fs::remove_dir(&blocker).unwrap();
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path()).unwrap().expect("the newer one");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (16.0, 4));
+}
+
+#[tokio::test]
+async fn a_write_that_failed_out_of_sight_fails_the_quit() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    std::fs::create_dir(dir.path().join("config.json.tmp")).unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    let _lost = keeper.flush().await;
+    assert!(keeper.quit().await.is_err(), "the quit says it");
 }
 
 #[test]

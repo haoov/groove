@@ -142,3 +142,37 @@ fn the_clipboard_is_read_off_the_loop_and_held_for_the_surface() {
     spawner.drain(&mut state, &services);
     assert_eq!(state.pasted, Some(Some("pasted words".into())));
 }
+
+#[test]
+fn a_sign_in_ended_and_asked_again_keeps_only_the_last_terminal() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let held = crate::tests::fixture::Held::over(&spawner);
+    let login = || Cmd::Config(Command::Login { cols: 80, rows: 24 });
+    dispatch(login(), &mut state, &services, &held);
+    assert!(state.config.signing_in, "the spawn is out");
+    dispatch(
+        Cmd::Config(Command::EndLogin),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    dispatch(login(), &mut state, &services, &held);
+    for job in held.take() {
+        spawner.block_on(job)(&mut state, &services, &spawner);
+    }
+    assert!(!state.config.signing_in);
+    assert!(state.config.login.is_some(), "the last sign-in's terminal");
+    state.config.checking = true;
+    spawner.settle(std::time::Duration::from_millis(300), &mut state, &services);
+    assert!(
+        state.config.login.is_some(),
+        "the other one's exit leaves it"
+    );
+    dispatch(
+        Cmd::Config(Command::EndLogin),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert!(state.config.login.is_none(), "and the user can end it");
+}

@@ -71,6 +71,8 @@ pub struct State {
     pub login: Option<groove_terminal::Terminal>,
     /// A sign-in asked for whose terminal is still being spawned.
     pub signing_in: bool,
+    /// Moves on with each sign-in asked or ended: an older one's terminal is not kept.
+    pub sign_in: u64,
     /// The last revision handed to a write.
     pub revision: u64,
 }

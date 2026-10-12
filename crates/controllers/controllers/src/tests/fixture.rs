@@ -248,3 +248,56 @@ pub fn auto_approve(state: &mut AppState, session: &groove_types::SessionId) {
         open.state.auto_approve = true;
     }
 }
+
+/// Holds every job, to run them in any order; a thread reports through `sink` when given one.
+#[derive(Default)]
+pub struct Held {
+    jobs: std::sync::Mutex<Vec<crate::spawn::Job>>,
+    sink: Option<std::sync::Arc<dyn crate::Deliver>>,
+}
+
+impl Held {
+    /// Jobs held, and what a thread reports delivered to `spawner` for its `drain`.
+    pub fn over(spawner: &SyncSpawner) -> Self {
+        let sink = Some(crate::Spawner::sink(spawner));
+        Self {
+            jobs: Default::default(),
+            sink,
+        }
+    }
+
+    /// The jobs held so far, in the order they were spawned.
+    pub fn take(&self) -> Vec<crate::spawn::Job> {
+        std::mem::take(&mut *self.jobs.lock().expect("the jobs"))
+    }
+
+    /// The held jobs started newest first on a pool, a beat apart; their continuations applied after.
+    pub fn backwards(&self, state: &mut AppState, services: &Services) {
+        let pool = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let mut out = Vec::new();
+        for job in self.take().into_iter().rev() {
+            out.push(pool.spawn(job));
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        let spawner = SyncSpawner::new().unwrap();
+        for one in out {
+            pool.block_on(one).expect("the job")(state, services, &spawner);
+        }
+    }
+}
+
+impl crate::Spawner for Held {
+    fn spawn(&self, job: crate::spawn::Job) {
+        self.jobs.lock().expect("the jobs").push(job);
+    }
+
+    fn detach(&self, _: crate::Detached) {}
+
+    fn sink(&self) -> std::sync::Arc<dyn crate::Deliver> {
+        self.sink.clone().expect("a held spawner made `over` one")
+    }
+}

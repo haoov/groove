@@ -112,6 +112,13 @@ fn setup_shows_each_program_in_its_state_and_offers_the_claude_sign_in() {
     let asked = click(sign_in, &mut ui, &app, &hits);
     let login = config::Command::Login { cols: 80, rows: 24 };
     assert_eq!(asked, [Command::Config(login)]);
+
+    app.config.signing_in = true;
+    let (_, hits) = drawn(&app, &ui);
+    assert!(
+        hits.rect_of(&Target::SettingsLoginEnd).is_some(),
+        "while its terminal is spawned the sign-in can be cancelled"
+    );
 }
 
 #[test]
