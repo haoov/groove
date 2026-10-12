@@ -76,7 +76,7 @@ async fn batches_for(server: &MockServer, long: Duration) -> Vec<Batch> {
 #[tokio::test]
 async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() {
     let server = MockServer::start().await;
-    let list = table(&[("u1", "api-0")], "42");
+    let list = table(&[("u3", "api-2"), ("u1", "api-0")], "42");
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
         .and(query_param("limit", "5000"))
         .respond_with(ResponseTemplate::new(200).set_body_json(list))
@@ -96,7 +96,12 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
     let Batch::Reset { columns, rows } = &sent[0] else {
         panic!("the list comes first: {sent:?}");
     };
-    assert_eq!((columns.len(), rows[0].name.as_str()), (1, "api-0"));
+    let names: Vec<&str> = rows.iter().map(|one| one.name.as_str()).collect();
+    assert_eq!(
+        (columns.len(), names),
+        (1, vec!["api-0", "api-2"]),
+        "by name"
+    );
     assert_eq!(sent[1], Batch::Watching, "then the watch opens");
     let Batch::Changes(changes) = &sent[2] else {
         panic!("then its changes: {sent:?}");

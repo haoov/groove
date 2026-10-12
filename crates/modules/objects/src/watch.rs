@@ -20,7 +20,7 @@ const MOST: usize = 10_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Batch {
-    /// Every row the list holds now, which replace the ones held.
+    /// Every row the list holds now, by namespace then name, which replace the ones held.
     Reset {
         columns: Vec<TableColumn>,
         rows: Vec<ObjectRow>,
@@ -185,7 +185,7 @@ async fn listed(
     Ok((page.version, table))
 }
 
-/// By namespace then name, the order the store keeps, so the main thread sorts nothing.
+/// By namespace then name, the order the store keeps.
 fn sorted(mut rows: Vec<ObjectRow>) -> Vec<ObjectRow> {
     rows.sort_by(|a, b| (&a.namespace, &a.name).cmp(&(&b.namespace, &b.name)));
     rows

@@ -183,8 +183,7 @@ impl Store {
         }
         one.revision += 1;
         match batch {
-            Batch::Reset { columns, mut rows } => {
-                rows.sort_by(|a, b| place(a).cmp(&place(b)));
+            Batch::Reset { columns, rows } => {
                 (one.columns, one.rows, one.synced) = (columns, rows, true);
             }
             Batch::Changes(deltas) => changed(one, deltas),

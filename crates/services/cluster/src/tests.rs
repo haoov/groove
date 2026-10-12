@@ -150,7 +150,7 @@ fn rows_stand_by_name_and_each_change_lands_in_its_place() {
     let mut store = crate::Store::default();
     let key = pods("paxone");
     store.lease(&key, "list");
-    let rows = vec![row("b", "worker", "Running"), row("a", "api", "Running")];
+    let rows = vec![row("a", "api", "Running"), row("b", "worker", "Running")];
     store.apply(
         &key,
         Batch::Reset {
