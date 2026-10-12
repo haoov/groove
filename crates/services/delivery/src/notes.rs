@@ -51,17 +51,14 @@ fn of_thread(thread: &MrThread) -> Option<Note> {
     })
 }
 
-/// Where the thread hangs on the new side; the forge counts lines from one.
+/// Where the thread hangs on the new side; a line 0 is none.
 fn anchor_of(note: &MrNote) -> Option<Anchor> {
     let position = note.position.as_ref()?;
     let path = position.new_path.clone()?;
-    let start = position.new_line?.checked_sub(1)?;
-    let end = position.end_new_line.and_then(|end| end.checked_sub(1));
-    Some(Anchor {
-        path,
-        start_line: start,
-        end_line: end.unwrap_or(start).max(start),
-    })
+    let line = |one: u32| (one > 0).then_some(i64::from(one));
+    let start = position.new_line.and_then(line)?;
+    let end = position.end_new_line.and_then(line);
+    Anchor::numbered(path, start, end)
 }
 
 fn said_of(note: &MrNote) -> Said {

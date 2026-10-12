@@ -157,3 +157,27 @@ fn a_posted_note_comes_back_on_the_line_it_left() {
         "and comes back where the note stood"
     );
 }
+
+#[test]
+fn a_range_the_forge_gives_end_first_covers_both_ends_and_a_line_zero_hangs_nowhere() {
+    let backwards = NotePosition {
+        end_new_line: Some(3),
+        ..on("src/lib.rs", 5)
+    };
+    let threads = vec![
+        thread("t1", vec![note("reviewer", false, Some(backwards))]),
+        thread(
+            "t2",
+            vec![note("reviewer", false, Some(on("src/lib.rs", 0)))],
+        ),
+    ];
+    let read = merged(&[], &threads);
+    let anchors: Vec<_> = read.iter().map(|one| one.anchor.clone()).collect();
+    let range = groove_types::Anchor {
+        path: "src/lib.rs".into(),
+        start_line: 2,
+        end_line: 4,
+    };
+    assert!(anchors.contains(&Some(range)), "{anchors:?}");
+    assert!(anchors.contains(&None), "{anchors:?}");
+}
