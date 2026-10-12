@@ -277,11 +277,5 @@ fn events(app: &AppState, tab: &Opened, object: &Described) -> Vec<Arc<Described
 
 /// The pod's usage as last read, when the cluster runs a metrics-server.
 fn usage(app: &AppState, tab: &Opened) -> Option<Usage> {
-    let link = &tab.link;
-    let pod = (
-        link.context.clone(),
-        link.namespace.clone().unwrap_or_default(),
-        link.name.clone(),
-    );
-    app.cluster.store.follows.usage(&pod)?.0.clone()
+    app.cluster.store.follows.usage(&tab.link.pod())?.0.clone()
 }

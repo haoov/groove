@@ -61,8 +61,7 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     };
     let follows = &app.cluster.store.follows;
     let mut out = Vec::new();
-    let namespace = link.namespace.clone().unwrap_or_default();
-    let pod = (link.context.clone(), namespace, link.name.clone());
+    let pod = link.pod();
     let stale = match follows.usage(&pod) {
         Some((_, at)) => now.seconds() - at.seconds() >= USAGE_EVERY,
         None => true,
@@ -117,12 +116,6 @@ fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Co
 pub fn due(app: &AppState, held: &ResourcesUi) -> Option<Timestamp> {
     let tab = held.tab().filter(|tab| tab.view == View::Describe)?;
     tab.link.read(app)?.pod.as_ref()?;
-    let link = &tab.link;
-    let pod = (
-        link.context.clone(),
-        link.namespace.clone().unwrap_or_default(),
-        link.name.clone(),
-    );
-    let (_, at) = app.cluster.store.follows.usage(&pod)?;
+    let (_, at) = app.cluster.store.follows.usage(&tab.link.pod())?;
     Some(Timestamp::new(at.seconds() + USAGE_EVERY))
 }

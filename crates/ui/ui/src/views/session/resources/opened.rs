@@ -24,6 +24,12 @@ impl Link {
         )
     }
 
+    /// The pod's context, namespace and name, which its usage is kept under.
+    pub fn pod(&self) -> groove_controllers::cluster_service::Named {
+        let namespace = self.namespace.clone().unwrap_or_default();
+        (self.context.clone(), namespace, self.name.clone())
+    }
+
     /// The object as last read, once its watcher has listed it.
     pub fn read<'a>(&self, app: &'a AppState) -> Option<&'a Arc<Described>> {
         app.cluster.store.object(&self.key())
