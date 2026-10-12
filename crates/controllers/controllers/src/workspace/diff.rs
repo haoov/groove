@@ -195,7 +195,8 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: Workt
         let git = groove_workspace_service::git_dir(&dir).await;
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
-                if !dir.exists() {
+                let selected = state.session.selected_worktree().map(|one| &one.id);
+                if selected != Some(&worktree) || !dir.exists() {
                     return;
                 }
                 let on_change = reload(spawner.sink(), worktree.clone());
