@@ -2,6 +2,7 @@
 //! the keyboard asks for.
 
 mod forged;
+mod typing;
 
 use groove_controllers::delivery;
 use groove_gfx::Fonts;
@@ -296,7 +297,7 @@ fn what_is_typed_over_a_note_writes_that_note_again() {
     let mut ui = on_diff();
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     if let Some(noting) = ui.session.noting.as_mut() {
-        noting.field.set("nitpick: name it");
+        noting.buffer = groove_controllers::workspace_service::Buffer::plain("nitpick: name it");
     }
     let commands = press(Key::Enter, &mut ui, &app);
     assert_eq!(

@@ -137,7 +137,8 @@ fn pasted_in_session(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         _ if session.naming.is_some() => session.naming.as_mut().map(|one| &mut one.field),
         _ if session.noting.is_some() => {
             if let Some(noting) = session.noting.as_mut() {
-                noting.field.paste_lines(text);
+                let text = text.trim().replace('\r', "");
+                noting.buffer.edit(&groove_types::Edit::Insert(text));
             }
             return Vec::new();
         }

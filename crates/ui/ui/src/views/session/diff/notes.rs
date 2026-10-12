@@ -61,7 +61,7 @@ impl Inline {
             blocks.push(Block {
                 after,
                 from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: noting.field.text().split('\n').count(),
+                rows: noting.buffer.text().split('\n').count(),
                 at: None,
                 acts: false,
                 said: Vec::new(),

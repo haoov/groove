@@ -13,7 +13,7 @@ use crate::hit::Target;
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if let Some(said) = code.said {
-        return note(ctx, line, code.text, said, gutter);
+        return note(ctx, line, code, said, gutter);
     }
     if let Some(acting) = code.acting.as_ref() {
         return acts(ctx, line, acting, gutter);

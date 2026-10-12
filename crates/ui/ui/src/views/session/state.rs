@@ -5,6 +5,7 @@ use groove_types::{Anchor, DiffView};
 pub use super::tab::{Face, Tab};
 
 use super::find::Finding;
+use groove_controllers::workspace_service::Buffer;
 use groove_ui_kit::widgets::Field;
 
 /// What the session surface remembers between frames.
@@ -65,12 +66,22 @@ pub struct SessionUi {
 }
 
 /// A note being typed in the surface: the lines it is about, and its words.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Noting {
     pub anchor: Anchor,
-    pub field: Field,
+    pub buffer: Buffer,
     pub writing: Writing,
 }
+
+impl PartialEq for Noting {
+    fn eq(&self, other: &Self) -> bool {
+        let held = |one: &Self| (one.buffer.text(), one.buffer.selections().to_vec());
+        (&self.anchor, &self.writing) == (&other.anchor, &other.writing)
+            && held(self) == held(other)
+    }
+}
+
+impl Eq for Noting {}
 
 /// What the words being typed become.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -87,18 +98,16 @@ impl Noting {
     pub fn new(anchor: Anchor) -> Self {
         Self {
             anchor,
-            field: Field::default(),
+            buffer: Buffer::default(),
             writing: Writing::New,
         }
     }
 
     /// A note's own words, opened to be written again.
     pub fn over(anchor: Anchor, id: groove_types::AnnotationId, said: &str) -> Self {
-        let mut field = Field::default();
-        field.set(said);
         Self {
             anchor,
-            field,
+            buffer: Buffer::plain(said),
             writing: Writing::Over(id),
         }
     }
@@ -107,7 +116,7 @@ impl Noting {
     pub fn reply(anchor: Anchor, thread: String) -> Self {
         Self {
             anchor,
-            field: Field::default(),
+            buffer: Buffer::default(),
             writing: Writing::Reply(thread),
         }
     }
@@ -121,8 +130,8 @@ impl Noting {
     }
 
     /// What the note says, with nothing around it.
-    pub fn said(&self) -> &str {
-        self.field.text().trim()
+    pub fn said(&self) -> String {
+        self.buffer.text().trim().to_string()
     }
 }
 

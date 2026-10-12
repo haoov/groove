@@ -390,3 +390,13 @@ fn a_streamed_text_grows_at_its_end_and_sheds_its_first_lines_carrying_the_caret
         ("", Caret::new(0, 0))
     );
 }
+
+#[test]
+fn a_plain_buffer_opens_with_its_caret_at_the_end_and_nothing_to_undo() {
+    let mut buffer = Buffer::plain("one\ntwo");
+    assert_eq!(buffer.caret(), Caret::new(1, 3));
+    edit(&mut buffer, &[Edit::Undo]);
+    assert_eq!(text(&buffer), "one\ntwo");
+    edit(&mut buffer, &typed("!"));
+    assert_eq!(text(&buffer), "one\ntwo!");
+}

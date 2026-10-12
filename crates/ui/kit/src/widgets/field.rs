@@ -44,13 +44,6 @@ impl Field {
         }
     }
 
-    /// `text` at the caret, its line breaks kept.
-    pub fn paste_lines(&mut self, text: &str) {
-        for c in text.trim().chars().filter(|one| *one != '\r') {
-            self.insert(c);
-        }
-    }
-
     /// The text a one-line field can hold: every break a space, and none at its ends.
     pub fn one_line(text: &str) -> String {
         text.replace(['\n', '\r'], " ").trim().to_string()
@@ -86,12 +79,6 @@ impl Field {
 
     pub fn end(&mut self) {
         self.at = self.chars();
-    }
-
-    /// The text with a bar drawn where the caret is.
-    pub fn shown(&self) -> String {
-        let at = self.byte(self.at);
-        format!("{}\u{2502}{}", &self.text[..at], &self.text[at..])
     }
 
     fn chars(&self) -> usize {

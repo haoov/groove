@@ -46,3 +46,29 @@ pub fn caret_after<A: App>(
     let color = ctx.styles.color(Role::Accent);
     ctx.quad(caret, color);
 }
+
+/// A buffer's line in `style`: what is held under it, its text, the caret over it.
+pub fn typed_line<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    (text, style): (&str, TextStyle),
+    (caret, held): (Option<usize>, Option<(usize, usize, bool)>),
+) {
+    let upto = |ctx: &mut Ctx<'_, A>, column: usize| {
+        let before: String = text.chars().take(column).collect();
+        ctx.measure(&before, &style)
+    };
+    if let Some((from, to, through)) = held {
+        let start = upto(ctx, from);
+        let end = upto(ctx, to) + if through { ctx.advance } else { 0.0 };
+        let band = Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h);
+        let color = ctx.styles.held();
+        ctx.quad(band, color);
+    }
+    row(ctx, rect, 0.0, text, style);
+    if let Some(column) = caret {
+        let at = rect.x + upto(ctx, column);
+        let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
+        ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
+    }
+}

@@ -79,7 +79,7 @@ fn in_session(
         return in_name(key, mods, ui);
     }
     if ui.session.noting.is_some() {
-        return in_note(key, mods, ui);
+        return in_note(key, mods, ui, keymap);
     }
     if ui.session.bar.typing.is_some() {
         return in_bar(key, mods, ui, app, keymap);
