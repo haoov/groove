@@ -233,20 +233,21 @@ pub async fn git_dir(dir: &Path) -> Option<PathBuf> {
     groove_git::Git::at(dir).git_dir().await.ok()
 }
 
-/// Watches `dir` and git's own directory, until the state is cleared.
-pub fn watch(
-    state: &mut State,
-    worktree: WorktreeId,
+/// A watch on `dir` and git's own directory; `None` when `dir` is gone.
+pub fn watcher(
     dir: &Path,
     git: Option<PathBuf>,
     on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
-) -> Result<()> {
-    state.watch = None;
-    state.watching = None;
-    let watch = groove_watch::watch(dir, git.into_iter().collect(), QUIET, on_change)?;
-    state.watching = Some(worktree);
-    state.watch = Some(watch);
-    Ok(())
+) -> Result<Option<Watch>> {
+    if !dir.exists() {
+        return Ok(None);
+    }
+    groove_watch::watch(dir, git.into_iter().collect(), QUIET, on_change).map(Some)
+}
+
+/// The watch held until the state is cleared, in place of the last one.
+pub fn hold(state: &mut State, watch: Option<(WorktreeId, Watch)>) {
+    (state.watching, state.watch) = watch.unzip();
 }
 
 /// Writes the buffer to the file it came from.

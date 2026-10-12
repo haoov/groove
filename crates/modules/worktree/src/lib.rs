@@ -57,14 +57,4 @@ impl Pool {
             })?;
         Ok(dir)
     }
-
-    /// The session's own directory, made when it is missing.
-    pub fn session_dir(&self, session: &SessionId) -> Result<PathBuf> {
-        let dir = self.layout.session_dir(session.as_str());
-        std::fs::create_dir_all(&dir).map_err(|source| Error::Io {
-            path: dir.clone(),
-            source,
-        })?;
-        Ok(dir)
-    }
 }

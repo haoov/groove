@@ -12,8 +12,9 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
         return;
     }
     state.config.checking = true;
-    let claude = groove_config_service::claude_bin(&state.env.home);
+    let home = state.env.home.clone();
     spawner.spawn(Box::pin(async move {
+        let claude = groove_config_service::claude_bin(&home);
         let tools = groove_config_service::check(&claude).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             apply(Event::Config(ConfigEvent::Checked(tools)), state)
@@ -21,16 +22,25 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The sign-in on its own terminal; the check runs again when it exits.
+/// The sign-in on its own terminal, spawned in a job; the check runs again when it exits.
 pub(super) fn login(state: &mut AppState, spawner: &dyn Spawner, size: (u16, u16)) {
-    if state.config.login.is_some() {
+    if state.config.login.is_some() || state.config.signing_in {
         return;
     }
+    state.config.signing_in = true;
     let palette = groove_agent_service::palette(state.config.theme());
-    match groove_config_service::login(&state.env.home, size, palette, hooks(spawner)) {
-        Ok(terminal) => state.config.login = Some(terminal),
-        Err(e) => state.failed(e),
-    }
+    let (home, hooks) = (state.env.home.clone(), hooks(spawner));
+    spawner.spawn(Box::pin(async move {
+        let result = groove_config_service::login(&home, size, palette, hooks);
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            let asked = std::mem::take(&mut state.config.signing_in);
+            match result {
+                Ok(terminal) if asked => state.config.login = Some(terminal),
+                Ok(orphan) => drop(orphan.terminate()),
+                Err(e) => state.failed(e),
+            }
+        }) as Continuation
+    }));
 }
 
 pub(super) fn send(state: &AppState, bytes: &[u8]) {
@@ -52,6 +62,7 @@ pub(super) fn resize(state: &AppState, (cols, rows): (u16, u16)) {
 }
 
 pub(super) fn end(state: &mut AppState) {
+    state.config.signing_in = false;
     if let Some(terminal) = state.config.login.take() {
         let _ = terminal.terminate();
     }

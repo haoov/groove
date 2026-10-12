@@ -69,6 +69,8 @@ pub struct State {
     pub reading: Vec<groove_types::ProviderId>,
     /// The sign-in Setup runs, while it runs.
     pub login: Option<groove_terminal::Terminal>,
+    /// A sign-in asked for whose terminal is still being spawned.
+    pub signing_in: bool,
     /// The last revision handed to a write.
     pub revision: u64,
 }

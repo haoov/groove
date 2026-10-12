@@ -63,8 +63,11 @@ pub async fn listing(
     }
 }
 
-/// The shared repo's `knowledge/`, when its copy holds one.
-pub fn knowledge(shared: Option<&Shared>) -> Option<PathBuf> {
-    let dir = shared?.path.join("knowledge");
-    dir.is_dir().then_some(dir)
+/// The shared repo's `knowledge/`, when its copy at `shared` holds one.
+pub async fn knowledge(shared: Option<&Path>) -> Option<PathBuf> {
+    let dir = shared?.join("knowledge");
+    let found = tokio::fs::metadata(&dir)
+        .await
+        .is_ok_and(|one| one.is_dir());
+    found.then_some(dir)
 }

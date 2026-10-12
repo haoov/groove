@@ -130,20 +130,23 @@ fn open(
     (session, beside): (SessionId, bool),
     size: (u16, u16),
 ) {
-    let cwd = match services.session.session_dir(&session) {
-        Ok(dir) => dir,
-        Err(e) => return state.failed(e),
-    };
     let id = state.shell.reserve(&session, beside);
     let palette = groove_agent_service::palette(state.config.theme());
     let program = state.env.shell.clone();
-    let sink = spawner.sink();
+    let (sink, service) = (spawner.sink(), services.session.clone());
     spawner.spawn(Box::pin(async move {
         let hooks = hooks(&sink, &session, id);
-        let result = spawn(spec(&program, cwd, size), palette, hooks);
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.shell.started(&session, id, result);
-        }) as Continuation
+        let made = service.session_dir(&session).await;
+        let result = made.map(|cwd| spawn(spec(&program, cwd, size), palette, hooks));
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match result {
+                Ok(result) => state.shell.started(&session, id, result),
+                Err(e) => {
+                    state.shell.close(&session, id);
+                    state.failed(e);
+                }
+            },
+        ) as Continuation
     }));
 }
 

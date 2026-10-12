@@ -52,14 +52,17 @@ pub(super) fn skills(state: &AppState, call: Call) {
     call.reply.json(&answers::counted("skills", each));
 }
 
-/// One skill of the user's own, as its file stands.
-pub(super) fn skill(state: &AppState, call: Call) {
-    let Some(name) = call.text("name") else {
+/// One skill of the user's own, as its file stands, read in a job.
+pub(super) fn skill(state: &AppState, spawner: &dyn Spawner, call: Call) {
+    let Some(name) = call.text("name").map(str::to_string) else {
         return call.reply.failed("read_user_skill needs a name");
     };
     let dirs = crate::agent::skills::dirs(state);
-    match groove_skill_service::skills::read(&dirs, &format!("user:{name}")) {
-        Ok(body) => call.reply.said(body),
-        Err(e) => call.reply.failed(e.message),
-    }
+    spawner.spawn(Box::pin(async move {
+        match groove_skill_service::skills::read(&dirs, &format!("user:{name}")) {
+            Ok(body) => call.reply.said(body),
+            Err(e) => call.reply.failed(e.message),
+        }
+        Box::new(|_: &mut AppState, _: &Services, _: &dyn Spawner| {}) as Continuation
+    }));
 }

@@ -17,6 +17,7 @@ pub fn refresh_status(state: &mut AppState, services: &Services, spawner: &dyn S
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let status = service.status(&worktree).await;
+        let gone = status.is_err() && !worktree.dir().is_dir();
         Box::new(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| match status {
                 Ok(status) => {
@@ -24,7 +25,7 @@ pub fn refresh_status(state: &mut AppState, services: &Services, spawner: &dyn S
                         open.told(&worktree.id, status);
                     }
                 }
-                Err(e) if worktree.dir().is_dir() => state.failed(e),
+                Err(e) if !gone => state.failed(e),
                 Err(_) => {}
             },
         ) as Continuation

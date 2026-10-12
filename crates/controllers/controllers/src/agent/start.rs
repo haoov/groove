@@ -24,10 +24,16 @@ pub(crate) fn asking(
         return;
     };
     let paths = paths(state);
+    let (dirs, shared) = (skills::dirs(state), shared_copy(state));
     let cwd = state.config.worktree_root(&state.env.home);
     let palette = palette(state.config.theme());
     let (sink, launched) = (spawner.sink(), state.agent.launch(&id));
     spawner.spawn(Box::pin(async move {
+        let paths = LaunchPaths {
+            plugin_dirs: groove_skill_service::skills::plugin_dirs(&dirs),
+            knowledge: groove_skill_service::listing::knowledge(shared.as_deref()).await,
+            ..paths
+        };
         let result = launch(
             &session,
             &paths,
@@ -57,11 +63,15 @@ fn paths(state: &AppState) -> LaunchPaths {
     LaunchPaths {
         home: state.env.home.clone(),
         launch_dir: launch_dir(state),
-        plugin_dirs: groove_skill_service::skills::plugin_dirs(&skills::dirs(state)),
-        knowledge: groove_skill_service::listing::knowledge(state.skill.shared.as_ref()),
+        plugin_dirs: Vec::new(),
+        knowledge: None,
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
     }
+}
+
+fn shared_copy(state: &AppState) -> Option<std::path::PathBuf> {
+    state.skill.shared.as_ref().map(|one| one.path.clone())
 }
 
 pub(crate) fn launch_dir(state: &AppState) -> std::path::PathBuf {

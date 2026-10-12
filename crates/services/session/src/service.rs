@@ -132,14 +132,14 @@ impl Service {
     }
 
     /// The session's own directory, made when it is missing.
-    pub fn session_dir(&self, id: &SessionId) -> Result<std::path::PathBuf, Error> {
-        Ok(self.pool.session_dir(id)?)
+    pub async fn session_dir(&self, id: &SessionId) -> Result<std::path::PathBuf, Error> {
+        Ok(self.pool.made_session_dir(id).await?)
     }
 
     /// On the rail with its directory made, or off it.
     pub async fn set_opened(&self, id: &SessionId, at: Option<Timestamp>) -> Result<(), Error> {
         if at.is_some() {
-            self.pool.session_dir(id)?;
+            self.pool.made_session_dir(id).await?;
         }
         Ok(self.store.set_opened(id, at).await?)
     }

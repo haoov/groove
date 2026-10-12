@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use groove_types::{DiffMode, WorktreeId};
-use groove_workspace_service::{against, changes, files_in, opens_in, painted};
+use groove_workspace_service::{against, changes, files_in, hold, opens_in, painted};
 
 use super::editor::{Head, derive, held, reopen};
 use super::stale;
@@ -191,27 +191,24 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: Workt
     let Some(dir) = state.session.find(&worktree).map(|(_, _, one)| one.dir()) else {
         return;
     };
+    let on_change = reload(spawner.sink(), worktree.clone());
     spawner.spawn(Box::pin(async move {
         let git = groove_workspace_service::git_dir(&dir).await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
-                let selected = state.session.selected_worktree().map(|one| &one.id);
-                if selected != Some(&worktree) || !dir.exists() {
-                    return;
-                }
-                let on_change = reload(spawner.sink(), worktree.clone());
-                let watched = groove_workspace_service::watch(
-                    &mut state.workspace,
-                    worktree,
-                    &dir,
-                    git,
-                    on_change,
-                );
-                if let Err(e) = watched {
+        let watched = groove_workspace_service::watcher(&dir, git, on_change);
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            let selected = state.session.selected_worktree().map(|one| &one.id);
+            if selected != Some(&worktree) {
+                return;
+            }
+            match watched {
+                Ok(Some(watch)) => hold(&mut state.workspace, Some((worktree, watch))),
+                Ok(None) => {}
+                Err(e) => {
+                    hold(&mut state.workspace, None);
                     state.failed(e);
                 }
-            },
-        ) as Continuation
+            }
+        }) as Continuation
     }));
 }
 
