@@ -123,3 +123,19 @@ fn the_row_draws_the_caret_and_what_is_held_the_way_the_commit_box_does() {
         "the words held are shaded"
     );
 }
+
+#[test]
+fn ctrl_moves_the_caret_and_deletes_in_a_note_as_the_key_alone_does() {
+    let (app, mut ui) = noting("abc");
+    chord(Key::Left, ctrl(), &mut ui, &app);
+    chord(Key::Backspace, ctrl(), &mut ui, &app);
+    assert_eq!(said(&ui), "ac");
+    chord(Key::Home, ctrl(), &mut ui, &app);
+    chord(Key::Delete, ctrl(), &mut ui, &app);
+    chord(Key::End, ctrl(), &mut ui, &app);
+    typed("!", &mut ui, &app);
+    chord(Key::Home, ctrl(), &mut ui, &app);
+    chord(Key::Right, ctrl(), &mut ui, &app);
+    typed("?", &mut ui, &app);
+    assert_eq!(said(&ui), "c?!");
+}

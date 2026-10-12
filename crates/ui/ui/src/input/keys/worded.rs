@@ -25,6 +25,22 @@ pub(super) fn asked(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers)
     }
 }
 
+/// One keystroke on a note: as `asked`, and ctrl on a deletion or a sideways motion as plain.
+pub(super) fn asked_of_note(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers) -> Asked {
+    let held = asked(buffer, keymap, key, mods);
+    let sideways = matches!(
+        key,
+        Key::Left | Key::Right | Key::Home | Key::End | Key::Backspace | Key::Delete
+    );
+    if !mods.ctrl || !sideways || held.edit.is_some() || held.copied.is_some() {
+        return held;
+    }
+    Asked {
+        edit: edit_of(key, Modifiers::default()),
+        copied: None,
+    }
+}
+
 /// What a plain keystroke asks of the buffer.
 fn edit_of(key: Key, mods: Modifiers) -> Option<Edit> {
     match key {

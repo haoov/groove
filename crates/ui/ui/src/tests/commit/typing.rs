@@ -157,3 +157,17 @@ fn alt_and_backspace_or_delete_take_a_character() {
     key(Key::Delete, alt, &mut ui, &mut app);
     assert_eq!(app.workspace.message.text(), "ix(a): i");
 }
+
+#[test]
+fn ctrl_and_an_arrow_or_a_deletion_leave_the_message_as_it_was() {
+    let (mut app, mut ui) = composing("fix(a): it");
+    let keys = [Key::Left, Key::Home, Key::Backspace, Key::Delete, Key::End];
+    for one in keys {
+        key(one, ctrl(), &mut ui, &mut app);
+    }
+    assert_eq!(app.workspace.message.text(), "fix(a): it");
+    assert_eq!(
+        app.workspace.message.caret(),
+        groove_types::Caret::new(0, 10)
+    );
+}

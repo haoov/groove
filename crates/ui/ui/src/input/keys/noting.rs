@@ -5,7 +5,7 @@ use groove_controllers::delivery::{self, NoteAct, ThreadAct};
 use groove_types::Edit;
 
 use super::super::{Key, Modifiers};
-use super::worded::asked;
+use super::worded::asked_of_note;
 use crate::Ui;
 use crate::keymap::Keymap;
 use crate::views::session::{Noting, Writing};
@@ -28,7 +28,7 @@ pub(super) fn in_note(key: Key, mods: Modifiers, ui: &mut Ui, keymap: &Keymap) -
                 .unwrap_or_default();
         }
         key => {
-            let asked = asked(&noting.buffer, keymap, key, mods);
+            let asked = asked_of_note(&noting.buffer, keymap, key, mods);
             if let Some(edit) = asked.edit {
                 noting.buffer.edit(&edit);
             }
