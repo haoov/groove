@@ -1,4 +1,4 @@
-//! A kubeconfig context added to Groove, changed or removed; the file written on the spot.
+//! A kubeconfig context added to Groove, changed or removed; the file follows.
 
 use groove_types::{ClusterChange, Error};
 

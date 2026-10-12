@@ -1,4 +1,4 @@
-//! A routine switched on or off, and one trigger of it; the file written on the spot.
+//! A routine switched on or off, and one trigger of it; the file follows.
 
 use groove_types::{Error, Routine, RoutineKind, Timestamp, Trigger};
 

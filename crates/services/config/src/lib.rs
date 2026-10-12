@@ -88,14 +88,6 @@ pub fn path(config_dir: &Path) -> std::path::PathBuf {
     groove_config::path(config_dir)
 }
 
-/// Where the window's boundaries stand, for the next run.
-pub fn keep_panes(data_dir: &Path, panes: &groove_types::Panes) -> Result<(), Error> {
-    Ok(groove_config::panes::save(
-        &groove_config::panes::path(data_dir),
-        panes,
-    )?)
-}
-
 impl State {
     /// The next revision a changed config is written at.
     pub fn revised(&mut self) -> u64 {

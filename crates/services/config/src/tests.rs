@@ -132,13 +132,50 @@ fn a_context_is_added_once_changed_on_its_own_and_removed() {
 }
 
 #[tokio::test]
-async fn a_write_that_ends_after_a_newer_one_leaves_the_newer_on_disk() {
+async fn an_older_config_held_after_a_newer_one_never_replaces_it() {
     let dir = tempfile::tempdir().unwrap();
     let keeper = crate::Keeper::default();
-    let older = with(12.0, 13.0).config.unwrap();
-    let newer = with(14.0, 13.0).config.unwrap();
-    keeper.keep(dir.path(), &newer, 2).await.unwrap();
-    keeper.keep(dir.path(), &older, 1).await.unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    keeper.hold(dir.path(), with(12.0, 13.0).config.unwrap(), 1);
+    keeper.flush().await.unwrap();
     let kept = crate::load(dir.path()).unwrap().expect("the file is there");
-    assert_eq!(kept.ui.font_size, 14.0);
+    assert_eq!((kept.ui.font_size, keeper.kept()), (14.0, 2));
+}
+
+#[tokio::test]
+async fn what_is_held_reaches_the_disk_on_a_flush_with_no_job_left() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    let panes = groove_types::Panes {
+        rail: 260.0,
+        agent: 600.0,
+        sidebar: 380.0,
+        commit: 120.0,
+        feed: 200.0,
+        manual: 220.0,
+    };
+    keeper.hold(dir.path(), with(15.0, 13.0).config.unwrap(), 1);
+    keeper.hold_panes(dir.path(), panes);
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path())
+        .unwrap()
+        .expect("the config is there");
+    assert_eq!(kept.ui.font_size, 15.0);
+    let file = groove_config::panes::path(dir.path());
+    assert_eq!(groove_config::panes::load(&file).unwrap(), Some(panes));
+}
+
+#[tokio::test]
+async fn after_a_failed_write_an_older_config_is_never_written() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    let blocker = dir.path().join("config.json.tmp");
+    std::fs::create_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    assert!(keeper.flush().await.is_err(), "the failure is said");
+    std::fs::remove_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(12.0, 13.0).config.unwrap(), 1);
+    keeper.flush().await.unwrap();
+    assert!(crate::load(dir.path()).unwrap().is_none());
+    assert_eq!(keeper.kept(), 0);
 }

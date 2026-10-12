@@ -46,22 +46,21 @@ fn joined(
         );
     };
     state.skill.shared = Some(copy);
-    if !super::written(state, services, spawner, Some(config)) {
-        return;
-    }
+    super::write(state, services, spawner, config, None);
     crate::agent::skills::list(state, spawner);
 }
 
-/// No shared repo any more: the config forgets it and the copy goes.
+/// No shared repo any more: the config forgets it, and the copy goes once that is on disk.
 pub(super) fn leave(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let Some(config) = state.config.set_shared(None).cloned() else {
         return;
     };
     state.skill.shared = None;
     state.skill.unshared = None;
-    if !super::written(state, services, spawner, Some(config)) {
-        return;
-    }
+    super::write(state, services, spawner, config, Some(Box::new(forget)));
+}
+
+fn forget(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
     let data = state.env.data_dir.clone();
     spawner.spawn(Box::pin(async move {
         let gone = shared::forget(&data).await;

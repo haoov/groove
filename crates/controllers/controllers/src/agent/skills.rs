@@ -137,9 +137,7 @@ pub fn switch(
         Ok(config) => config.clone(),
         Err(e) => return state.failed(e),
     };
-    if !crate::config::written(state, services, spawner, Some(config)) {
-        return;
-    }
+    crate::config::write(state, services, spawner, config, None);
     state.skill.switched = groove_types::Timestamp::now();
     let dirs = dirs(state);
     spawner.spawn(Box::pin(async move {

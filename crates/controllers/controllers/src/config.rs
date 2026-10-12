@@ -156,24 +156,25 @@ pub fn dispatch(
         Command::SetCluster { context, change } => {
             clusters::change(state, services, spawner, (&context, change))
         }
-        Command::KeepPanes(panes) => keep_panes(state, spawner, panes),
+        Command::KeepPanes(panes) => keep_panes(state, services, spawner, panes),
     }
 }
 
-/// The boundaries written off the main thread; a failure is said.
-fn keep_panes(state: &mut AppState, spawner: &dyn Spawner, panes: groove_types::Panes) {
-    let data_dir = state.env.data_dir.clone();
-    spawner.spawn(Box::pin(async move {
-        let kept = groove_config_service::keep_panes(&data_dir, &panes);
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if let Err(e) = kept {
-                state.failed(e);
-            }
-        }) as crate::Continuation
-    }));
+/// The boundaries held, then written in a job; a failure is said.
+fn keep_panes(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    panes: groove_types::Panes,
+) {
+    services.config.hold_panes(&state.env.data_dir, panes);
+    flushed(services, spawner, 0, None);
 }
 
-/// The config as changed, written to its file in a job; whether there was one to write.
+/// What waits for the config file, run once it is on disk.
+pub(crate) type Then = Box<dyn FnOnce(&mut AppState, &Services, &dyn Spawner) + Send>;
+
+/// The config as changed, written in a job; false, and said, when there is none before the first run.
 pub(crate) fn written(
     state: &mut AppState,
     services: &Services,
@@ -186,17 +187,42 @@ pub(crate) fn written(
         ));
         return false;
     };
-    let (keeper, revision) = (services.config.clone(), state.config.revised());
-    let dir = state.env.config_dir.clone();
-    spawner.spawn(Box::pin(async move {
-        let kept = keeper.keep(&dir, &config, revision).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if let Err(e) = kept {
-                state.failed(e);
-            }
-        }) as crate::Continuation
-    }));
+    write(state, services, spawner, config, None);
     true
+}
+
+/// `config` written in a job; `then` runs only once it, or a later config, is on disk.
+pub(crate) fn write(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    config: groove_types::Config,
+    then: Option<Then>,
+) {
+    let revision = state.config.revised();
+    services
+        .config
+        .hold(&state.env.config_dir, config, revision);
+    flushed(services, spawner, revision, then);
+}
+
+/// What the keeper holds, written in a job; a failure is said.
+fn flushed(services: &Services, spawner: &dyn Spawner, revision: u64, then: Option<Then>) {
+    let keeper = services.config.clone();
+    spawner.spawn(Box::pin(async move {
+        let flushed = keeper.flush().await;
+        let kept = keeper.kept() >= revision;
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                if let Err(e) = flushed {
+                    state.failed(e);
+                }
+                if let Some(then) = then.filter(|_| kept) {
+                    then(state, services, spawner);
+                }
+            },
+        ) as crate::Continuation
+    }));
 }
 
 /// The next key reads the new chords; the file follows.
@@ -210,7 +236,7 @@ fn rebind(
     written(state, services, spawner, changed);
 }
 
-/// The change reaches every reader at once; the file follows, written on the spot.
+/// The change reaches every reader at once; the file follows.
 fn set_preference(
     state: &mut AppState,
     services: &Services,

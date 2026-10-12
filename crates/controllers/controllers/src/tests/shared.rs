@@ -118,6 +118,18 @@ fn letting_the_repo_go_forgets_it_and_its_copy() {
 }
 
 #[test]
+fn the_copy_stays_while_the_config_without_it_cannot_be_written() {
+    let (home, spawner, services, mut state) = fresh();
+    let url = origin(home.path(), "wiremind");
+    send(join(&url), &mut state, &services, &spawner);
+    let copy = state.skill.shared.clone().expect("the copy").path;
+    std::fs::create_dir(home.path().join("config/config.json.tmp")).unwrap();
+    send(Command::LeaveShared, &mut state, &services, &spawner);
+    assert_eq!(state.errors.len(), 1, "the failed write is said");
+    assert!(copy.exists(), "the copy the file still names stays");
+}
+
+#[test]
 fn a_follow_that_keeps_failing_is_said_once() {
     let (_home, _spawner, _services, mut state) = fresh();
     let failed = || Some(Err(groove_types::Error::invalid("origin does not answer")));
