@@ -9,8 +9,9 @@ use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Heading;
 
+use super::super::around::{helm_release, lineage, served};
 use super::super::list::plan::colour;
-use super::super::opened::{Link, Opened, Section, helm_release, lineage, served};
+use super::super::opened::{Link, Opened, Section};
 use super::copy;
 use super::describe::Tally;
 use crate::ctx::Ctx;

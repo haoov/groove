@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 use groove_controllers::{AppState, Command, cluster};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
-use super::super::opened::{Opened, events_key, helm_release, lineage, services_key};
+use super::super::around::{events_key, helm_release, lineage, services_key};
+use super::super::opened::Opened;
 use super::super::{ResourcesUi, View, log_key};
 
 /// The one reader an object's tab holds its watchers under.

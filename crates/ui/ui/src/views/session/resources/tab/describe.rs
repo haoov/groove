@@ -10,7 +10,8 @@ use groove_types::{
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::scrolled;
 
-use super::super::opened::{Opened, Section, events_key};
+use super::super::around::events_key;
+use super::super::opened::{Opened, Section};
 use super::argo;
 use super::containers;
 use super::destined;

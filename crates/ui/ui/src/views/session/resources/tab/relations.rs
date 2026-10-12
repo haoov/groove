@@ -6,7 +6,8 @@ use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::{Cell, Shown, Width};
 
-use super::super::opened::{Link, Opened, lineage, selecting, served};
+use super::super::around::{lineage, selecting, served};
+use super::super::opened::{Link, Opened};
 use super::{copy, grouped};
 use crate::ctx::Ctx;
 
