@@ -33,7 +33,7 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
                 state.failed(e);
             }
             state.agent.skills = found.skills;
-            state.agent.routines = found.routines;
+            state.routine.routines = found.routines;
             state.agent.listed = true;
         }) as Continuation
     }));

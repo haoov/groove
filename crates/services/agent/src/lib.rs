@@ -1,9 +1,8 @@
-//! The agent capability: each session's agent, the skills, the shared repo, the routines and their runs.
+//! The agent capability: each session's agent and its asks, the skills, the shared repo.
 
 pub(crate) mod launch;
 mod listed;
 pub mod listing;
-pub mod runs;
 pub mod shared;
 
 #[cfg(test)]
@@ -18,7 +17,6 @@ pub use groove_agent_launch::{forget, fresh, hand_over};
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
-pub use groove_routines as routines;
 pub use groove_skills as skills;
 pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
@@ -50,11 +48,8 @@ pub struct State {
     pub shared: Option<shared::Shared>,
     /// When a skill was last switched on or off.
     pub switched: Timestamp,
-    /// Every routine file, the team's and the user's, as the last read found them.
-    pub routines: Vec<groove_routines::Listed>,
     /// The skills and routines have been read once.
     pub listed: bool,
-    pub runs: runs::Runs,
     /// The launches numbered so far.
     launches: u64,
     /// The launch each session waits on.

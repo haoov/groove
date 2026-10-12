@@ -1,16 +1,16 @@
 //! A run's words reaching its agent: a fresh agent asked them, or typed into the one waiting.
 
-use groove_agent_service::runs::{Deliver, Run, deliver};
+use groove_routine_service::runs::{Deliver, Run, deliver};
 
 use crate::session::FIRST_SIZE;
 use crate::{AppState, Continuation, Services, Spawner, agent};
 
 /// The run's routine asked of its agent, as its kind wants.
 pub(super) fn send(state: &mut AppState, spawner: &dyn Spawner, run: &Run) {
-    let Some(routine) = state.agent.routine(&run.routine).cloned() else {
+    let Some(routine) = state.routine.routine(&run.routine).cloned() else {
         return;
     };
-    let words = groove_agent_service::routines::prompt(&routine, run.trigger, &run.about);
+    let words = groove_routine_service::routines::prompt(&routine, run.trigger, &run.about);
     let id = run.session.clone();
     match deliver(routine.kind, state.agent.alive(&id)) {
         Deliver::Type => agent::skills::typed(state, spawner, &id, &words),

@@ -1,6 +1,6 @@
 //! Action routines: Groove does the work itself, with no agent of the routine's own.
 
-use groove_agent_service::routines::{Listed, parse};
+use groove_routine_service::routines::{Listed, parse};
 use groove_types::{Day, Timestamp};
 
 use crate::tests::fixture::{fresh, until};
@@ -41,7 +41,7 @@ fn opened(state: &AppState, short_id: &str) -> bool {
 #[test]
 fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the_selection() {
     let (_home, spawner, services, mut state) = fresh();
-    state.agent.routines = vec![Listed {
+    state.routine.routines = vec![Listed {
         id: "user:start-due".into(),
         read: parse("user:start-due", "start-due", START_DUE),
     }];
@@ -91,7 +91,7 @@ fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the
 #[test]
 fn start_due_opens_no_more_tasks_than_the_cap() {
     let (_home, spawner, services, mut state) = fresh();
-    state.agent.routines = vec![Listed {
+    state.routine.routines = vec![Listed {
         id: "user:start-due".into(),
         read: parse("user:start-due", "start-due", START_DUE),
     }];

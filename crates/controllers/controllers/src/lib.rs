@@ -32,6 +32,7 @@ pub use groove_agent_service as agent_service;
 pub use groove_cluster_service as cluster_service;
 pub use groove_config_service as config_service;
 pub use groove_delivery_service as delivery_service;
+pub use groove_routine_service as routine_service;
 pub use groove_session_service as session_service;
 pub use groove_shell_service as shell_service;
 pub use groove_task_service as task_service;

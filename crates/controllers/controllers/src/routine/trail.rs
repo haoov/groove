@@ -1,6 +1,6 @@
 //! What a run leaves on the feed: when it started and why, how it ended and the commits it made.
 
-use groove_agent_service::runs::{Ending, Run};
+use groove_routine_service::runs::{Ending, Run};
 use groove_types::{Action, TimelineKind};
 
 use crate::{AppState, Services, Spawner, Told};
@@ -9,7 +9,7 @@ use crate::{AppState, Services, Spawner, Told};
 pub(super) fn started(state: &AppState, services: &Services, spawner: &dyn Spawner, run: &Run) {
     let by = match (run.about.is_empty(), run.trigger) {
         (false, _) => run.about.clone(),
-        (true, by) => groove_agent_service::routines::started_by(by).to_string(),
+        (true, by) => groove_routine_service::routines::started_by(by).to_string(),
     };
     let subject = format!("{} · {by}", name(state, run));
     crate::timeline::said(
@@ -51,6 +51,6 @@ pub(super) fn acted(state: &mut AppState, action: Action, opened: &[String]) {
 }
 
 fn name(state: &AppState, run: &Run) -> String {
-    let routine = state.agent.routine(&run.routine);
+    let routine = state.routine.routine(&run.routine);
     routine.map_or_else(|| run.routine.clone(), |one| one.name.clone())
 }

@@ -13,6 +13,7 @@ groove-session-service = { path = "../../services/session" }
 groove-workspace-service = { path = "../../services/workspace" }
 groove-delivery-service = { path = "../../services/delivery" }
 groove-agent-service = { path = "../../services/agent" }
+groove-routine-service = { path = "../../services/routine" }
 groove-shell-service = { path = "../../services/shell" }
 groove-config-service = { path = "../../services/config" }
 groove-cluster-service = { path = "../../services/cluster" }

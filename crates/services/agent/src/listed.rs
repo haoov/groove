@@ -1,25 +1,16 @@
-//! The agent slice read for the routines: a routine by id, the sessions whose agent is in a state.
+//! The agent slice read for the routines and the menus: the agents in a state, the skills offered.
 
 use std::collections::BTreeSet;
 
-use groove_types::{AgentStatus, Routine, SessionId};
+use groove_types::{AgentStatus, SessionId};
 
 use crate::State;
 
 impl State {
-    /// One routine by id, when its file reads.
-    pub fn routine(&self, id: &str) -> Option<&Routine> {
-        let listed = self.routines.iter().find(|one| one.id == id)?;
-        listed.read.as_ref().ok()
-    }
-
-    /// Every routine whose file reads.
-    pub fn readable_routines(&self) -> Vec<Routine> {
-        let read = self
-            .routines
-            .iter()
-            .filter_map(|one| one.read.as_ref().ok());
-        read.cloned().collect()
+    /// The status `id`'s agent stands in, when it has one.
+    pub fn status(&self, id: &SessionId) -> Option<AgentStatus> {
+        let held = self.agents.iter().find(|(one, _)| one == id);
+        held.map(|(_, agent)| agent.activity.status.clone())
     }
 
     /// The sessions whose agent stands in a status `which` keeps.
@@ -30,32 +21,6 @@ impl State {
             .filter(|(_, agent)| which(&agent.activity.status));
         held.map(|(id, _)| id.clone()).collect()
     }
-}
-
-impl State {
-    /// The runs whose agent stopped, taken off; how each ended.
-    pub fn runs_ended(
-        &mut self,
-        now: groove_types::Timestamp,
-    ) -> Vec<(crate::runs::Run, crate::runs::Ending)> {
-        let agents = &self.agents;
-        self.runs.finished(|id| status(agents, id), now)
-    }
-
-    /// The runs waiting their turn that the cap and their agents allow now, moved to running.
-    pub fn runs_due(&mut self, cap: usize, now: groove_types::Timestamp) -> Vec<crate::runs::Run> {
-        let (agents, routines) = (&self.agents, &self.routines);
-        let kind_of = |id: &str| {
-            let listed = routines.iter().find(|one| one.id == id)?;
-            listed.read.as_ref().ok().map(|one| one.kind)
-        };
-        self.runs.due(cap, kind_of, |id| status(agents, id), now)
-    }
-}
-
-fn status(agents: &[(SessionId, crate::Agent)], id: &SessionId) -> Option<AgentStatus> {
-    let held = agents.iter().find(|(one, _)| one == id);
-    held.map(|(_, agent)| agent.activity.status.clone())
 }
 
 /// One row of a session's skills menu: the skill, what it is sent with, and what the row says.

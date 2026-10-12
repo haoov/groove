@@ -110,7 +110,7 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
 
 /// A routine session's button that runs its routine now, while no run is on it.
 fn run(ctx: &mut Ctx, app: &AppState, line: Rect, id: &SessionId, routine: &str) {
-    if app.agent.runs.busy(id) {
+    if app.routine.runs.busy(id) {
         return;
     }
     let (md, ground, hover) = (ctx.tokens.md, ctx.styles.ground(), ctx.styles.hover());

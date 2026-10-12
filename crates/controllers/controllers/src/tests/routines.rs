@@ -1,6 +1,6 @@
 //! Routines switched on, off, and one trigger at a time; the file written each time.
 
-use groove_agent_service::routines::{Listed, parse};
+use groove_routine_service::routines::{Listed, parse};
 use groove_types::Trigger;
 
 use crate::config::Command;
@@ -12,7 +12,7 @@ const FIX_CI: &str =
 
 fn listed(state: &mut AppState) {
     let id = "user:fix-red-ci";
-    state.agent.routines = vec![
+    state.routine.routines = vec![
         Listed {
             id: id.into(),
             read: parse(id, "fix-red-ci", FIX_CI),
@@ -90,7 +90,7 @@ const DIGEST: &str =
 fn a_standalone_routine_switched_on_has_its_session_on_the_rail_and_off_loses_it() {
     let (_home, spawner, services, mut state) = fresh();
     let id = "user:digest";
-    state.agent.routines = vec![Listed {
+    state.routine.routines = vec![Listed {
         id: id.into(),
         read: parse(id, "digest", DIGEST),
     }];

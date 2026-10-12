@@ -1413,6 +1413,7 @@ dependencies = [
  "groove-cluster-service",
  "groove-config-service",
  "groove-delivery-service",
+ "groove-routine-service",
  "groove-session-service",
  "groove-shell-service",
  "groove-task-service",
@@ -1651,6 +1652,14 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "wiremock",
+]
+
+[[package]]
+name = "groove-routine-service"
+version = "1.0.0-alpha.3"
+dependencies = [
+ "groove-routines",
+ "groove-types",
 ]
 
 [[package]]

@@ -5,23 +5,23 @@ mod run;
 mod seen;
 mod trail;
 
-use groove_agent_service::runs::{Fired, Pressed, Run};
+use groove_routine_service::runs::{Fired, Pressed, Run};
 use groove_types::{Action, Error, Timestamp, Trigger};
 
 use crate::{AppState, Services, Spawner};
 
 /// What changed since the last look, as runs: queued by the rules, started within the cap.
 pub fn watch(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
-    let before = state.agent.runs.seen.take();
+    let before = state.routine.runs.seen.take();
     let now = seen::look(state, before.as_ref());
     if let Some(selected) = &now.selected {
-        state.agent.runs.seen_session(selected);
+        state.routine.runs.seen_session(selected);
     }
     let fired = before
         .as_ref()
         .map(|one| one.fired(&now))
         .unwrap_or_default();
-    state.agent.runs.seen = Some(now);
+    state.routine.runs.seen = Some(now);
     let fired = fired.into_iter().filter(|one| !ran_itself(state, one));
     let fired: Vec<Fired> = fired.collect();
     for one in fire(state, &fired) {
@@ -36,11 +36,13 @@ pub fn watch(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
 /// The runs that ended, written down; those the cap lets start, sent.
 fn turn(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let now = Timestamp::now();
-    for one in &state.agent.runs_ended(now) {
+    let agent = &state.agent;
+    for one in &state.routine.ended(|id| agent.status(id), now) {
         trail::ended(state, services, spawner, one);
     }
     let cap = state.config.preferences().routine_cap as usize;
-    for one in &state.agent.runs_due(cap, now) {
+    let agent = &state.agent;
+    for one in &state.routine.due(cap, |id| agent.status(id), now) {
         run::send(state, spawner, one);
         trail::started(state, services, spawner, one);
     }
@@ -51,9 +53,9 @@ fn fire(state: &mut AppState, fired: &[Fired]) -> Vec<Action> {
     if state.config.preferences().routines_paused {
         return Vec::new();
     }
-    let (routines, held) = (state.agent.readable_routines(), state.config.routines());
+    let (routines, held) = (state.routine.readable(), state.config.routines());
     let sessions = seen::sessions(state);
-    let runs = &mut state.agent.runs;
+    let runs = &mut state.routine.runs;
     let each = fired
         .iter()
         .map(|one| runs.fire(one, &routines, &held, &sessions));
@@ -67,24 +69,24 @@ fn ran_itself(state: &AppState, fired: &Fired) -> bool {
         && fired
             .session
             .as_ref()
-            .is_some_and(|one| state.agent.runs.busy(one))
+            .is_some_and(|one| state.routine.runs.busy(one))
 }
 
 /// Whether the day's first look has come: once the rail, the routines and the tasks are back.
 fn dawning(state: &mut AppState) -> bool {
     let sourced = !groove_task_service::source_ids(state.config.config.as_ref()).is_empty();
     let read = state
-        .agent
+        .routine
         .runs
         .seen
         .as_ref()
         .is_some_and(|one| one.tasks_read);
     let back = state.session.restored && state.agent.listed && (read || !sourced);
     let paused = state.config.preferences().routines_paused;
-    if state.agent.runs.dawned || !back || paused {
+    if state.routine.runs.dawned || !back || paused {
         return false;
     }
-    state.agent.runs.dawned = true;
+    state.routine.runs.dawned = true;
     true
 }
 
@@ -93,7 +95,7 @@ fn dawn(state: &mut AppState, spawner: &dyn Spawner) {
     let dir = state.env.data_dir.join("routines");
     let today = Timestamp::now().day().to_string();
     spawner.spawn(Box::pin(async move {
-        let new = groove_agent_service::routines::new_day(&dir, &today).await;
+        let new = groove_routine_service::routines::new_day(&dir, &today).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match new {
                 Ok(true) => {
@@ -116,17 +118,17 @@ fn dawn(state: &mut AppState, spawner: &dyn Spawner) {
 
 /// A standalone routine's button runs it now in its session, an action's does it; whatever the rules.
 pub fn button(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &str) {
-    let Some(routine) = state.agent.routine(id).cloned() else {
+    let Some(routine) = state.routine.routine(id).cloned() else {
         let why = format!("`{id}` is no routine Groove can run");
         return state.failed(Error::invalid(why));
     };
-    let session = match state.agent.runs.pressed(&routine, &seen::sessions(state)) {
+    let session = match state.routine.runs.pressed(&routine, &seen::sessions(state)) {
         Ok(Pressed::Act(one)) => return action::act(state, services, spawner, one),
         Ok(Pressed::Run(session)) => session,
         Err(why) => return state.failed(Error::invalid(why)),
     };
     let run = Run::new(&routine.id, session, None, "");
-    let started = state.agent.runs.start_now(run, Timestamp::now());
+    let started = state.routine.runs.start_now(run, Timestamp::now());
     run::send(state, spawner, &started);
     trail::started(state, services, spawner, &started);
 }

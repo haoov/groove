@@ -1,6 +1,6 @@
 //! Settings › Agent's routines: each one's switch and run, then its triggers.
 
-use groove_controllers::agent_service::routines::{Listed, parse};
+use groove_controllers::routine_service::routines::{Listed, parse};
 use groove_controllers::{AppState, Command, config};
 use groove_gfx::Fonts;
 use groove_types::Trigger;
@@ -16,7 +16,7 @@ const FIX_CI: &str = "---\ndescription: fix it\nskills: groove:fix-ci\nkind: bou
 fn routed(on: bool) -> (AppState, Ui) {
     let mut app = crate::tests::bar::sourced(full_app(), false, false);
     let id = "user:fix-red-ci";
-    app.agent.routines = vec![
+    app.routine.routines = vec![
         Listed {
             id: id.into(),
             read: parse(id, "fix-red-ci", FIX_CI),

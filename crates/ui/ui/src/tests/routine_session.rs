@@ -107,10 +107,10 @@ fn a_routine_session_s_rail_item_runs_its_routine_unless_a_run_is_on() {
     };
     assert_eq!(asked, [groove_controllers::Command::Agent(wanted)]);
 
-    app.agent
+    app.routine
         .runs
         .running
-        .push(groove_controllers::agent_service::runs::Run {
+        .push(groove_controllers::routine_service::runs::Run {
             routine: "user:digest".into(),
             session: SessionId::new("routine-user-digest"),
             trigger: None,

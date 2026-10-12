@@ -11,7 +11,7 @@ pub(super) fn switch(
     spawner: &dyn Spawner,
     (id, on): (&str, bool),
 ) {
-    let routine = state.agent.routine(id).cloned();
+    let routine = state.routine.routine(id).cloned();
     if on && routine.is_none() {
         let why = format!("`{id}` is no routine Groove can run: its file is gone or does not read");
         return state.failed(Error::invalid(why));
