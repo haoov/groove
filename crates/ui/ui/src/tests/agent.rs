@@ -81,7 +81,7 @@ fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.click"], "the program's own selection stands");
     assert!(
-        !matches!(ui.held, Some(crate::Held::AgentText)),
+        !matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
         "and we take none of our own"
     );
 
@@ -93,7 +93,10 @@ fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
     let acted = press(&mut ui, true);
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.select"], "shift takes the pointer back");
-    assert!(matches!(ui.held, Some(crate::Held::AgentText)));
+    assert!(matches!(
+        ui.held,
+        Some(crate::Held::Selecting(crate::Grid::Agent))
+    ));
 }
 
 #[test]

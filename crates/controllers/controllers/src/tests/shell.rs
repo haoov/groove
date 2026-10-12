@@ -71,3 +71,41 @@ fn closing_the_session_ends_its_terminals() {
     dispatch(Cmd::Session(close), &mut state, &services, &spawner);
     assert!(state.shell.shells(&session).is_none());
 }
+
+#[test]
+fn a_word_selected_on_a_terminal_copies_to_the_clipboard() {
+    let (_home, spawner, services, mut state, session, id) = opened();
+    let send = Command::Send {
+        session: session.clone(),
+        id,
+        bytes: b"printf 'gro''ovy\\n'\n".to_vec(),
+    };
+    dispatch(Cmd::Shell(send), &mut state, &services, &spawner);
+    let shown = |s: &AppState| {
+        let screen = s.shell.terminal(&session, id)?.screen();
+        (0..screen.rows).find_map(|at| {
+            let line = screen.line(at);
+            let output = line.trim_end().ends_with(" groovy");
+            line.find("groovy").filter(|_| output).map(|col| (col, at))
+        })
+    };
+    until(&spawner, &services, &mut state, |s| shown(s).is_some());
+    let (col, row) = shown(&state).unwrap();
+    let select = Command::Select {
+        session: session.clone(),
+        id,
+        col: col + 2,
+        row,
+        kind: crate::agent_service::Select::Word,
+        from: true,
+    };
+    dispatch(Cmd::Shell(select), &mut state, &services, &spawner);
+    let copy = Command::Copy {
+        session: session.clone(),
+        id,
+    };
+    dispatch(Cmd::Shell(copy), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let copied = spawner.block_on(services.clipboard.read());
+    assert_eq!(copied.as_deref(), Some("groovy"));
+}

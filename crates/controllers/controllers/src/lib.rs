@@ -14,6 +14,7 @@ pub mod workspace;
 
 mod command;
 mod event;
+mod grid;
 mod services;
 mod spawn;
 mod state;

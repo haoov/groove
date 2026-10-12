@@ -309,7 +309,7 @@ fn a_press_on_the_screen_begins_a_selection() {
         window(),
     );
     assert!(
-        matches!(ui.held, Some(crate::Held::AgentText)),
+        matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
         "the pointer is choosing what to hold"
     );
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
@@ -327,7 +327,7 @@ fn a_press_on_the_screen_begins_a_selection() {
 
     crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
     assert!(
-        !matches!(ui.held, Some(crate::Held::AgentText)),
+        !matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
         "the release ends it"
     );
 }

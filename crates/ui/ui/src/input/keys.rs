@@ -103,7 +103,7 @@ fn in_pane(
 ) -> Vec<Command> {
     let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
-        return app::copied(app);
+        return app::copied(ui.focus, app);
     }
     let bars = [
         (Action::OpenPath, Term::Path, !raw),

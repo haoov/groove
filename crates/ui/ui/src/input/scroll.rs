@@ -142,16 +142,13 @@ fn shelled(
     else {
         return Vec::new();
     };
-    let Some(pane) = hits.rect_of(&Target::Shell(id)) else {
+    let Some((col, row)) = super::selection::shell_cell(id, point, hits, metrics) else {
         return Vec::new();
     };
-    let tokens = metrics.tokens();
-    let lines = turned(ui, delta, tokens.line);
+    let lines = turned(ui, delta, metrics.tokens().line);
     if lines == 0 {
         return Vec::new();
     }
-    let origin = (pane.x + tokens.sm, pane.y + tokens.sm);
-    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
     let scroll = groove_controllers::shell::Command::Scroll {
         session,
         id,

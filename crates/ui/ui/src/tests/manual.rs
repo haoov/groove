@@ -94,7 +94,7 @@ fn a_split_tab_stands_its_panes_side_by_side_and_a_click_asks_for_that_one() {
         session: session(&app),
         id: left,
     };
-    assert_eq!(asked, [Command::Shell(focus)]);
+    assert_eq!(asked.first(), Some(&Command::Shell(focus)));
     app.shell.focus(&session(&app), left);
     let hits = drawn(&app, &ui);
     assert_eq!(
@@ -113,4 +113,52 @@ fn an_open_section_takes_its_height_from_the_foot_of_the_workspace() {
     assert_eq!(layout.manual.h, tall);
     assert_eq!(layout.manual.bottom(), layout.window.bottom());
     assert_eq!(layout.workspace.bottom(), layout.manual.y);
+}
+
+#[test]
+fn a_press_on_a_terminal_selects_and_letting_go_copies() {
+    let mut app = full_app();
+    let id = app.shell.reserve(&session(&app), false);
+    let mut ui = Ui::default();
+    ui.session.manual = true;
+    let hits = drawn(&app, &ui);
+    let grid = hits.rect_of(&Target::Shell(id)).expect("its grid");
+    let asked = click(grid, &mut ui, &app, &hits);
+    let said: Vec<&str> = asked.iter().map(|one| one.id()).collect();
+    assert_eq!(said, ["shell.focus", "shell.select"]);
+    assert_eq!(
+        ui.held,
+        Some(crate::Held::Selecting(crate::Grid::Shell(id)))
+    );
+    let (x, y) = (grid.x + grid.w / 2.0 + 40.0, grid.y + grid.h / 2.0);
+    let carried = drag_at(x, y, &mut ui, &app, &hits);
+    let said: Vec<&str> = carried.iter().map(|one| one.id()).collect();
+    assert_eq!(
+        said,
+        ["shell.select"],
+        "it carries while the button is down"
+    );
+    let let_go = handle(Input::Release, &mut ui, &app, &hits, window());
+    let copy = shell::Command::Copy {
+        session: session(&app),
+        id,
+    };
+    assert_eq!(let_go, [Command::Shell(copy)]);
+}
+
+#[test]
+fn the_copy_chord_on_a_terminal_copies_that_terminal() {
+    let mut app = full_app();
+    let id = app.shell.reserve(&session(&app), false);
+    app.shell.focus(&session(&app), id);
+    let mut ui = Ui {
+        focus: Focus::Terminal,
+        ..Ui::default()
+    };
+    let copied = press(Key::Char('c'), CTRL_SHIFT, &mut ui, &app);
+    let copy = shell::Command::Copy {
+        session: session(&app),
+        id,
+    };
+    assert_eq!(copied, [Command::Shell(copy)]);
 }

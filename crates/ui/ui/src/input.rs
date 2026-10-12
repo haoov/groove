@@ -6,6 +6,7 @@ mod paste;
 mod pointer;
 mod rest;
 mod scroll;
+mod selection;
 mod typed;
 
 use groove_controllers::{AppState, Command};
@@ -130,7 +131,7 @@ pub fn handle(
             let mut out = pointer::dropped(ui, app);
             match ui.held.take() {
                 Some(Held::AgentClick) => out.extend(pointer::agent_released(ui, app, metrics)),
-                Some(Held::AgentText) => out.extend(pointer::agent_copied(app)),
+                Some(Held::Selecting(grid)) => out.extend(selection::copied(app, grid)),
                 _ => {}
             }
             out

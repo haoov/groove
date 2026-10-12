@@ -27,7 +27,7 @@ pub use hit::{Cursor, Hits, Target};
 pub use layout::{Edge, Split};
 pub use menu::{Menu, Of, Offer};
 pub use render::{ages_due, code_size, frame_commands, spins, view};
-pub use ui::{AgentUi, Click, Held, Losing, Overlay, Ui};
+pub use ui::{AgentUi, Click, Grid, Held, Losing, Overlay, Ui};
 pub use views::board::BoardUi;
 pub use views::rail::RailUi;
 pub use views::session::{Asked, Naming, SessionUi, Tab};

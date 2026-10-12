@@ -48,12 +48,8 @@ fn select(
     kind: Select,
     from: bool,
 ) {
-    let Some(terminal) = state.agent.terminal(session) else {
-        return;
-    };
-    match from {
-        true => terminal.select_from(cell, kind),
-        false => terminal.select_to(cell),
+    if let Some(terminal) = state.agent.terminal(session) {
+        crate::grid::select(terminal, cell, kind, from);
     }
 }
 
@@ -80,11 +76,8 @@ fn paste(state: &mut AppState, session: &SessionId, text: &str) {
 
 /// What is selected on the agent's screen, onto the clipboard.
 fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spawner, session: &SessionId) {
-    let Some(terminal) = state.agent.terminal(session) else {
-        return;
-    };
-    if let Some(said) = terminal.selected() {
-        crate::workspace::copied(services, spawner, said);
+    if let Some(terminal) = state.agent.terminal(session) {
+        crate::grid::copy(terminal, services, spawner);
     }
 }
 

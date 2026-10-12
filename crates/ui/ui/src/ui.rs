@@ -59,12 +59,19 @@ pub enum Held {
     Lens,
     /// A task of the plan, carried to another line.
     Task(groove_types::ExternalId),
-    /// A selection of the agent's screen, of our own.
-    AgentText,
+    /// A selection of our own on a terminal's grid.
+    Selecting(Grid),
     /// The agent's screen, its program sent the reports.
     AgentClick,
     /// A column of the Resources list being made wider or narrower.
     Column(views::session::resources::Dragged),
+}
+
+/// A terminal's grid: the agent's, or one of the session's shells.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Grid {
+    Agent,
+    Shell(u64),
 }
 
 /// What the pointer is doing to the agent's screen.

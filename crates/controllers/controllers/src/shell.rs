@@ -1,5 +1,6 @@
 //! The `shell` controller: one function per user action on a session's own terminals.
 
+use groove_agent_service::Select;
 use groove_shell_service::{Event as ShellEvent, Hooks, spawn, spec};
 use groove_types::SessionId;
 
@@ -55,6 +56,17 @@ pub enum Command {
         col: usize,
         row: usize,
     },
+    /// `shell.select`: a selection of a terminal's grid, begun at a cell or carried to one.
+    Select {
+        session: SessionId,
+        id: u64,
+        col: usize,
+        row: usize,
+        kind: Select,
+        from: bool,
+    },
+    /// `shell.copy`: what is selected on a terminal's grid, to the clipboard.
+    Copy { session: SessionId, id: u64 },
 }
 
 impl Command {
@@ -70,6 +82,8 @@ impl Command {
             Command::Paste { .. } => "shell.paste",
             Command::Resize { .. } => "shell.resize",
             Command::Scroll { .. } => "shell.scroll",
+            Command::Select { .. } => "shell.select",
+            Command::Copy { .. } => "shell.copy",
         }
     }
 }
@@ -95,6 +109,11 @@ pub fn dispatch(
         Command::CloseTab { session, tab } => ended(state.shell.close_tab(&session, tab)),
         Command::SelectTab { session, tab } => state.shell.select_tab(&session, tab),
         Command::Focus { session, id } => state.shell.focus(&session, id),
+        Command::Copy { session, id } => {
+            if let Some(terminal) = state.shell.terminal(&session, id) {
+                crate::grid::copy(terminal, services, spawner);
+            }
+        }
         typed => to_terminal(state, typed),
     }
 }
@@ -105,7 +124,8 @@ fn to_terminal(state: &AppState, command: Command) {
         Command::Send { session, id, .. }
         | Command::Paste { session, id, .. }
         | Command::Resize { session, id, .. }
-        | Command::Scroll { session, id, .. } => (session, *id),
+        | Command::Scroll { session, id, .. }
+        | Command::Select { session, id, .. } => (session, *id),
         _ => return,
     };
     let Some(terminal) = state.shell.terminal(session, id) else {
@@ -118,6 +138,16 @@ fn to_terminal(state: &AppState, command: Command) {
         Command::Scroll {
             lines, col, row, ..
         } => terminal.wheel(*lines, (*col, *row)),
+        Command::Select {
+            col,
+            row,
+            kind,
+            from,
+            ..
+        } => {
+            crate::grid::select(terminal, (*col, *row), *kind, *from);
+            Ok(())
+        }
         _ => Ok(()),
     };
 }
