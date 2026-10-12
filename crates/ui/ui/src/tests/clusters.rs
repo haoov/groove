@@ -63,6 +63,18 @@ fn an_added_context_shows_its_settings_and_login_and_the_rest_offer_an_add() {
 }
 
 #[test]
+fn the_context_column_fits_the_widest_name_not_the_longest() {
+    let (mut app, ui) = clusters();
+    for name in ["iiiiiiiiijjj", "WMWMWMWMWM"] {
+        app.config.add_cluster(name);
+    }
+    let (texts, _) = drawn(&app, &ui);
+    for name in ["iiiiiiiiijjj", "WMWMWMWMWM"] {
+        assert!(texts.iter().any(|one| one == name), "{name}: {texts:?}");
+    }
+}
+
+#[test]
 fn each_line_lights_under_the_pointer_and_only_its_toggles_and_buttons_act() {
     let (app, mut ui) = clusters();
     let (_, hits) = drawn(&app, &ui);

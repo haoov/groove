@@ -102,6 +102,7 @@ impl<'a> Cell<'a> {
             let box_ = badge.at(ctx, rect, x);
             return (box_.x, box_.right());
         }
+        let whole = rect.w >= self.wide(ctx);
         let mut room = rect;
         let mut drawn = (rect.x, rect.x);
         if let Some(bar) = self.bar {
@@ -129,8 +130,22 @@ impl<'a> Cell<'a> {
             let box_ = crate::shape::square(at, size);
             crate::widgets::turned(ctx, box_, mark, turn, role);
         }
+        self.written(ctx, room, end, whole)
+    }
+
+    /// The text in `room`, cut unless the cell fits whole; where it starts and ends.
+    fn written<A: App>(
+        &self,
+        ctx: &mut Ctx<'_, A>,
+        room: Rect,
+        end: bool,
+        whole: bool,
+    ) -> (f32, f32) {
         let style = self.style(ctx);
-        let text = elide(ctx, &self.text, &style, room.w);
+        let text = match whole {
+            true => self.text.to_string(),
+            false => elide(ctx, &self.text, &style, room.w),
+        };
         let wide = ctx.measure(&text, &style);
         let lead = match end {
             true => (room.w - wide).max(0.0),

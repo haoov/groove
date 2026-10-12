@@ -17,10 +17,15 @@ impl App for Nothing {
 
 /// Runs `draw` on a fresh frame; returns what it returned and the frame.
 fn drawn<R>(draw: impl FnOnce(&mut Ctx<'_, Nothing>) -> R) -> (R, Frame) {
-    let design = Tokens::new(1.0);
+    drawn_at(1.0, draw)
+}
+
+/// `drawn` at a window scale.
+fn drawn_at<R>(scale: f32, draw: impl FnOnce(&mut Ctx<'_, Nothing>) -> R) -> (R, Frame) {
+    let design = Tokens::new(scale);
     let metrics = Metrics {
         size: Size::new(1280, 800),
-        scale: 1.0,
+        scale,
         text: design.text,
         code: design.code,
         terminal: design.code,
@@ -120,6 +125,49 @@ fn a_fitted_cell_counts_its_size_and_its_bar() {
     let tokens = Tokens::new(1.0);
     let meter = tokens.aside_near / 2.0 + tokens.sm + small;
     assert_eq!(fitted(Width::FitCell(&barred)), meter, "the meter's width");
+}
+
+#[test]
+fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
+    let samples = [
+        "0.25 / 2",
+        "minikube",
+        "9999Mi / 999Gi",
+        "WMWMWMWMWM",
+        "iiiiiiiiijjj",
+    ];
+    let kinds: [fn(&str) -> Cell<'_>; 4] = [
+        |text| Cell::small(text, Role::Text),
+        |text| Cell::label(text, Role::Text),
+        |text| Cell::small(text, Role::Text).bar(Some(0.5), None, Role::Ok),
+        |text| Cell::label(text, Role::Text).mark(Mark::Down, 0, Role::Text),
+    ];
+    for scale in [1.0, 1.1, 1.25, 1.5, 1.75, 2.0] {
+        for sample in samples {
+            for kind in kinds {
+                let fit = kind(sample);
+                let columns = [column(Width::FitCell(&fit)), column(Width::Fill)];
+                let table = Table {
+                    columns: &columns,
+                    rows: Rows {
+                        first: 24.0 * scale,
+                        under: 0.0,
+                        ruled: false,
+                    },
+                    count: 1,
+                    offset: 0.0,
+                    selected: None,
+                    sorted: None,
+                };
+                let room = Rect::new(0.0, 0.0, 1000.0 * scale, 24.0 * scale);
+                let row = Shown::row(vec![kind(sample)]);
+                let (_, frame) = drawn_at(scale, |ctx| table.one(ctx, room, row));
+                let texts = &frame.layers()[0].texts;
+                let cut = texts.iter().find(|one| one.text.contains('…'));
+                assert!(cut.is_none(), "{sample:?} at {scale}: {cut:?}");
+            }
+        }
+    }
 }
 
 #[test]

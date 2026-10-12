@@ -88,7 +88,8 @@ fn table<'a>(columns: &'a [Column<'a, Target>], count: usize, line: f32) -> Tabl
 
 /// One line an added context: its hue and context, its switches, its login and its removal.
 fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
-    let contexts = widest(added.iter().map(|one| one.context.clone()));
+    let label = |text: &str| Cell::label(text.to_string(), Role::Text);
+    let contexts = widest(ctx, label, added.iter().map(|one| one.context.clone()));
     let sample = Cell::label(contexts, Role::Text);
     let columns = [
         column("", Width::Fit("")),
@@ -106,10 +107,16 @@ fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
     table.draw(ctx, rect, |at| context(app, &added[at]));
 }
 
-/// The longest of `texts`, which a column fits.
-fn widest(texts: impl Iterator<Item = String>) -> String {
+/// The widest of `texts` as `cell` draws them, which a column fits.
+fn widest(
+    ctx: &mut Ctx,
+    cell: impl Fn(&str) -> Cell<'static>,
+    texts: impl Iterator<Item = String>,
+) -> String {
     texts
-        .max_by_key(|one| one.chars().count())
+        .map(|one| (cell(&one).wide(ctx), one))
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, one)| one)
         .unwrap_or_default()
 }
 
@@ -151,8 +158,9 @@ fn login(app: &AppState, context: &str) -> (String, Role) {
 
 /// One line a context the kubeconfig names that Groove does not know yet.
 fn unknown(ctx: &mut Ctx, rect: Rect, rest: &[&KubeContext]) {
-    let contexts = widest(rest.iter().map(|one| one.name.clone()));
-    let servers = widest(rest.iter().filter_map(|one| one.server.clone()));
+    let small = |text: &str| Cell::small(text.to_string(), Role::Text);
+    let contexts = widest(ctx, small, rest.iter().map(|one| one.name.clone()));
+    let servers = widest(ctx, small, rest.iter().filter_map(|one| one.server.clone()));
     let columns = [
         column("context", Width::Fit(&contexts)),
         column("server", Width::Fit(&servers)),
