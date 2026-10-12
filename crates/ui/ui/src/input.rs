@@ -111,9 +111,7 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         return Vec::new();
     }
     if let Some(palette) = ui.palette_mut() {
-        palette
-            .query
-            .push_str(&groove_ui_kit::widgets::Field::one_line(text));
+        palette.query.paste(text);
         palette.selected = 0;
         return Vec::new();
     }

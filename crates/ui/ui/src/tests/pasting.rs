@@ -25,14 +25,14 @@ fn the_palette_takes_what_is_pasted_into_it() {
     let asked = paste(URL, &mut ui, &app);
     assert!(asked.is_empty(), "the field takes it on the spot");
     assert_eq!(
-        ui.palette().map(|one| one.query.as_str()),
+        ui.palette().map(|one| one.query.text()),
         Some(URL),
         "the url is in the query"
     );
 
     paste("/second", &mut ui, &app);
     assert_eq!(
-        ui.palette().map(|one| one.query.as_str()),
+        ui.palette().map(|one| one.query.text()),
         Some("git@gitlab.example.com:g/mayo.git/second"),
         "and a second paste follows the first"
     );
@@ -47,7 +47,7 @@ fn a_pasted_line_break_never_reaches_a_field() {
     };
     paste("one\ntwo\n", &mut ui, &app);
     assert_eq!(
-        ui.palette().map(|one| one.query.as_str()),
+        ui.palette().map(|one| one.query.text()),
         Some("one two"),
         "a field holds one line, its breaks spaces"
     );

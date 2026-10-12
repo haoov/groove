@@ -269,3 +269,70 @@ fn force_close_picks_a_worktree_and_closes_it_whatever_origin_lacks() {
         )]
     );
 }
+
+fn palette_open() -> Ui {
+    Ui {
+        overlay: Some(crate::Overlay::Palette(Palette::default())),
+        ..Ui::default()
+    }
+}
+
+fn keyed(ui: &mut Ui, app: &AppState, keys: &[Key]) {
+    for key in keys {
+        press(*key, Modifiers::default(), ui, app);
+    }
+}
+
+#[test]
+fn the_query_types_and_takes_at_its_caret() {
+    let app = full_app();
+    let mut ui = palette_open();
+    keyed(&mut ui, &app, &[Key::Char('a'), Key::Char('c')]);
+    keyed(
+        &mut ui,
+        &app,
+        &[Key::Left, Key::Char('b'), Key::Home, Key::Char('_')],
+    );
+    let query = |ui: &Ui| ui.palette().map(|one| one.query.text().to_string());
+    assert_eq!(query(&ui).as_deref(), Some("_abc"));
+    keyed(
+        &mut ui,
+        &app,
+        &[Key::Home, Key::Delete, Key::End, Key::Backspace],
+    );
+    assert_eq!(
+        query(&ui).as_deref(),
+        Some("ab"),
+        "delete ahead, backspace behind"
+    );
+    keyed(&mut ui, &app, &[Key::Left, Key::Right, Key::Char('!')]);
+    assert_eq!(query(&ui).as_deref(), Some("ab!"));
+    let before = ui.palette().map(|one| one.query.before().to_string());
+    assert_eq!(before.as_deref(), Some("ab!"));
+}
+
+#[test]
+fn a_paste_lands_at_the_caret_and_the_arrows_still_move_the_selection() {
+    let app = full_app();
+    let mut ui = palette_open();
+    keyed(&mut ui, &app, &[Key::Char('a'), Key::Char('d'), Key::Home]);
+    let (_, hits) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let input = crate::input::Input::Paste("x\ny".into());
+    crate::input::handle(input, &mut ui, &app, &hits, metrics(1280, 800, 1.0));
+    let palette = ui.palette().expect("open");
+    assert_eq!(
+        (palette.query.text(), palette.query.before()),
+        ("x yad", "x y")
+    );
+
+    let mut ui = palette_open();
+    keyed(&mut ui, &app, &[Key::Down, Key::Down, Key::Up]);
+    assert_eq!(ui.palette().map(|one| one.selected), Some(1));
+    keyed(&mut ui, &app, &[Key::Char('e'), Key::Escape]);
+    assert!(ui.palette().is_none(), "escape still closes it");
+}

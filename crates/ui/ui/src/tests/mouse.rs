@@ -320,7 +320,7 @@ fn a_picker_asks_for_a_query_only_once_it_is_worth_one() {
     };
     assert!(!shown(&ui), "two worktrees need no filter");
     if let Some(palette) = ui.palette_mut() {
-        palette.query.push('a');
+        palette.query.insert('a');
     }
     assert!(shown(&ui), "and it appears the moment something is typed");
 }

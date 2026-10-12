@@ -9,6 +9,8 @@ pub use entries::entries;
 pub use flow::{Action, CLONE, Flow, Prompt};
 
 use crate::Corner;
+use groove_ui_kit::widgets::Field;
+
 use crate::input::Key;
 
 /// What picking a row does: run a command, or start asking for arguments.
@@ -70,7 +72,7 @@ pub struct Outcome {
 /// The palette's own state while it is open.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Palette {
-    pub query: String,
+    pub query: Field,
     pub selected: usize,
     pub flow: Option<Flow>,
     /// Where it is drawn: on what opened it, or in the middle of the window.
@@ -116,7 +118,7 @@ impl Palette {
         matching(
             entries(app),
             |e| format!("{} {}", e.group, e.label),
-            &self.query,
+            self.query.text(),
         )
     }
 
@@ -132,7 +134,7 @@ impl Palette {
         };
         let (fixed, rest): (Vec<_>, Vec<_>) =
             prompt.options.into_iter().partition(|(_, v)| v == CLONE);
-        let mut rows = matching(rest, |(label, _)| label.clone(), &self.query);
+        let mut rows = matching(rest, |(label, _)| label.clone(), self.query.text());
         rows.extend(fixed);
         rows
     }
@@ -146,18 +148,21 @@ impl Palette {
     }
 
     pub fn key(&mut self, key: Key, app: &AppState) -> Outcome {
-        if matches!(key, Key::Char(_) | Key::Backspace | Key::Down | Key::Up) {
+        let typed = matches!(key, Key::Char(_) | Key::Backspace | Key::Delete);
+        if typed || matches!(key, Key::Down | Key::Up) {
             self.keyed = true;
         }
+        if typed {
+            self.selected = 0;
+        }
         match key {
-            Key::Char(c) => {
-                self.query.push(c);
-                self.selected = 0;
-            }
-            Key::Backspace => {
-                self.query.pop();
-                self.selected = 0;
-            }
+            Key::Char(c) => self.query.insert(c),
+            Key::Backspace => self.query.backspace(),
+            Key::Delete => self.query.delete(),
+            Key::Left => self.query.left(),
+            Key::Right => self.query.right(),
+            Key::Home => self.query.home(),
+            Key::End => self.query.end(),
             Key::Down => {
                 self.selected = (self.selected + 1).min(self.row_count(app).saturating_sub(1))
             }
@@ -226,7 +231,9 @@ impl Palette {
             {
                 value
             }
-            _ if prompt.free || (prompt.allow_empty && self.query.is_empty()) => self.query.clone(),
+            _ if prompt.free || (prompt.allow_empty && self.query.is_empty()) => {
+                self.query.text().to_string()
+            }
             _ => return Outcome::default(),
         };
         if value.is_empty() && !prompt.allow_empty {

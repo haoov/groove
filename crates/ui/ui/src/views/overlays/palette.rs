@@ -11,7 +11,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Row, input, list, modal, panel_at};
+use groove_ui_kit::widgets::{Row, input_at, list, modal, panel_at};
 
 /// Whether the panel offers a line to type in: the palette always, a picker once needed.
 fn has_input(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
@@ -111,7 +111,8 @@ fn input_line(
         Some(prompt) => format!("{}: ", prompt.label),
         None => "> ".to_string(),
     };
-    input(ctx, line, &prefix, &palette.query);
+    let query = &palette.query;
+    input_at(ctx, line, &prefix, (query.text(), query.before()));
     rest
 }
 
