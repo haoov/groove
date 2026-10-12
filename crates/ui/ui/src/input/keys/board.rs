@@ -47,7 +47,7 @@ pub(super) fn chosen(
 }
 
 /// The offset that shows row `at`, moved as little as it can be.
-fn kept(offset: f32, (at, row): (usize, f32), (count, extent): (usize, f32)) -> f32 {
+pub(super) fn kept(offset: f32, (at, row): (usize, f32), (count, extent): (usize, f32)) -> f32 {
     if extent <= 0.0 {
         return 0.0;
     }

@@ -3,10 +3,12 @@
 use groove_controllers::{AppState, Command};
 
 use super::super::{Key, Modifiers};
+use crate::hit::{Hits, Scroller};
 use crate::keymap::{Action, Keymap};
 use crate::views::session::Tab;
 use crate::views::session::resources::{Line, Scoping};
 use crate::{Focus, Overlay, Surface, Ui};
+use groove_ui_kit::base::ctx::Metrics;
 
 /// The list's find bar, the kind search, or the namespace picker; `None` for any other chord.
 pub(super) fn chord(
@@ -39,9 +41,14 @@ pub(super) fn chord(
 }
 
 /// A Resources search has the keys: Enter gives them back; Esc too, and shuts an empty find bar.
-pub(super) fn in_resources(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(super) fn in_resources(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    seen: (&Hits, Metrics),
+) -> Vec<Command> {
     if ui.session.resources.filtering {
-        return in_kinds(key, mods, ui, app);
+        return in_kinds((key, mods), ui, app, seen);
     }
     let held = &mut ui.session.resources;
     match key {
@@ -59,19 +66,35 @@ pub(super) fn in_resources(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppStat
 }
 
 /// The kind search: arrows step through the lines; Enter folds a heading or lists a kind.
-fn in_kinds(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+fn in_kinds(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    (hits, metrics): (&Hits, Metrics),
+) -> Vec<Command> {
     let shown = crate::views::session::resources::shown(app, ui);
     let held = &mut ui.session.resources;
     let last = shown.len().checked_sub(1);
+    let in_sight = |held: &mut crate::views::session::resources::ResourcesUi| {
+        if let Some(at) = held.cursor {
+            let extent = hits.extent(Scroller::Kinds);
+            let row = (at, metrics.tokens().row);
+            held.kinds = super::board::kept(held.kinds, row, (shown.len(), extent));
+        }
+    };
     match key {
         Key::Down => {
             held.cursor = held
                 .cursor
                 .map_or(Some(0), |at| Some(at + 1))
                 .zip(last)
-                .map(|(at, end)| at.min(end))
+                .map(|(at, end)| at.min(end));
+            in_sight(held);
         }
-        Key::Up => held.cursor = held.cursor.map(|at| at.saturating_sub(1)),
+        Key::Up => {
+            held.cursor = held.cursor.map(|at| at.saturating_sub(1));
+            in_sight(held);
+        }
         Key::Enter => match held.cursor.and_then(|at| shown.get(at)) {
             Some(Line::Heading(heading, _)) => {
                 groove_types::toggle(&mut held.folded, heading.clone());

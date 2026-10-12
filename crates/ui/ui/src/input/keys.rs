@@ -82,7 +82,9 @@ fn in_session(
         Some(Typed::Naming) => return in_name(key, mods, ui),
         Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
         Some(Typed::Bar(_)) => return in_bar(key, mods, ui, app, keymap),
-        Some(Typed::Kinds | Typed::Search) => return resources::in_resources(key, mods, ui, app),
+        Some(Typed::Kinds | Typed::Search) => {
+            return resources::in_resources((key, mods), ui, app, seen);
+        }
         None => {}
     }
     if let Some(commands) = finding((key, mods), ui, app, keymap, seen) {

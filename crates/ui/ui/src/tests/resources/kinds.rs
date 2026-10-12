@@ -197,3 +197,29 @@ fn a_paste_in_the_kind_search_stands_on_the_first_kind_as_typing_does() {
     assert_eq!(ui.session.resources.cursor, first);
     assert_ne!(first, Some(0), "a heading stands first");
 }
+
+#[test]
+fn the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight() {
+    use crate::hit::Scroller;
+    let (mut app, mut ui) = listing();
+    let many = (0..80).map(|at| {
+        let name = format!("Thing{at}");
+        kind("example.io", &name, &format!("things{at}"), true)
+    });
+    app.cluster.store.set_kinds("staging", many.collect());
+    ui.session.resources.filtering = true;
+    let lines = crate::views::session::resources::shown(&app, &ui).len();
+    let (_, hits) = drawn(&app, &ui);
+    let extent = hits.extent(Scroller::Kinds);
+    assert!(extent > 0.0, "the kinds run past the sidebar");
+    for _ in 0..lines {
+        let (_, hits) = drawn(&app, &ui);
+        let input = crate::input::Input::Key {
+            key: crate::input::Key::Down,
+            mods: Default::default(),
+        };
+        crate::input::handle(input, &mut ui, &app, &hits, window());
+    }
+    assert_eq!(ui.session.resources.cursor, Some(lines - 1));
+    assert_eq!(ui.session.resources.kinds, extent, "the last line in sight");
+}
