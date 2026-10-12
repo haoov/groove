@@ -219,7 +219,7 @@ its bar alone when collapsed.
 **Commit box.** In the sidebar under the changed files, since it acts on the staged set the
 list shows: git status, message, commit, and an actions menu — push, pull, discard all.
 Commit commits the index. The message is typed on the same kind of buffer a file is, so a
-caret, a selection and an undo work there too; Enter is a line of the message and
+caret, a selection, an undo and the clipboard work there too; Enter is a line of the message and
 `ctrl+Enter` commits.
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the
