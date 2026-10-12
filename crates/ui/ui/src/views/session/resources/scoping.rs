@@ -5,10 +5,8 @@ use groove_controllers::{AppState, Command, cluster, session};
 use groove_types::{Attached, fuzzy};
 use groove_ui_kit::widgets::Field;
 
-use super::scope::{Pick, ResourcesUi, contexts, focus};
+use super::scope::{Pick, ResourcesUi, WHOLE_LINE, contexts, focus};
 use crate::hit::Picks;
-
-pub const WHOLE: &str = "* whole cluster";
 
 /// The panel under a scope picker: its search, the line the keys stand on, a context being attached.
 #[derive(Debug, Clone, PartialEq)]
@@ -49,7 +47,7 @@ impl ScopeLine {
 }
 
 fn named(pair: &Attached) -> &str {
-    pair.namespace.as_deref().unwrap_or(WHOLE)
+    pair.namespace.as_deref().unwrap_or(WHOLE_LINE)
 }
 
 impl Scoping {
@@ -161,7 +159,7 @@ fn namespace_lines(
             .iter()
             .any(|one| one.namespace.as_deref() == Some(name))
     };
-    if !whole && hit(WHOLE) {
+    if !whole && hit(WHOLE_LINE) {
         out.push(free(None, false));
     }
     let listed = app.cluster.store.namespaces(context).unwrap_or_default();
@@ -262,8 +260,8 @@ fn kept(pick: &Pick, how: How, open: &Open, held: &mut ResourcesUi) -> Vec<Comma
                 .collect();
             Vec::new()
         }
-        (pick @ Pick::Pair(_), How::Alone) => {
-            focus(held, open, &pick.label());
+        (Pick::Pair(pair), How::Alone) => {
+            focus(held, open, pair);
             Vec::new()
         }
         (Pick::Context(context), How::Detach) => {

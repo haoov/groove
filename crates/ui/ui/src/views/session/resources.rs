@@ -15,7 +15,10 @@ pub use around::row_link;
 pub use list::draw;
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
 pub use opened::{Link, Opens, Section};
-pub use scope::{Dragged, Pick, ResourcesUi, contexts, held, kind, offered, shown_contexts, wants};
+pub use scope::{
+    Dragged, Pick, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered,
+    shown_contexts, wants,
+};
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, shown};
 pub use tab::{due as tab_due, wants as tab_wants};

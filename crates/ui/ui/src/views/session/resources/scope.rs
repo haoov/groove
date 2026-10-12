@@ -7,6 +7,15 @@ use groove_controllers::{AppState, Command, cluster};
 use groove_types::{Attached, KubeKind, Timestamp, WatchKey};
 use groove_ui_kit::widgets::Field;
 
+/// The whole cluster, where a namespace would stand in a short label.
+pub const WHOLE_MARK: &str = "*";
+
+/// The whole cluster, as a line of the scope panel.
+pub const WHOLE_LINE: &str = "* whole cluster";
+
+/// The whole cluster, as a name under its context.
+pub const WHOLE_NAME: &str = "whole cluster";
+
 /// The one reader the tab holds its watchers under.
 pub const READER: &str = "resources";
 
@@ -64,16 +73,6 @@ pub enum Pick {
 }
 
 impl Pick {
-    pub fn label(&self) -> String {
-        match self {
-            Pick::Context(context) => context.clone(),
-            Pick::Pair(pair) => {
-                let namespace = pair.namespace.as_deref().unwrap_or("*");
-                format!("{} · {namespace}", pair.context)
-            }
-        }
-    }
-
     pub fn shown(&self, ui: &ResourcesUi) -> bool {
         match self {
             Pick::Context(context) => !ui.hidden_contexts.contains(context),
@@ -92,13 +91,13 @@ impl Pick {
     }
 }
 
-/// The scope narrowed to one pair by its label, or opened to every pair the session holds by `*`.
-pub fn focus(held: &mut ResourcesUi, open: &Open, scope: &str) {
+/// The scope narrowed to one pair.
+pub fn focus(held: &mut ResourcesUi, open: &Open, pair: &Attached) {
     held.hidden_contexts.clear();
     held.hidden = open
         .clusters
         .iter()
-        .filter(|one| scope != "*" && Pick::Pair((*one).clone()).label() != scope)
+        .filter(|one| *one != pair)
         .cloned()
         .collect();
     held.scroll = 0.0;

@@ -44,7 +44,10 @@ pub(super) fn held(open: &Open) -> Vec<(String, String)> {
         .iter()
         .map(|one| {
             let namespace = one.namespace.as_deref().unwrap_or_default();
-            let shown = one.namespace.as_deref().unwrap_or("whole cluster");
+            let shown = one
+                .namespace
+                .as_deref()
+                .unwrap_or(crate::views::session::resources::WHOLE_NAME);
             let value = format!("{}{BETWEEN}{namespace}", one.context);
             (format!("{} · {shown}", one.context), value)
         })
