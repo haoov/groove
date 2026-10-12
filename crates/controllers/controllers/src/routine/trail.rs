@@ -3,7 +3,7 @@
 use groove_routine_service::runs::{Ending, Run};
 use groove_types::{Action, TimelineKind};
 
-use crate::{AppState, Services, Spawner, Told};
+use crate::{AppState, Services, Spawner};
 
 /// `fix-mr · CI failed on main`, on the session it runs on.
 pub(super) fn started(state: &AppState, services: &Services, spawner: &dyn Spawner, run: &Run) {
@@ -47,7 +47,7 @@ pub(super) fn acted(state: &mut AppState, action: Action, opened: &[String]) {
         return;
     }
     let said = format!("{} opened {}", action.name(), opened.join(", "));
-    state.notes.push(Told::now(said));
+    state.say(said);
 }
 
 fn name(state: &AppState, run: &Run) -> String {
