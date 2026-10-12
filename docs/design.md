@@ -119,7 +119,7 @@ Opening a session starts its agent. Closing a row ends the agent and removes the
 session stays as it is on disk.
 
 **Routines.** A standalone routine's session stands under its own heading, `Routines · N`,
-folded by default, above the other sessions. Its row offers **Run**, which runs the routine
+folded by default, below the other sessions. Its row offers **Run**, which runs the routine
 now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
 appears on the board.
 
