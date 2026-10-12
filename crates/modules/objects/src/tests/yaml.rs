@@ -37,3 +37,31 @@ status:
 ";
     assert_eq!(yaml(&pod), expected);
 }
+
+#[test]
+fn a_block_keeps_its_trailing_line_breaks_and_its_leading_spaces() {
+    let config = serde_json::json!({
+        "none": "a\nb",
+        "one": "a\nb\n",
+        "more": "a\n\n\n",
+        "spaced": "  a\nb\n",
+        "breaks": "\n\n"
+    });
+    let expected = "\
+breaks: \"\\n\\n\"
+more: |+
+  a
+
+
+none: |-
+  a
+  b
+one: |
+  a
+  b
+spaced: |2
+    a
+  b
+";
+    assert_eq!(yaml(&config), expected);
+}

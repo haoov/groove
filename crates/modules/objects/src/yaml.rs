@@ -74,23 +74,38 @@ fn scalar(value: &Value, indent: usize) -> String {
     }
 }
 
-/// A string as YAML reads it back: bare, quoted, or a `|-` block when it spans lines.
+/// A string as YAML reads it back: bare, quoted, or a block when it spans lines.
 fn text(one: &str, indent: usize) -> String {
-    if one.contains('\n') && !one.contains('\r') {
-        let mut block = String::from("|-");
-        for line in one.trim_end_matches('\n').split('\n') {
-            block.push('\n');
-            if !line.is_empty() {
-                block.push_str(&" ".repeat(indent));
-                block.push_str(line);
-            }
-        }
-        return block;
+    if one.contains('\n') && !one.contains('\r') && !one.trim_matches('\n').is_empty() {
+        return block(one, indent);
     }
     match bare(one) {
         true => one.to_string(),
         false => serde_json::to_string(one).unwrap_or_default(),
     }
+}
+
+/// A `|` block that keeps its trailing line breaks, with an indent of 2 when it starts with a space.
+fn block(one: &str, indent: usize) -> String {
+    let body = one.strip_suffix('\n').unwrap_or(one);
+    let first = body.split('\n').find(|line| !line.is_empty());
+    let mut out = String::from("|");
+    if first.is_some_and(|line| line.starts_with(' ')) {
+        out.push('2');
+    }
+    out.push_str(match one.len() - one.trim_end_matches('\n').len() {
+        0 => "-",
+        1 => "",
+        _ => "+",
+    });
+    for line in body.split('\n') {
+        out.push('\n');
+        if !line.is_empty() {
+            out.push_str(&" ".repeat(indent));
+            out.push_str(line);
+        }
+    }
+    out
 }
 
 /// Whether a string reads back as itself without quotes.
@@ -108,7 +123,7 @@ fn bare(one: &str) -> bool {
         && !one.ends_with([' ', ':'])
         && !one.contains(": ")
         && !one.contains(" #")
-        && !one.contains(['\t', '\r'])
+        && !one.contains(['\t', '\r', '\n'])
         && !WORDS.contains(&one.to_lowercase().as_str())
         && one.parse::<f64>().is_err()
 }
