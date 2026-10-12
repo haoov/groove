@@ -41,6 +41,8 @@ pub struct Store {
     discovering: BTreeSet<String>,
     /// The discoveries that failed in a row, by context, while one waits to try again.
     refused: BTreeMap<String, u32>,
+    /// The contexts whose failed discovery waits to try again.
+    waiting: BTreeSet<String>,
     namespaces: BTreeMap<String, Vec<String>>,
     /// When a time cell next reads differently.
     due: Option<Timestamp>,
@@ -65,6 +67,7 @@ impl Store {
     pub fn set_kinds(&mut self, context: &str, kinds: Vec<KubeKind>) {
         self.discovering.remove(context);
         self.refused.remove(context);
+        self.waiting.remove(context);
         let at = Timestamp::now();
         self.kinds.insert(context.to_string(), (kinds, at));
     }
@@ -87,8 +90,9 @@ impl Store {
         self.discovering.contains(context)
     }
 
-    /// A discovery of `context` failed and stays begun; the failures in a row.
+    /// A discovery of `context` failed and stays begun; the failures in a row, and the wait before the next.
     pub fn refuse_discovery(&mut self, context: &str) -> (u32, std::time::Duration) {
+        self.waiting.insert(context.to_string());
         let failures = self.refused.entry(context.to_string()).or_default();
         *failures += 1;
         let wait = RETRY
@@ -101,6 +105,7 @@ impl Store {
     pub fn retry_discovery(&mut self, context: &str, failures: u32) {
         if self.refused.get(context) == Some(&failures) {
             self.discovering.remove(context);
+            self.waiting.remove(context);
         }
     }
 
@@ -109,7 +114,8 @@ impl Store {
         self.watched.wake(|key| key.context == context);
         self.follows.wake(context);
         self.logs.wake(context);
-        if self.refused.remove(context).is_some() {
+        self.refused.remove(context);
+        if self.waiting.remove(context) {
             self.discovering.remove(context);
         }
     }

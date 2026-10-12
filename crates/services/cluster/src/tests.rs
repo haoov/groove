@@ -1,3 +1,4 @@
+mod discovery;
 mod logs;
 
 use groove_types::{KubeAuth, KubeContext, Login};
