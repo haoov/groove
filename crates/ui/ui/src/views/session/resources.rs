@@ -2,6 +2,7 @@
 
 mod argo;
 mod around;
+mod health;
 mod list;
 mod logs;
 mod opened;

@@ -10,7 +10,7 @@ use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Heading;
 
 use super::super::around::{helm_release, lineage, served};
-use super::super::list::plan::colour;
+use super::super::health::{colour, status_colour};
 use super::super::opened::{Link, Opened, Section};
 use super::copy;
 use super::describe::Tally;
@@ -125,8 +125,12 @@ fn pod_facts(
     now: Timestamp,
     add: &mut dyn FnMut(&'static str, String, Role, Option<Link>),
 ) {
-    let health = groove_types::status_health(&pod.status).unwrap_or(groove_types::Health::Waiting);
-    add("status", pod.status.clone(), colour(health), None);
+    add(
+        "status",
+        pod.status.clone(),
+        status_colour(&pod.status),
+        None,
+    );
     let running = pod.containers.iter().filter(|one| !one.init);
     let (ready, all) = running.fold((0, 0), |(ready, all), one| {
         (ready + i64::from(one.ready), all + 1)

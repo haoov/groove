@@ -17,7 +17,8 @@ mod order;
 pub use order::Kept;
 pub(super) mod plan;
 
-use self::plan::{Plan, Reads, colour, plan};
+use self::plan::{Plan, Reads, plan};
+use super::health::colour;
 use super::scope::{self, ResourcesUi};
 use crate::Ui;
 use crate::ctx::Ctx;

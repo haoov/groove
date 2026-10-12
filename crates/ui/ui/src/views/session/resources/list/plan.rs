@@ -2,7 +2,6 @@
 
 use groove_controllers::AppState;
 use groove_types::{ObjectRow, WatchKey};
-use groove_ui_kit::base::style::Role;
 
 /// How many rows a column's width is fitted over.
 const FITTED: usize = 200;
@@ -84,15 +83,6 @@ pub(super) enum Reads {
     Plain,
     Status,
     Ready,
-}
-
-pub(crate) fn colour(health: groove_types::Health) -> Role {
-    match health {
-        groove_types::Health::Good => Role::Ok,
-        groove_types::Health::Waiting => Role::Warn,
-        groove_types::Health::Failing => Role::Bad,
-        groove_types::Health::Done => Role::Ghost,
-    }
 }
 
 impl Reads {

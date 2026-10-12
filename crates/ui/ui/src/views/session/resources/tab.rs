@@ -16,7 +16,7 @@ mod wants;
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Described, Health};
+use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
@@ -26,7 +26,7 @@ use groove_ui_kit::widgets::{Badge, Tab, Text};
 pub use wants::{due, wants};
 
 use super::View;
-use super::list::plan::colour;
+use super::health::{colour, status_colour};
 use super::opened::Opened;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -106,10 +106,7 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
 
 /// What the object says of itself: a pod's status, a workload's ready replicas, an Application's sync and health.
 fn stands(object: &Described) -> Vec<(String, Role)> {
-    let worded = |word: &str| {
-        let health = groove_types::status_health(word).unwrap_or(Health::Waiting);
-        (word.to_string(), colour(health))
-    };
+    let worded = |word: &str| (word.to_string(), status_colour(word));
     if let Some(pod) = &object.pod {
         return vec![worded(&pod.status)];
     }
@@ -122,7 +119,7 @@ fn stands(object: &Described) -> Vec<(String, Role)> {
     let Some((ready, desired)) = object.replicas else {
         return Vec::new();
     };
-    let role = super::list::plan::colour(groove_types::count_health(ready, desired));
+    let role = colour(groove_types::count_health(ready, desired));
     vec![(format!("{ready}/{desired} ready"), role)]
 }
 

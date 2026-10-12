@@ -93,8 +93,7 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
             .as_ref()
             .and_then(|one| one.replicas)
             .map(|(ready, desired)| {
-                let role =
-                    super::super::list::plan::colour(groove_types::count_health(ready, desired));
+                let role = super::super::health::colour(groove_types::count_health(ready, desired));
                 (format!("{ready}/{desired} ready"), role)
             });
         let tag = short(&link.kind.kind);
