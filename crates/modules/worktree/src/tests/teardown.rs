@@ -144,4 +144,8 @@ async fn a_merged_worktree_whose_directory_is_gone_closes() {
     std::fs::remove_dir_all(&path).unwrap();
     let closed = fx.pool.close(&wt.id, Keep::Changes).await;
     assert!(closed.is_ok(), "{closed:?}");
+    let held = fx.pool.worktrees_of(&fx.session.id).await.unwrap();
+    assert!(held.is_empty(), "gone from the pool");
+    let listed = sh(&fx.clone, &["worktree", "list"]);
+    assert!(!listed.contains(&wt.path), "gone from git: {listed}");
 }

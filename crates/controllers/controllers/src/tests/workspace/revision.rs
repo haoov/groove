@@ -87,7 +87,12 @@ fn a_commit_that_cannot_be_read_ends_the_revision_and_says_why() {
     };
     send(&mut state, &services, &spawner, show);
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
-    assert!(!state.errors.is_empty(), "the read failed");
+    let said = state.errors.iter().map(|one| one.what.message.as_str());
+    let named = said.collect::<Vec<_>>().join("\n");
+    assert!(
+        named.contains("0123456789abcdef"),
+        "the read names the sha: {named}"
+    );
     assert_eq!(state.workspace.revision, None, "and the revision ended");
 }
 

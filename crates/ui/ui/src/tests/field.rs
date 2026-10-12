@@ -98,9 +98,17 @@ fn a_field_draws_its_caret_as_a_bar_and_its_text_alone() {
     assert!(!texts.iter().any(|one| one.contains('\u{2502}')));
     let accent = Styles::new(app.config.theme(), Tokens::new(1.0)).color(Role::Accent);
     let quads = frame.layers().iter().flat_map(|layer| &layer.quads);
+    let bars: Vec<_> = quads
+        .filter(|quad| quad.color == accent && quad.rect.h > quad.rect.w)
+        .collect();
+    let mut typed = frame.layers().iter().flat_map(|layer| &layer.texts);
+    let one = typed.rfind(|run| run.text == "one").expect("the text");
+    let style = one.style;
+    let wide = groove_gfx::Fonts::embedded().measure("one", style.font, style.weight, style.size);
     assert!(
-        quads
-            .filter(|quad| quad.color == accent)
-            .any(|quad| quad.rect.h > quad.rect.w)
+        bars.iter()
+            .any(|bar| (bar.rect.x - (one.x + wide)).abs() < 0.5),
+        "the caret after the text, at {}: {bars:?}",
+        one.x + wide
     );
 }

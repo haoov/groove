@@ -174,6 +174,8 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
         state.routine.runs.running.is_empty(),
         "a read alone moves nothing"
     );
+    let thread = home.path().join(format!("data/agent-launch/{id}.thread"));
+    std::fs::write(&thread, "the-last-run").unwrap();
     state.task.tasks[0].status = "Done".into();
     routine::watch(&mut state, &services, &spawner);
 
@@ -183,10 +185,10 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
             .terminal(&id)
             .is_some_and(|t| t.screen().line(0) == first)
     });
-    let thread = home.path().join(format!("data/agent-launch/{id}.thread"));
+    let now = std::fs::read_to_string(&thread).unwrap_or_default();
     assert!(
-        thread.is_file(),
-        "each run starts a conversation of its own"
+        !now.is_empty() && now != "the-last-run",
+        "each run starts a conversation of its own: {now}"
     );
 }
 

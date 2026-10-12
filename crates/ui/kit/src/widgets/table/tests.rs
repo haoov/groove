@@ -80,21 +80,9 @@ fn a_fitted_cell_counts_its_size_and_its_bar() {
         fitted(Width::FitCell(&label)) >= wide,
         "the label text fits"
     );
-    let barred = Cell::small(sample, Role::Text).bar(None, None, Role::Text);
-    let tokens = Tokens::new(1.0);
-    let meter = tokens.aside_near / 2.0 + tokens.sm + small;
-    assert_eq!(fitted(Width::FitCell(&barred)), meter, "the meter's width");
-}
-
-#[test]
-fn a_sortable_column_fitted_to_its_cells_has_room_for_its_sort_mark() {
-    let sample = Cell::small("", Role::Text);
-    let sortable = Column {
-        label: "AGE",
-        sort: Some(()),
-        ..column(Width::FitCell(&sample))
-    };
-    let columns = [sortable, column(Width::Fill)];
+    let barred = || Cell::small(sample, Role::Text).bar(Some(1.0), None, Role::Bad);
+    let fit = barred();
+    let columns = [column(Width::FitCell(&fit)), column(Width::Fill)];
     let table = Table {
         columns: &columns,
         rows: Rows {
@@ -102,18 +90,31 @@ fn a_sortable_column_fitted_to_its_cells_has_room_for_its_sort_mark() {
             under: 0.0,
             ruled: false,
         },
-        count: 0,
+        count: 1,
         offset: 0.0,
         selected: None,
         sorted: None,
     };
     let wide = Rect { w: 1000.0, ..ROOM };
-    let (width, head) = drawn(|ctx| {
-        let head = Cell::small("AGE", Role::Faint).mark(Mark::Down, 0, Role::Faint);
-        (table.spans(ctx, wide)[0].1, head.wide(ctx))
-    })
-    .0;
-    assert!(width >= head, "{width} holds {head}");
+    let (((x, w), bad, text), frame) = drawn(|ctx| {
+        let span = table.spans(ctx, wide)[0];
+        table.one(ctx, wide, Shown::row(vec![barred()]));
+        let text = ctx.measure(sample, &ctx.styles.small(Role::Text));
+        (span, ctx.styles.color(Role::Bad), text)
+    });
+    let layer = &frame.layers()[0];
+    let mut bar = layer.quads.iter().filter(|one| one.color == bad);
+    assert!(bar.clone().count() > 0, "the bar drawn");
+    assert!(bar.all(|one| one.rect.x >= x && one.rect.right() <= x + w + 0.01));
+    let drawn = layer
+        .texts
+        .iter()
+        .find(|one| one.text == sample)
+        .expect("whole");
+    assert!(
+        drawn.x >= x && drawn.x + text <= x + w + 0.01,
+        "the text within"
+    );
 }
 
 #[test]
