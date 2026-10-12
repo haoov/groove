@@ -46,3 +46,23 @@ fn a_reference_that_names_nothing_is_refused() {
         assert!(referenced(text).is_err(), "{text}");
     }
 }
+
+#[test]
+fn a_link_to_a_block_or_a_comment_names_its_page_or_its_issue() {
+    let block =
+        format!("https://www.notion.so/wiremind/Page-{ID}#aabbccddeeff00112233445566778899");
+    assert_eq!(
+        referenced(&block).expect(&block),
+        TaskKey::Notion { page_id: ID.into() }
+    );
+    let comment = "https://github.com/haoov/groove/issues/50#issuecomment-1";
+    assert_eq!(
+        referenced(comment).expect(comment),
+        TaskKey::Github {
+            host: "github.com".into(),
+            owner: "haoov".into(),
+            repo: "groove".into(),
+            number: 50,
+        }
+    );
+}

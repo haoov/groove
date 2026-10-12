@@ -6,10 +6,15 @@ impl TaskKey {
     /// The key a reference names: a GitHub issue URL or `host/owner/repo#n`, or a Notion URL or page id.
     pub fn referenced(text: &str) -> Result<TaskKey> {
         let text = text.trim();
+        let link = text.contains("://");
+        let text = match link {
+            true => text.split(['?', '#']).next().unwrap_or(text),
+            false => text,
+        };
         if let Some(key) = issue(text) {
             return Ok(key);
         }
-        if text.contains('#') {
+        if !link && text.contains('#') {
             return TaskKey::parse(&ExternalId::new(text));
         }
         match page_id(text) {
