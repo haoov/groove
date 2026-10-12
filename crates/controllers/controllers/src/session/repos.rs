@@ -165,9 +165,12 @@ pub fn list_repos(services: &Services, spawner: &dyn Spawner) {
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let pool = service.list_pool().await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.session.pool = pool
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match pool {
+                Ok(pool) => state.session.pool = pool,
+                Err(e) => state.failed(e),
+            },
+        ) as Continuation
     }));
 }
 

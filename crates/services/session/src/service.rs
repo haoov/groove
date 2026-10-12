@@ -92,7 +92,7 @@ impl Service {
         now: Timestamp,
     ) -> Result<Added, Error> {
         let name = at
-            .repo_in(&self.pool.list().await)
+            .repo_in(&self.pool.list().await?)
             .ok_or_else(|| unsourced(at))?;
         self.store.create_review(session).await?;
         self.on_rail(&session.id, now).await?;

@@ -4,7 +4,7 @@ use crate::{Error, Pool, PoolEntry};
 #[tokio::test]
 async fn the_pool_lists_registers_and_resolves() {
     let fx = Fixture::new().await;
-    let clones = fx.pool.list().await;
+    let clones = fx.pool.list().await.unwrap();
     assert_eq!(clones.len(), 1);
     assert_eq!(clones[0].slug, SLUG);
     assert_eq!(clones[0].path, fx.clone);
@@ -41,7 +41,8 @@ async fn the_pool_lists_registers_and_resolves() {
     assert_eq!(
         Pool::new(fx.pool.db.clone(), fx.root.path().join("nowhere"))
             .list()
-            .await,
+            .await
+            .unwrap(),
         Vec::<PoolEntry>::new()
     );
 }
@@ -50,7 +51,7 @@ async fn the_pool_lists_registers_and_resolves() {
 async fn a_clone_without_origin_is_refused() {
     let fx = Fixture::new().await;
     sh(&fx.clone, &["remote", "remove", "origin"]);
-    let clones = fx.pool.list().await;
+    let clones = fx.pool.list().await.unwrap();
     assert!(matches!(
         fx.pool.register(&clones[0]).await,
         Err(Error::NoOrigin { .. })
@@ -90,5 +91,12 @@ async fn clone_puts_the_repo_in_its_place_and_refuses_a_second_time() {
         .await
         .unwrap_err();
     assert!(matches!(err, Error::Exists { .. }), "{err}");
-    assert_eq!(fx.pool.list().await.len(), 2);
+    assert_eq!(fx.pool.list().await.unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn a_walk_that_stops_is_an_error_not_an_empty_pool() {
+    let stopped = tokio::spawn(async { panic!("the walk broke") }).await;
+    let walked = crate::pool::joined(stopped);
+    assert!(matches!(walked, Err(Error::Walk(_))), "{walked:?}");
 }

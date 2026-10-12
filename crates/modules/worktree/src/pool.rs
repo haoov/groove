@@ -9,18 +9,25 @@ use crate::{Error, Pool, Result};
 
 const WALK_DEPTH: u32 = 6;
 
+/// The clones a walk found, or why it stopped.
+pub(crate) fn joined(
+    walked: std::result::Result<Vec<PoolEntry>, tokio::task::JoinError>,
+) -> Result<Vec<PoolEntry>> {
+    walked.map_err(|e| Error::Walk(e.to_string()))
+}
+
 impl Pool {
     /// Every clone in the pool, by directory walk, sorted by slug. No pool is an empty list.
-    pub async fn list(&self) -> Vec<PoolEntry> {
+    pub async fn list(&self) -> Result<Vec<PoolEntry>> {
         let main = self.layout.main();
         let walked = tokio::task::spawn_blocking(move || {
             let mut clones = Vec::new();
             walk(&main, &main, 1, &mut clones);
             clones
         });
-        let mut clones = walked.await.unwrap_or_default();
+        let mut clones = joined(walked.await)?;
         clones.sort_by_key(|c| c.slug.to_lowercase());
-        clones
+        Ok(clones)
     }
 
     /// The one clone `name` means: its whole slug, or any suffix on a `/` boundary.

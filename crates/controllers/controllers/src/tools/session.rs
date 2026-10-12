@@ -28,12 +28,16 @@ pub(super) fn repos(state: &AppState, services: &Services, spawner: &dyn Spawner
     };
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
-        let pool = service.list_pool().await;
-        let each = pool
-            .iter()
-            .map(|entry| answers::pooled(entry, held.contains(&entry.slug)))
-            .collect();
-        call.reply.json(&answers::counted("repos", each));
+        match service.list_pool().await {
+            Ok(pool) => {
+                let each = pool
+                    .iter()
+                    .map(|entry| answers::pooled(entry, held.contains(&entry.slug)))
+                    .collect();
+                call.reply.json(&answers::counted("repos", each));
+            }
+            Err(e) => call.reply.failed(e.message),
+        }
         Box::new(|_: &mut AppState, _: &Services, _: &dyn Spawner| {}) as Continuation
     }));
 }
