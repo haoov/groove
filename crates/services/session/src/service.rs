@@ -1,5 +1,6 @@
 //! What the session capability asks of the store and the pool.
 
+mod clusters;
 mod log;
 mod promote;
 mod repos;
@@ -15,6 +16,8 @@ use groove_types::{
 use groove_worktree::Pool;
 
 use crate::Living;
+
+pub use clusters::ClusterWrite;
 
 /// What a session holds, as recorded and as git reports it.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -41,6 +44,7 @@ pub struct Service {
     store: Store,
     pool: Pool,
     timeline: Timeline,
+    clusters: clusters::Held,
 }
 
 impl Service {
@@ -50,6 +54,7 @@ impl Service {
             store,
             pool,
             timeline,
+            clusters: clusters::Held::default(),
         }
     }
 
@@ -184,23 +189,6 @@ impl Service {
         read: bool,
     ) -> Result<(), Error> {
         Ok(self.store.set_read(id, worktree, path, read).await?)
-    }
-
-    pub async fn attach_cluster(
-        &self,
-        id: &SessionId,
-        attached: &groove_types::Attached,
-        now: Timestamp,
-    ) -> Result<(), Error> {
-        Ok(self.store.attach_cluster(id, attached, now).await?)
-    }
-
-    pub async fn detach_cluster(
-        &self,
-        id: &SessionId,
-        attached: &groove_types::Attached,
-    ) -> Result<(), Error> {
-        Ok(self.store.detach_cluster(id, attached).await?)
     }
 
     pub async fn contents(&self, id: &SessionId) -> Result<Contents, Error> {

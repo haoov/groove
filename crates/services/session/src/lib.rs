@@ -15,7 +15,7 @@ use groove_types::{
 pub use groove_worktree::Keep;
 pub use made::{explorer, review_session, routine_session, task_session};
 pub use open::Open;
-pub use service::{Added, Service, unsourced};
+pub use service::{Added, ClusterWrite, Service, unsourced};
 
 /// The pool's name for a repo given as a git URL, or the name itself.
 pub fn slug(name: &str) -> String {

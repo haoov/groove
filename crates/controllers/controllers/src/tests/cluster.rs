@@ -178,6 +178,61 @@ fn a_session_attaches_a_known_context_on_a_namespace_or_whole_each_replacing_the
     assert!(held(&state).is_empty());
 }
 
+/// Holds every job, to run them in any order.
+#[derive(Default)]
+struct Held(std::sync::Mutex<Vec<crate::spawn::Job>>);
+
+impl crate::Spawner for Held {
+    fn spawn(&self, job: crate::spawn::Job) {
+        self.0.lock().expect("the jobs").push(job);
+    }
+
+    fn detach(&self, _: crate::Detached) {}
+
+    fn sink(&self) -> std::sync::Arc<dyn crate::Deliver> {
+        unreachable!("no job here reports through the sink")
+    }
+}
+
+#[test]
+fn a_session_s_clusters_are_written_in_the_order_they_changed_whichever_job_runs_first() {
+    use crate::session::Command as Session;
+    use groove_types::Attached;
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    kubeconfig(home.path(), "http://127.0.0.1:9");
+    let run = |state: &mut crate::AppState, command| {
+        dispatch(command, state, &services, &spawner);
+        spawner.drain(state, &services);
+    };
+    run(
+        &mut state,
+        Cmd::Session(Session::OpenExplorer { title: None }),
+    );
+    run(&mut state, Cmd::Cluster(Command::ScanContexts));
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    run(&mut state, Cmd::Config(add));
+    let session = state.session.selected.clone().expect("the explorer");
+    let on = |namespace: Option<&str>| Attached {
+        context: "kind".into(),
+        namespace: namespace.map(str::to_string),
+    };
+    let held = Held::default();
+    for attached in [on(None), on(Some("paxone"))] {
+        let session = session.clone();
+        let attach = Cmd::Session(Session::AttachCluster { session, attached });
+        dispatch(attach, &mut state, &services, &held);
+    }
+    let jobs = std::mem::take(&mut *held.0.lock().expect("the jobs"));
+    for job in jobs.into_iter().rev() {
+        spawner.block_on(job)(&mut state, &services, &spawner);
+    }
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    let stored = spawner.block_on(services.session.contents(&session));
+    assert_eq!(stored.expect("contents").clusters, [on(Some("paxone"))]);
+}
+
 #[test]
 fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
     use groove_cluster_service::Followed;

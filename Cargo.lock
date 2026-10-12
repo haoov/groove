@@ -1682,6 +1682,7 @@ dependencies = [
  "groove-types",
  "groove-worktree",
  "serde_json",
+ "tokio",
  "uuid",
 ]
 
