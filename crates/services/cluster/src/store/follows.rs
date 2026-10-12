@@ -25,6 +25,8 @@ pub struct Follows {
     usage: BTreeMap<Named, (Option<Usage>, Timestamp)>,
     helm: BTreeMap<Named, Option<u32>>,
     asking: BTreeSet<Named>,
+    /// The pods whose last usage read failed.
+    failing: BTreeSet<Named>,
 }
 
 impl Follows {
@@ -55,7 +57,29 @@ impl Follows {
     pub fn drop_unread(&mut self, key: &FollowKey, released: u64) {
         if self.followed.drop_unread(key, released).is_some() {
             self.yamls.drop(key);
+            self.forget(key);
         }
+    }
+
+    /// The usage of the pod `key` named, and the revisions of a namespace no key follows now.
+    fn forget(&mut self, key: &FollowKey) {
+        let name = key
+            .fields
+            .as_deref()
+            .and_then(|one| one.strip_prefix("metadata.name="));
+        let namespace = key.namespace.clone().unwrap_or_default();
+        if let Some(name) = name {
+            let pod = (key.context.clone(), namespace, name.to_string());
+            self.usage.remove(&pod);
+            self.failing.remove(&pod);
+        }
+        let followed = &self.followed;
+        self.helm.retain(|(context, namespace, _), _| {
+            let on = |one: &FollowKey| one.context == *context;
+            let within =
+                |one: &FollowKey| one.namespace.as_deref().unwrap_or_default() == namespace;
+            followed.keys().any(|one| on(one) && within(one))
+        });
     }
 
     /// A batch of a watcher still held; one dropped meanwhile is ignored.
@@ -115,7 +139,15 @@ impl Follows {
 
     pub fn set_usage(&mut self, pod: Named, usage: Option<Usage>, at: Timestamp) {
         self.asking.remove(&pod);
+        self.failing.remove(&pod);
         self.usage.insert(pod, (usage, at));
+    }
+
+    /// A usage read failed: none held; true unless the last one failed too.
+    pub fn fail_usage(&mut self, pod: Named, at: Timestamp) -> bool {
+        self.asking.remove(&pod);
+        self.usage.insert(pod.clone(), (None, at));
+        self.failing.insert(pod)
     }
 
     pub fn set_helm(&mut self, release: Named, revision: Option<u32>) {

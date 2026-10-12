@@ -37,6 +37,10 @@ impl<K: Ord + Clone, T> Leases<K, T> {
         self.held.get_mut(key).map(|one| &mut one.held)
     }
 
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.held.keys()
+    }
+
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.held.values_mut().map(|one| &mut one.held)
     }

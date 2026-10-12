@@ -39,7 +39,11 @@ pub(super) fn usage(state: &mut AppState, spawner: &dyn Spawner, pod: Named) {
             let follows = &mut state.cluster.store.follows;
             match read {
                 Ok(usage) => follows.set_usage(pod, usage, Timestamp::now()),
-                Err(_) => follows.set_usage(pod, None, Timestamp::now()),
+                Err(e) => {
+                    if follows.fail_usage(pod, Timestamp::now()) {
+                        state.failed(e);
+                    }
+                }
             }
         }) as Continuation
     }));
