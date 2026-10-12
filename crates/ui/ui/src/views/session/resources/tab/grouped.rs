@@ -4,7 +4,6 @@
 use std::collections::BTreeMap;
 
 use groove_gfx::Rect;
-use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Sorted, Table, Width};
 
 use super::super::opened::Opened;
@@ -59,29 +58,13 @@ pub(super) fn draw<'a>(
         selected: None,
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
-    let extent = table.draw(ctx, body, shown);
-    ctx.app.hits.scrolls(Scroller::Resources, extent);
+    let laid = table.draw(ctx, body, shown);
+    ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
 
 /// A group's heading, which folds it on a click.
 pub(super) fn heading<'a>((key, shut): (&str, bool), cells: Vec<Cell<'a>>) -> Shown<'a, Target> {
-    Shown {
-        cells,
-        under: Vec::new(),
-        target: Some(Target::ResourceFold(key.to_string(), shut)),
-        acts: Vec::new(),
-        band: true,
-    }
-}
-
-pub(super) fn row(cells: Vec<Cell<'_>>) -> Shown<'_, Target> {
-    Shown {
-        cells,
-        under: Vec::new(),
-        target: None,
-        acts: Vec::new(),
-        band: false,
-    }
+    Shown::band(cells).target(Target::ResourceFold(key.to_string(), shut))
 }
 
 /// The order a column picks, rows of one group compared by `key`.
@@ -106,14 +89,13 @@ pub(super) fn plain(label: &'static str, width: Width<'static>) -> Column<'stati
     }
 }
 
-/// One row as a block, its header above it when `header`; returns the row and the columns' spans.
-pub(super) fn one(
-    ctx: &mut Ctx,
-    rect: Rect,
-    (columns, header): (&[Column<'_, Target>], bool),
-    shown: Shown<'_, Target>,
-) -> (Rect, Vec<(f32, f32)>) {
-    let table = Table {
+/// The table a row stands alone in, its header above it when `header`.
+pub(super) fn single<'a>(
+    ctx: &Ctx,
+    columns: &'a [Column<'a, Target>],
+    header: bool,
+) -> Table<'a, Target> {
+    Table {
         columns,
         rows: Rows {
             first: ctx.tokens.row,
@@ -124,30 +106,5 @@ pub(super) fn one(
         offset: 0.0,
         selected: None,
         sorted: header.then_some(Sorted::NONE),
-    };
-    let mut shown = Some(shown);
-    table.draw(ctx, rect, |_| {
-        shown.take().unwrap_or_else(|| row(Vec::new()))
-    });
-    let spans = spans(ctx, rect, columns);
-    let top = Spec::default().height(if header { ctx.tokens.row } else { 0.0 });
-    let [_, line] = column_in(rect, [top, Spec::fill()]);
-    (line, spans)
-}
-
-/// Each column's left edge and width across `rect`.
-pub(super) fn spans(ctx: &mut Ctx, rect: Rect, columns: &[Column<'_, Target>]) -> Vec<(f32, f32)> {
-    let table = Table {
-        columns,
-        rows: Rows {
-            first: ctx.tokens.row,
-            under: 0.0,
-            ruled: false,
-        },
-        count: 0,
-        offset: 0.0,
-        selected: None,
-        sorted: None,
-    };
-    table.spans(ctx, rect)
+    }
 }

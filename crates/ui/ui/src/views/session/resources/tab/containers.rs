@@ -84,16 +84,10 @@ pub(super) fn row(
         cpu,
         memory,
     ];
-    let shown = Shown {
-        target: Some(Target::ResourceFold(key(one), folded(tab, one))),
-        ..grouped::row(cells)
-    };
+    let shown = Shown::row(cells).target(Target::ResourceFold(key(one), folded(tab, one)));
     let columns = columns(ctx);
-    let (line, spans) = grouped::one(ctx, rect, (&columns, header), shown);
-    let cell = |at: usize| {
-        let (x, w) = spans[at];
-        Rect { x, w, ..line }
-    };
+    let laid = grouped::single(ctx, &columns, header).one(ctx, rect, shown);
+    let cell = |at: usize| laid.cell(0, at);
     let mut tip = None;
     for (at, memory, lines) in [(6, false, cpu_tip), (7, true, memory_tip)] {
         let target = Target::ContainerUsage(one.name.clone(), memory);
@@ -115,7 +109,7 @@ pub(super) fn detail(
     last: Option<&str>,
 ) {
     let columns = columns(ctx);
-    let from = grouped::spans(ctx, rect, &columns)[1].0;
+    let from = grouped::single(ctx, &columns, false).spans(ctx, rect)[1].0;
     let rect = rect.pad(Edges::across(from - rect.x, 0.0));
     let keyed = Spec::default().width(ctx.tokens.aside_near);
     let [k, v] = row_in(rect, [keyed, Spec::fill()]);

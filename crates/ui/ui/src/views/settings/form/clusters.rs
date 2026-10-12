@@ -7,7 +7,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Act, Cell, Column, Rows, Shown, Sorted, Table, Width};
+use groove_ui_kit::widgets::{Act, Cell, Column, Rows, Shown, Slot, Sorted, Table, Width};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -114,33 +114,21 @@ fn widest(texts: impl Iterator<Item = String>) -> String {
 
 fn context<'a>(app: &AppState, one: &'a ClusterConfig) -> Shown<'a, Target> {
     let name = one.context.clone();
-    let switch = |on, change| Some(Act::Toggle(on, Target::ClusterSet(name.clone(), change)));
+    let switch = |on, change| Act::Toggle(on, Target::ClusterSet(name.clone(), change));
     let (said, role) = login(app, &one.context);
     let hue = Role::Hue(one.hue);
-    let blank = || Cell::small("", Role::Text);
-    Shown {
-        cells: vec![
-            blank(),
-            Cell::label(one.context.as_str(), hue),
-            blank(),
-            Cell::small(said, role),
-            blank(),
-        ],
-        under: Vec::new(),
-        target: Some(Target::ClusterRow(name.clone())),
-        acts: vec![
-            Some(Act::Mark(
-                Mark::Context,
-                hue,
-                Target::ClusterHue(name.clone()),
-            )),
-            None,
-            switch(one.read_only, ClusterChange::ReadOnly(!one.read_only)),
-            None,
-            Some(Act::Button("remove", Target::ClusterRemove(name.clone()))),
-        ],
-        band: false,
-    }
+    Shown::row(vec![
+        Slot::from(Act::Mark(
+            Mark::Context,
+            hue,
+            Target::ClusterHue(name.clone()),
+        )),
+        Cell::label(one.context.as_str(), hue).into(),
+        switch(one.read_only, ClusterChange::ReadOnly(!one.read_only)).into(),
+        Cell::small(said, role).into(),
+        Act::Button("remove", Target::ClusterRemove(name.clone())).into(),
+    ])
+    .target(Target::ClusterRow(name.clone()))
 }
 
 /// What the last check found; a refusal is fixed from a terminal, never from here.
@@ -175,16 +163,11 @@ fn unknown(ctx: &mut Ctx, rect: Rect, rest: &[&KubeContext]) {
     table.draw(ctx, rect, |at| {
         let one = rest[at];
         let add = Target::ClusterAdd(one.name.clone());
-        Shown {
-            cells: vec![
-                Cell::small(one.name.as_str(), Role::Text),
-                Cell::small(one.server.as_deref().unwrap_or_default(), Role::Muted),
-                Cell::small("", Role::Text),
-            ],
-            under: Vec::new(),
-            target: Some(Target::ClusterRow(one.name.clone())),
-            acts: vec![None, None, Some(Act::Button("add", add))],
-            band: false,
-        }
+        Shown::row(vec![
+            Slot::from(Cell::small(one.name.as_str(), Role::Text)),
+            Cell::small(one.server.as_deref().unwrap_or_default(), Role::Muted).into(),
+            Act::Button("add", add).into(),
+        ])
+        .target(Target::ClusterRow(one.name.clone()))
     });
 }

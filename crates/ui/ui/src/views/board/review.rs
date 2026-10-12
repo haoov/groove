@@ -70,10 +70,10 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
         sorted: Some(ui.board.reviews.sorted()),
     };
     let now = ctx.now;
-    let extent = table.draw(ctx, body, |at| shown(asked[at], now));
+    let laid = table.draw(ctx, body, |at| shown(asked[at], now));
     ctx.app
         .hits
-        .scrolls(Scroller::Column(List::Review as u8), extent);
+        .scrolls(Scroller::Column(List::Review as u8), laid.extent);
 }
 
 pub fn height(tokens: &Tokens) -> f32 {
@@ -112,16 +112,12 @@ fn shown(mr: &ReviewMr, now: Timestamp) -> Shown<'_, Target> {
         let (word, role) = crate::components::review_said(review);
         under.push(Cell::small(word, role).badge());
     }
-    Shown {
-        cells: vec![
-            Cell::label(mr.title.as_str(), Role::Text).mark(Mark::of_forge(mr.forge), 0, state(mr)),
-            Cell::small(ago(mr.updated_at.age_at(now)), Role::Faint),
-        ],
-        under,
-        target: Some(Target::Review(mr.project.clone(), mr.iid)),
-        acts: Vec::new(),
-        band: false,
-    }
+    Shown::row(vec![
+        Cell::label(mr.title.as_str(), Role::Text).mark(Mark::of_forge(mr.forge), 0, state(mr)),
+        Cell::small(ago(mr.updated_at.age_at(now)), Role::Faint),
+    ])
+    .under(under)
+    .target(Target::Review(mr.project.clone(), mr.iid))
 }
 
 fn state(mr: &ReviewMr) -> Role {

@@ -64,10 +64,8 @@ pub(super) fn draw(
         (tab, dragged),
         (&COLUMNS, count),
         |at| match &lines[at] {
-            Line::Row(one) => Shown {
-                target: link(one).map(|link| Target::ResourceOpen(Box::new(link))),
-                ..resource(part, one)
-            },
+            Line::Row(one) => resource(part, one)
+                .target(link(one).map(|link| Target::ResourceOpen(Box::new(link)))),
             line => shown(part, line),
         },
     );
@@ -198,7 +196,7 @@ fn status<'a>(part: &'a AppPart, one: &AppResource) -> (&'a str, Role) {
 fn resource<'a>(part: &'a AppPart, one: &'a AppResource) -> Shown<'a, Target> {
     let (sync, synced_role) = synced(one);
     let (message, role) = status(part, one);
-    grouped::row(vec![
+    Shown::row(vec![
         Cell::small(sync, synced_role),
         Cell::small(one.name.as_str(), Role::Text),
         Cell::small(one.namespace.as_deref().unwrap_or_default(), Role::Faint),

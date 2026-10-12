@@ -53,10 +53,10 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
         selected: None,
         sorted: None,
     };
-    let extent = table.draw(ctx, body, |at| session(app, living[at]));
+    let laid = table.draw(ctx, body, |at| session(app, living[at]));
     ctx.app
         .hits
-        .scrolls(Scroller::Column(List::Live as u8), extent);
+        .scrolls(Scroller::Column(List::Live as u8), laid.extent);
 }
 
 /// One session: its kind, blue while it is open, and its title; what it holds under them.
@@ -66,13 +66,11 @@ fn session<'a>(app: &AppState, living: &'a Living) -> Shown<'a, Target> {
         false => Role::Ghost,
     };
     let mark = Mark::of_kind(&living.session.kind);
-    Shown {
-        cells: vec![Cell::label(living.session.title.as_str(), Role::Text).mark(mark, 0, role)],
-        under: vec![Cell::small(held(living), Role::Faint)],
-        target: Some(Target::Session(living.session.id.clone())),
-        acts: Vec::new(),
-        band: false,
-    }
+    Shown::row(vec![
+        Cell::label(living.session.title.as_str(), Role::Text).mark(mark, 0, role),
+    ])
+    .under(vec![Cell::small(held(living), Role::Faint)])
+    .target(Target::Session(living.session.id.clone()))
 }
 
 /// What a session holds, as the row's second line.

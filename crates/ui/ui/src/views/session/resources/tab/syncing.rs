@@ -152,7 +152,7 @@ fn step<'a>(one: &Step<'a>, turn: u8) -> Shown<'a, Target> {
     } else {
         Role::Faint
     };
-    grouped::row(vec![
+    Shown::row(vec![
         marked(mark, role, turn),
         kind(one),
         Cell::small(one.name, Role::Text),

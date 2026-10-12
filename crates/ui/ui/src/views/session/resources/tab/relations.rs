@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::Described;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::widgets::{Cell, Width};
+use groove_ui_kit::widgets::{Cell, Shown, Width};
 
 use super::super::opened::{Link, Opened, lineage, selecting, served};
 use super::{copy, grouped};
@@ -123,12 +123,8 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
                 Cell::small(*title, Role::Text),
                 Cell::small(count.to_string(), Role::Ghost),
             ];
-            grouped::one(
-                ctx,
-                rect,
-                (&columns, header),
-                grouped::heading((&key(title), *shut), cells),
-            );
+            let heading = grouped::heading((&key(title), *shut), cells);
+            grouped::single(ctx, &columns, header).one(ctx, rect, heading);
             return;
         }
         Line::Entry(one) => one,
@@ -140,9 +136,10 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
         Cell::small("", Role::Text),
         Cell::small(said, role),
     ];
-    let (line, spans) = grouped::one(ctx, rect, (&columns, header), grouped::row(cells));
-    let (x, w) = spans[2];
-    let name = Rect { x, w, ..line }.pad(Edges::across(ctx.tokens.md * one.depth as f32, 0.0));
+    let laid = grouped::single(ctx, &columns, header).one(ctx, rect, Shown::row(cells));
+    let name = laid
+        .cell(0, 2)
+        .pad(Edges::across(ctx.tokens.md * one.depth as f32, 0.0));
     let role = if one.open.is_some() {
         Role::Accent
     } else {

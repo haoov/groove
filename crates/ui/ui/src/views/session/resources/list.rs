@@ -231,8 +231,8 @@ fn listed(
         selected: None,
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
-    let extent = table.draw(ctx, body, |at| one(app, rows[at], &plan));
-    ctx.app.hits.scrolls(Scroller::Resources, extent);
+    let laid = table.draw(ctx, body, |at| one(app, rows[at], &plan));
+    ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
 
 fn one<'a>(
@@ -273,13 +273,7 @@ fn one<'a>(
         };
         cells.push(Cell::small(text, role));
     }
-    Shown {
-        cells,
-        under: Vec::new(),
-        target: Some(Target::ResourceRow(row.uid.clone())),
-        acts: Vec::new(),
-        band: false,
-    }
+    Shown::row(cells).target(Target::ResourceRow(row.uid.clone()))
 }
 
 fn column<'a>(label: &'a str, width: Width<'a>) -> Column<'a, Target> {

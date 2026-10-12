@@ -2,9 +2,13 @@
 
 mod act;
 mod cell;
+mod laid;
+mod shown;
 
 pub use act::Act;
 pub use cell::Cell;
+pub use laid::Laid;
+pub use shown::{Band, Line, Shown, Slot};
 
 use groove_gfx::Rect;
 
@@ -12,6 +16,7 @@ use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::{hairline, hoverable};
+use laid::visible;
 
 /// How wide a column is.
 #[derive(Debug, Clone, Copy)]
@@ -50,18 +55,6 @@ impl Sorted {
     };
 }
 
-/// One row on screen: a cell a column, its second line, and what a click on it means.
-pub struct Shown<'a, T> {
-    pub cells: Vec<Cell<'a>>,
-    /// Laid one after the other from where the first cell's text starts.
-    pub under: Vec<Cell<'a>>,
-    pub target: Option<T>,
-    /// A button or a toggle in place of a cell's text, by column.
-    pub acts: Vec<Option<Act<'a, T>>>,
-    /// A group's heading: its cells one after the other across every column, on the band's ground.
-    pub band: bool,
-}
-
 /// How tall a row stands, and whether a rule closes it.
 #[derive(Debug, Clone, Copy)]
 pub struct Rows {
@@ -83,13 +76,13 @@ pub struct Table<'a, T> {
 }
 
 impl<T: Clone + PartialEq> Table<'_, T> {
-    /// The header, then the rows `shown` builds for the indices on screen; returns the extent.
+    /// The header, then the rows `shown` builds for the indices on screen.
     pub fn draw<'r, A: App<Target = T>>(
         &self,
         ctx: &mut Ctx<'_, A>,
         rect: Rect,
         mut shown: impl FnMut(usize) -> Shown<'r, T>,
-    ) -> f32 {
+    ) -> Laid {
         let mut body = rect;
         let spans = self.spans(ctx, rect);
         if self.sorted.is_some() {
@@ -99,16 +92,42 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         let height = self.rows.first + self.rows.under;
         let extent = (self.count as f32 * height - body.h).max(0.0);
         let offset = self.offset.min(extent);
+        let laid = Laid {
+            extent,
+            spans,
+            body,
+            offset,
+            height,
+            first: self.rows.first,
+        };
         let (first, last) = visible(offset, body.h, height, self.count);
         ctx.clipped(body, |ctx| {
             for at in first..last {
-                let y = body.y - offset + at as f32 * height;
-                let line = Rect::new(body.x, y, body.w, height);
                 let selected = self.selected == Some(at);
-                self.one(ctx, line, &spans, shown(at), selected);
+                self.line(ctx, laid.line(at), &laid.spans, shown(at), selected);
             }
         });
-        extent
+        laid
+    }
+
+    /// One row alone at the top of `rect`, under the header when there is one.
+    pub fn one<A: App<Target = T>>(
+        &self,
+        ctx: &mut Ctx<'_, A>,
+        rect: Rect,
+        shown: Shown<'_, T>,
+    ) -> Laid {
+        let single = Table {
+            count: 1,
+            offset: 0.0,
+            ..*self
+        };
+        let mut shown = Some(shown);
+        single.draw(ctx, rect, |_| {
+            shown
+                .take()
+                .unwrap_or_else(|| Shown::row(Vec::<Cell>::new()))
+        })
     }
 
     /// Each column's left edge and width across `rect`.
@@ -176,7 +195,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         }
     }
 
-    fn one<A: App<Target = T>>(
+    fn line<A: App<Target = T>>(
         &self,
         ctx: &mut Ctx<'_, A>,
         line: Rect,
@@ -184,39 +203,62 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         shown: Shown<'_, T>,
         selected: bool,
     ) {
-        if shown.band {
-            crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+        match shown {
+            Shown::Band(band) => banded(ctx, line, band, selected),
+            Shown::Row(row) => self.row(ctx, line, spans, row, selected),
         }
+    }
+
+    fn row<A: App<Target = T>>(
+        &self,
+        ctx: &mut Ctx<'_, A>,
+        line: Rect,
+        spans: &[(f32, f32)],
+        row: Line<'_, T>,
+        selected: bool,
+    ) {
+        debug_assert!(
+            row.slots.len() <= spans.len(),
+            "a slot past the last column"
+        );
         if selected {
             crate::shape::chosen(ctx, line);
         }
-        if let Some(target) = shown.target {
+        if let Some(target) = row.target {
             hoverable(ctx, line, target);
-        }
-        if shown.band {
-            under(ctx, line, line.x + ctx.tokens.md, shown.cells);
-            return hairline(ctx, line, ctx.styles.line());
         }
         let mut rest = line;
         let first = rest.take_top(self.rows.first);
         let mut start = first.x + ctx.tokens.md;
-        let mut acts = shown.acts.into_iter();
-        for (at, (cell, (x, w))) in shown.cells.into_iter().zip(spans).enumerate() {
+        for (at, (slot, (x, w))) in row.slots.into_iter().zip(spans).enumerate() {
             let rect = Rect::new(*x, first.y, *w, first.h);
-            if let Some(act) = acts.next().flatten() {
-                act.draw(ctx, rect);
-                continue;
-            }
-            let (text, _) = cell.draw(ctx, rect, self.columns[at].end);
-            if at == 0 {
-                start = text;
+            match slot {
+                Slot::Act(act) => act.draw(ctx, rect),
+                Slot::Cell(cell) => {
+                    let (text, _) = cell.draw(ctx, rect, self.columns[at].end);
+                    if at == 0 {
+                        start = text;
+                    }
+                }
             }
         }
-        under(ctx, rest.take_top(self.rows.under), start, shown.under);
+        under(ctx, rest.take_top(self.rows.under), start, row.under);
         if self.rows.ruled && !selected {
             hairline(ctx, line, ctx.styles.line());
         }
     }
+}
+
+fn banded<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, band: Band<'_, A::Target>, selected: bool) {
+    crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+    if selected {
+        crate::shape::chosen(ctx, line);
+    }
+    if let Some(target) = band.target {
+        hoverable(ctx, line, target);
+    }
+    under(ctx, line, line.x + ctx.tokens.md, band.cells);
+    hairline(ctx, line, ctx.styles.line());
 }
 
 /// The second line's cells one after the other from `x`, a small gap between them.
@@ -233,14 +275,4 @@ fn under<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, x: f32, cells: Vec<Cell<'_>>)
             at = to + ctx.tokens.sm;
         }
     }
-}
-
-/// The first row on screen and the one past the last.
-fn visible(offset: f32, room: f32, height: f32, count: usize) -> (usize, usize) {
-    if height <= 0.0 {
-        return (0, 0);
-    }
-    let first = (offset / height).floor() as usize;
-    let last = ((offset + room) / height).ceil() as usize + 1;
-    (first.min(count), last.min(count))
 }
