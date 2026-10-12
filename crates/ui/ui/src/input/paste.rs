@@ -89,8 +89,7 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
         Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui, app),
         Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
         Some(Sink::Message) => {
-            let edit = groove_types::Edit::Insert(text.to_string());
-            return vec![Command::Workspace(workspace::Command::Message(edit))];
+            return vec![Command::Workspace(workspace::Command::Message(lines(text)))];
         }
         Some(Sink::Agent) => return typed_at_agent(text, app),
         Some(Sink::Terminal) => return typed_at_shell(text, app),
@@ -111,8 +110,7 @@ fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui, app: &AppState) -> Vec
         }
         Typed::Noting => {
             if let Some(noting) = session.noting.as_mut() {
-                let text = text.trim().replace('\r', "");
-                noting.buffer.edit(&groove_types::Edit::Insert(text));
+                noting.buffer.edit(&lines(text));
             }
         }
         Typed::Bar(term) => {
@@ -129,6 +127,11 @@ fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui, app: &AppState) -> Vec
         }
     }
     Vec::new()
+}
+
+/// Text for a buffer of many lines: as pasted, its carriage returns gone.
+fn lines(text: &str) -> groove_types::Edit {
+    groove_types::Edit::Insert(text.replace('\r', ""))
 }
 
 fn pasted_in_find(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Command> {

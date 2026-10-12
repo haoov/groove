@@ -213,3 +213,24 @@ fn a_paste_in_the_text_term_searches_as_typing_does() {
         })]
     );
 }
+
+#[test]
+fn the_note_and_the_commit_box_take_a_paste_alike_without_its_carriage_returns() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    ui.session.composing = true;
+    ui.focus = crate::Focus::Sidebar;
+    let asked = paste("  one\r\n  two\r\n", &mut ui, &app);
+    let kept = groove_types::Edit::Insert("  one\n  two\n".into());
+    assert_eq!(
+        asked,
+        vec![Command::Workspace(workspace::Command::Message(kept))]
+    );
+
+    let anchor = groove_types::Anchor::line("src/lib.rs", 0);
+    ui.session.noting = Some(crate::views::session::Noting::new(anchor));
+    paste("  one\r\n  two\r\n", &mut ui, &app);
+    let typed = ui.session.noting.as_ref().map(|one| one.buffer.text());
+    assert_eq!(typed.as_deref(), Some("  one\n  two\n"));
+}

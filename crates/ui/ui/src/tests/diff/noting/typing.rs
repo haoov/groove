@@ -93,7 +93,7 @@ fn a_paste_lands_at_the_caret_with_its_lines() {
     press(Key::Left, &mut ui, &app);
     let paste = Input::Paste("one\r\ntwo\n".into());
     handle(paste, &mut ui, &app, &crate::hit::Hits::default(), window());
-    assert_eq!(said(&ui), "aone\ntwob");
+    assert_eq!(said(&ui), "aone\ntwo\nb", "its final break too");
 }
 
 #[test]
