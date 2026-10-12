@@ -25,6 +25,14 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
         state.skill.again = true;
         return;
     }
+    if let Some(wanted) = state.skill.queued.take() {
+        state.skill.again = true;
+        return crate::config::shared::copy(state, spawner, wanted);
+    }
+    if state.skill.joining {
+        state.skill.again = true;
+        return;
+    }
     state.skill.listing = true;
     let generation = state.skill.generation;
     let dirs = dirs(state);
@@ -64,7 +72,7 @@ fn listed(
     if std::mem::take(&mut state.skill.unsharing) {
         return crate::config::shared::forget(state, services, spawner);
     }
-    if std::mem::take(&mut state.skill.again) {
+    if std::mem::take(&mut state.skill.again) || state.skill.queued.is_some() {
         list(state, spawner);
     }
 }

@@ -21,6 +21,8 @@ pub struct State {
     pub shared: Option<shared::Shared>,
     /// A shared repo is being copied, and why the last one was refused.
     pub joining: bool,
+    /// The repo to copy once the listing out lands.
+    pub queued: Option<groove_types::SharedConfig>,
     pub unshared: Option<String>,
     /// When a skill was last switched on or off.
     pub switched: Timestamp,

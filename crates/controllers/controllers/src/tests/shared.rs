@@ -127,6 +127,25 @@ fn a_listing_out_when_the_repo_is_let_go_brings_neither_it_nor_its_copy_back() {
 }
 
 #[test]
+fn a_join_asked_while_a_listing_is_out_copies_once_the_listing_lands() {
+    let (home, spawner, services, mut state) = fresh();
+    let url = origin(home.path(), "wiremind");
+    let late = SyncSpawner::new().unwrap();
+    let list = Cmd::Agent(crate::agent::Command::ListSkills);
+    dispatch(list, &mut state, &services, &late);
+    dispatch(Cmd::Config(join(&url)), &mut state, &services, &spawner);
+    let copy = home.path().join("data/shared");
+    assert!(!copy.exists(), "nothing copied while the listing is out");
+    until(&late, &services, &mut state, |_| late.idle());
+    until(&spawner, &services, &mut state, |_| spawner.idle());
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(
+        state.skill.shared.is_some() && copy.exists(),
+        "copied after"
+    );
+}
+
+#[test]
 fn the_copy_stays_while_the_config_without_it_cannot_be_written() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");

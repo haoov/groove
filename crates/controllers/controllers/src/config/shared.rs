@@ -16,6 +16,14 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
     }
     state.skill.joining = true;
     state.skill.unshared = None;
+    match state.skill.listing {
+        true => state.skill.queued = Some(wanted),
+        false => copy(state, spawner, wanted),
+    }
+}
+
+/// The repo copied in a job, alone on the shared copy.
+pub(crate) fn copy(state: &mut AppState, spawner: &dyn Spawner, wanted: SharedConfig) {
     let data = state.env.data_dir.clone();
     let job = state.begin(format!("copying {}", wanted.url));
     spawner.spawn(Box::pin(async move {
@@ -25,8 +33,16 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
                 state.end(job);
                 state.skill.joining = false;
                 match copied {
-                    Ok(copy) => joined(state, services, spawner, (wanted, copy)),
-                    Err(e) => refused(state, e),
+                    Ok(copy) => {
+                        state.skill.again = false;
+                        joined(state, services, spawner, (wanted, copy))
+                    }
+                    Err(e) => {
+                        refused(state, e);
+                        if std::mem::take(&mut state.skill.again) {
+                            crate::agent::skills::list(state, spawner);
+                        }
+                    }
                 }
             },
         ) as Continuation
