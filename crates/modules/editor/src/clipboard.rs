@@ -4,26 +4,59 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use groove_types::{Error, ErrorKind, Result};
 
-pub trait Clipboard: Send + Sync {
+/// The desktop's clipboard, or one of our own; every read and write runs off the caller's thread.
+#[derive(Clone)]
+pub struct Clipboard {
+    held: Arc<dyn Held>,
+}
+
+impl Clipboard {
+    /// The desktop's clipboard, or one of our own when it cannot be opened.
+    pub fn system() -> Self {
+        match System::open() {
+            Ok(system) => Self {
+                held: Arc::new(system),
+            },
+            Err(_) => Self::memory(),
+        }
+    }
+
+    /// A clipboard of its own, which nothing else can see.
+    pub fn memory() -> Self {
+        Self {
+            held: Arc::new(Memory::default()),
+        }
+    }
+
+    pub async fn read(&self) -> Option<String> {
+        let held = self.held.clone();
+        tokio::task::spawn_blocking(move || held.read())
+            .await
+            .ok()
+            .flatten()
+    }
+
+    pub async fn write(&self, text: &str) -> Result<()> {
+        let (held, text) = (self.held.clone(), text.to_string());
+        match tokio::task::spawn_blocking(move || held.write(&text)).await {
+            Ok(written) => written,
+            Err(e) => Err(Error::new(ErrorKind::Io, e.to_string())),
+        }
+    }
+}
+
+trait Held: Send + Sync {
     fn read(&self) -> Option<String>;
     fn write(&self, text: &str) -> Result<()>;
 }
 
-/// The desktop's clipboard, or one of our own when it cannot be opened.
-pub fn clipboard() -> Arc<dyn Clipboard> {
-    match System::open() {
-        Ok(system) => Arc::new(system),
-        Err(_) => Arc::new(Memory::default()),
-    }
-}
-
 /// The desktop's clipboard. Keep it alive: on Wayland and X11 the window that copied serves the paste.
-pub struct System {
+struct System {
     held: Mutex<arboard::Clipboard>,
 }
 
 impl System {
-    pub fn open() -> Result<Self> {
+    fn open() -> Result<Self> {
         let held = arboard::Clipboard::new().map_err(|e| failed("open the clipboard", &e))?;
         Ok(Self {
             held: Mutex::new(held),
@@ -31,7 +64,7 @@ impl System {
     }
 }
 
-impl Clipboard for System {
+impl Held for System {
     fn read(&self) -> Option<String> {
         self.held
             .lock()
@@ -49,13 +82,12 @@ impl Clipboard for System {
     }
 }
 
-/// A clipboard of its own, which nothing else can see.
 #[derive(Default)]
-pub struct Memory {
+struct Memory {
     held: Mutex<Option<String>>,
 }
 
-impl Clipboard for Memory {
+impl Held for Memory {
     fn read(&self) -> Option<String> {
         self.held
             .lock()

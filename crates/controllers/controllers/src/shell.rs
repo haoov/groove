@@ -136,8 +136,10 @@ fn open(
     let (sink, service) = (spawner.sink(), services.session.clone());
     spawner.spawn(Box::pin(async move {
         let hooks = hooks(&sink, &session, id);
-        let made = service.session_dir(&session).await;
-        let result = made.map(|cwd| spawn(spec(&program, cwd, size), palette, hooks));
+        let result = match service.session_dir(&session).await {
+            Ok(cwd) => Ok(spawn(spec(&program, cwd, size), palette, hooks).await),
+            Err(e) => Err(e),
+        };
         Box::new(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| match result {
                 Ok(result) => state.shell.started(&session, id, result),

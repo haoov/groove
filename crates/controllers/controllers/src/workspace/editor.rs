@@ -99,7 +99,7 @@ pub(crate) fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
     }
     let clipboard = services.clipboard.clone();
     spawner.spawn(Box::pin(async move {
-        let written = clipboard.write(&held);
+        let written = clipboard.write(&held).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = written {
                 state.failed(Error::new(ErrorKind::Io, e.to_string()));
@@ -112,7 +112,7 @@ pub(crate) fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
 pub(super) fn read_clipboard(services: &Services, spawner: &dyn Spawner) {
     let clipboard = services.clipboard.clone();
     spawner.spawn(Box::pin(async move {
-        let text = clipboard.read();
+        let text = clipboard.read().await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.pasted = Some(text.filter(|one| !one.is_empty()));
         }) as Continuation
@@ -126,7 +126,7 @@ pub(super) fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spa
     }
     let clipboard = services.clipboard.clone();
     spawner.spawn(Box::pin(async move {
-        let text = clipboard.read();
+        let text = clipboard.read().await;
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 if let Some(text) = text.filter(|text| !text.is_empty()) {

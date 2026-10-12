@@ -94,7 +94,7 @@ async fn services(
         task: groove_controllers::task_service::Service::new(plan, ledger),
         delivery: groove_controllers::delivery_service::Service::new(mrs, notes),
         config: groove_controllers::config_service::Keeper::default(),
-        clipboard: groove_controllers::workspace_service::clipboard(),
+        clipboard: groove_controllers::workspace_service::Clipboard::system(),
     })
 }
 

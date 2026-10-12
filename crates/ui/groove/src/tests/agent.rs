@@ -20,8 +20,14 @@ fn printing(state: &mut AppState, said: &str) {
         on_damage: Box::new(|| {}),
         on_exit: Box::new(|_| {}),
     };
-    let terminal =
-        Terminal::spawn(spec, groove_types::AnsiPalette::MOCHA, hooks).expect("a terminal");
+    let runtime = groove_controllers::SyncSpawner::new().expect("a runtime");
+    let terminal = runtime
+        .block_on(Terminal::spawn(
+            spec,
+            groove_types::AnsiPalette::MOCHA,
+            hooks,
+        ))
+        .expect("a terminal");
     let shown = || terminal.screen().cells.iter().any(|one| one.ch == 'h');
     for _ in 0..1000 {
         if shown() {

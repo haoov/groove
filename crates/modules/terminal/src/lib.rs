@@ -45,7 +45,14 @@ pub struct Terminal {
 }
 
 impl Terminal {
-    pub fn spawn(spec: PtySpec, palette: AnsiPalette, hooks: Hooks) -> Result<Self> {
+    pub async fn spawn(spec: PtySpec, palette: AnsiPalette, hooks: Hooks) -> Result<Self> {
+        match tokio::task::spawn_blocking(move || Self::start(spec, palette, hooks)).await {
+            Ok(started) => started,
+            Err(e) => Err(Error::Pty(e.to_string())),
+        }
+    }
+
+    fn start(spec: PtySpec, palette: AnsiPalette, hooks: Hooks) -> Result<Self> {
         let size = Arc::new(Size::new(spec.cols, spec.rows));
         let spawned = groove_exec::pty::spawn(spec)?;
         let pid = spawned.pty.pid();

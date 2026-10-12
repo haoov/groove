@@ -35,8 +35,14 @@ fn reading_mouse(app: &mut groove_controllers::AppState) {
         on_damage: Box::new(|| {}),
         on_exit: Box::new(|_| {}),
     };
-    let terminal =
-        Terminal::spawn(spec, groove_types::AnsiPalette::MOCHA, hooks).expect("a terminal");
+    let runtime = groove_controllers::SyncSpawner::new().expect("a runtime");
+    let terminal = runtime
+        .block_on(Terminal::spawn(
+            spec,
+            groove_types::AnsiPalette::MOCHA,
+            hooks,
+        ))
+        .expect("a terminal");
     for _ in 0..100 {
         if terminal.reads_mouse() {
             break;

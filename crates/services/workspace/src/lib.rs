@@ -6,7 +6,7 @@ pub use groove_diff::{
     Aligned, At, Changes, Derived, Document, Opened, UNSHOWN, aligned, column_of, display_of,
     from_documents, from_text, shown,
 };
-pub use groove_editor::{Clipboard, Memory, clipboard};
+pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;

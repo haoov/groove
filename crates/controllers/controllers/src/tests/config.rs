@@ -129,7 +129,9 @@ fn the_window_s_boundaries_are_kept_for_the_next_run() {
 #[test]
 fn the_clipboard_is_read_off_the_loop_and_held_for_the_surface() {
     let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    services.clipboard.write("pasted words").unwrap();
+    spawner
+        .block_on(services.clipboard.write("pasted words"))
+        .unwrap();
     let read = crate::workspace::Command::ReadClipboard;
     crate::dispatch(
         crate::Command::Workspace(read),

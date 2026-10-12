@@ -13,7 +13,9 @@ pub async fn login(
     hooks: Hooks,
 ) -> Result<Terminal, Error> {
     let spec = groove_agent_launch::login(home, cols, rows).await;
-    Terminal::spawn(spec, palette, hooks).map_err(|e| Error::new(ErrorKind::Agent, e.to_string()))
+    Terminal::spawn(spec, palette, hooks)
+        .await
+        .map_err(|e| Error::new(ErrorKind::Agent, e.to_string()))
 }
 
 /// The `claude` the environment check and a launch run.

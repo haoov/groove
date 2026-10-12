@@ -24,7 +24,13 @@ fn run(script: &str, cols: u16, rows: u16) -> (Terminal, mpsc::Receiver<u32>) {
             let _ = tx.send(code);
         }),
     };
-    (Terminal::spawn(spec, P, hooks).unwrap(), rx)
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
+    (
+        runtime.block_on(Terminal::spawn(spec, P, hooks)).unwrap(),
+        rx,
+    )
 }
 
 /// Until the screen shows `text`, which the child prints once it is ready.

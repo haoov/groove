@@ -165,9 +165,10 @@ fn what_is_held_is_copied_cut_and_pasted() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |_| {
-        services.clipboard.read().is_some()
+        spawner.block_on(services.clipboard.read()).is_some()
     });
-    assert_eq!(services.clipboard.read().as_deref(), Some("one"));
+    let copied = spawner.block_on(services.clipboard.read());
+    assert_eq!(copied.as_deref(), Some("one"));
     assert_eq!(buffer(&state), "one\ntwo\n", "a copy leaves the text alone");
 
     edit(&mut state, &services, &spawner, &hold);
@@ -208,7 +209,7 @@ fn a_copy_with_nothing_held_says_nothing() {
     );
     spawner.drain(&mut state, &services);
     assert_eq!(
-        services.clipboard.read(),
+        spawner.block_on(services.clipboard.read()),
         None,
         "the clipboard is untouched"
     );

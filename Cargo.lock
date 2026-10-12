@@ -1752,6 +1752,7 @@ dependencies = [
  "alacritty_terminal",
  "groove-exec",
  "groove-types",
+ "tokio",
 ]
 
 [[package]]

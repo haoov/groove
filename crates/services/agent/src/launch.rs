@@ -59,6 +59,7 @@ pub async fn launch(
         None => launch,
     };
     Terminal::spawn(launch.spec(cols, rows), palette, hooks)
+        .await
         .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
 }
 

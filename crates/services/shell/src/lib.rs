@@ -281,7 +281,8 @@ pub fn spec(program: &str, cwd: PathBuf, (cols, rows): (u16, u16)) -> PtySpec {
     }
 }
 
-pub fn spawn(spec: PtySpec, palette: AnsiPalette, hooks: Hooks) -> Result<Terminal, Error> {
+pub async fn spawn(spec: PtySpec, palette: AnsiPalette, hooks: Hooks) -> Result<Terminal, Error> {
     Terminal::spawn(spec, palette, hooks)
+        .await
         .map_err(|e| Error::new(groove_types::ErrorKind::Io, e.to_string()))
 }

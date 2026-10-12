@@ -54,29 +54,24 @@ fn a_write_to_a_directory_that_is_not_there_is_an_error_not_a_panic() {
     assert_eq!(failed.kind, ErrorKind::Io);
 }
 
-#[test]
-fn what_is_written_to_a_clipboard_of_our_own_reads_back() {
-    use crate::{Clipboard, Memory};
-
-    let clipboard = Memory::default();
-    assert_eq!(clipboard.read(), None, "nothing has been copied");
-    clipboard.write("fn one() {}").expect("written");
-    assert_eq!(clipboard.read().as_deref(), Some("fn one() {}"));
-    clipboard.write("something else").expect("written");
-    assert_eq!(clipboard.read().as_deref(), Some("something else"));
+#[tokio::test]
+async fn what_is_written_to_a_clipboard_of_our_own_reads_back() {
+    let clipboard = crate::Clipboard::memory();
+    assert_eq!(clipboard.read().await, None, "nothing has been copied");
+    clipboard.write("fn one() {}").await.expect("written");
+    assert_eq!(clipboard.read().await.as_deref(), Some("fn one() {}"));
+    clipboard.write("something else").await.expect("written");
+    assert_eq!(clipboard.read().await.as_deref(), Some("something else"));
 }
 
-#[test]
-fn a_clipboard_is_shared_across_threads() {
-    use crate::{Clipboard, Memory};
-    use std::sync::Arc;
-
-    let clipboard = Arc::new(Memory::default());
+#[tokio::test]
+async fn a_clipboard_is_shared_by_its_clones() {
+    let clipboard = crate::Clipboard::memory();
     let writer = clipboard.clone();
-    std::thread::spawn(move || writer.write("from another thread").expect("written"))
-        .join()
-        .expect("the thread ends");
-    assert_eq!(clipboard.read().as_deref(), Some("from another thread"));
+    tokio::spawn(async move { writer.write("from another task").await.expect("written") })
+        .await
+        .expect("the task ends");
+    assert_eq!(clipboard.read().await.as_deref(), Some("from another task"));
 }
 
 #[test]
