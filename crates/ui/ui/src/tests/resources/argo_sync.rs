@@ -176,7 +176,7 @@ fn a_header_sorts_each_kind_s_rows_and_leaves_the_list_s_order_be() {
     let (api, worker) = (at(&app, &ui, "pythie-api"), at(&app, &ui, "pythie-worker"));
     assert!(api > worker, "the second click turns the order round");
     let tab = ui.session.resources.tab().expect("its tab");
-    assert_eq!(tab.argo.sort, Some(("NAME".to_string(), true)));
+    assert_eq!(tab.sort, Some(("NAME".to_string(), true)));
     assert_eq!(
         ui.session.resources.sort, None,
         "the list keeps its own order"

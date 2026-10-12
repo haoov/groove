@@ -38,7 +38,7 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
         }
         Target::ResourceSort(label) => {
             let sort = match held.tab_mut() {
-                Some(tab) => &mut tab.argo.sort,
+                Some(tab) => &mut tab.sort,
                 None => &mut held.sort,
             };
             *sort = match sort.take() {
@@ -166,8 +166,8 @@ pub(super) fn held(
     let open = app.session.selected();
     let held = &ui.session.resources;
     let kind = match held.tab() {
-        Some(_) => Some(resources::ARGO_WIDTHS.to_string()),
-        None => open.and_then(|open| resources::kind(app, open, held).map(|one| one.plural)),
+        Some(_) => Some(None),
+        None => open.and_then(|open| resources::kind(app, open, held).map(|one| Some(one.plural))),
     };
     let header = hits.rect_of(&Target::ResourceSort(label.clone()));
     if let (Some(kind), Some(header)) = (kind, header) {
@@ -189,6 +189,10 @@ pub(super) fn dragged(ui: &mut Ui, x: f32, metrics: Metrics) {
     };
     let least = metrics.tokens().icon * 2.0;
     let width = (drag.width + x - drag.from).max(least);
-    let widths = ui.session.resources.widths.entry(drag.kind).or_default();
+    let held = &mut ui.session.resources;
+    let widths = match drag.kind {
+        Some(kind) => held.widths.entry(kind).or_default(),
+        None => &mut held.tab_widths,
+    };
     widths.insert(drag.label, width);
 }

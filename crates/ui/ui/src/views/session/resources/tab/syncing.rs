@@ -34,7 +34,7 @@ pub(super) fn draw(
     ctx: &mut Ctx,
     body: Rect,
     (tab, part): (&Opened, &AppPart),
-    dragged: Option<&BTreeMap<String, f32>>,
+    dragged: &BTreeMap<String, f32>,
 ) {
     let row = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [line, room] = column_in(body, [row, Spec::fill()]);

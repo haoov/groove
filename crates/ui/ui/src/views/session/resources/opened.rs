@@ -66,6 +66,8 @@ pub struct Opened {
     pub view: super::View,
     pub logs: super::LogsUi,
     pub argo: super::ArgoUi,
+    /// The column the rows of each group sort by, and whether descending.
+    pub sort: Option<(String, bool)>,
     /// The groups and rows folded against how they start.
     pub toggled: std::collections::BTreeMap<String, bool>,
     /// The sections folded shut; the annotations, the relations and the events until opened.
@@ -84,6 +86,7 @@ impl Opened {
             view: super::View::Describe,
             logs: super::LogsUi::default(),
             argo: super::ArgoUi::default(),
+            sort: None,
             toggled: std::collections::BTreeMap::new(),
             shut: [Section::Annotations, Section::Relations, Section::Events].into(),
             scroll: 0.0,

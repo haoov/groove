@@ -31,8 +31,10 @@ pub struct ResourcesUi {
     pub folded: BTreeSet<groove_types::KindHeading>,
     /// The column the rows are ordered by, and whether downwards.
     pub sort: Option<(String, bool)>,
-    /// The widths dragged, by kind, then by column.
+    /// The widths dragged in the list, by kind, then by column.
     pub widths: std::collections::BTreeMap<String, std::collections::BTreeMap<String, f32>>,
+    /// The widths dragged in an object's tab, by column.
+    pub tab_widths: std::collections::BTreeMap<String, f32>,
     /// The list's order as the last frame built it.
     pub kept: super::list::Kept,
     /// The objects open in tabs beside the list, and the one shown; none is the list.
@@ -43,10 +45,10 @@ pub struct ResourcesUi {
     pub kinds: f32,
 }
 
-/// A column's edge held: its kind, its label, where the press was, and its width then.
+/// A column's edge held: its kind, none in an object's tab; its label, where the press was, and its width then.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dragged {
-    pub kind: String,
+    pub kind: Option<String>,
     pub label: String,
     pub from: f32,
     pub width: f32,

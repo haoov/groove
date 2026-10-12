@@ -23,7 +23,6 @@ use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, Tab, Text};
 
-pub use grouped::WIDTHS as ARGO_WIDTHS;
 pub use wants::{due, wants};
 
 use super::View;
@@ -46,7 +45,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
         View::Describe => describe::draw(ctx, rest, app, (tab, object)),
         View::Resources => match object.app.as_deref() {
             Some(part) => {
-                let dragged = ui.session.resources.widths.get(ARGO_WIDTHS);
+                let dragged = &ui.session.resources.tab_widths;
                 managed::draw(ctx, rest, (app, tab, part), dragged)
             }
             None => describe::draw(ctx, rest, app, (tab, object)),

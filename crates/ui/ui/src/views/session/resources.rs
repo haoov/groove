@@ -16,4 +16,4 @@ pub use opened::{Link, Opens, Section, row_link};
 pub use scope::{Dragged, Pick, ResourcesUi, contexts, held, kind, offered, wants};
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, shown};
-pub use tab::{ARGO_WIDTHS, due as tab_due, wants as tab_wants};
+pub use tab::{due as tab_due, wants as tab_wants};
