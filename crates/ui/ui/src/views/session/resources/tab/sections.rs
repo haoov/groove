@@ -244,7 +244,8 @@ pub(super) fn pair(
 /// One event: a warning's mark, its reason, how often, how long ago, and what it says.
 pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow, last: Option<&str>) {
     let narrow = Spec::default().width(ctx.tokens.lg * 2.0);
-    let wide = Spec::default().width(ctx.tokens.aside_mid);
+    let reason = ctx.tokens.aside_mid * ctx.tokens.text / ctx.tokens.small;
+    let wide = Spec::default().width(reason);
     let mark = Spec::default().width(ctx.tokens.icon);
     let [warned, reason, count, age, message] =
         row_in(rect, [mark, wide, narrow, narrow, Spec::fill()]);

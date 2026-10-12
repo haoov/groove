@@ -318,3 +318,31 @@ fn behind_an_object_s_tab_the_list_lets_its_watchers_go_and_its_ages_rest() {
     assert!(!asked.contains(&tick), "no tick for rows nobody sees");
     assert_eq!(crate::ages_due(&app, &ui), None, "and no wake for them");
 }
+
+#[test]
+fn an_event_reason_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
+    let (mut app, mut ui) = opened();
+    let key = link("api-0", pods()).key();
+    lands(&mut app, &key, vec![crashing()]);
+    let events = FollowKey {
+        fields: Some("involvedObject.uid=paxone/api-0".into()),
+        kind: kind("", "Event", "events", true),
+        ..key.clone()
+    };
+    let reason = "FailedCreatePodSandBoxAgain";
+    let event = Described {
+        event: Some(EventRow {
+            warning: true,
+            reason: reason.into(),
+            count: 1,
+            last: None,
+            message: "m".into(),
+            about: "pod/api-0".into(),
+        }),
+        ..base("e1", "e1")
+    };
+    lands(&mut app, &events, vec![event]);
+    unfold_events(&app, &mut ui);
+    let texts = wide(&app, &ui);
+    assert!(texts.iter().any(|one| one == reason), "{texts:?}");
+}
