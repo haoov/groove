@@ -58,7 +58,7 @@ pub fn logs(
                 }
                 Err(e) => {
                     send(Logged::Failed(e.to_string()));
-                    backoff.after(&e)
+                    backoff.after_logs(&e, key.previous)
                 }
             };
             tokio::select! {
