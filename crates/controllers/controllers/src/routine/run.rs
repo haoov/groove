@@ -3,7 +3,7 @@
 use groove_routine_service::runs::{Deliver, Run, deliver};
 
 use crate::session::FIRST_SIZE;
-use crate::{AppState, Continuation, Services, Spawner, agent};
+use crate::{AppState, Spawner, agent};
 
 /// The run's routine asked of its agent, as its kind wants.
 pub(super) fn send(state: &mut AppState, spawner: &dyn Spawner, run: &Run) {
@@ -24,17 +24,11 @@ pub(super) fn send(state: &mut AppState, spawner: &dyn Spawner, run: &Run) {
 }
 
 /// A new conversation written for the session, then its agent asked the words.
-fn afresh(state: &AppState, spawner: &dyn Spawner, id: groove_types::SessionId, words: String) {
-    let dir = agent::launch_dir(state);
-    spawner.spawn(Box::pin(async move {
-        let written = groove_agent_service::fresh(&dir, id.as_str()).await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
-                if let Err(e) = written {
-                    state.failed(e);
-                }
-                agent::asking(state, spawner, id, FIRST_SIZE, Some(words));
-            },
-        ) as Continuation
-    }));
+fn afresh(state: &mut AppState, spawner: &dyn Spawner, id: groove_types::SessionId, words: String) {
+    let (dir, at) = (agent::launch_dir(state), id.clone());
+    let write = async move { groove_agent_service::fresh(&dir, at.as_str()).await };
+    let asked = id.clone();
+    agent::rewrite(state, spawner, id, write, move |state, spawner, _| {
+        agent::asking(state, spawner, asked, FIRST_SIZE, Some(words));
+    });
 }

@@ -1,5 +1,6 @@
 //! The agent capability: each session's agent and its asks.
 
+mod files;
 pub(crate) mod launch;
 mod listed;
 
@@ -21,6 +22,7 @@ pub use groove_types::Screen;
 
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
+pub use files::{Held, Turn};
 pub use launch::{LaunchPaths, launch, palette};
 
 /// One session's agent. `terminal` is `None` when the launch failed.
@@ -44,6 +46,7 @@ pub struct State {
     pending: Vec<(SessionId, u64)>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
+    writes: Vec<files::Line>,
 }
 
 impl State {

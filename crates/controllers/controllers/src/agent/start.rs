@@ -1,7 +1,7 @@
 //! An agent launched for its session: the command line, its paths, and what its terminal reports.
 
-use groove_agent_service::{Event as AgentEvent, Hooks, LaunchPaths, launch, palette};
-use groove_types::{Session, SessionId, Timestamp};
+use groove_agent_service::{Event as AgentEvent, Held, Hooks, LaunchPaths, launch, palette};
+use groove_types::{Error, Session, SessionId, Timestamp};
 
 use super::skills;
 use crate::spawn::coalesced;
@@ -20,6 +20,9 @@ pub(crate) fn asking(
     size: (u16, u16),
     prompt: Option<String>,
 ) {
+    let Some((size, prompt)) = state.agent.hold(&id, (size, prompt)) else {
+        return;
+    };
     let Some(session) = state.session.get(&id).map(|o| o.session.clone()) else {
         return;
     };
@@ -69,6 +72,31 @@ fn paths(state: &AppState) -> LaunchPaths {
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
     }
+}
+
+/// A write of `session`'s launch files; a start asked meanwhile waits, then `then` runs.
+pub(crate) fn rewrite(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    session: SessionId,
+    write: impl Future<Output = Result<(), Error>> + Send + 'static,
+    then: impl FnOnce(&mut AppState, &dyn Spawner, Option<Held>) + Send + 'static,
+) {
+    let mut turn = state.agent.writing(&session);
+    spawner.spawn(Box::pin(async move {
+        turn.wait().await;
+        let written = write.await;
+        turn.end();
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                let held = state.agent.written(&session);
+                if let Err(e) = written {
+                    state.failed(e);
+                }
+                then(state, spawner, held);
+            },
+        ) as Continuation
+    }));
 }
 
 fn shared_copy(state: &AppState) -> Option<std::path::PathBuf> {

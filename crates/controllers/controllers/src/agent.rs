@@ -10,7 +10,7 @@ use groove_types::{ApprovalId, SessionId};
 use crate::{AppState, Services, Spawner};
 
 pub use start::start;
-pub(crate) use start::{asking, launch_dir};
+pub(crate) use start::{asking, launch_dir, rewrite};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -176,17 +176,22 @@ fn auto_approve(
     crate::session::set_auto_approve(services, spawner, session, on);
 }
 
-/// The session's launch files taken away.
-pub(crate) fn forget(state: &AppState, spawner: &dyn Spawner, session: &SessionId) {
+/// The session's launch files taken away; a start asked meanwhile runs after.
+pub(crate) fn forget(state: &mut AppState, spawner: &dyn Spawner, session: &SessionId) {
     let (dir, id) = (launch_dir(state), session.clone());
-    spawner.spawn(Box::pin(async move {
-        let forgot = groove_agent_service::forget(&dir, id.as_str()).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if let Err(e) = forgot {
-                state.failed(e);
+    let write = async move { groove_agent_service::forget(&dir, id.as_str()).await };
+    let id = session.clone();
+    rewrite(
+        state,
+        spawner,
+        session.clone(),
+        write,
+        move |state, spawner, held| {
+            if let Some((size, prompt)) = held {
+                asking(state, spawner, id, size, prompt);
             }
-        }) as crate::Continuation
-    }));
+        },
+    );
 }
 
 pub fn end(state: &mut AppState, session: &SessionId) {

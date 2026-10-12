@@ -138,19 +138,26 @@ fn became(
 }
 
 /// The explorer's conversation handed to `to`, then `to`'s agent started.
-fn hand_over(state: &AppState, spawner: &dyn Spawner, explorer: &SessionId, to: &SessionId) {
+fn hand_over(state: &mut AppState, spawner: &dyn Spawner, explorer: &SessionId, to: &SessionId) {
     let dir = crate::agent::launch_dir(state);
+    let (from, at) = (explorer.clone(), to.clone());
+    let mut turn = state.agent.writing(explorer);
+    let write = async move {
+        turn.wait().await;
+        let handed = groove_agent_service::hand_over(&dir, from.as_str(), at.as_str()).await;
+        let forgot = groove_agent_service::forget(&dir, from.as_str()).await;
+        turn.end();
+        handed.and(forgot)
+    };
     let (explorer, to) = (explorer.clone(), to.clone());
-    spawner.spawn(Box::pin(async move {
-        let handed = groove_agent_service::hand_over(&dir, explorer.as_str(), to.as_str()).await;
-        let forgot = groove_agent_service::forget(&dir, explorer.as_str()).await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
-                for e in [handed, forgot].into_iter().filter_map(Result::err) {
-                    state.failed(e);
-                }
-                crate::agent::start(state, spawner, to, crate::session::FIRST_SIZE);
-            },
-        ) as crate::Continuation
-    }));
+    crate::agent::rewrite(
+        state,
+        spawner,
+        to.clone(),
+        write,
+        move |state, spawner, _| {
+            state.agent.written(&explorer);
+            crate::agent::start(state, spawner, to, crate::session::FIRST_SIZE);
+        },
+    );
 }
