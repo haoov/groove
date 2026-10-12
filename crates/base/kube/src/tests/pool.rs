@@ -70,6 +70,26 @@ async fn requests_on_one_context_share_its_client_and_sign_in_once() {
 }
 
 #[tokio::test]
+async fn requests_on_a_cold_context_at_once_wait_for_one_client() {
+    let server = answering(200).await;
+    let (alone, together) = (tempfile::tempdir(), tempfile::tempdir());
+    let (alone, together) = (alone.expect("a temp dir"), together.expect("a temp dir"));
+    let one = [plugged(alone.path(), "cold", &server.uri())];
+    asked(&one, "cold").await.expect("a version");
+    let paths = [plugged(together.path(), "cold", &server.uri())];
+    let (a, b, c, d) = tokio::join!(
+        asked(&paths, "cold"),
+        asked(&paths, "cold"),
+        asked(&paths, "cold"),
+        asked(&paths, "cold")
+    );
+    for answer in [a, b, c, d] {
+        answer.expect("a version");
+    }
+    assert_eq!(runs(together.path()), runs(alone.path()));
+}
+
+#[tokio::test]
 async fn a_refused_sign_in_drops_the_client_and_the_next_request_signs_in_again() {
     let server = answering(401).await;
     let dir = tempfile::tempdir().expect("a temp dir");
