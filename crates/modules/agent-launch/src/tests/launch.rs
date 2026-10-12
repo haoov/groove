@@ -74,8 +74,8 @@ fn a_first_launch_names_the_session_and_a_second_resumes_it() {
     assert_eq!(&second.args[..2], &["--resume".to_string(), uuid]);
 }
 
-#[test]
-fn a_session_handed_an_explorer_s_conversation_resumes_it() {
+#[tokio::test]
+async fn a_session_handed_an_explorer_s_conversation_resumes_it() {
     let root = tempfile::tempdir().unwrap();
     let explorer = explorer();
     let uuid = session_uuid(explorer.id.as_str());
@@ -91,7 +91,9 @@ fn a_session_handed_an_explorer_s_conversation_resumes_it() {
         },
         created_at: Timestamp::new(0),
     };
-    crate::hand_over(root.path(), explorer.id.as_str(), task.id.as_str()).unwrap();
+    crate::hand_over(root.path(), explorer.id.as_str(), task.id.as_str())
+        .await
+        .unwrap();
     let launch = Launch::plan(&task, &paths(root.path()), &[], None).unwrap();
     assert_eq!(
         &launch.args[..2],
@@ -100,14 +102,16 @@ fn a_session_handed_an_explorer_s_conversation_resumes_it() {
     );
 }
 
-#[test]
-fn forgetting_a_session_takes_its_launch_files_and_no_other() {
+#[tokio::test]
+async fn forgetting_a_session_takes_its_launch_files_and_no_other() {
     let root = tempfile::tempdir().unwrap();
     Launch::plan(&explorer(), &paths(root.path()), &[], None).unwrap();
     let explorer = explorer().id;
-    crate::hand_over(root.path(), explorer.as_str(), "gh-haoov-groove-50").unwrap();
-    crate::forget(root.path(), explorer.as_str()).unwrap();
-    crate::forget(root.path(), explorer.as_str()).unwrap();
+    crate::hand_over(root.path(), explorer.as_str(), "gh-haoov-groove-50")
+        .await
+        .unwrap();
+    crate::forget(root.path(), explorer.as_str()).await.unwrap();
+    crate::forget(root.path(), explorer.as_str()).await.unwrap();
     let left: Vec<String> = std::fs::read_dir(root.path())
         .unwrap()
         .map(|one| one.unwrap().file_name().to_string_lossy().into_owned())

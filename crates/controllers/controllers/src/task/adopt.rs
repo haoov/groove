@@ -128,18 +128,29 @@ fn became(
     worktrees: Vec<Worktree>,
     read: Fetched,
 ) {
-    let launch_dir = crate::agent::launch_dir(state);
-    if let Err(e) =
-        groove_agent_service::hand_over(&launch_dir, explorer.as_str(), session.id.as_str())
-    {
-        state.failed(e);
-    }
-    crate::agent::forget(state, explorer);
     let id = session.id.clone();
+    hand_over(state, spawner, explorer, &id);
     state.session.promoted(explorer, session, worktrees);
     let external_id = read.task.external_id.clone();
     state.task.synced(read);
     super::status::set(state, spawner, &external_id, StatusIntent::InProgress);
     crate::workspace::follow(state, spawner);
-    crate::agent::start(state, spawner, id, crate::session::FIRST_SIZE);
+}
+
+/// The explorer's conversation handed to `to`, then `to`'s agent started.
+fn hand_over(state: &AppState, spawner: &dyn Spawner, explorer: &SessionId, to: &SessionId) {
+    let dir = crate::agent::launch_dir(state);
+    let (explorer, to) = (explorer.clone(), to.clone());
+    spawner.spawn(Box::pin(async move {
+        let handed = groove_agent_service::hand_over(&dir, explorer.as_str(), to.as_str()).await;
+        let forgot = groove_agent_service::forget(&dir, explorer.as_str()).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                for e in [handed, forgot].into_iter().filter_map(Result::err) {
+                    state.failed(e);
+                }
+                crate::agent::start(state, spawner, to, crate::session::FIRST_SIZE);
+            },
+        ) as crate::Continuation
+    }));
 }

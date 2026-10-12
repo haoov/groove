@@ -22,6 +22,16 @@ pub struct LaunchPaths {
     pub tools: Option<Server>,
 }
 
+impl crate::State {
+    /// Whether `session`'s agent has a terminal it has not exited.
+    pub fn alive(&self, session: &groove_types::SessionId) -> bool {
+        let exited = |one: &groove_types::SessionActivity| {
+            matches!(one.status, groove_types::AgentStatus::Exited { .. })
+        };
+        self.terminal(session).is_some() && !self.activity(session).is_some_and(exited)
+    }
+}
+
 /// Plans the command line and spawns it on a terminal of `cols` by `rows`, `prompt` its first message.
 pub fn launch(
     session: &Session,

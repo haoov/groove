@@ -176,10 +176,17 @@ fn auto_approve(
     crate::session::set_auto_approve(services, spawner, session, on);
 }
 
-pub(crate) fn forget(state: &mut AppState, session: &SessionId) {
-    if let Err(e) = groove_agent_service::forget(&launch_dir(state), session.as_str()) {
-        state.failed(e);
-    }
+/// The session's launch files taken away.
+pub(crate) fn forget(state: &AppState, spawner: &dyn Spawner, session: &SessionId) {
+    let (dir, id) = (launch_dir(state), session.clone());
+    spawner.spawn(Box::pin(async move {
+        let forgot = groove_agent_service::forget(&dir, id.as_str()).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = forgot {
+                state.failed(e);
+            }
+        }) as crate::Continuation
+    }));
 }
 
 pub fn end(state: &mut AppState, session: &SessionId) {

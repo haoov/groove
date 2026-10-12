@@ -4,6 +4,27 @@ use groove_types::{Action, Routine, RoutineKind, RoutinesConfig, SessionId};
 
 use super::{Fired, Run, Runs};
 
+/// How a run's words reach its agent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Deliver {
+    /// Typed into the waiting agent.
+    Type,
+    /// Asked of a new agent on the session's conversation.
+    Ask,
+    /// Asked of a new agent on a new conversation.
+    Fresh,
+    Nothing,
+}
+
+pub fn deliver(kind: RoutineKind, alive: bool) -> Deliver {
+    match (kind, alive) {
+        (RoutineKind::Bound, true) => Deliver::Type,
+        (RoutineKind::Bound, false) => Deliver::Ask,
+        (RoutineKind::Standalone, _) => Deliver::Fresh,
+        (RoutineKind::Action, _) => Deliver::Nothing,
+    }
+}
+
 /// One open session as the rules weigh it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Place {

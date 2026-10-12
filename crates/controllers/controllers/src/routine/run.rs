@@ -1,10 +1,9 @@
 //! A run's words reaching its agent: a fresh agent asked them, or typed into the one waiting.
 
-use groove_agent_service::runs::Run;
-use groove_types::{AgentStatus, RoutineKind};
+use groove_agent_service::runs::{Deliver, Run, deliver};
 
 use crate::session::FIRST_SIZE;
-use crate::{AppState, Spawner, agent};
+use crate::{AppState, Continuation, Services, Spawner, agent};
 
 /// The run's routine asked of its agent, as its kind wants.
 pub(super) fn send(state: &mut AppState, spawner: &dyn Spawner, run: &Run) {
@@ -13,19 +12,29 @@ pub(super) fn send(state: &mut AppState, spawner: &dyn Spawner, run: &Run) {
     };
     let words = groove_agent_service::routines::prompt(&routine, run.trigger, &run.about);
     let id = run.session.clone();
-    let status = state.agent.activity(&id).map(|one| &one.status);
-    let alive =
-        state.agent.terminal(&id).is_some() && !matches!(status, Some(AgentStatus::Exited { .. }));
-    match (routine.kind, alive) {
-        (RoutineKind::Bound, true) => agent::skills::typed(state, spawner, &id, &words),
-        (RoutineKind::Bound, false) => agent::asking(state, spawner, id, FIRST_SIZE, Some(words)),
-        (RoutineKind::Standalone, _) => {
+    match deliver(routine.kind, state.agent.alive(&id)) {
+        Deliver::Type => agent::skills::typed(state, spawner, &id, &words),
+        Deliver::Ask => agent::asking(state, spawner, id, FIRST_SIZE, Some(words)),
+        Deliver::Fresh => {
             agent::end(state, &id);
-            if let Err(e) = groove_agent_service::fresh(&agent::launch_dir(state), id.as_str()) {
-                state.failed(e);
-            }
-            agent::asking(state, spawner, id, FIRST_SIZE, Some(words));
+            afresh(state, spawner, id, words);
         }
-        (RoutineKind::Action, _) => {}
+        Deliver::Nothing => {}
     }
+}
+
+/// A new conversation written for the session, then its agent asked the words.
+fn afresh(state: &AppState, spawner: &dyn Spawner, id: groove_types::SessionId, words: String) {
+    let dir = agent::launch_dir(state);
+    spawner.spawn(Box::pin(async move {
+        let written = groove_agent_service::fresh(&dir, id.as_str()).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                if let Err(e) = written {
+                    state.failed(e);
+                }
+                agent::asking(state, spawner, id, FIRST_SIZE, Some(words));
+            },
+        ) as Continuation
+    }));
 }

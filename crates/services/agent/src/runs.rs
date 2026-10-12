@@ -8,7 +8,7 @@ use std::collections::{BTreeSet, VecDeque};
 
 use groove_types::{SessionId, Timestamp, Trigger};
 
-pub use rules::{Place, Pressed, Sessions, target};
+pub use rules::{Deliver, Place, Pressed, Sessions, deliver, target};
 pub use seen::Seen;
 pub use turn::Ending;
 
