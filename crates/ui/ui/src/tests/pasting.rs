@@ -195,3 +195,19 @@ fn the_commit_box_takes_no_paste_once_another_pane_has_the_keys() {
         "the agent takes it: {asked:?}"
     );
 }
+
+#[test]
+fn a_paste_in_the_text_term_searches_as_typing_does() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    ui.session.bar.open(Term::Text);
+    let asked = paste("needle", &mut ui, &app);
+    assert_eq!(
+        asked,
+        vec![Command::Workspace(workspace::Command::Grep {
+            query: "needle".into(),
+            under: String::new(),
+        })]
+    );
+}

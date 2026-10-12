@@ -341,3 +341,20 @@ fn a_click_on_the_find_bar_takes_the_keyboard_back() {
     assert!(find.typing, "the keyboard is in it again");
     assert_eq!(find.query.text(), "one", "with what it held");
 }
+
+#[test]
+fn a_paste_in_the_bar_finds_as_typing_does() {
+    let app = app();
+    let mut ui = on_code();
+    press(Key::Char('f'), ctrl(), &mut ui, &app);
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    crate::input::handle(
+        crate::input::Input::Paste("one".into()),
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    let find = ui.session.find.as_ref().expect("the bar stands");
+    assert_eq!(find.count(), "1 / 3");
+}

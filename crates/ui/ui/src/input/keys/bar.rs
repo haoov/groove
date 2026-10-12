@@ -44,7 +44,7 @@ pub(super) fn finding(
         key if keymap.is(Action::FindPrevious, key, mods) => find.step(false),
         Key::Enter if find.typing => find.typing = false,
         key if find.typing => match typing(key, mods, &mut find.query) {
-            true => searched(ui, app, view),
+            true => return Some(refound(ui, app, seen)),
             false => return Some(Vec::new()),
         },
         _ => return None,
@@ -70,6 +70,16 @@ pub(super) fn typing(key: Key, mods: Modifiers, field: &mut Field) -> bool {
 fn took(field: &mut Field, act: impl FnOnce(&mut Field)) -> bool {
     act(field);
     true
+}
+
+/// The find bar's text changed: its matches read again, the first one reached.
+pub(in crate::input) fn refound(
+    ui: &mut Ui,
+    app: &AppState,
+    seen: (&Hits, Metrics),
+) -> Vec<Command> {
+    searched(ui, app, ui.session.face());
+    reached(ui, app, seen)
 }
 
 /// The matches read again for what the bar now holds.
@@ -194,7 +204,7 @@ fn other(term: Term) -> Term {
 }
 
 /// What the bar asks for: the worktree's files, and the search while it holds text.
-fn searches(ui: &Ui) -> Vec<Command> {
+pub(in crate::input) fn searches(ui: &Ui) -> Vec<Command> {
     let bar = &ui.session.bar;
     let mut asks = Vec::new();
     if bar.path.text().chars().count() == 1 {

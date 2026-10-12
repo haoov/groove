@@ -179,3 +179,21 @@ fn the_kind_listed_stands_on_the_held_ground_between_the_rules() {
         "a quad on the held ground"
     );
 }
+
+#[test]
+fn a_paste_in_the_kind_search_stands_on_the_first_kind_as_typing_does() {
+    use crate::views::session::resources::{Line, shown};
+    let (app, mut ui) = listing();
+    (ui.session.resources.filtering, ui.session.resources.cursor) = (true, Some(0));
+    crate::input::handle(
+        crate::input::Input::Paste("dep".into()),
+        &mut ui,
+        &app,
+        &crate::hit::Hits::default(),
+        window(),
+    );
+    let lines = shown(&app, &ui);
+    let first = lines.iter().position(|one| matches!(one, Line::Kind(_)));
+    assert_eq!(ui.session.resources.cursor, first);
+    assert_ne!(first, Some(0), "a heading stands first");
+}

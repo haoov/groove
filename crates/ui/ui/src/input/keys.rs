@@ -24,10 +24,12 @@ use crate::{Focus, Surface, Ui};
 pub use agent::encode;
 use agent::{to_agent, to_shell};
 use bar::{finding, in_bar, opened, typing};
+pub(in crate::input) use bar::{refound, searches};
 use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
+pub(in crate::input) use resources::{kinds_changed, search_changed};
 pub(in crate::input) use scope::pick;
 
 pub(super) fn key_input(

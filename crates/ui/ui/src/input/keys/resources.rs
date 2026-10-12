@@ -52,7 +52,7 @@ pub(super) fn in_resources(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppStat
         }
         key => {
             super::bar::typing(key, mods, &mut held.search);
-            held.scroll = 0.0;
+            search_changed(ui);
         }
     }
     Vec::new()
@@ -85,11 +85,20 @@ fn in_kinds(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Comma
         Key::Escape => (held.filtering, held.cursor) = (false, None),
         key => {
             super::bar::typing(key, mods, &mut held.filter);
-            let lines = crate::views::session::resources::shown(app, ui);
-            let first = lines.iter().position(|one| matches!(one, Line::Kind(_)));
-            ui.session.resources.cursor = first;
-            return Vec::new();
+            kinds_changed(ui, app);
         }
     }
     Vec::new()
+}
+
+/// The list search's text changed: the rows back at the top.
+pub(in crate::input) fn search_changed(ui: &mut Ui) {
+    ui.session.resources.scroll = 0.0;
+}
+
+/// The kind search's text changed: the cursor on the first kind it keeps.
+pub(in crate::input) fn kinds_changed(ui: &mut Ui, app: &AppState) {
+    let lines = crate::views::session::resources::shown(app, ui);
+    let first = lines.iter().position(|one| matches!(one, Line::Kind(_)));
+    ui.session.resources.cursor = first;
 }

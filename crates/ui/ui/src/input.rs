@@ -2,17 +2,17 @@
 
 pub(crate) mod follow;
 mod keys;
+mod paste;
 mod pointer;
 mod rest;
 mod scroll;
 mod typed;
 
-use groove_controllers::{AppState, Command, agent, workspace};
+use groove_controllers::{AppState, Command};
 
 use crate::hit::{Cursor, Hits};
-use crate::{Focus, Held, Surface, Ui};
+use crate::{Held, Ui};
 use groove_ui_kit::base::ctx::Metrics;
-use typed::Typed;
 
 pub use follow::follow;
 pub use keys::encode;
@@ -107,119 +107,6 @@ impl Delta {
     }
 }
 
-/// The clipboard into whatever holds the keyboard: a field here, a buffer by command.
-fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    if text.trim().is_empty() {
-        return Vec::new();
-    }
-    if let Some(palette) = ui.palette_mut() {
-        palette.query.paste(text);
-        palette.selected = 0;
-        return Vec::new();
-    }
-    if ui.settings.open {
-        return pasted_in_settings(text, ui, app);
-    }
-    match ui.showing(app) {
-        Surface::Board => {
-            if ui.board.typing {
-                ui.board.filter.paste(text);
-                ui.board.offer = 0;
-            }
-            Vec::new()
-        }
-        Surface::Session => pasted_in_session(text, ui, app),
-    }
-}
-
-/// The clipboard into the session's field that has the keys, else the pane that has them.
-fn pasted_in_session(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let keyed = typed::keyed(&ui.session);
-    let session = &mut ui.session;
-    let field = match keyed {
-        Some(Typed::Naming) => session.naming.as_mut().map(|one| &mut one.field),
-        Some(Typed::Noting) => {
-            if let Some(noting) = session.noting.as_mut() {
-                let text = text.trim().replace('\r', "");
-                noting.buffer.edit(&groove_types::Edit::Insert(text));
-            }
-            return Vec::new();
-        }
-        Some(Typed::Bar(term)) => Some(session.bar.of(term)),
-        Some(Typed::Kinds) => Some(&mut session.resources.filter),
-        Some(Typed::Search) => Some(&mut session.resources.search),
-        None => session
-            .find
-            .as_mut()
-            .filter(|find| find.typing)
-            .map(|find| &mut find.query),
-    };
-    if let Some(field) = field {
-        field.paste(text);
-        return Vec::new();
-    }
-    if ui.session.composing && ui.focus == Focus::Sidebar {
-        let edit = groove_types::Edit::Insert(text.to_string());
-        return vec![Command::Workspace(workspace::Command::Message(edit))];
-    }
-    match ui.focus {
-        Focus::Agent => typed_at_agent(text, app),
-        Focus::Terminal => typed_at_shell(text, app),
-        _ => {
-            let file = ui.session.tab != crate::views::session::Tab::Resources;
-            let editing = crate::editor::Editing::keyed(app, ui);
-            let editing = editing.or(file.then_some(crate::editor::Editing::File));
-            editing.and_then(|one| one.paste()).into_iter().collect()
-        }
-    }
-}
-
-/// The clipboard in the search while typing, else at a running sign-in.
-fn pasted_in_settings(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    if ui.settings.typing {
-        ui.settings.search.paste(text);
-        return Vec::new();
-    }
-    if let Some(field) = ui.settings.draft.as_mut().and_then(|one| one.focused()) {
-        field.paste(text.trim());
-        return Vec::new();
-    }
-    if app.config.login.is_none() {
-        return Vec::new();
-    }
-    let paste = groove_controllers::config::Command::PasteLogin {
-        text: text.to_string(),
-    };
-    vec![Command::Config(paste)]
-}
-
-/// The clipboard at the open session's selected terminal.
-fn typed_at_shell(text: &str, app: &AppState) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    let Some(id) = app.shell.shells(&session).and_then(|one| one.focused()) else {
-        return Vec::new();
-    };
-    let text = text.to_string();
-    vec![Command::Shell(groove_controllers::shell::Command::Paste {
-        session,
-        id,
-        text,
-    })]
-}
-
-/// The clipboard at the agent of the open session.
-fn typed_at_agent(text: &str, app: &AppState) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    vec![Command::Agent(agent::Command::Paste {
-        session,
-        text: text.to_string(),
-    })]
-}
-
 /// Mutates the ui's own state on the spot; returns the commands a domain action needs.
 pub fn handle(
     input: Input,
@@ -237,7 +124,7 @@ pub fn handle(
         }
         Input::Middle { x, y } => pointer::middle(x, y, ui, app, hits),
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
-        Input::Paste(text) => pasted(&text, ui, app),
+        Input::Paste(text) => paste::pasted(&text, ui, app, (hits, metrics)),
         Input::Release => {
             let mut out = pointer::dropped(ui, app);
             match ui.held.take() {
