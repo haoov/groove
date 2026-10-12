@@ -136,7 +136,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     ui.settle(&app);
     assert_eq!(
         ui.session.tab, resources,
-        "the k8s tab until the repo is selected"
+        "the Kubernetes tab until the repo is selected"
     );
     app.workspace.revision = None;
     ui.settle(&app);
@@ -159,7 +159,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     ui.settle(&app);
     assert_eq!(
         ui.session.tab, resources,
-        "the k8s tab until the commit shows"
+        "the Kubernetes tab until the commit shows"
     );
     app.workspace.commit = Some(groove_types::CommitEntry {
         sha: SHA.into(),

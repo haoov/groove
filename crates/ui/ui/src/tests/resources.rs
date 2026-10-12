@@ -254,7 +254,7 @@ fn clicked_in(app: &AppState, ui: &mut Ui) {
     let (_, hits) = drawn(app, ui);
     let tab = hits
         .rect_of(&Target::Tab(Tab::Resources))
-        .expect("the resources tab");
+        .expect("the Kubernetes tab");
     click(tab, ui, app, &hits);
 }
 
@@ -291,4 +291,12 @@ fn a_session_closed_or_deleted_lets_go_of_the_watchers_its_list_held() {
         .retain(|one| one.session.id.as_str() != "a");
     app.session.selected = None;
     assert_eq!(clustered(&app, &ui), [release]);
+}
+
+#[test]
+fn the_strip_names_the_cluster_tab_kubernetes_in_capitals() {
+    let (app, ui) = listing();
+    let (texts, _) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "KUBERNETES"), "{texts:?}");
+    assert!(!texts.iter().any(|one| one == "k8s"), "{texts:?}");
 }

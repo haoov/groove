@@ -152,7 +152,7 @@ fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let texts: Vec<String> = texts_of(&frame);
-    assert!(texts.iter().any(|t| t == "overview"));
+    assert!(texts.iter().any(|t| t == "OVERVIEW"));
     assert!(texts.iter().any(|t| t == "REPOS AND WORKTREES"));
     assert!(texts.iter().any(|t| t == "mayo"));
     assert_eq!(

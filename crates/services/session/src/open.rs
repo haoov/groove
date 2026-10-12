@@ -19,7 +19,7 @@ pub struct Open {
 }
 
 impl Open {
-    /// Whether it holds a cluster, which is what the k8s tab stands on.
+    /// Whether it holds a cluster, which is what the Kubernetes tab stands on.
     pub fn holds_clusters(&self) -> bool {
         !self.clusters.is_empty()
     }

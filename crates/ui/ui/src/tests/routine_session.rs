@@ -66,7 +66,7 @@ fn a_routine_session_is_its_agent_pane_alone_and_off_the_board() {
     assert_eq!(layout.agent.right(), layout.window.w);
     assert!(layout.workspace.is_empty() && layout.sidebar.is_empty());
     let (texts, hits) = drawn(&app, &ui);
-    assert!(!texts.iter().any(|t| t == "overview"), "{texts:?}");
+    assert!(!texts.iter().any(|t| t == "OVERVIEW"), "{texts:?}");
     assert!(hits.rect_of(&Target::Split(Edge::Agent)).is_none());
 
     ui.surface = Surface::Board;

@@ -159,14 +159,14 @@ attaches it first when the session does not hold it. A title or a label too long
 line is cut with an ellipsis; the header never wraps; a tab's status badges keep their room
 before the cut, and a badge with no room left is dropped.
 
-**Tabs.** `overview · diff · files · k8s`, the last while the session holds a cluster.
+**Tabs.** `OVERVIEW · DIFF · FILES · KUBERNETES`, the last while the session holds a cluster.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the clusters it holds, each context in its hue with its namespaces under it; then the body as text | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
-| k8s | the list tab, titled by its kind and its count, and a tab for each object opened from it; [k8s tab](#k8s-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
+| kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
 which the gutter holds together.
@@ -252,7 +252,7 @@ or unstage — where its counts were. Everything else is behind the right button
 question; discarding every change turns the commit box's first line into it. Two answers at
 the end, no modal, and nothing destructive within a click of something ordinary.
 
-### k8s tab
+### Kubernetes tab
 
 - **List.** The list tab, titled by its kind and its count, over the rows of every context
   and namespace in scope: the server's Table columns `kubectl get` shows, behind a cluster

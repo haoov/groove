@@ -62,7 +62,7 @@ pub(super) fn scroll(
     Vec::new()
 }
 
-/// What the sidebar holds: the kinds on the k8s tab, else the files.
+/// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
 fn beside(ui: &Ui) -> Scroller {
     match ui.session.tab {
         Tab::Resources => Scroller::Kinds,
