@@ -29,7 +29,7 @@ use groove_ui_kit::text::Label;
 pub use blame::Spot;
 pub(crate) use blame::{rested, spot};
 pub(crate) use map::total as rows_of;
-pub(crate) use notes::Inline;
+pub(crate) use notes::{Inline, noting_drawn};
 pub(crate) use row::{edited, line_at, text_at};
 pub(crate) use scroll::scrolled;
 

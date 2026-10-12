@@ -7,7 +7,7 @@ use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::Layout;
 use crate::palette::{Action, Anchor, Flow, Palette};
-use crate::{Corner, Losing, Menu, Of, Overlay, Ui};
+use crate::{Corner, Focus, Losing, Menu, Of, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
 /// The right button on a file's row opens its actions; anywhere else closes them.
@@ -157,9 +157,11 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     ui.overlay = picked.asking.map(Overlay::Losing);
     if picked.naming.is_some() {
         ui.session.naming = picked.naming;
+        ui.focus = Focus::Sidebar;
     }
     if picked.noting.is_some() {
         ui.session.noting = picked.noting;
+        ui.focus = Focus::Workspace;
     }
     picked.commands
 }

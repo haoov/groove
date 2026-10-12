@@ -462,3 +462,35 @@ fn picking_a_verdict_asks_for_the_review() {
         )]
     );
 }
+
+#[test]
+fn a_commit_box_not_drawn_takes_no_key_and_no_paste() {
+    let app = listed(&[file("a.txt", true)]);
+    let mut ui = sidebar();
+    ui.settle(&app);
+    (ui.focus, ui.session.composing) = (crate::Focus::Sidebar, true);
+    for hidden in [Tab::Resources, Tab::Diff] {
+        ui.session.tab = hidden;
+        ui.session.reading = hidden == Tab::Diff;
+        let plain = crate::input::Modifiers::default();
+        let typed = crate::tests::press(crate::input::Key::Char('a'), plain, &mut ui, &app);
+        let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+        let input = crate::input::Input::Paste("b".into());
+        let pasted = crate::input::handle(input, &mut ui, &app, &hits, window());
+        let message =
+            |one: &Command| matches!(one, Command::Workspace(workspace::Command::Message(_)));
+        assert!(
+            !typed.iter().chain(&pasted).any(message),
+            "{hidden:?}: the message takes nothing"
+        );
+    }
+    (ui.focus, ui.session.tab) = (crate::Focus::Workspace, Tab::Resources);
+    ui.settle(&app);
+    ui.session.tab = Tab::Diff;
+    ui.settle(&app);
+    assert!(ui.session.commits(), "the box is drawn again");
+    assert!(
+        !ui.session.composing,
+        "but it let go of the keys while hidden"
+    );
+}

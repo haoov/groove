@@ -358,3 +358,27 @@ fn a_paste_in_the_bar_finds_as_typing_does() {
     let find = ui.session.find.as_ref().expect("the bar stands");
     assert_eq!(find.count(), "1 / 3");
 }
+
+#[test]
+fn a_find_bar_not_drawn_takes_no_key_and_no_paste() {
+    let app = app();
+    let mut ui = on_code();
+    ui.settle(&app);
+    press(Key::Char('f'), ctrl(), &mut ui, &app);
+    ui.session.tab = Tab::Overview;
+    typed("x", &mut ui, &app);
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    crate::input::handle(
+        crate::input::Input::Paste("y".into()),
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    let find = ui.session.find.as_ref().expect("the bar is kept");
+    assert_eq!(find.query.text(), "", "the overview draws no bar");
+
+    ui.settle(&app);
+    let find = ui.session.find.as_ref().expect("the bar is kept");
+    assert!(!find.typing, "a tab change takes the keys from it");
+}

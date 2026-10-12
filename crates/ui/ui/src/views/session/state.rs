@@ -12,6 +12,8 @@ use groove_ui_kit::widgets::Field;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SessionUi {
     pub tab: Tab,
+    /// The tab shown when last settled.
+    pub settled: Tab,
     /// The tab to show once the repo asked for is selected and read, and its commit shown when one.
     pub going: Option<(Tab, Option<String>)>,
     /// The session and the worktree selected when last settled.

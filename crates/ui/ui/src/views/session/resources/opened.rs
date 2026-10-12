@@ -122,7 +122,7 @@ impl super::ResourcesUi {
                 self.opened.len() - 1
             }
         };
-        self.showing = Some(at);
+        (self.showing, self.typing) = (Some(at), false);
     }
 
     /// The tab at `at` closed; the one before it shows, or the list.

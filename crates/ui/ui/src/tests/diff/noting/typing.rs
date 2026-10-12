@@ -29,6 +29,7 @@ fn noting(text: &str) -> (AppState, Ui) {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
     typed(text, &mut ui, &app);
     (app, ui)
 }
@@ -152,4 +153,64 @@ fn a_note_on_a_tab_not_shown_takes_no_keys_and_keeps_its_words() {
     );
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(said(&ui), "half", "the words wait for the tab");
+}
+
+#[test]
+fn a_note_on_another_file_than_the_open_one_takes_no_keys() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.noting = Some(Noting::new(Anchor::line("src/other.rs", 0)));
+    ui.focus = crate::Focus::Workspace;
+    typed("x", &mut ui, &app);
+    let posted = chord(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert!(
+        !posted.iter().any(|one| matches!(one, Command::Delivery(_))),
+        "{posted:?}"
+    );
+    assert_eq!(said(&ui), "", "the note is not drawn");
+}
+
+#[test]
+fn a_click_on_another_pane_takes_the_keys_from_a_note_and_keeps_its_words() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
+    typed("half", &mut ui, &app);
+    for (pane, focus) in [
+        (Target::Agent, crate::Focus::Agent),
+        (
+            Target::Session(groove_types::SessionId::new("a")),
+            crate::Focus::Rail,
+        ),
+    ] {
+        let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+        click(hits.rect_of(&pane).expect("the pane"), &mut ui, &app, &hits);
+        assert_eq!(ui.focus, focus);
+        let posted = press(Key::Enter, &mut ui, &app);
+        assert!(
+            !posted
+                .iter()
+                .any(|one| matches!(one, groove_controllers::Command::Delivery(_))),
+            "{focus:?}: Enter posts no note: {posted:?}"
+        );
+    }
+    let said = |ui: &Ui| ui.session.noting.as_ref().map(|one| one.buffer.text());
+    assert_eq!(said(&ui).as_deref(), Some("half"), "the draft is kept");
+
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    click(
+        hits.rect_of(&Target::Code).expect("the rows"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    typed("!", &mut ui, &app);
+    assert_eq!(
+        said(&ui).as_deref(),
+        Some("half!"),
+        "and takes the keys back"
+    );
 }

@@ -116,7 +116,7 @@ pub(super) fn ranged(ui: &mut Ui, at: usize) {
 fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
     match target {
         Target::ResourceOpen(link) => held.open((**link).clone()),
-        Target::ResourceTab(at) => held.showing = Some(*at),
+        Target::ResourceTab(at) => (held.showing, held.typing) = (Some(*at), false),
         Target::ResourceClose(at) => held.close(*at),
         _ => {
             let Some(tab) = held.tab_mut() else {

@@ -214,3 +214,34 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
         "the operation on its red ground"
     );
 }
+
+#[test]
+fn a_failed_resource_name_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
+    let (mut app, mut ui) = listed();
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+    let row = hits
+        .rect_of(&Target::ResourceRow("paxone/pythie-acc".into()))
+        .expect("its row");
+    click(row, &mut ui, &app, &hits);
+    let name = "FailedCreatePodSandBoxAgain";
+    let mut one = failing();
+    if let Some(failed) = one
+        .app
+        .as_mut()
+        .and_then(|part| part.operation.as_mut())
+        .and_then(|operation| operation.failed.first_mut())
+    {
+        failed.name = name.into();
+    }
+    let key = ui.session.resources.tab().expect("its tab").link.key();
+    app.cluster.store.follows.lease(&key, "resource");
+    app.cluster
+        .store
+        .follows
+        .apply(&key, Followed::Reset(vec![one]));
+    let (frame, _) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+    let texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
+    let texts: Vec<&str> = texts.map(|one| one.text.as_str()).collect();
+    assert!(texts.contains(&name), "{texts:?}");
+}

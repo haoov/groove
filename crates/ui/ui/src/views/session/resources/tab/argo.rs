@@ -109,7 +109,8 @@ pub(super) fn said(ctx: &mut Ctx, rect: Rect, message: &str) {
 pub(super) fn broke(ctx: &mut Ctx, rect: Rect, one: &SyncedResource) {
     let mark = Spec::default().width(ctx.tokens.lg);
     let kind = Spec::default().width(ctx.tokens.aside_near);
-    let name = Spec::default().width(ctx.tokens.aside_mid);
+    let name = ctx.tokens.aside_mid * ctx.tokens.text / ctx.tokens.small;
+    let name = Spec::default().width(name);
     let [at, of, named, why] = row_in(rect, [mark, kind, name, Spec::fill()]);
     Label::new("✗", ctx.styles.small(Role::Bad)).draw(ctx, at);
     let tag = match one.hook {

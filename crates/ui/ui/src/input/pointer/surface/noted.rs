@@ -60,6 +60,7 @@ fn replying(ui: &mut Ui, app: &AppState, thread: String) {
         return;
     };
     ui.session.noting = Some(Noting::reply(anchor, thread));
+    ui.focus = crate::Focus::Workspace;
 }
 
 fn resolved(app: &AppState, thread: &str) -> bool {
@@ -86,6 +87,7 @@ fn editing(ui: &mut Ui, app: &AppState, id: AnnotationId) -> Vec<Command> {
         .map(|said| said.body.clone())
         .unwrap_or_default();
     ui.session.noting = Some(Noting::over(anchor, id, &said));
+    ui.focus = crate::Focus::Workspace;
     Vec::new()
 }
 

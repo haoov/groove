@@ -216,7 +216,7 @@ fn a_paste_in_the_text_term_searches_as_typing_does() {
 
 #[test]
 fn the_note_and_the_commit_box_take_a_paste_alike_without_its_carriage_returns() {
-    let app = full_app();
+    let app = crate::tests::diff::opened();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     ui.session.composing = true;
@@ -230,6 +230,7 @@ fn the_note_and_the_commit_box_take_a_paste_alike_without_its_carriage_returns()
 
     let anchor = groove_types::Anchor::line("src/lib.rs", 0);
     ui.session.noting = Some(crate::views::session::Noting::new(anchor));
+    ui.focus = crate::Focus::Workspace;
     paste("  one\r\n  two\r\n", &mut ui, &app);
     let typed = ui.session.noting.as_ref().map(|one| one.buffer.text());
     assert_eq!(typed.as_deref(), Some("  one\n  two\n"));

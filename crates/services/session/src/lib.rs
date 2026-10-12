@@ -37,6 +37,8 @@ pub struct State {
     pub feed: Vec<groove_types::TimelineEvent>,
     /// The rail is back as the last run left it.
     pub restored: bool,
+    /// Each explorer made a task's session, with that session, oldest first.
+    pub promoted: Vec<(SessionId, SessionId)>,
 }
 
 /// How many lines the feed holds, over every session it reads.
@@ -163,8 +165,9 @@ impl State {
             open.worktrees = worktrees;
         }
         if self.selected.as_ref() == Some(explorer) {
-            self.selected = Some(id);
+            self.selected = Some(id.clone());
         }
+        self.promoted.push((explorer.clone(), id));
     }
 
     /// On the rail, the selection left where it was.

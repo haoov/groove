@@ -191,6 +191,14 @@ fn starts(anchor: &Anchor) -> Anchor {
     Anchor::line(anchor.path.clone(), anchor.start_line)
 }
 
+/// Whether the note being typed is drawn: no commit shown, and its line in the view.
+pub(crate) fn noting_drawn(app: &AppState, ui: &Ui) -> bool {
+    let Some(noting) = ui.session.noting.as_ref() else {
+        return false;
+    };
+    app.workspace.commit.is_none() && anchored(app, ui.session.face(), &noting.anchor).is_some()
+}
+
 /// The row an anchor's last line stands on, in the view that draws it.
 fn anchored(app: &AppState, view: Face, anchor: &Anchor) -> Option<usize> {
     match view {

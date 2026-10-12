@@ -78,7 +78,7 @@ fn in_session(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    match super::typed::keyed(&ui.session) {
+    match super::typed::keyed(ui, app) {
         Some(Typed::Naming) => return in_name(key, mods, ui),
         Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
         Some(Typed::Bar(_)) => return in_bar(key, mods, ui, app, keymap),

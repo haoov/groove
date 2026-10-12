@@ -12,6 +12,7 @@ impl Ui {
         let selected = app.session.selected().map(|open| &open.session.kind);
         self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
         self.session.reading = app.workspace.commit.is_some();
+        self.kept_resources(app);
         self.moved(app);
         self.left(app);
         self.session.arrive(app);
@@ -23,9 +24,21 @@ impl Ui {
             self.session.tab = Tab::Overview;
         }
         if !self.session.sidebar() && self.focus == crate::Focus::Sidebar {
-            (self.focus, self.session.composing) = (crate::Focus::Workspace, false);
+            self.focus = crate::Focus::Workspace;
         }
+        self.session.composing &= self.session.commits();
+        self.unfound();
         self.refound(app);
+    }
+
+    /// The find bar lets go of the keys on a tab change, and while no bar is drawn.
+    fn unfound(&mut self) {
+        let session = &mut self.session;
+        let moved = std::mem::replace(&mut session.settled, session.tab) != session.tab;
+        let hidden = moved || !session.finds();
+        if let Some(find) = session.find.as_mut().filter(|_| hidden) {
+            find.typing = false;
+        }
     }
 
     /// The find bar's matches read again once what they were read from changed.
@@ -79,9 +92,15 @@ impl Ui {
         }
         (self.session.naming, self.session.noting) = (None, None);
         let session_left = was.0 != now.0;
+        let promoted = match (&was.0, &now.0) {
+            (Some(from), Some(to)) => app.session.promoted.contains(&(from.clone(), to.clone())),
+            _ => false,
+        };
         if session_left {
             self.session.going = None;
-            self.swap_resources(app, was.0, now.0.clone());
+        }
+        if session_left && !promoted {
+            self.swap_resources(was.0, now.0.clone());
         }
         let ends = |one: &Overlay| match one {
             Overlay::Losing(_) | Overlay::Menu(_) => true,
@@ -93,17 +112,27 @@ impl Ui {
         }
     }
 
-    fn swap_resources(&mut self, app: &AppState, was: Option<SessionId>, now: Option<SessionId>) {
+    /// Each session's Kubernetes tab under its id now: a promoted explorer's under its task's.
+    /// A closed session's goes.
+    fn kept_resources(&mut self, app: &AppState) {
+        let resources_of = &mut self.session.resources_of;
+        for (from, to) in &app.session.promoted {
+            if let Some(kept) = resources_of.remove(from) {
+                resources_of.entry(to.clone()).or_insert(kept);
+            }
+        }
+        resources_of.retain(|id, _| app.session.get(id).is_some());
+    }
+
+    fn swap_resources(&mut self, was: Option<SessionId>, now: Option<SessionId>) {
         let Some(was) = was else {
             return;
         };
         let session = &mut self.session;
-        let left = std::mem::take(&mut session.resources);
+        let mut left = std::mem::take(&mut session.resources);
+        (left.typing, left.filtering) = (false, false);
         session.resources_of.insert(was, left);
         let back = now.and_then(|id| session.resources_of.remove(&id));
         session.resources = back.unwrap_or_default();
-        session
-            .resources_of
-            .retain(|id, _| app.session.get(id).is_some());
     }
 }

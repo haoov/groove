@@ -74,7 +74,7 @@ pub(super) fn in_sidebar(
     app: &AppState,
     keymap: &Keymap,
 ) -> Vec<Command> {
-    if !ui.session.composing {
+    if !(ui.session.composing && ui.session.commits()) {
         return in_list(key, ui, app);
     }
     if key == Key::Escape {

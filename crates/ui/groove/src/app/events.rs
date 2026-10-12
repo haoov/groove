@@ -215,8 +215,8 @@ pub(crate) fn landed(
     let asked = unpasted.take();
     let moved = asked.as_ref().is_some_and(|one| one.aim != now);
     match text {
-        Some(text) if !moved => Some(Input::Paste(text)),
-        Some(_) => None,
+        Some(_) | None if moved => None,
+        Some(text) => Some(Input::Paste(text)),
         None => asked.and_then(|one| one.key),
     }
 }

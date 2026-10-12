@@ -94,3 +94,38 @@ fn a_draft_with_no_field_steps_nowhere() {
     draft.next();
     assert_eq!(draft.at, None);
 }
+
+#[test]
+fn a_folded_sidebar_keeps_its_fields_but_gives_them_no_keys() {
+    use crate::views::session::{Asked, Naming, Term};
+    let app = full_app();
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    ui.session.folded = true;
+
+    ui.session.tab = Tab::Diff;
+    ui.session.bar.open(Term::Path);
+    typed("x", &mut ui, &app);
+    assert_eq!(ui.session.bar.path.text(), "", "the bar is folded away");
+
+    ui.session.tab = Tab::Files;
+    ui.session.naming = Some(Naming::new(Asked::File, "src", ""));
+    typed("x", &mut ui, &app);
+    let named = ui
+        .session
+        .naming
+        .as_ref()
+        .map(|one| one.named().to_string());
+    assert_eq!(named.as_deref(), Some(""), "the name row is folded away");
+
+    ui.session.tab = Tab::Resources;
+    ui.session.resources.filtering = true;
+    typed("x", &mut ui, &app);
+    assert_eq!(
+        ui.session.resources.filter.text(),
+        "",
+        "the kinds search too"
+    );
+}

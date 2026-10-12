@@ -25,12 +25,29 @@ enum Sink {
     Buffer,
 }
 
-/// Where a paste would land now.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Aim(Option<Sink>);
+/// Where a paste would land now: the field, the session, and the shell for a terminal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Aim {
+    sink: Option<Sink>,
+    session: Option<groove_types::SessionId>,
+    shell: Option<u64>,
+}
 
 pub fn aim(ui: &Ui, app: &AppState) -> Aim {
-    Aim(sink(ui, app))
+    let sink = sink(ui, app);
+    let session = app.session.selected.clone();
+    let shell = match sink {
+        Some(Sink::Terminal) => session
+            .as_ref()
+            .and_then(|one| app.shell.shells(one))
+            .and_then(|one| one.focused()),
+        _ => None,
+    };
+    Aim {
+        sink,
+        session,
+        shell,
+    }
 }
 
 fn sink(ui: &Ui, app: &AppState) -> Option<Sink> {
@@ -46,14 +63,14 @@ fn sink(ui: &Ui, app: &AppState) -> Option<Sink> {
     if ui.showing(app) == Surface::Board {
         return ui.board.typing.then_some(Sink::Board);
     }
-    if let Some(typed) = typed::keyed(&ui.session) {
+    if let Some(typed) = typed::keyed(ui, app) {
         return Some(Sink::Field(typed));
     }
     let session = &ui.session;
-    if session.find.as_ref().is_some_and(|find| find.typing) {
+    if session.finds() && session.find.as_ref().is_some_and(|find| find.typing) {
         return Some(Sink::Find);
     }
-    if session.composing && ui.focus == Focus::Sidebar {
+    if session.composing && session.commits() && ui.focus == Focus::Sidebar {
         return Some(Sink::Message);
     }
     Some(match ui.focus {

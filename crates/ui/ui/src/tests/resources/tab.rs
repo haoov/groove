@@ -346,3 +346,24 @@ fn an_event_reason_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
     let texts = wide(&app, &ui);
     assert!(texts.iter().any(|one| one == reason), "{texts:?}");
 }
+
+#[test]
+fn the_list_search_lets_go_of_the_keys_once_a_tab_shows() {
+    let (app, mut ui) = super::listing();
+    ui.session.resources.typing = true;
+    let (_, hits) = drawn(&app, &ui);
+    let row = hits
+        .rect_of(&Target::ResourceRow("paxone/api-0".into()))
+        .expect("api-0's row");
+    click(row, &mut ui, &app, &hits);
+    assert!(ui.session.resources.tab().is_some(), "the tab shows");
+    assert!(!ui.session.resources.typing, "opening it took the keys");
+
+    ui.session.resources.typing = true;
+    crate::tests::typed("x", &mut ui, &app);
+    assert_eq!(
+        ui.session.resources.search.text(),
+        "",
+        "the search under the tab is not drawn"
+    );
+}
