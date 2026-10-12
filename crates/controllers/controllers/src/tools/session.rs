@@ -59,7 +59,7 @@ pub(super) fn skill(state: &AppState, spawner: &dyn Spawner, call: Call) {
     };
     let dirs = crate::agent::skills::dirs(state);
     spawner.spawn(Box::pin(async move {
-        match groove_skill_service::skills::read(&dirs, &format!("user:{name}")) {
+        match groove_skill_service::skills::read(&dirs, &format!("user:{name}")).await {
             Ok(body) => call.reply.said(body),
             Err(e) => call.reply.failed(e.message),
         }

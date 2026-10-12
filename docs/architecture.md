@@ -141,6 +141,8 @@ flowchart LR
 **The one rule the compiler cannot enforce:** no IO in `dispatch`, `apply` or a
 continuation. *Example:* `remote` reads the worktree's status inside its job, not in its
 continuation. Not enforced by a test.
+Before the loop starts, `main` reads the config and the panes with their blocking `load`;
+nothing after the loop starts calls them.
 
 ## Commands, continuations, events
 

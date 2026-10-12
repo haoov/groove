@@ -1471,6 +1471,7 @@ dependencies = [
  "arboard",
  "groove-types",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1529,6 +1530,7 @@ dependencies = [
  "groove-types",
  "ignore",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1725,6 +1727,7 @@ dependencies = [
  "groove-types",
  "serde_json",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

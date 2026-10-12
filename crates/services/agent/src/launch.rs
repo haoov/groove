@@ -33,7 +33,7 @@ impl crate::State {
 }
 
 /// Plans the command line and spawns it on a terminal of `cols` by `rows`, `prompt` its first message.
-pub fn launch(
+pub async fn launch(
     session: &Session,
     paths: &LaunchPaths,
     cwd: &Path,
@@ -52,7 +52,8 @@ pub fn launch(
         },
         &paths.plugin_dirs,
         loopback(paths, session).as_ref(),
-    )?;
+    )
+    .await?;
     let launch = match prompt {
         Some(prompt) => launch.asking(prompt),
         None => launch,

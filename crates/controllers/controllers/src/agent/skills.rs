@@ -115,8 +115,8 @@ pub fn save(
     let dirs = dirs(state);
     let job = state.begin(format!("writing the skill {name}"));
     spawner.spawn(Box::pin(async move {
-        let made = skills::save(&dirs, &name, &body, instead_of.as_deref());
-        let read = skills::list(&dirs);
+        let made = skills::save(&dirs, &name, &body, instead_of.as_deref()).await;
+        let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             state.skill.skills = read;
@@ -144,8 +144,8 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
     let dirs = dirs(state);
     let job = state.begin(format!("deleting the skill {name}"));
     spawner.spawn(Box::pin(async move {
-        let done = skills::delete(&dirs, &name);
-        let read = skills::list(&dirs);
+        let done = skills::delete(&dirs, &name).await;
+        let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             state.skill.skills = read;
@@ -171,8 +171,8 @@ pub fn switch(
     state.skill.switched = groove_types::Timestamp::now();
     let dirs = dirs(state);
     spawner.spawn(Box::pin(async move {
-        let made = skills::sync(&dirs);
-        let read = skills::list(&dirs);
+        let made = skills::sync(&dirs).await;
+        let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = made {
                 state.failed(e);

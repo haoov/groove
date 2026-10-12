@@ -43,30 +43,38 @@ pub struct Listed {
 }
 
 /// Every routine file, the team's first, each sorted by name.
-pub fn list(dirs: &Dirs) -> Vec<Listed> {
-    let shared = dirs.shared.iter().flat_map(|dir| read_dir(dir, SHARED));
-    shared.chain(read_dir(&dirs.user, USER)).collect()
+pub async fn list(dirs: &Dirs) -> Vec<Listed> {
+    let mut out = Vec::new();
+    if let Some(dir) = &dirs.shared {
+        out.extend(read_dir(dir, SHARED).await);
+    }
+    out.extend(read_dir(&dirs.user, USER).await);
+    out
 }
 
-fn read_dir(dir: &Path, from: &str) -> Vec<Listed> {
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
-        .into_iter()
-        .flatten()
-        .flatten()
-        .map(|one| one.path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "md"))
-        .collect();
+async fn read_dir(dir: &Path, from: &str) -> Vec<Listed> {
+    let mut files = Vec::new();
+    if let Ok(mut entries) = tokio::fs::read_dir(dir).await {
+        while let Ok(Some(one)) = entries.next_entry().await {
+            files.push(one.path());
+        }
+    }
+    files.retain(|path| path.extension().is_some_and(|ext| ext == "md"));
     files.sort();
-    files
-        .into_iter()
-        .filter_map(|path| {
-            let name = path.file_stem()?.to_string_lossy().into_owned();
-            let id = format!("{from}:{name}");
-            let read = match std::fs::read_to_string(&path) {
-                Ok(text) => parse(&id, &name, &text),
-                Err(e) => Err(format!("cannot read it: {e}")),
-            };
-            Some(Listed { id, read })
-        })
-        .collect()
+    let mut out = Vec::new();
+    for path in files {
+        let Some(name) = path
+            .file_stem()
+            .map(|one| one.to_string_lossy().into_owned())
+        else {
+            continue;
+        };
+        let id = format!("{from}:{name}");
+        let read = match tokio::fs::read_to_string(&path).await {
+            Ok(text) => parse(&id, &name, &text),
+            Err(e) => Err(format!("cannot read it: {e}")),
+        };
+        out.push(Listed { id, read });
+    }
+    out
 }

@@ -251,8 +251,8 @@ pub fn hold(state: &mut State, watch: Option<(WorktreeId, Watch)>) {
 }
 
 /// Writes the buffer to the file it came from.
-pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
-    groove_editor::save(dir, path, text)
+pub async fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
+    groove_editor::save(dir, path, text).await
 }
 
 /// What the outside world tells this capability.

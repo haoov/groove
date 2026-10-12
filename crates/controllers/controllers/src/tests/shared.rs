@@ -185,7 +185,8 @@ fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
         spawner.drain(&mut state, &services);
     }
     assert_eq!(skill(&state), Some(true));
-    let dirs = groove_skill_service::skills::plugin_dirs(&crate::agent::skills::dirs(&state));
+    let dirs = crate::agent::skills::dirs(&state);
+    let dirs = spawner.block_on(groove_skill_service::skills::plugin_dirs(&dirs));
     assert!(
         dirs.iter()
             .any(|one| one.ends_with("plugins/shared/platform")),
@@ -210,8 +211,11 @@ fn switch(id: &str, on: bool, state: &mut AppState, services: &Services, spawner
 fn a_skill_of_the_users_switched_off_is_written_listed_off_and_marks_agents_stale() {
     let (home, spawner, services, mut state) = fresh();
     let dirs = crate::agent::skills::dirs(&state);
-    groove_skill_service::skills::sync(&dirs).unwrap();
-    groove_skill_service::skills::save(&dirs, "ship-it", "---\n---\nGo.\n", None).unwrap();
+    spawner
+        .block_on(groove_skill_service::skills::sync(&dirs))
+        .unwrap();
+    let saved = groove_skill_service::skills::save(&dirs, "ship-it", "---\n---\nGo.\n", None);
+    spawner.block_on(saved).unwrap();
     let before = groove_types::Timestamp::now();
     switch("user:ship-it", false, &mut state, &services, &spawner);
     assert!(state.errors.is_empty(), "{:?}", state.errors);

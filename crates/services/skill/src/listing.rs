@@ -54,10 +54,11 @@ pub async fn listing(
         Some(Err(_)) => held,
         None => None,
     };
-    let routines = groove_routines::list(&groove_routines::Dirs::new(&config, copy.as_deref()));
+    let routines =
+        groove_routines::list(&groove_routines::Dirs::new(&config, copy.as_deref())).await;
     Listing {
-        made: groove_skills::sync(&dirs),
-        skills: groove_skills::list(&dirs),
+        made: groove_skills::sync(&dirs).await,
+        skills: groove_skills::list(&dirs).await,
         followed,
         routines,
     }

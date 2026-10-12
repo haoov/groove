@@ -88,22 +88,23 @@ pub async fn opened_at(dir: &Path, sha: &str, path: &str) -> Result<Opened> {
 pub const COMMITS_MAX: usize = 100;
 
 /// Every line under the worktree holding `query`, in batches as they are found.
-pub fn grep(
+pub async fn grep(
     dir: &Path,
     query: &str,
     under: &str,
     search: std::sync::Arc<Search>,
-    found: impl FnMut(Vec<Found>) + Send,
-) {
-    groove_grep::walk(dir, query, under, FOUND_MAX, search, found);
+    found: impl FnMut(Vec<Found>) + Send + 'static,
+) -> Result<()> {
+    groove_grep::walk(dir, (query, under), FOUND_MAX, search, found).await
 }
 
 /// How many matches a search across the worktree keeps.
 pub const FOUND_MAX: usize = 500;
 
 /// Every file of the worktree, for the path term to narrow by.
-pub fn paths(dir: &Path) -> Vec<FileDiff> {
-    groove_grep::paths(dir, PATHS_MAX)
+pub async fn paths(dir: &Path) -> Result<Vec<FileDiff>> {
+    let paths = groove_grep::paths(dir, PATHS_MAX).await?;
+    let listed = paths
         .into_iter()
         .map(|path| FileDiff {
             path,
@@ -112,7 +113,8 @@ pub fn paths(dir: &Path) -> Vec<FileDiff> {
             status: FileStatus::Unchanged,
             staged: None,
         })
-        .collect()
+        .collect();
+    Ok(listed)
 }
 
 /// How many of a worktree's paths the list keeps.

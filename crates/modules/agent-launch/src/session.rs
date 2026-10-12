@@ -15,9 +15,9 @@ pub fn session_uuid(session_id: &str) -> String {
 }
 
 /// The conversation a session carries on: the one an earlier session handed it, or its own.
-pub fn thread_of(launch_dir: &Path, session_id: &str) -> String {
+pub async fn thread_of(launch_dir: &Path, session_id: &str) -> String {
     let handed = launch_dir.join(format!("{session_id}.thread"));
-    match std::fs::read_to_string(handed) {
+    match tokio::fs::read_to_string(handed).await {
         Ok(uuid) if !uuid.trim().is_empty() => uuid.trim().to_string(),
         _ => session_uuid(session_id),
     }
@@ -25,11 +25,7 @@ pub fn thread_of(launch_dir: &Path, session_id: &str) -> String {
 
 /// Hands `from`'s conversation to `to`, for `to`'s next launch to resume.
 pub async fn hand_over(launch_dir: &Path, from: &str, to: &str) -> groove_types::Result<()> {
-    let handed = tokio::fs::read_to_string(launch_dir.join(format!("{from}.thread"))).await;
-    let uuid = match handed {
-        Ok(uuid) if !uuid.trim().is_empty() => uuid.trim().to_string(),
-        _ => session_uuid(from),
-    };
+    let uuid = thread_of(launch_dir, from).await;
     threaded(launch_dir, to, &uuid).await
 }
 
@@ -69,9 +65,9 @@ pub async fn forget(launch_dir: &Path, session_id: &str) -> groove_types::Result
 }
 
 /// `--session-id` on the first launch, `--resume` once Claude has a file for it.
-pub(crate) fn identity_args(session: &Session, paths: &Paths<'_>) -> Vec<String> {
-    let uuid = thread_of(paths.launch_dir, session.id.as_str());
-    let flag = if session_file(paths.home, paths.cwd, &uuid).is_file() {
+pub(crate) async fn identity_args(session: &Session, paths: &Paths<'_>) -> Vec<String> {
+    let uuid = thread_of(paths.launch_dir, session.id.as_str()).await;
+    let flag = if crate::is_file(&session_file(paths.home, paths.cwd, &uuid)).await {
         "--resume"
     } else {
         "--session-id"

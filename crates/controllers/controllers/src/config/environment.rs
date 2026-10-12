@@ -14,7 +14,7 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
     state.config.checking = true;
     let home = state.env.home.clone();
     spawner.spawn(Box::pin(async move {
-        let claude = groove_config_service::claude_bin(&home);
+        let claude = groove_config_service::claude_bin(&home).await;
         let tools = groove_config_service::check(&claude).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             apply(Event::Config(ConfigEvent::Checked(tools)), state)
@@ -31,7 +31,7 @@ pub(super) fn login(state: &mut AppState, spawner: &dyn Spawner, size: (u16, u16
     let palette = groove_agent_service::palette(state.config.theme());
     let (home, hooks) = (state.env.home.clone(), hooks(spawner));
     spawner.spawn(Box::pin(async move {
-        let result = groove_config_service::login(&home, size, palette, hooks);
+        let result = groove_config_service::login(&home, size, palette, hooks).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             let asked = std::mem::take(&mut state.config.signing_in);
             match result {

@@ -29,12 +29,12 @@ pub async fn join(data: &Path, shared: &SharedConfig) -> Result<Shared> {
         let _ = cleared(&fresh).await;
         return Err(unreached(shared, e.into()));
     }
-    if let Err(e) = groove_skills::marketplace(&fresh) {
+    if let Err(e) = groove_skills::marketplace(&fresh).await {
         let _ = cleared(&fresh).await;
         return Err(e);
     }
     swapped(&fresh, &path).await?;
-    named(path)
+    named(path).await
 }
 
 /// `fresh` renamed into `path`, the copy before it put aside, then taken away.
@@ -74,11 +74,11 @@ pub async fn follow(data: &Path, shared: &SharedConfig) -> Result<Shared> {
         return join(data, shared).await;
     }
     Git::at(&path).follow(&shared.branch).await?;
-    named(path)
+    named(path).await
 }
 
-fn named(path: PathBuf) -> Result<Shared> {
-    let marketplace = groove_skills::marketplace(&path)?;
+async fn named(path: PathBuf) -> Result<Shared> {
+    let marketplace = groove_skills::marketplace(&path).await?;
     Ok(Shared { path, marketplace })
 }
 

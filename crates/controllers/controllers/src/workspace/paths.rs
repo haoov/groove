@@ -19,7 +19,7 @@ pub(super) fn act(state: &mut AppState, spawner: &dyn Spawner, op: PathOp) {
         _ => None,
     };
     spawner.spawn(Box::pin(async move {
-        let done = path_op(&dir, &op);
+        let done = path_op(&dir, &op).await;
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.end(job);

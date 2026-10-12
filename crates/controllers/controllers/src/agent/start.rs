@@ -30,7 +30,7 @@ pub(crate) fn asking(
     let (sink, launched) = (spawner.sink(), state.agent.launch(&id));
     spawner.spawn(Box::pin(async move {
         let paths = LaunchPaths {
-            plugin_dirs: groove_skill_service::skills::plugin_dirs(&dirs),
+            plugin_dirs: groove_skill_service::skills::plugin_dirs(&dirs).await,
             knowledge: groove_skill_service::listing::knowledge(shared.as_deref()).await,
             ..paths
         };
@@ -45,7 +45,8 @@ pub(crate) fn asking(
                 on_exit: on_exit(&sink, &session, launched),
             },
             prompt.as_deref(),
-        );
+        )
+        .await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             let now = Timestamp::now();
             let orphan = match state.session.get(&session.id) {

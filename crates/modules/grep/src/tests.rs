@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::{Search, walk};
+use crate::{Search, walked as walk};
 
 fn tree() -> tempfile::TempDir {
     let dir = tempfile::tempdir().expect("a temp dir");
@@ -114,7 +114,7 @@ fn every_file_the_ignore_rules_leave_is_listed_from_the_root() {
     std::fs::write(root.join("target/built"), "no\n").unwrap();
     std::fs::write(root.join(".git/HEAD"), "no\n").unwrap();
 
-    let found = crate::paths(root, 100);
+    let found = crate::listed(root, 100);
     assert!(found.contains(&"src/one.rs".to_string()), "{found:?}");
     assert!(found.contains(&"src/deep/two.rs".to_string()), "{found:?}");
     assert!(
@@ -137,5 +137,5 @@ fn the_listing_stops_at_the_cap() {
     for at in 0..8 {
         std::fs::write(dir.path().join(format!("file-{at}")), "x\n").unwrap();
     }
-    assert_eq!(crate::paths(dir.path(), 3).len(), 3);
+    assert_eq!(crate::listed(dir.path(), 3).len(), 3);
 }
