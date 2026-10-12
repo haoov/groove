@@ -89,7 +89,10 @@ fn pasted_in_pane(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec<Co
             let file = ui.session.tab != crate::views::session::Tab::Resources;
             let editing = crate::editor::Editing::keyed(app, ui);
             let editing = editing.or(file.then_some(crate::editor::Editing::File));
-            editing.and_then(|one| one.paste()).into_iter().collect()
+            editing
+                .and_then(|one| one.pasted(text))
+                .into_iter()
+                .collect()
         }
     }
 }

@@ -115,8 +115,10 @@ fn with_nothing_typing_the_open_file_takes_it() {
     let asked = paste("one", &mut ui, &app);
     assert_eq!(
         asked,
-        vec![Command::Workspace(workspace::Command::Paste)],
-        "the buffer reads the clipboard itself"
+        vec![Command::Workspace(workspace::Command::Edit(
+            groove_types::Edit::Insert("one".into())
+        ))],
+        "the text read once goes in as it is"
     );
 }
 
