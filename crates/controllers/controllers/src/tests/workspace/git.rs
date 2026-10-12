@@ -126,6 +126,27 @@ fn a_commit_with_no_message_is_not_made_and_says_why() {
 }
 
 #[test]
+fn a_commit_whose_index_cannot_be_read_says_why() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::remove_file(std::path::Path::new(&dir).join(".git")).unwrap();
+    state
+        .workspace
+        .message
+        .edit(&Edit::Insert("fix: one".into()));
+    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    spawner.drain(&mut state, &services);
+    let said: Vec<&str> = state
+        .errors
+        .iter()
+        .map(|one| one.message.as_str())
+        .collect();
+    assert_eq!(said.len(), 1, "{said:?}");
+    assert!(!said[0].contains("nothing is staged"), "{said:?}");
+}
+
+#[test]
 fn a_stage_from_outside_the_window_reaches_the_list() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
