@@ -106,3 +106,30 @@ fn a_forge_that_refuses_the_mr_is_the_agent_s_answer() {
     assert!(answer.failed, "the agent hears it failed: {}", answer.text);
     assert!(forge.held().is_none(), "no MR on the row");
 }
+
+#[test]
+fn a_comment_from_the_box_clears_it_though_a_line_break_ends_it() {
+    let pull = json!({ "data": {
+        "viewer": { "id": "U_me", "login": "haoov" },
+        "repository": {
+            "id": "R_1", "defaultBranchRef": { "name": "main" }, "pullRequest": pr()
+        },
+        "createPullRequest": { "pullRequest": pr() },
+        "addAssigneesToAssignable": { "clientMutationId": null },
+        "addComment": { "clientMutationId": null }
+    }});
+    let mut forge = OnForge::new(ResponseTemplate::new(200).set_body_json(pull));
+    assert!(!forge.opens().failed, "the MR is open");
+    let typed = groove_types::Edit::Insert("looks good\n".into());
+    forge.state.workspace.message.edit(&typed);
+    let say = crate::delivery::Command::Say(crate::delivery::Say::Comment);
+    let (state, services) = (&mut forge.state, &forge.services);
+    crate::dispatch(
+        crate::Command::Delivery(say),
+        state,
+        services,
+        &forge.spawner,
+    );
+    forge.spawner.drain(state, services);
+    assert_eq!(forge.state.workspace.message.text(), "", "the box is spent");
+}

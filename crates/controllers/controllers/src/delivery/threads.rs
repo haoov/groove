@@ -181,7 +181,9 @@ pub(crate) fn say_as(
         return asker.failed(state, e);
     }
     let (service, job) = (services.delivery.clone(), state.begin(say.label()));
-    let clears = asker.carries_a_box();
+    let typed = asker
+        .carries_a_box()
+        .then(|| state.workspace.message.text());
     spawner.spawn(Box::pin(async move {
         let (repo, at) = (&whose.repo, &whose.worktree.id);
         let done = match say {
@@ -199,7 +201,7 @@ pub(crate) fn say_as(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if done.is_ok() {
-                    if clears && state.workspace.message.text() == body {
+                    if typed.is_some_and(|typed| state.workspace.message.text() == typed) {
                         state.workspace.message = groove_workspace_service::Buffer::default();
                     }
                     let (kind, at) = (TimelineKind::Review, &whose.worktree.id);
