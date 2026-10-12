@@ -141,9 +141,10 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
     let to = &app.destination;
     let cluster = to.name.clone().or(to.server.clone()).unwrap_or_default();
     let namespace = to.namespace.clone().unwrap_or_default();
-    let (said, role) = match app.automated {
-        Some(on) => (groove_types::sync_policy(Some(on)), Role::Ok),
-        None => ("manual".to_string(), Role::Muted),
+    let said = groove_types::sync_policy(app.automated);
+    let role = match app.automated.is_some() {
+        true => Role::Ok,
+        false => Role::Muted,
     };
     let context = match context {
         Some(name) => Some(Fact::new("context", name, Role::Text)),
