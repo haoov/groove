@@ -21,6 +21,8 @@ pub enum Target {
     Picker(Picks),
     /// An overview row.
     Worktree(WorktreeId),
+    /// The overview's ground, under its rows.
+    Overview,
     /// A palette row, by its place in the list.
     PaletteRow(usize),
     /// The palette's box; a click on it does nothing.
@@ -243,7 +245,11 @@ impl Target {
             Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
                 Cursor::Text
             }
-            Target::Agent | Target::Shell(_) | Target::Pinned | Target::Palette => Cursor::Default,
+            Target::Agent
+            | Target::Shell(_)
+            | Target::Pinned
+            | Target::Palette
+            | Target::Overview => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
             Target::ResourceEdge(_) => Cursor::ColResize,
             Target::Split(edge) => match edge.upright() {

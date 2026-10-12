@@ -45,6 +45,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let tall: f32 = heights.iter().sum();
     let rects = column_from(area, ui.session.overview, &specs);
     let mut prose = 0.0;
+    ctx.hit(area, Target::Overview);
     ctx.clipped(area, |ctx| {
         for (part, rect) in parts.iter().zip(rects) {
             prose += draw_part(ctx, app, open, (area, rect), part);
