@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::tests::typed;
-use groove_controllers::{Command, cluster};
+use groove_controllers::{Command, workspace};
 
 fn chord(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let input = Input::Key { key, mods };
@@ -67,7 +67,7 @@ fn a_selection_cuts_to_the_clipboard_and_an_undo_brings_it_back() {
         chord(Key::Left, shift(), &mut ui, &app);
     }
     let cut = chord(Key::Char('x'), ctrl(), &mut ui, &app);
-    let copied = Command::Cluster(cluster::Command::CopyValue {
+    let copied = Command::Workspace(workspace::Command::CopyText {
         text: "leaks".into(),
     });
     assert_eq!(cut, [copied]);
@@ -80,7 +80,7 @@ fn a_selection_cuts_to_the_clipboard_and_an_undo_brings_it_back() {
 
     chord(Key::Char('a'), ctrl(), &mut ui, &app);
     let all = chord(Key::Char('c'), ctrl(), &mut ui, &app);
-    let whole = Command::Cluster(cluster::Command::CopyValue {
+    let whole = Command::Workspace(workspace::Command::CopyText {
         text: "issue: leaks".into(),
     });
     assert_eq!(all, [whole], "select all, then copy");

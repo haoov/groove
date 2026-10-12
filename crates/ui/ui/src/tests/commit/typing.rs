@@ -1,6 +1,6 @@
 //! The commit message answers the keys a note does: its selection, its undo, the clipboard.
 
-use groove_controllers::{AppState, Command, cluster, workspace};
+use groove_controllers::{AppState, Command, workspace};
 use groove_types::Edit;
 
 use super::{file, listed, sidebar};
@@ -45,7 +45,7 @@ fn key(key: Key, mods: Modifiers, ui: &mut Ui, app: &mut AppState) -> Vec<Comman
 }
 
 fn copied(text: &str) -> Command {
-    Command::Cluster(cluster::Command::CopyValue { text: text.into() })
+    Command::Workspace(workspace::Command::CopyText { text: text.into() })
 }
 
 #[test]

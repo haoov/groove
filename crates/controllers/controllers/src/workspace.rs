@@ -56,6 +56,8 @@ pub enum Command {
     Copy,
     /// `workspace.cut`: the same, and out of the buffer.
     Cut,
+    /// `workspace.copy_text`: text a field holds, to the clipboard.
+    CopyText { text: String },
     /// `workspace.paste`: the clipboard, over what the carets hold.
     Paste,
     /// `workspace.read_clipboard`: the clipboard read off the main thread, for the surface to paste.
@@ -113,6 +115,7 @@ impl Command {
             Command::SaveFile => "workspace.save_file",
             Command::Copy => "workspace.copy",
             Command::Cut => "workspace.cut",
+            Command::CopyText { .. } => "workspace.copy_text",
             Command::Paste => "workspace.paste",
             Command::ReadClipboard => "workspace.read_clipboard",
             Command::Stage { .. } => "workspace.stage",
@@ -177,6 +180,7 @@ pub fn dispatch(
         Command::SaveFile => save_file(state, spawner),
         Command::Copy => copy(state, services, spawner),
         Command::Cut => cut(state, services, spawner),
+        Command::CopyText { text } => copied(services, spawner, text),
         Command::Paste => paste(state, services, spawner),
         Command::ReadClipboard => editor::read_clipboard(services, spawner),
         Command::Stage { path } => index(state, spawner, Act::Stage, path),

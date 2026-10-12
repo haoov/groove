@@ -1,7 +1,7 @@
 //! The keys a message typed on a buffer answers: the note's and the commit box's.
 
 use groove_controllers::workspace_service::Buffer;
-use groove_controllers::{Command, cluster};
+use groove_controllers::{Command, workspace};
 use groove_types::{Edit, Motion};
 
 use super::super::{Key, Modifiers};
@@ -100,6 +100,6 @@ fn copied(buffer: &Buffer, cut: bool) -> Asked {
     }
     Asked {
         edit: cut.then_some(Edit::Delete),
-        copied: Some(Command::Cluster(cluster::Command::CopyValue { text })),
+        copied: Some(Command::Workspace(workspace::Command::CopyText { text })),
     }
 }
