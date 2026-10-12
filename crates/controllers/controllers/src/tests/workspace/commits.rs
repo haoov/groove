@@ -22,16 +22,6 @@ fn logged(
     (state, services, dir.into())
 }
 
-fn send(
-    state: &mut crate::AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-    command: workspace::Command,
-) {
-    dispatch(Cmd::Workspace(command), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
-}
-
 #[test]
 fn the_log_holds_the_commits_of_the_branch() {
     let home = tempfile::tempdir().unwrap();

@@ -3,9 +3,9 @@
 use groove_routine_service::routines::{Listed, parse};
 use groove_types::Trigger;
 
+use crate::AppState;
 use crate::config::Command;
-use crate::tests::fixture::fresh;
-use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
+use crate::tests::fixture::{fresh, send};
 
 const FIX_CI: &str =
     "---\nskills: groove:fix-ci\nkind: bound\non: ci-failed, changes-requested\n---\n";
@@ -24,11 +24,6 @@ fn listed(state: &mut AppState) {
     ];
 }
 
-fn send(command: Command, state: &mut AppState, services: &Services, spawner: &SyncSpawner) {
-    dispatch(Cmd::Config(command), state, services, spawner);
-    spawner.drain(state, services);
-}
-
 fn switch(id: &str, on: bool) -> Command {
     Command::SwitchRoutine { id: id.into(), on }
 }
@@ -38,17 +33,17 @@ fn a_routine_switched_on_is_written_and_one_of_its_triggers_turned_off_alone() {
     let (home, spawner, services, mut state) = fresh();
     listed(&mut state);
     send(
-        switch("user:fix-red-ci", true),
         &mut state,
         &services,
         &spawner,
+        switch("user:fix-red-ci", true),
     );
     let quiet = Command::SwitchTrigger {
         id: "user:fix-red-ci".into(),
         trigger: Trigger::ChangesRequested,
         on: false,
     };
-    send(quiet, &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, quiet);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let written = groove_config_service::load(&home.path().join("config"))
         .unwrap()
@@ -60,10 +55,10 @@ fn a_routine_switched_on_is_written_and_one_of_its_triggers_turned_off_alone() {
     );
 
     send(
-        switch("user:fix-red-ci", false),
         &mut state,
         &services,
         &spawner,
+        switch("user:fix-red-ci", false),
     );
     let held = state.config.routines();
     assert!(held.on.is_empty());
@@ -77,8 +72,8 @@ fn a_routine_switched_on_is_written_and_one_of_its_triggers_turned_off_alone() {
 fn a_routine_whose_file_does_not_read_is_not_switched_on() {
     let (_home, spawner, services, mut state) = fresh();
     listed(&mut state);
-    send(switch("user:broken", true), &mut state, &services, &spawner);
-    send(switch("user:gone", true), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, switch("user:broken", true));
+    send(&mut state, &services, &spawner, switch("user:gone", true));
     assert_eq!(state.errors.len(), 2);
     assert!(state.config.routines().on.is_empty());
 }
@@ -94,8 +89,8 @@ fn a_standalone_routine_switched_on_has_its_session_on_the_rail_and_off_loses_it
         id: id.into(),
         read: parse(id, "digest", DIGEST),
     }];
-    send(switch(id, true), &mut state, &services, &spawner);
-    send(switch(id, true), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, switch(id, true));
+    send(&mut state, &services, &spawner, switch(id, true));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let routines: Vec<_> = state
         .session
@@ -107,7 +102,7 @@ fn a_standalone_routine_switched_on_has_its_session_on_the_rail_and_off_loses_it
     let opened = spawner.block_on(services.session.opened()).unwrap();
     assert!(opened.iter().any(|(one, _)| one.kind.routine() == Some(id)));
 
-    send(switch(id, false), &mut state, &services, &spawner);
+    send(&mut state, &services, &spawner, switch(id, false));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     assert!(state.session.open.is_empty());
     let living = spawner.block_on(services.session.living()).unwrap();

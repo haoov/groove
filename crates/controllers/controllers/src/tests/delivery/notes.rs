@@ -15,16 +15,6 @@ fn ready(home: &std::path::Path, spawner: &SyncSpawner) -> (crate::AppState, Ser
     (state, services)
 }
 
-fn send(
-    state: &mut crate::AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-    command: delivery::Command,
-) {
-    dispatch(Cmd::Delivery(command), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
-}
-
 fn leave(
     state: &mut crate::AppState,
     services: &Services,

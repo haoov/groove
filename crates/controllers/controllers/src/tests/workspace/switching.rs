@@ -4,11 +4,6 @@ use groove_types::{Edit, WorktreeSpec};
 
 use super::*;
 
-fn send(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, command: Cmd) {
-    dispatch(command, state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
-}
-
 /// A worktree with its commits read, and a second one on `other` beside it, the first selected.
 fn two(home: &std::path::Path, spawner: &SyncSpawner) -> (crate::AppState, Services, String) {
     pooled_clone(home);

@@ -6,7 +6,10 @@ use std::time::{Duration, Instant};
 
 use groove_types::WorktreeSpec;
 
-use crate::{AppState, Command as Cmd, Env, Services, SyncSpawner, dispatch, session};
+use crate::{
+    AppState, Command as Cmd, Env, Services, SyncSpawner, config, delivery, dispatch, session,
+    workspace,
+};
 
 /// Prints its first flag; echoes one line, or its cwd when the line is `pwd`; exits 7.
 const FAKE_CLAUDE: &str = "#!/bin/sh
@@ -145,6 +148,47 @@ pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner
         .and_then(|o| o.selected_worktree())
         .map(|w| w.path.clone())
         .expect("a worktree")
+}
+
+/// A command `send` takes: the app's own, or one controller's.
+pub trait Routed {
+    fn routed(self) -> Cmd;
+}
+
+impl Routed for Cmd {
+    fn routed(self) -> Cmd {
+        self
+    }
+}
+
+impl Routed for workspace::Command {
+    fn routed(self) -> Cmd {
+        Cmd::Workspace(self)
+    }
+}
+
+impl Routed for delivery::Command {
+    fn routed(self) -> Cmd {
+        Cmd::Delivery(self)
+    }
+}
+
+impl Routed for config::Command {
+    fn routed(self) -> Cmd {
+        Cmd::Config(self)
+    }
+}
+
+/// One command, run to the end of everything it starts.
+#[track_caller]
+pub fn send(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    command: impl Routed,
+) {
+    dispatch(command.routed(), state, services, spawner);
+    until(spawner, services, state, |s| s.pending.is_empty());
 }
 
 #[track_caller]

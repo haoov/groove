@@ -5,13 +5,7 @@ use groove_workspace_service::PathOp;
 use super::*;
 
 fn act(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, op: PathOp) {
-    dispatch(
-        Cmd::Workspace(workspace::Command::Path(op)),
-        state,
-        services,
-        spawner,
-    );
-    until(spawner, services, state, |s| s.pending.is_empty());
+    send(state, services, spawner, workspace::Command::Path(op));
 }
 
 #[test]

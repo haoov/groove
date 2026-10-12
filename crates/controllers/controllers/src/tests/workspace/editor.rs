@@ -321,17 +321,6 @@ fn a_file_saved_back_to_what_it_was_stays_open() {
     );
 }
 
-/// One command, run to the end of everything it starts.
-fn send(
-    state: &mut crate::AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-    command: workspace::Command,
-) {
-    dispatch(Cmd::Workspace(command), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
-}
-
 fn keyed(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, edit: Edit) {
     let command = Cmd::Workspace(workspace::Command::Edit(edit));
     dispatch(command, state, services, spawner);
