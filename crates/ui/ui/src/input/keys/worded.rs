@@ -27,10 +27,19 @@ pub(super) fn asked(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers)
 
 /// What a plain keystroke asks of the buffer.
 fn edit_of(key: Key, mods: Modifiers) -> Option<Edit> {
-    let motion = match key {
-        Key::Char(c) => return Some(Edit::Insert(c.to_string())),
-        Key::Backspace => return Some(Edit::Backspace),
-        Key::Delete => return Some(Edit::Delete),
+    match key {
+        Key::Char(c) => Some(Edit::Insert(c.to_string())),
+        Key::Backspace => Some(Edit::Backspace),
+        Key::Delete => Some(Edit::Delete),
+        key => motion_of(key).map(|motion| match mods.shift {
+            true => Edit::Extend(motion),
+            false => Edit::Move(motion),
+        }),
+    }
+}
+
+fn motion_of(key: Key) -> Option<Motion> {
+    Some(match key {
         Key::Left => Motion::Left,
         Key::Right => Motion::Right,
         Key::Up => Motion::Up,
@@ -38,14 +47,10 @@ fn edit_of(key: Key, mods: Modifiers) -> Option<Edit> {
         Key::Home => Motion::LineStart,
         Key::End => Motion::LineEnd,
         _ => return None,
-    };
-    Some(match mods.shift {
-        true => Edit::Extend(motion),
-        false => Edit::Move(motion),
     })
 }
 
-/// What a bound chord asks: an undo, a selection, or what the caret holds to the clipboard.
+/// What a chord asks: an undo, a selection, the clipboard, or an alt motion that moves the caret.
 fn bound(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers) -> Asked {
     let is = |action| keymap.is(action, key, mods);
     let edit = match () {
@@ -53,7 +58,12 @@ fn bound(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers) -> Asked {
         _ if is(Action::Redo) => Edit::Redo,
         _ if is(Action::SelectAll) => Edit::SelectAll,
         _ if is(Action::Copy) || is(Action::Cut) => return copied(buffer, is(Action::Cut)),
-        _ => return Asked::default(),
+        _ => {
+            return Asked {
+                edit: motion_of(key).filter(|_| !mods.ctrl).map(Edit::Move),
+                copied: None,
+            };
+        }
     };
     Asked {
         edit: Some(edit),

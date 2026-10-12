@@ -121,3 +121,25 @@ fn the_box_shades_what_is_held_the_way_a_note_does() {
     key(Key::Home, shift(), &mut ui, &mut app);
     assert_eq!(count(&app, &ui), before + 1, "the words held are shaded");
 }
+
+#[test]
+fn alt_and_an_arrow_move_the_caret_with_or_without_shift() {
+    let (mut app, mut ui) = composing("fix(a): it");
+    let alt = Modifiers {
+        alt: true,
+        ..Modifiers::default()
+    };
+    let moved = key(Key::Left, alt, &mut ui, &mut app);
+    let left = Edit::Move(groove_types::Motion::Left);
+    assert_eq!(
+        moved,
+        [Command::Workspace(workspace::Command::Message(left))]
+    );
+    let held = Modifiers { shift: true, ..alt };
+    key(Key::Home, held, &mut ui, &mut app);
+    assert_eq!(
+        app.workspace.message.caret(),
+        groove_types::Caret::new(0, 0)
+    );
+    assert_eq!(app.workspace.message.selected(), "", "alt does not hold");
+}
