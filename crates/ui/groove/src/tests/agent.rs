@@ -113,3 +113,41 @@ fn run(
         dispatch(command, state, services, spawner);
     }
 }
+
+#[test]
+fn a_paste_with_no_text_on_the_clipboard_reaches_the_agent_as_the_key() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let (mut state, services) = working(home.path(), &spawner);
+    let mut ui = Ui {
+        surface: groove_ui::Surface::Session,
+        focus: groove_ui::Focus::Agent,
+        ..Ui::default()
+    };
+    let mods = groove_ui::input::Modifiers {
+        ctrl: true,
+        ..Default::default()
+    };
+    let mut unpasted = Some(Input::Key {
+        key: groove_ui::input::Key::Char('v'),
+        mods,
+    });
+    let read = groove_controllers::workspace::Command::ReadClipboard;
+    run(
+        vec![groove_controllers::Command::Workspace(read)],
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+
+    let input = crate::app::events::landed(&mut state, &mut unpasted).expect("the key comes back");
+    let (_, hits) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let asked = handle(input, &mut ui, &state, &hits, window());
+    let session = state.session.selected.clone().expect("a session");
+    let ctrl_v = groove_controllers::agent::Command::Send {
+        session,
+        bytes: vec![0x16],
+    };
+    assert_eq!(asked, vec![groove_controllers::Command::Agent(ctrl_v)]);
+}

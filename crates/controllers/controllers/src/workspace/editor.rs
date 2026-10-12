@@ -114,7 +114,7 @@ pub(super) fn read_clipboard(services: &Services, spawner: &dyn Spawner) {
     spawner.spawn(Box::pin(async move {
         let text = clipboard.read();
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.pasted = text.filter(|one| !one.is_empty());
+            state.pasted = Some(text.filter(|one| !one.is_empty()));
         }) as Continuation
     }));
 }

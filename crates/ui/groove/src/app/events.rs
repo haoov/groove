@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use groove_controllers::{Command, Event, dispatch, session, task};
+use groove_controllers::{AppState, Command, Event, dispatch, session, task};
 use groove_gfx::{Fonts, Renderer};
 use groove_ui::input::Input;
 use winit::application::ApplicationHandler;
@@ -89,8 +89,8 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Continue(continuation) => {
                 continuation(&mut self.state, &self.services, &self.spawner);
-                if let Some(text) = self.state.pasted.take() {
-                    self.input(Input::Paste(text));
+                if let Some(input) = landed(&mut self.state, &mut self.unpasted) {
+                    self.input(input);
                 }
                 self.watch();
                 self.redraw();
@@ -114,7 +114,7 @@ impl ApplicationHandler<Message> for App {
             } => {}
             WindowEvent::KeyboardInput { event, .. } => {
                 if self.pasting(&event) {
-                    self.paste();
+                    self.paste(input_of(&event, self.modifiers));
                 } else if let Some(input) = input_of(&event, self.modifiers) {
                     self.input(input);
                 }
@@ -156,7 +156,8 @@ impl App {
     }
 
     /// The clipboard read off the main thread; what it holds comes back as a paste.
-    fn paste(&mut self) {
+    fn paste(&mut self, key: Option<Input>) {
+        self.unpasted = key;
         let read = Command::Workspace(groove_controllers::workspace::Command::ReadClipboard);
         dispatch(read, &mut self.state, &self.services, &self.spawner);
     }
@@ -194,6 +195,13 @@ impl App {
             _ => {}
         }
     }
+}
+
+/// A finished clipboard read as input: its text as a paste, else the key that asked.
+pub(crate) fn landed(state: &mut AppState, unpasted: &mut Option<Input>) -> Option<Input> {
+    let text = state.pasted.take()?;
+    let key = unpasted.take();
+    text.map(Input::Paste).or(key)
 }
 
 /// A wheel notch is lines; a trackpad is pixels, and up is away from the user.

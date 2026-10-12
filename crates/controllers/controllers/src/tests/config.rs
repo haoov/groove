@@ -138,5 +138,5 @@ fn the_clipboard_is_read_off_the_loop_and_held_for_the_surface() {
         &spawner,
     );
     spawner.drain(&mut state, &services);
-    assert_eq!(state.pasted.as_deref(), Some("pasted words"));
+    assert_eq!(state.pasted, Some(Some("pasted words".into())));
 }

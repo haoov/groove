@@ -1,6 +1,6 @@
 //! The window's state and what it does with it: draw, fit, point, dispatch.
 
-mod events;
+pub(crate) mod events;
 
 use self::events::{CLOCK_S, FIT_MS};
 
@@ -36,6 +36,8 @@ pub struct App {
     started: Instant,
     /// When the paced redraw is next due.
     tick: Option<Instant>,
+    /// The key that asked for the clipboard, while the read is out.
+    unpasted: Option<Input>,
 }
 
 impl App {
@@ -68,6 +70,7 @@ impl App {
             explore,
             started: Instant::now(),
             tick: None,
+            unpasted: None,
         }
     }
 
