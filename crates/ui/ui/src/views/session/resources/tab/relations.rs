@@ -6,7 +6,7 @@ use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::{Cell, Shown, Width};
 
-use super::super::around::{lineage, selecting, served};
+use super::super::around::lineage;
 use super::super::opened::{Link, Opened};
 use super::{copy, grouped};
 use crate::ctx::Ctx;
@@ -48,7 +48,9 @@ pub(super) fn lines(app: &AppState, tab: &Opened, object: &Described) -> Vec<Lin
             let how = (one.how.join(" · "), Role::Muted);
             uses.push(entry(&one.tag, &one.name, Some(how), open));
         }
-        for name in selecting(app, &tab.link, object) {
+        let namespace = tab.link.namespace.as_deref();
+        let store = &app.cluster.store;
+        for name in store.selecting(&tab.link.context, namespace, object) {
             let link = link_to(app, &tab.link, "Service", &name, true);
             used.push(entry("svc", &name, None, link));
         }
@@ -178,7 +180,7 @@ fn uses_link(app: &AppState, from: &Link, tag: &str, name: &str) -> Option<Link>
 fn link_to(app: &AppState, from: &Link, kind: &str, name: &str, namespaced: bool) -> Option<Link> {
     Some(Link {
         context: from.context.clone(),
-        kind: served(app, &from.context, "", kind)?,
+        kind: app.cluster.store.served(&from.context, "", kind)?,
         namespace: from.namespace.clone().filter(|_| namespaced),
         name: name.to_string(),
     })

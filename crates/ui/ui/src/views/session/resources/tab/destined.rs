@@ -3,7 +3,6 @@
 use groove_controllers::{AppState, Command, cluster};
 use groove_types::{AppPart, AppResource, Destination};
 
-use super::super::around::served;
 use super::super::opened::Link;
 
 /// The context the destination stands on: the Application's own in-cluster, else the one added whose server it names.
@@ -17,7 +16,7 @@ pub(super) fn link(app: &AppState, context: Option<&str>, one: &AppResource) -> 
     let context = context?;
     Some(Link {
         context: context.to_string(),
-        kind: served(app, context, &one.group, &one.kind)?,
+        kind: app.cluster.store.served(context, &one.group, &one.kind)?,
         namespace: one.namespace.clone(),
         name: one.name.clone(),
     })

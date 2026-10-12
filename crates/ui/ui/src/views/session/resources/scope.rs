@@ -139,11 +139,11 @@ pub fn kind(app: &AppState, open: &Open, ui: &ResourcesUi) -> Option<KubeKind> {
     if let Some(kind) = &ui.kind {
         return Some(kind.clone());
     }
+    let store = &app.cluster.store;
     let known = contexts(open)
         .into_iter()
-        .find_map(|one| app.cluster.store.kinds(one))?;
-    let pods = |one: &&KubeKind| one.group.is_empty() && one.kind == "Pod";
-    known.iter().find(pods).cloned()
+        .find(|one| store.kinds(one).is_some())?;
+    store.served(known, "", "Pod")
 }
 
 /// The search's label selector, its `=` words joined; and its name words.
@@ -173,11 +173,11 @@ pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
     };
     let mut out: Vec<WatchKey> = Vec::new();
     for pair in held(open, ui).filter(|one| app.config.cluster(&one.context).is_some()) {
-        let Some(kinds) = app.cluster.store.kinds(&pair.context) else {
-            continue;
-        };
-        let same = |one: &&KubeKind| one.group == picked.group && one.kind == picked.kind;
-        let Some(kind) = kinds.iter().find(same).filter(|one| one.watchable) else {
+        let served = app
+            .cluster
+            .store
+            .served(&pair.context, &picked.group, &picked.kind);
+        let Some(kind) = served.filter(|one| one.watchable) else {
             continue;
         };
         let key = WatchKey {

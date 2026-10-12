@@ -63,12 +63,8 @@ impl Follows {
 
     /// The usage of the pod `key` named, and the revisions of a namespace no key follows now.
     fn forget(&mut self, key: &FollowKey) {
-        let name = key
-            .fields
-            .as_deref()
-            .and_then(|one| one.strip_prefix("metadata.name="));
         let namespace = key.namespace.clone().unwrap_or_default();
-        if let Some(name) = name {
+        if let Some(name) = key.named_one() {
             let pod = (key.context.clone(), namespace, name.to_string());
             self.usage.remove(&pod);
             self.failing.remove(&pod);
@@ -85,11 +81,7 @@ impl Follows {
     /// A batch of a watcher still held; one dropped meanwhile is ignored.
     pub fn apply(&mut self, key: &FollowKey, batch: Followed) {
         self.landed(key, batch);
-        let whole = key
-            .fields
-            .as_deref()
-            .is_some_and(|one| one.starts_with("metadata.name="));
-        if whole {
+        if key.named_one().is_some() {
             let first = self.followed.get(key).and_then(|one| one.objects.first());
             self.yamls.refresh(key, first.map(|one| &**one));
         }

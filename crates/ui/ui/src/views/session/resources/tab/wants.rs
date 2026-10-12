@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use groove_controllers::{AppState, Command, cluster};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
-use super::super::around::{events_key, helm_release, lineage, services_key};
+use super::super::around::{helm_release, lineage};
 use super::super::opened::Opened;
 use super::super::{ResourcesUi, View, log_key};
 
@@ -42,14 +42,15 @@ fn keys(app: &AppState, tab: &Opened) -> Vec<FollowKey> {
     let Some(object) = link.read(app) else {
         return out;
     };
-    out.extend(events_key(app, link, &object.uid));
+    let (store, namespace) = (&app.cluster.store, link.namespace.as_deref());
+    out.extend(store.events_key(&link.context, namespace, &object.uid));
     out.extend(
         lineage(app, link, object)
             .into_iter()
             .map(|(up, _)| up.key()),
     );
     if object.pod.is_some() {
-        out.extend(services_key(app, link));
+        out.extend(store.services_key(&link.context, namespace));
     }
     out
 }

@@ -85,3 +85,22 @@ fn a_service_picks_what_holds_every_label_of_its_selector() {
     service.selector.push(("tier".into(), "db".into()));
     assert!(!service.selects(&pod));
 }
+
+#[test]
+fn a_key_names_one_object_only_by_its_name_field() {
+    let pods = crate::KubeKind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Pod".into(),
+        plural: "pods".into(),
+        namespaced: true,
+        watchable: true,
+    };
+    let named = crate::FollowKey::named("kind", &pods, Some("paxone"), "api-0");
+    assert_eq!(named.named_one(), Some("api-0"));
+    let events = crate::FollowKey {
+        fields: Some("involvedObject.uid=u1".into()),
+        ..named
+    };
+    assert_eq!(events.named_one(), None);
+}

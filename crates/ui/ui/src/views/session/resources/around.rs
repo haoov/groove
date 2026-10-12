@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use groove_controllers::AppState;
-use groove_types::{Described, FollowKey, KubeKind};
+use groove_types::Described;
 
 use super::opened::Link;
 
@@ -28,11 +28,6 @@ pub fn row_link(
         }
     }
     None
-}
-
-/// The kind `context` serves in `group` named `kind`.
-pub fn served(app: &AppState, context: &str, group: &str, kind: &str) -> Option<KubeKind> {
-    app.cluster.store.served(context, group, kind)
 }
 
 /// The object's owners, nearest first, as far as each has been read.
@@ -62,22 +57,4 @@ pub fn helm_release(
 ) -> Option<(String, String)> {
     let top = owners.iter().rev().find_map(|(_, read)| read.clone());
     object.helm_release(top.as_deref())
-}
-
-/// The events about the object, once its uid is known.
-pub fn events_key(app: &AppState, link: &Link, uid: &str) -> Option<FollowKey> {
-    let store = &app.cluster.store;
-    store.events_key(&link.context, link.namespace.as_deref(), uid)
-}
-
-/// Every Service of the object's namespace.
-pub fn services_key(app: &AppState, link: &Link) -> Option<FollowKey> {
-    let store = &app.cluster.store;
-    store.services_key(&link.context, link.namespace.as_deref())
-}
-
-/// The Services whose selector picks the object by its labels.
-pub fn selecting(app: &AppState, link: &Link, object: &Described) -> Vec<String> {
-    let store = &app.cluster.store;
-    store.selecting(&link.context, link.namespace.as_deref(), object)
 }

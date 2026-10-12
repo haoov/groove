@@ -60,11 +60,7 @@ impl Editing {
             Editing::Object(key) => {
                 let buffer = app.cluster.store.follows.yamls.get(key)?;
                 let namespace = key.namespace.as_deref().unwrap_or("-");
-                let name = key
-                    .fields
-                    .as_deref()
-                    .unwrap_or_default()
-                    .trim_start_matches("metadata.name=");
+                let name = key.named_one().unwrap_or_default();
                 let path = format!(
                     "{}/{namespace}/{}/{name}.yaml",
                     key.context, key.kind.plural

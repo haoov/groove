@@ -14,6 +14,8 @@ pub struct FollowKey {
     pub fields: Option<String>,
 }
 
+const NAMED: &str = "metadata.name=";
+
 impl FollowKey {
     /// The one object named `name`.
     pub fn named(context: &str, kind: &KubeKind, namespace: Option<&str>, name: &str) -> Self {
@@ -21,8 +23,13 @@ impl FollowKey {
             context: context.to_string(),
             kind: kind.clone(),
             namespace: namespace.map(String::from),
-            fields: Some(format!("metadata.name={name}")),
+            fields: Some(format!("{NAMED}{name}")),
         }
+    }
+
+    /// The name of the one object the key reads, when it reads one.
+    pub fn named_one(&self) -> Option<&str> {
+        self.fields.as_deref()?.strip_prefix(NAMED)
     }
 }
 

@@ -9,7 +9,7 @@ use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Heading;
 
-use super::super::around::{helm_release, lineage, served};
+use super::super::around::{helm_release, lineage};
 use super::super::health::{colour, status_colour};
 use super::super::opened::{Link, Opened, Section};
 use super::copy;
@@ -169,12 +169,16 @@ fn placed(
     add: &mut dyn FnMut(&'static str, String, Role, Option<Link>),
 ) {
     if let Some(node) = &pod.node {
-        let open = served(app, &tab.link.context, "", "Node").map(|kind| Link {
-            context: tab.link.context.clone(),
-            kind,
-            namespace: None,
-            name: node.clone(),
-        });
+        let open = app
+            .cluster
+            .store
+            .served(&tab.link.context, "", "Node")
+            .map(|kind| Link {
+                context: tab.link.context.clone(),
+                kind,
+                namespace: None,
+                name: node.clone(),
+            });
         add("node", node.clone(), Role::Accent, open);
     }
     let facts = [("pod ip", pod.ip.clone()), ("qos", pod.qos.clone())];

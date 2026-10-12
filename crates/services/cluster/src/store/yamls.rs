@@ -41,11 +41,7 @@ impl Yamls {
 
     /// A move of the caret or of what it holds; anything that would change the text is refused.
     pub fn edit(&mut self, key: &FollowKey, edit: &Edit) -> bool {
-        let moves = matches!(
-            edit,
-            Edit::Move(_) | Edit::Extend(_) | Edit::SelectAll | Edit::SelectWord | Edit::SelectLine
-        );
-        match self.buffers.get_mut(key).filter(|_| moves) {
+        match self.buffers.get_mut(key).filter(|_| edit.moves()) {
             Some(buffer) => {
                 buffer.edit(edit);
                 true

@@ -128,11 +128,7 @@ impl Logs {
 
     /// A move of the caret or of what it holds; anything that would change the text is refused.
     pub fn edit(&mut self, key: &LogKey, edit: &Edit) -> bool {
-        let moves = matches!(
-            edit,
-            Edit::Move(_) | Edit::Extend(_) | Edit::SelectAll | Edit::SelectWord | Edit::SelectLine
-        );
-        match self.streams.get_mut(key).filter(|_| moves) {
+        match self.streams.get_mut(key).filter(|_| edit.moves()) {
             Some(one) => {
                 one.buffer.edit(edit);
                 true

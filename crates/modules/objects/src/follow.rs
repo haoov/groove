@@ -74,10 +74,7 @@ async fn cycle(
         labels: None,
     };
     let listed = client.list_objects(narrowed).await?;
-    let whole = key
-        .fields
-        .as_deref()
-        .is_some_and(|one| one.starts_with("metadata.name="));
+    let whole = key.named_one().is_some();
     let read = |object: &serde_json::Value| crate::describe(&key.kind.kind, object, whole);
     send(Followed::Reset(listed.objects.iter().map(read).collect()));
     let mut version = listed.version;

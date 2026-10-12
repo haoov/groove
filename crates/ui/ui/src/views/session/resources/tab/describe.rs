@@ -10,7 +10,6 @@ use groove_types::{
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::scrolled;
 
-use super::super::around::events_key;
 use super::super::opened::{Opened, Section};
 use super::argo;
 use super::containers;
@@ -263,8 +262,10 @@ fn key_width(ctx: &mut Ctx, object: &Described, room: f32) -> f32 {
 
 /// The events about the object, warnings first, then the latest.
 fn events(app: &AppState, tab: &Opened, object: &Described) -> Vec<Arc<Described>> {
-    let key = events_key(app, &tab.link, &object.uid);
-    let held = key.and_then(|key| app.cluster.store.follows.get(&key));
+    let store = &app.cluster.store;
+    let namespace = tab.link.namespace.as_deref();
+    let key = store.events_key(&tab.link.context, namespace, &object.uid);
+    let held = key.and_then(|key| store.follows.get(&key));
     let mut events: Vec<Arc<Described>> = held.map(|one| one.objects.clone()).unwrap_or_default();
     let rank = |one: &Arc<Described>| {
         let row = one.event.as_ref();
