@@ -104,8 +104,11 @@ impl Store {
         }
     }
 
-    /// `context` signed in: a discovery waiting on a failure may run now.
+    /// `context` signed in: a discovery waiting on a failure may run now, and its streams try again.
     pub fn signed_in(&mut self, context: &str) {
+        self.watched.wake(|key| key.context == context);
+        self.follows.wake(context);
+        self.logs.wake(context);
         if self.refused.remove(context).is_some() {
             self.discovering.remove(context);
         }

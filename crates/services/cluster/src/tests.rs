@@ -61,6 +61,33 @@ fn a_check_replaces_the_last_login_of_its_context_only() {
     assert!(!state.checking("hub"));
 }
 
+#[tokio::test]
+async fn a_sign_in_wakes_the_parked_streams_of_its_context() {
+    let mut state = State::default();
+    let failed = std::sync::Arc::new(std::sync::Mutex::new(0));
+    let counted = failed.clone();
+    let stop = state
+        .store
+        .lease(&pods("paxone"), "tab")
+        .expect("a watcher");
+    let paths = vec!["/nonexistent/kubeconfig".into()];
+    let running = tokio::spawn(crate::watcher(paths, pods("paxone"), stop, move |batch| {
+        if matches!(batch, crate::Batch::Failed(_)) {
+            *counted.lock().expect("the count") += 1;
+        }
+    }));
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert_eq!(*failed.lock().expect("the count"), 1);
+    let login = Login::SignedIn {
+        version: "v1.33.4".into(),
+    };
+    let context = "kind".into();
+    apply(&mut state, Event::Checked { context, login });
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    running.abort();
+    assert_eq!(*failed.lock().expect("the count"), 2);
+}
+
 fn pods(namespace: &str) -> groove_types::WatchKey {
     groove_types::WatchKey {
         context: "kind".into(),

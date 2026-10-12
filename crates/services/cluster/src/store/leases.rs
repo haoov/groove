@@ -61,6 +61,12 @@ impl<K: Ord + Clone, T> Leases<K, T> {
         started.then_some(&one.stop)
     }
 
+    /// Every stream whose key `which` picks tries again now if it waits.
+    pub fn wake(&self, which: impl Fn(&K) -> bool) {
+        let picked = self.held.iter().filter(|(key, _)| which(key));
+        picked.for_each(|(_, one)| one.stop.wake());
+    }
+
     /// `reader` reads nothing any more; the keys it leaves without a reader, each with its count.
     pub fn release(&mut self, reader: &str) -> Vec<(K, u64)> {
         let mut unread = Vec::new();

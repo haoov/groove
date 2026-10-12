@@ -99,6 +99,10 @@ impl Logs {
         self.streams.lease(key, reader, made)
     }
 
+    pub(super) fn wake(&self, context: &str) {
+        self.streams.wake(|key| key.context == context);
+    }
+
     /// `reader` reads no stream any more; the keys it leaves without a reader.
     pub fn release(&mut self, reader: &str) -> Vec<(LogKey, u64)> {
         self.streams.release(reader)

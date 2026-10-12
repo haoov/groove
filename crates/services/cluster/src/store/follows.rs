@@ -42,6 +42,10 @@ impl Follows {
         self.followed.lease(key, reader, Follow::default)
     }
 
+    pub(super) fn wake(&self, context: &str) {
+        self.followed.wake(|key| key.context == context);
+    }
+
     /// `reader` reads nothing any more; the keys it leaves without a reader.
     pub fn release(&mut self, reader: &str) -> Vec<(FollowKey, u64)> {
         self.followed.release(reader)

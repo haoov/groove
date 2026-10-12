@@ -36,12 +36,12 @@ pub fn follow(
     stop: &Stop,
     send: impl Fn(Followed) + Send + Sync + 'static,
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
-    let mut stopped = stop.subscribe();
+    let mut heard = stop.subscribe();
     async move {
         let mut backoff = Backoff::new();
         loop {
             let ended = tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
+                _ = heard.stopped() => return,
                 ended = cycle(&paths, &key, &send, &mut backoff) => ended,
             };
             let wait = match ended {
@@ -51,9 +51,8 @@ pub fn follow(
                     backoff.after(&e)
                 }
             };
-            tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
-                _ = tokio::time::sleep(wait) => {}
+            if !heard.rest(wait).await {
+                return;
             }
         }
     }

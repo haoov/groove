@@ -1365,6 +1365,7 @@ dependencies = [
  "groove-objects",
  "groove-text",
  "groove-types",
+ "tokio",
 ]
 
 [[package]]
