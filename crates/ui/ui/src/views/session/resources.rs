@@ -17,7 +17,7 @@ pub use list::draw;
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
 pub use opened::{Link, Opens, Section};
 pub use scope::{
-    Dragged, Pick, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered,
+    Dragged, Pick, ResourcesUi, WHOLE_LINE, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered,
     shown_contexts, wants,
 };
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};

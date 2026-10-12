@@ -114,6 +114,10 @@ fn picking_a_context_lists_its_namespaces_behind_the_whole_cluster() {
         .map(|(_, value)| value.as_str())
         .collect();
     assert_eq!(values, ["", "argocd", "kube-system"]);
+    assert_eq!(
+        prompt.options[0].0, "* whole cluster",
+        "as the scope panel says it"
+    );
 }
 
 #[test]
