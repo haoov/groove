@@ -50,7 +50,7 @@ fn motion_of(key: Key) -> Option<Motion> {
     })
 }
 
-/// What a chord asks: an undo, a selection, the clipboard, or an alt motion that moves the caret.
+/// What a chord asks: an undo, a selection, the clipboard, or alt on a deletion or a motion.
 fn bound(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers) -> Asked {
     let is = |action| keymap.is(action, key, mods);
     let edit = match () {
@@ -58,12 +58,17 @@ fn bound(buffer: &Buffer, keymap: &Keymap, key: Key, mods: Modifiers) -> Asked {
         _ if is(Action::Redo) => Edit::Redo,
         _ if is(Action::SelectAll) => Edit::SelectAll,
         _ if is(Action::Copy) || is(Action::Cut) => return copied(buffer, is(Action::Cut)),
-        _ => {
-            return Asked {
-                edit: motion_of(key).filter(|_| !mods.ctrl).map(Edit::Move),
-                copied: None,
-            };
-        }
+        _ if mods.ctrl => return Asked::default(),
+        _ => match key {
+            Key::Backspace => Edit::Backspace,
+            Key::Delete => Edit::Delete,
+            key => {
+                return Asked {
+                    edit: motion_of(key).map(Edit::Move),
+                    copied: None,
+                };
+            }
+        },
     };
     Asked {
         edit: Some(edit),

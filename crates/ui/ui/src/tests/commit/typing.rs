@@ -143,3 +143,17 @@ fn alt_and_an_arrow_move_the_caret_with_or_without_shift() {
     );
     assert_eq!(app.workspace.message.selected(), "", "alt does not hold");
 }
+
+#[test]
+fn alt_and_backspace_or_delete_take_a_character() {
+    let (mut app, mut ui) = composing("fix(a): it");
+    let alt = Modifiers {
+        alt: true,
+        ..Modifiers::default()
+    };
+    key(Key::Backspace, alt, &mut ui, &mut app);
+    assert_eq!(app.workspace.message.text(), "fix(a): i");
+    key(Key::Home, Modifiers::default(), &mut ui, &mut app);
+    key(Key::Delete, alt, &mut ui, &mut app);
+    assert_eq!(app.workspace.message.text(), "ix(a): i");
+}
