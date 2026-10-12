@@ -3,6 +3,7 @@
 mod clusters;
 mod families;
 mod keeper;
+mod login;
 mod plugins;
 mod sources;
 #[cfg(test)]
@@ -12,6 +13,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub use keeper::Keeper;
+pub use login::{claude_bin, login};
 pub use sources::Source;
 
 use groove_types::{Config, Error, FontFamily, Preferences, ThemeName, Tool, UiConfig};
@@ -65,6 +67,8 @@ pub struct State {
     /// What each source was last read to hold, and the sources being read.
     pub schemas: Vec<(groove_types::ProviderId, Vec<groove_types::Property>)>,
     pub reading: Vec<groove_types::ProviderId>,
+    /// The sign-in Setup runs, while it runs.
+    pub login: Option<groove_terminal::Terminal>,
     /// The last revision handed to a write.
     pub revision: u64,
 }

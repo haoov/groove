@@ -203,7 +203,7 @@ fn bound(action: Action, key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState)
 /// Settings holds the keyboard: the search, a source's field, a running sign-in, else Esc back.
 fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let settings = &mut ui.settings;
-    let signing_in = app.agent.login.is_some();
+    let signing_in = app.config.login.is_some();
     if let Some(draft) = settings.draft.as_mut().filter(|one| one.at.is_some()) {
         return in_draft(key, mods, draft);
     }

@@ -44,7 +44,7 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
     if !searching && settings.section == Section::Clusters {
         return clusters::draw(ctx, body, app);
     }
-    let login = app.agent.login.as_ref();
+    let login = app.config.login.as_ref();
     if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
         let pane = super::login_pane(ctx.window, &ctx.tokens);
         body = body.until_y(pane.y);

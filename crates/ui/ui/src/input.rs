@@ -182,7 +182,7 @@ fn pasted_in_settings(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         field.paste(text.trim());
         return Vec::new();
     }
-    if app.agent.login.is_none() {
+    if app.config.login.is_none() {
         return Vec::new();
     }
     let paste = groove_controllers::config::Command::PasteLogin {

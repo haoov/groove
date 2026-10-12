@@ -1384,7 +1384,9 @@ dependencies = [
 name = "groove-config-service"
 version = "1.0.0-alpha.3"
 dependencies = [
+ "groove-agent-launch",
  "groove-config",
+ "groove-terminal",
  "groove-types",
  "tempfile",
  "tokio",

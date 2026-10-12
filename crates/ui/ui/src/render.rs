@@ -132,7 +132,7 @@ fn schemas(app: &AppState, ui: &Ui) -> Vec<Command> {
 
 /// The sign-in's grid to Setup's pane, while Settings shows it.
 fn login_fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Option<Command> {
-    let terminal = app.agent.login.as_ref().filter(|_| ui.settings.open)?;
+    let terminal = app.config.login.as_ref().filter(|_| ui.settings.open)?;
     let tokens = metrics.tokens();
     let pane = settings::login_pane(metrics.size.rect(), &tokens);
     let (cols, rows) = crate::layout::grid_in(pane, &tokens, metrics.cell);
