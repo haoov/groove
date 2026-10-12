@@ -13,11 +13,7 @@ use crate::views::session::resources::{self, ResourcesUi};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held: &ResourcesUi) {
     let contexts = resources::contexts(open);
-    let shown: Vec<&str> = contexts
-        .iter()
-        .copied()
-        .filter(|one| !held.hidden_contexts.contains(*one))
-        .collect();
+    let shown = resources::shown_contexts(open, held);
     let none = contexts.is_empty();
     let contexts = match none {
         true => "no cluster".to_string(),

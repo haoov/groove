@@ -115,6 +115,13 @@ pub fn contexts(open: &Open) -> Vec<&str> {
     out
 }
 
+/// The contexts the session holds that the picker leaves in.
+pub fn shown_contexts<'a>(open: &'a Open, ui: &ResourcesUi) -> Vec<&'a str> {
+    let mut out = contexts(open);
+    out.retain(|one| !ui.hidden_contexts.contains(*one));
+    out
+}
+
 /// The pairs whose context is picked: what the namespace picker offers.
 pub fn offered<'a>(open: &'a Open, ui: &ResourcesUi) -> impl Iterator<Item = &'a Attached> {
     let hidden = ui.hidden_contexts.clone();

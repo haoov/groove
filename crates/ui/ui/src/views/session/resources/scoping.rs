@@ -83,10 +83,8 @@ impl Scoping {
 
 /// The contexts whose namespaces the panel lists: those picked, then one being attached.
 fn in_panel(open: &Open, held: &ResourcesUi, scoping: &Scoping) -> Vec<String> {
-    let picked = contexts(open)
-        .into_iter()
-        .filter(|one| !held.hidden_contexts.contains(*one));
-    let mut out: Vec<String> = picked.map(String::from).collect();
+    let picked = super::scope::shown_contexts(open, held);
+    let mut out: Vec<String> = picked.into_iter().map(String::from).collect();
     if let Some(adding) = scoping.adding.clone().filter(|one| !out.contains(one)) {
         out.push(adding);
     }

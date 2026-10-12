@@ -99,10 +99,7 @@ fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (boo
 fn lines(app: &AppState, open: &Open, ui: &Ui) -> Vec<Line> {
     let held = &ui.session.resources;
     let mut kinds: Vec<&KubeKind> = Vec::new();
-    for context in scope::contexts(open)
-        .into_iter()
-        .filter(|one| !held.hidden_contexts.contains(*one))
-    {
+    for context in scope::shown_contexts(open, held) {
         let served = app.cluster.store.kinds(context).unwrap_or_default();
         for kind in served.iter().filter(|one| one.watchable) {
             if !kinds

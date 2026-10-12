@@ -14,14 +14,8 @@ use crate::ctx::Ctx;
 
 /// A context once, in the order first attached, then each of its namespaces.
 pub(super) fn parts<'a>(app: &AppState, open: &'a Open) -> Vec<Part<'a>> {
-    let mut contexts: Vec<&str> = Vec::new();
-    for one in &open.clusters {
-        if !contexts.contains(&one.context.as_str()) {
-            contexts.push(&one.context);
-        }
-    }
     let mut out = Vec::new();
-    for context in contexts {
+    for context in crate::views::session::resources::contexts(open) {
         let hue = app.config.cluster(context).map(|one| one.hue);
         out.push(Part::Cluster(context, hue));
         let held = open.clusters.iter().filter(|one| one.context == context);
