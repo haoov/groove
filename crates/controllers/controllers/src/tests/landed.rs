@@ -2,8 +2,8 @@
 
 use groove_types::{Forge, Mr, MrId, MrState, RepoId};
 
-use super::fixture::{self, pooled_clone, sh};
-use super::worktrees::{REPO, close, explorer, second_worktree};
+use super::fixture::{self, explorer, pooled_clone, sh};
+use super::worktrees::{REPO, close, second_worktree};
 
 #[test]
 fn a_merged_mr_s_worktree_closes_with_commits_origin_lacks_but_not_with_changes() {

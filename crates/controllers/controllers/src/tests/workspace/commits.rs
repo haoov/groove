@@ -5,28 +5,28 @@ use groove_types::{Caret, Edit, Motion};
 use super::*;
 
 /// The fixture with a worktree and its two commits read.
-fn logged(
-    home: &std::path::Path,
-    spawner: &SyncSpawner,
-) -> (crate::AppState, Services, std::path::PathBuf) {
-    pooled_clone(home);
-    let services = services(spawner, home);
-    let mut state = state(home);
-    let dir = worktree(&mut state, &services, spawner);
+fn logged() -> (
+    tempfile::TempDir,
+    SyncSpawner,
+    crate::AppState,
+    Services,
+    std::path::PathBuf,
+) {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
     send(
         &mut state,
         &services,
-        spawner,
+        &spawner,
         workspace::Command::GetCommits,
     );
-    (state, services, dir.into())
+    (home, spawner, state, services, dir.into())
 }
 
 #[test]
 fn the_log_holds_the_commits_of_the_branch() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (state, _, _) = logged(home.path(), &spawner);
+    let (_home, _spawner, state, _, _) = logged();
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let said: Vec<&str> = state
         .workspace
@@ -39,9 +39,7 @@ fn the_log_holds_the_commits_of_the_branch() {
 
 #[test]
 fn a_commit_opened_shows_what_it_changed() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, dir) = logged(home.path(), &spawner);
+    let (_home, spawner, mut state, services, dir) = logged();
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     sh(&dir, &["add", "."]);
     sh(&dir, &["commit", "-m", "second"]);
@@ -76,9 +74,7 @@ fn a_commit_opened_shows_what_it_changed() {
 
 #[test]
 fn nothing_writes_while_a_commit_is_shown() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, dir) = logged(home.path(), &spawner);
+    let (_home, spawner, mut state, services, dir) = logged();
     let file = dir.join("a.txt");
     std::fs::write(&file, "one\ntwo\n").unwrap();
     send(&mut state, &services, &spawner, workspace::Command::Load);
@@ -114,9 +110,7 @@ fn nothing_writes_while_a_commit_is_shown() {
 
 #[test]
 fn leaving_the_commit_brings_the_working_tree_back() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, dir) = logged(home.path(), &spawner);
+    let (_home, spawner, mut state, services, dir) = logged();
     std::fs::write(dir.join("a.txt"), "one\ntwo\n").unwrap();
     send(&mut state, &services, &spawner, workspace::Command::Load);
     let sha = state.workspace.log[0].sha.clone();
@@ -163,9 +157,7 @@ fn leaving_the_commit_brings_the_working_tree_back() {
 
 #[test]
 fn a_shown_commit_leaves_the_open_files_as_the_disk_holds_them() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, dir) = logged(home.path(), &spawner);
+    let (_home, spawner, mut state, services, dir) = logged();
     std::fs::write(dir.join("a.txt"), "second\n").unwrap();
     sh(&dir, &["commit", "-am", "second"]);
     std::fs::write(dir.join("a.txt"), "working\n").unwrap();
@@ -206,9 +198,7 @@ fn a_shown_commit_leaves_the_open_files_as_the_disk_holds_them() {
 
 #[test]
 fn of_two_commits_clicked_in_a_row_the_second_is_shown() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, dir) = logged(home.path(), &spawner);
+    let (_home, spawner, mut state, services, dir) = logged();
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     sh(&dir, &["add", "."]);
     sh(&dir, &["commit", "-m", "second"]);

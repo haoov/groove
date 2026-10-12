@@ -1,29 +1,10 @@
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::session::Command;
-use crate::tests::fixture::{self, pooled_clone, services, sh, state, until};
+use crate::tests::fixture::{self, explorer, pooled_clone, sh, until};
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
 pub(super) const REPO: &str = "gitlab.example.com/g/mayo";
-
-/// An explorer open with the fixture's clone in the pool; returns its id.
-pub(super) fn explorer(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-) -> groove_types::SessionId {
-    dispatch(
-        Cmd::Session(Command::OpenExplorer {
-            title: Some("try mayo".into()),
-        }),
-        state,
-        services,
-        spawner,
-    );
-    let id = state.session.selected.clone().unwrap();
-    until(spawner, services, state, |s| s.agent.agent(&id).is_some());
-    id
-}
 
 fn session_cmd(command: Command) -> Cmd {
     Cmd::Session(command)
@@ -31,11 +12,8 @@ fn session_cmd(command: Command) -> Cmd {
 
 #[test]
 fn add_repo_cuts_the_first_worktree_and_lists_the_pool() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let clone = pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
 
     dispatch(
@@ -460,11 +438,8 @@ fn a_worktree_that_is_gone_is_read_without_an_error() {
 
 #[test]
 fn a_repo_added_by_its_url_takes_the_clone_the_pool_holds() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
     let add = Command::AddRepo {
         session: id.clone(),

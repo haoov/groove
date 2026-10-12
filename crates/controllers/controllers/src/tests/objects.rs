@@ -7,23 +7,8 @@ use wiremock::matchers::{path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::cluster::Command;
+use crate::tests::fixture::kubeconfig;
 use crate::{Command as Cmd, dispatch};
-
-fn kubeconfig(home: &std::path::Path, server: &str) {
-    let yaml = format!(
-        "apiVersion: v1
-kind: Config
-clusters:
-- {{name: kind, cluster: {{server: '{server}'}}}}
-users:
-- {{name: kind, user: {{token: not-a-real-token}}}}
-contexts:
-- {{name: kind, context: {{cluster: kind, user: kind}}}}
-"
-    );
-    std::fs::create_dir_all(home.join(".kube")).unwrap();
-    std::fs::write(home.join(".kube/config"), yaml).unwrap();
-}
 
 fn pods() -> WatchKey {
     WatchKey {

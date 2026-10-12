@@ -18,11 +18,8 @@ fn send(
 
 #[test]
 fn a_commit_pushed_after_the_worktree_was_cut_is_fetched_and_shown() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let seed = home.path().join("seed");
     std::fs::write(seed.join("c.txt"), "c\n").unwrap();
@@ -51,11 +48,8 @@ fn a_commit_pushed_after_the_worktree_was_cut_is_fetched_and_shown() {
 
 #[test]
 fn a_repo_the_session_lacks_is_added_from_the_pool_and_selected() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let open = session::Command::OpenExplorer {
         title: Some("look".into()),
     };
@@ -83,11 +77,8 @@ fn a_repo_the_session_lacks_is_added_from_the_pool_and_selected() {
 
 #[test]
 fn a_commit_that_cannot_be_read_ends_the_revision_and_says_why() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let show = workspace::Command::ShowRepo {
         repo: URL.into(),
@@ -102,11 +93,8 @@ fn a_commit_that_cannot_be_read_ends_the_revision_and_says_why() {
 
 #[test]
 fn a_revision_asked_in_one_session_is_dropped_once_another_is_selected() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let before = worktree(&mut state, &services, &spawner);
     state.workspace.revision = Some(groove_workspace_service::Revision {
         session: groove_types::SessionId::new("elsewhere"),

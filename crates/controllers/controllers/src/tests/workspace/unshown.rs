@@ -4,11 +4,8 @@ use super::*;
 
 #[test]
 fn a_binary_file_opened_takes_no_edit_and_is_never_saved_over() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let file = editing(&mut state, &services, &spawner);
     let bytes = b"\x89PNG\r\n\x1a\n\0\0\0".to_vec();
     std::fs::write(&file, &bytes).unwrap();

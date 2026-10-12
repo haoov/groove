@@ -5,13 +5,14 @@ use groove_types::{SessionId, SessionKind};
 use serde_json::json;
 
 use super::settled;
-use crate::tests::fixture::{self, services, state, worktree};
+use crate::tests::fixture::{self, worktree};
 use crate::{AppState, Services, SyncSpawner};
 
 const ISSUE: &str = "https://github.com/haoov/groove/issues/50";
 
 /// The explorer, its writes let through, beside a GitHub source that answers.
 struct Exploring {
+    home: tempfile::TempDir,
     _runtime: tokio::runtime::Runtime,
     _server: wiremock::MockServer,
     state: AppState,
@@ -20,12 +21,10 @@ struct Exploring {
     id: SessionId,
 }
 
-fn exploring(home: &std::path::Path) -> Exploring {
+fn exploring() -> Exploring {
     let (runtime, server) = crate::tests::tasks::answering();
-    fixture::pooled_clone(home);
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home);
-    let mut state = state(home);
+    let (home, spawner, services, mut state) = fixture::fresh();
+    fixture::pooled_clone(home.path());
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(crate::tests::tasks::source(&host)).expect("the source"));
@@ -37,6 +36,7 @@ fn exploring(home: &std::path::Path) -> Exploring {
     };
     crate::dispatch(crate::Command::Agent(on), &mut state, &services, &spawner);
     Exploring {
+        home,
         _runtime: runtime,
         _server: server,
         state,
@@ -82,8 +82,7 @@ fn promoted(at: &mut Exploring) -> Answer {
 
 #[test]
 fn an_explorer_is_promoted_to_the_task_s_own_session_and_is_gone() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let explorer = at.id.clone();
     let before = at.state.session.get(&explorer).expect("open").worktrees[0].clone();
 
@@ -124,7 +123,8 @@ fn an_explorer_is_promoted_to_the_task_s_own_session_and_is_gone() {
         row(&task).expect("the task's row").kind,
         SessionKind::Task { .. }
     ));
-    let handed = home
+    let handed = at
+        .home
         .path()
         .join("data/agent-launch")
         .join(format!("{TASK}.thread"));
@@ -137,8 +137,7 @@ fn an_explorer_is_promoted_to_the_task_s_own_session_and_is_gone() {
 
 #[test]
 fn a_session_that_is_not_an_explorer_is_refused() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let first = promoted(&mut at);
     assert!(!first.failed, "{}", first.text);
 
@@ -149,8 +148,7 @@ fn a_session_that_is_not_an_explorer_is_refused() {
 
 #[test]
 fn a_reference_that_names_no_task_is_refused_before_anything_is_read() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let answer = adopted(&mut at, "the auth refresh task");
     assert!(answer.failed, "{}", answer.text);
     let open = at.state.session.get(&at.id).expect("open");
@@ -159,8 +157,7 @@ fn a_reference_that_names_no_task_is_refused_before_anything_is_read() {
 
 #[test]
 fn a_task_another_session_already_works_is_refused() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let explorer = at.id.clone();
     for command in [
         crate::task::Command::Load,
@@ -192,8 +189,7 @@ fn a_task_another_session_already_works_is_refused() {
 
 #[test]
 fn a_promotion_that_fails_puts_every_worktree_back_and_leaves_the_explorer() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let explorer = at.id.clone();
     let before = at.state.session.get(&explorer).expect("open").worktrees[0].clone();
     let taken = groove_types::Session {
@@ -238,10 +234,9 @@ fn a_promotion_that_fails_puts_every_worktree_back_and_leaves_the_explorer() {
 
 #[test]
 fn the_explorer_leaves_no_launch_file_and_no_feed_line_behind() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let explorer = at.id.clone();
-    let launch = home.path().join("data/agent-launch");
+    let launch = at.home.path().join("data/agent-launch");
     assert!(launch.join(format!("{explorer}.prompt.md")).is_file());
 
     let answer = promoted(&mut at);
@@ -265,8 +260,7 @@ fn the_explorer_leaves_no_launch_file_and_no_feed_line_behind() {
 
 #[test]
 fn a_move_that_fails_leaves_the_branch_named_as_it_was() {
-    let home = tempfile::tempdir().unwrap();
-    let mut at = exploring(home.path());
+    let mut at = exploring();
     let explorer = at.id.clone();
     let before = at.state.session.get(&explorer).expect("open").worktrees[0].clone();
     let (root, _) = before

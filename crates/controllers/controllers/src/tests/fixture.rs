@@ -60,6 +60,23 @@ pub fn services(spawner: &SyncSpawner, home: &Path) -> Services {
         .unwrap()
 }
 
+/// `<home>/.kube/config` with one context, `kind`, on `server`.
+pub fn kubeconfig(home: &Path, server: &str) {
+    let yaml = format!(
+        "apiVersion: v1
+kind: Config
+clusters:
+- {{name: kind, cluster: {{server: '{server}'}}}}
+users:
+- {{name: kind, user: {{token: not-a-real-token}}}}
+contexts:
+- {{name: kind, context: {{cluster: kind, user: kind}}}}
+"
+    );
+    std::fs::create_dir_all(home.join(".kube")).unwrap();
+    std::fs::write(home.join(".kube/config"), yaml).unwrap();
+}
+
 /// A bare origin and a pooled clone of it at `<home>/code/main/gitlab.example.com/g/mayo`.
 pub fn pooled_clone(home: &Path) -> PathBuf {
     let origin = home.join("origin.git");
@@ -116,8 +133,12 @@ pub fn sh(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
-/// An explorer with the fixture's repo and one worktree; returns the worktree's path.
-pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> String {
+/// An explorer open, its agent started; returns its id.
+pub fn explorer(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+) -> groove_types::SessionId {
     dispatch(
         Cmd::Session(session::Command::OpenExplorer {
             title: Some("try mayo".into()),
@@ -128,6 +149,12 @@ pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner
     );
     let id = state.session.selected.clone().expect("a session");
     until(spawner, services, state, |s| s.agent.agent(&id).is_some());
+    id
+}
+
+/// An explorer with the fixture's repo and one worktree; returns the worktree's path.
+pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> String {
+    let id = explorer(state, services, spawner);
     dispatch(
         Cmd::Session(session::Command::AddRepo {
             session: id.clone(),

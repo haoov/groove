@@ -1,7 +1,7 @@
 use groove_types::{AgentStatus, SessionKind};
 
 use crate::session::Command;
-use crate::tests::fixture::{self, services, state, until};
+use crate::tests::fixture::{self, until};
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
 #[test]
@@ -279,11 +279,8 @@ pub(super) fn open_explorer(
 
 #[test]
 fn a_closed_session_stays_on_the_board_and_comes_back_when_picked() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     crate::tests::fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = crate::tests::fixture::worktree(&mut state, &services, &spawner);
     assert!(!dir.is_empty(), "the session has a worktree");
     let id = state.session.selected.clone().expect("a session");
