@@ -41,6 +41,8 @@ pub struct ResourcesUi {
     pub opened: Vec<super::opened::Opened>,
     pub showing: Option<usize>,
     pub scroll: f32,
+    /// How far the list is scrolled sideways.
+    pub across: f32,
     /// How far the kinds sidebar is scrolled.
     pub kinds: f32,
 }

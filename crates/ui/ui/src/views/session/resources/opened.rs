@@ -162,16 +162,16 @@ impl super::ResourcesUi {
         }
     }
 
-    /// How far the YAML shown is scrolled sideways; the list never is.
+    /// How far the YAML shown is scrolled sideways, or the list.
     pub fn across(&self) -> f32 {
-        self.tab().map_or(0.0, |one| one.across)
+        self.tab().map_or(self.across, |one| one.across)
     }
 
     pub fn across_mut(&mut self) -> &mut f32 {
         let at = self.showing.filter(|at| *at < self.opened.len());
         match at {
             Some(at) => &mut self.opened[at].across,
-            None => &mut self.scroll,
+            None => &mut self.across,
         }
     }
 }
