@@ -81,6 +81,15 @@ impl Open {
         self.worktrees.iter().find(|w| &w.id == id)
     }
 
+    /// The repo the worktree is cut from.
+    pub fn repo_of(&self, worktree: &Worktree) -> Option<&Repo> {
+        self.repos.iter().find(|r| r.id == worktree.repo)
+    }
+
+    pub fn selected_repo(&self) -> Option<&Repo> {
+        self.repo_of(self.selected_worktree()?)
+    }
+
     /// The worktree, its repo if new, selected when nothing was.
     pub fn add_worktree(&mut self, repo: Repo, worktree: Worktree) {
         if !self.repos.iter().any(|r| r.id == repo.id) {

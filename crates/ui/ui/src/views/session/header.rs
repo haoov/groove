@@ -108,7 +108,7 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
 /// The pickers every tab follows, each label cut to the room the line has, the MR after them.
 fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let worktree = open.selected_worktree();
-    let held = worktree.and_then(|w| open.repos.iter().find(|r| r.id == w.repo));
+    let held = open.selected_repo();
     let (repo, branch) = named(open);
     let style = ctx.styles.body(Role::Text);
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
@@ -178,11 +178,8 @@ fn around(ctx: &mut Ctx) -> f32 {
 
 /// The repo and the branch the pickers name, each as it stands or as what it lacks.
 fn named(open: &Open) -> (&str, &str) {
-    let worktree = open.selected_worktree();
-    let repo = worktree
-        .and_then(|w| open.repos.iter().find(|r| r.id == w.repo))
-        .map(|r| r.project.as_str());
-    let branch = worktree.map(|w| w.branch.as_str());
+    let repo = open.selected_repo().map(|r| r.project.as_str());
+    let branch = open.selected_worktree().map(|w| w.branch.as_str());
     (repo.unwrap_or("no repo"), branch.unwrap_or("no worktree"))
 }
 
