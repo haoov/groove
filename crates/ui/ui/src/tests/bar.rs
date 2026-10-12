@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::{AgentStatus, ApprovalId, Ask, SessionActivity, SessionId, Timestamp};
 
 use crate::hit::Target;
-use crate::tests::{app, click, window};
+use crate::tests::{all_texts, app, click, render, window};
 use crate::{Surface, Ui};
 
 /// The fixture's session, with the writes it waits on.
@@ -41,12 +41,7 @@ pub(super) fn ask(id: &str, op: &str, subject: &str) -> Ask {
 }
 
 fn drawn(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
-    let (frame, _) = crate::view(app, ui, window(), &mut Fonts::embedded());
-    frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect()
+    render(app, ui, window()).0
 }
 
 pub(super) fn session_ui() -> Ui {
@@ -252,16 +247,6 @@ fn the_wheel_over_the_agent_reaches_its_own_screen() {
     assert_eq!(said, ["agent.scroll"], "the wheel is the agent's own");
 }
 
-/// Every text of the frame, the menu's own layer included.
-fn everywhere(frame: &groove_gfx::Frame) -> Vec<String> {
-    frame
-        .layers()
-        .iter()
-        .flat_map(|one| one.texts.iter())
-        .map(|run| run.text.clone())
-        .collect()
-}
-
 /// The config of a machine whose task sources are set up.
 pub(super) fn sourced(
     mut app: groove_controllers::AppState,
@@ -312,7 +297,7 @@ fn a_conversion_files_in_each_source_that_is_set_up() {
     click(word, &mut ui, &app, &hits);
 
     let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = everywhere(&frame);
+    let drawn = all_texts(&frame);
     assert!(
         drawn.iter().any(|one| one == "convert to task in GitHub"),
         "{drawn:?}"
@@ -361,7 +346,7 @@ fn filing_a_task_and_sharing_a_fact_stay_off_the_menu_and_converting_names_each_
     click(word, &mut ui, &app, &hits);
 
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = everywhere(&frame);
+    let drawn = all_texts(&frame);
     let rows: Vec<&String> = drawn.iter().filter(|one| one.contains(" in ")).collect();
     let mut once = rows.clone();
     once.sort();
@@ -398,7 +383,7 @@ fn one_source_files_without_naming_it() {
         .expect("the skills word");
     click(word, &mut ui, &app, &hits);
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = everywhere(&frame);
+    let drawn = all_texts(&frame);
     assert!(
         drawn.iter().any(|one| one == "convert to task"),
         "{drawn:?}"

@@ -86,9 +86,7 @@ fn a_field_draws_its_caret_as_a_bar_and_its_text_alone() {
         ..Modifiers::default()
     };
     press(Key::Char('f'), ctrl, &mut ui, &app);
-    for c in "one".chars() {
-        press(Key::Char(c), Modifiers::default(), &mut ui, &app);
-    }
+    crate::tests::typed("one", &mut ui, &app);
     let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let texts: Vec<&str> = frame
         .layers()

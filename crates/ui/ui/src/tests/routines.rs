@@ -2,12 +2,10 @@
 
 use groove_controllers::routine_service::routines::{Listed, parse};
 use groove_controllers::{AppState, Command, config};
-use groove_gfx::Fonts;
 use groove_types::Trigger;
 
 use super::*;
 use crate::hit::Target;
-use crate::view;
 
 const FIX_CI: &str = "---\ndescription: fix it\nskills: groove:fix-ci\nkind: bound\n\
                       on: ci-failed\n---\n";
@@ -37,13 +35,7 @@ fn routed(on: bool) -> (AppState, Ui) {
 
 fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
     let tall = metrics(1280, 2400, 1.0);
-    let (frame, hits) = view(app, ui, tall, &mut Fonts::embedded());
-    let texts = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
-    (texts, hits)
+    render(app, ui, tall)
 }
 
 fn clicked(app: &AppState, ui: &mut Ui, target: Target) -> Vec<Command> {

@@ -3,7 +3,7 @@
 use groove_types::SessionId;
 
 use crate::keymap::Action;
-use crate::tests::full_app;
+use crate::tests::{full_app, typed};
 use crate::views::session::Tab;
 use crate::{Losing, Overlay, Ui};
 
@@ -59,9 +59,7 @@ fn find_matches_follow_an_edit_of_the_file() {
         ..Modifiers::default()
     };
     crate::tests::press(Key::Char('f'), ctrl, &mut ui, &app);
-    for c in "one".chars() {
-        crate::tests::press(Key::Char(c), Modifiers::default(), &mut ui, &app);
-    }
+    typed("one", &mut ui, &app);
     let rows = |ui: &Ui| {
         ui.session
             .find

@@ -6,7 +6,7 @@ use groove_types::{SessionId, SessionKind};
 
 use crate::hit::{Hits, Target};
 use crate::layout::{Edge, Layout};
-use crate::tests::{full_app, handle, open, window};
+use crate::tests::{full_app, handle, open, render, window};
 use crate::{Surface, Ui, view};
 
 /// The full app with a routine's session beside the explorers, on disk too.
@@ -28,13 +28,7 @@ fn routed() -> AppState {
 }
 
 fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
-    let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());
-    let texts = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect();
-    (texts, hits)
+    render(app, ui, window())
 }
 
 #[test]

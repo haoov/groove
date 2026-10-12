@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::DiffView;
 
 use crate::input::{Key, Modifiers};
-use crate::tests::{changed_files, full_app, press, shows, window};
+use crate::tests::{changed_files, full_app, press, shows, typed, window};
 use crate::views::session::{Tab, Term};
 use crate::{Focus, Ui, view};
 use groove_ui_kit::base::tokens::Tokens;
@@ -19,12 +19,6 @@ fn ctrl() -> Modifiers {
     Modifiers {
         ctrl: true,
         ..Modifiers::default()
-    }
-}
-
-fn typed(text: &str, ui: &mut Ui, app: &AppState) {
-    for c in text.chars() {
-        press(Key::Char(c), Modifiers::default(), ui, app);
     }
 }
 
@@ -359,7 +353,7 @@ fn the_two_terms_narrow_together_whichever_is_typed_first() {
         "ui",
         "the path is kept as scope"
     );
-    let commands = typed_last("Aligned", &mut ui, &app);
+    let commands = typed("Aligned", &mut ui, &app);
     assert_eq!(
         commands,
         [Command::Workspace(workspace::Command::Grep {
@@ -375,7 +369,7 @@ fn the_two_terms_narrow_together_whichever_is_typed_first() {
         "Aligned",
         "and now the other way"
     );
-    let commands = typed_last("src", &mut ui, &app);
+    let commands = typed("src", &mut ui, &app);
     assert_eq!(
         commands,
         [Command::Workspace(workspace::Command::Grep {
@@ -387,14 +381,6 @@ fn the_two_terms_narrow_together_whichever_is_typed_first() {
 }
 
 /// What the last keystroke of `text` asked for.
-fn typed_last(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let mut commands = Vec::new();
-    for c in text.chars() {
-        commands = press(Key::Char(c), Modifiers::default(), ui, app);
-    }
-    commands
-}
-
 #[test]
 fn a_found_line_opens_its_file_where_it_sits() {
     let mut app = app();

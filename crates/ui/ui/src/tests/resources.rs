@@ -230,14 +230,7 @@ fn the_find_key_opens_the_list_s_bar_and_esc_shuts_it_while_empty() {
     };
     press(crate::input::Key::Char('f'), ctrl, &mut ui, &app);
     assert!(ui.session.resources.finding && ui.session.resources.typing);
-    for c in "api".chars() {
-        press(
-            crate::input::Key::Char(c),
-            Default::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("api", &mut ui, &app);
     let (texts, _) = drawn(&app, &ui);
     assert!(texts.iter().any(|one| one == "Pods · 1"), "{texts:?}");
     press(crate::input::Key::Escape, Default::default(), &mut ui, &app);
@@ -373,14 +366,7 @@ fn a_click_on_the_sidebar_s_bar_and_typing_narrow_the_kinds_and_leave_the_rows_b
         .rect_of(&Target::ResourceFilter)
         .expect("the sidebar's bar");
     click(bar, &mut ui, &app, &hits);
-    for c in "node".chars() {
-        press(
-            crate::input::Key::Char(c),
-            Default::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("node", &mut ui, &app);
     assert_eq!(ui.session.resources.filter.text(), "node");
     assert!(ui.session.resources.search.is_empty());
     let (texts, _) = drawn(&app, &ui);

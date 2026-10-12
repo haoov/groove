@@ -9,7 +9,7 @@ use super::pods;
 use super::tab::{crashing, lands, link, opened, runs, wheel};
 use crate::Ui;
 use crate::hit::Target;
-use crate::tests::{click, window};
+use crate::tests::{click, typed, window};
 use crate::views::session::resources::View;
 
 fn worker(previous: bool, range: LogRange) -> LogKey {
@@ -105,15 +105,7 @@ fn lines_draw_by_level_follow_the_end_pause_under_the_wheel_and_find_through_the
         ..Default::default()
     };
     crate::tests::press(crate::input::Key::Char('f'), ctrl, &mut ui, &app);
-    let mut asked = Vec::new();
-    for c in "unreachable".chars() {
-        asked = crate::tests::press(
-            crate::input::Key::Char(c),
-            Default::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    let asked = typed("unreachable", &mut ui, &app);
     let found = ui.session.find.as_ref().map_or(0, |find| find.hits.len());
     assert_eq!(found, 1);
     let caret = |one: &Command| matches!(one, Command::Cluster(Cluster::LogCaret { .. }));

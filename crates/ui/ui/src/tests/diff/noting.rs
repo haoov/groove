@@ -10,6 +10,7 @@ use groove_types::{Anchor, Caret, Selection};
 
 use super::*;
 use crate::input::{Key, Modifiers};
+use crate::tests::typed;
 use crate::views::session::Noting;
 
 /// The right button on the row `line` of the open file.
@@ -47,12 +48,6 @@ fn press(key: Key, ui: &mut Ui, app: &AppState) -> Vec<groove_controllers::Comma
         &crate::hit::Hits::default(),
         window(),
     )
-}
-
-fn typed(text: &str, ui: &mut Ui, app: &AppState) {
-    for c in text.chars() {
-        press(Key::Char(c), ui, app);
-    }
 }
 
 #[test]

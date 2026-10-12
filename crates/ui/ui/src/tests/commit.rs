@@ -8,7 +8,7 @@ use groove_types::{FileDiff, FileStatus};
 
 use crate::hit::Target;
 use crate::input::{Input, handle};
-use crate::tests::{full_app, window};
+use crate::tests::{full_app, render, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -345,12 +345,7 @@ fn a_branch_with_nothing_left_to_push_offers_a_merge_request() {
         crate::views::session::commit::primary(&app),
         Some(Command::Delivery(delivery::Command::CreateMr))
     );
-    let (frame, _) = view(&app, &sidebar(), window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &sidebar(), window());
     assert!(texts.iter().any(|t| t == "open mr"), "{texts:?}");
 }
 

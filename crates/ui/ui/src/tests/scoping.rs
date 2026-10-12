@@ -7,7 +7,7 @@ use groove_types::{Attached, SessionId};
 use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
 use crate::tests::settings::drawn;
-use crate::tests::{CTRL_SHIFT, click, full_app, press};
+use crate::tests::{CTRL_SHIFT, click, full_app, press, typed};
 use crate::views::session::resources::{ScopeLine, scope_lines};
 use crate::{Overlay, Ui};
 
@@ -133,9 +133,7 @@ fn the_namespace_panel_lists_the_held_first_checks_them_detaches_them_and_attach
         attached: on("staging", Some("monitoring")),
     };
     assert_eq!(chose(&app, &mut ui, "monitoring", false), [session(attach)]);
-    for c in "dev-x".chars() {
-        press(Key::Char(c), Default::default(), &mut ui, &app);
-    }
+    typed("dev-x", &mut ui, &app);
     assert_eq!(labels(&app, &ui), ["staging", "attach dev-x"]);
     press(Key::Escape, Default::default(), &mut ui, &app);
     assert!(ui.overlay.is_none());
@@ -152,9 +150,7 @@ fn ctrl_shift_n_then_a_name_and_enter_shows_that_namespace_alone_on_the_resource
         ..Ui::default()
     };
     press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
-    for c in "cnp".chars() {
-        press(Key::Char(c), Default::default(), &mut ui, &app);
-    }
+    typed("cnp", &mut ui, &app);
     press(Key::Enter, Default::default(), &mut ui, &app);
     assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
     assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
@@ -180,9 +176,7 @@ fn enter_on_a_namespace_not_held_attaches_it_alone() {
         ..Ui::default()
     };
     press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
-    for c in "monit".chars() {
-        press(Key::Char(c), Default::default(), &mut ui, &app);
-    }
+    typed("monit", &mut ui, &app);
     let attach = Session::AttachCluster {
         session: SessionId::new("a"),
         attached: on("staging", Some("monitoring")),

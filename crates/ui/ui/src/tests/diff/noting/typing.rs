@@ -1,6 +1,7 @@
 //! The note being typed is a buffer: its caret, what it holds, its undo, the clipboard.
 
 use super::*;
+use crate::tests::typed;
 use groove_controllers::{Command, cluster};
 
 fn chord(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {

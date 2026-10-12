@@ -1,6 +1,7 @@
 //! The band above the rows.
 
 use super::*;
+use crate::tests::render;
 
 #[test]
 fn the_header_names_the_file_and_what_it_changed() {
@@ -39,12 +40,7 @@ fn the_switch_names_the_two_views_and_picks_one() {
     assert!(click(split, &mut ui, &app, &hits).is_empty());
     assert_eq!(ui.session.view, DiffView::Split);
 
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &ui, window());
     for named in ["inline", "split"] {
         assert!(texts.iter().any(|one| one == named), "{named}: {texts:?}");
     }

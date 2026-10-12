@@ -5,14 +5,8 @@ use groove_types::PoolEntry;
 
 use crate::input::{Key, Modifiers};
 use crate::palette::{Palette, entries, matching};
-use crate::tests::{app, full_app, metrics, press, with_repo};
+use crate::tests::{app, full_app, metrics, press, typed, typed_into, with_repo};
 use crate::{Ui, view};
-
-fn typed(palette: &mut Palette, text: &str, app: &AppState) {
-    for c in text.chars() {
-        palette.key(Key::Char(c), app);
-    }
-}
 
 fn labels(app: &AppState) -> Vec<String> {
     entries(app).into_iter().map(|e| e.label).collect()
@@ -63,7 +57,7 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
         path: "/pool/other".into(),
     });
     let mut palette = Palette::default();
-    typed(&mut palette, "add repo", &app);
+    typed_into(&mut palette, "add repo", &app);
     let opened = palette.key(Key::Enter, &app);
     assert!(!opened.close);
     assert_eq!(
@@ -81,7 +75,7 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
         "the held repo is out, the clone row is in"
     );
 
-    typed(&mut palette, "zzz", &app);
+    typed_into(&mut palette, "zzz", &app);
     let rows = palette.options(&app);
     assert_eq!(rows.len(), 1, "nothing matches: only the clone row");
     assert_eq!(rows[0].0, "Clone from a URL…");
@@ -91,7 +85,7 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
         palette.key(Key::Enter, &app).commands.is_empty(),
         "a URL is required"
     );
-    typed(&mut palette, "git@github.com:o/new.git", &app);
+    typed_into(&mut palette, "git@github.com:o/new.git", &app);
     palette.key(Key::Enter, &app);
     assert_eq!(
         palette.prompt(&app).unwrap().label,
@@ -117,16 +111,16 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
     }
 
     let mut palette = Palette::default();
-    typed(&mut palette, "add repo", &app);
+    typed_into(&mut palette, "add repo", &app);
     palette.key(Key::Enter, &app);
-    typed(&mut palette, "oth", &app);
+    typed_into(&mut palette, "oth", &app);
     palette.key(Key::Enter, &app);
     assert_eq!(
         palette.prompt(&app).unwrap().label,
         "branch, empty for the default",
         "a picked repo skips the URL"
     );
-    typed(&mut palette, "feat/x", &app);
+    typed_into(&mut palette, "feat/x", &app);
     palette.key(Key::Enter, &app);
     let done = palette.key(Key::Enter, &app);
     match &done.commands[0] {
@@ -146,7 +140,7 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
 fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
     let app = full_app();
     let mut palette = Palette::default();
-    typed(&mut palette, "add work", &app);
+    typed_into(&mut palette, "add work", &app);
     palette.key(Key::Enter, &app);
     assert_eq!(palette.prompt(&app).unwrap().label, "repo");
     palette.key(Key::Enter, &app);
@@ -155,11 +149,11 @@ fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
         palette.key(Key::Enter, &app).commands.is_empty(),
         "a required branch refuses empty"
     );
-    typed(&mut palette, "fix/x", &app);
+    typed_into(&mut palette, "fix/x", &app);
     palette.key(Key::Enter, &app);
     let base = palette.prompt(&app).unwrap();
     assert_eq!(base.options.len(), 2, "origin's heads were already listed");
-    typed(&mut palette, "rel", &app);
+    typed_into(&mut palette, "rel", &app);
     let done = palette.key(Key::Enter, &app);
     assert!(done.close);
     match &done.commands[0] {
@@ -174,9 +168,9 @@ fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
     }
 
     let mut palette = Palette::default();
-    typed(&mut palette, "rename", &app);
+    typed_into(&mut palette, "rename", &app);
     palette.key(Key::Enter, &app);
-    typed(&mut palette, "new name", &app);
+    typed_into(&mut palette, "new name", &app);
     assert!(
         !palette.key(Key::Escape, &app).close,
         "escape in a flow leaves the flow, not the palette"
@@ -198,9 +192,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .map(|t| t.text.clone())
         .collect();
     assert!(texts.iter().any(|t| t == "Add worktree"));
-    for c in "close work".chars() {
-        press(Key::Char(c), Modifiers::default(), &mut ui, &app);
-    }
+    typed("close work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts: Vec<String> = frame.layers()[1]
@@ -224,7 +216,7 @@ fn force_delete_picks_any_session_on_disk_and_deletes_it_changes_and_all() {
     assert!(!labels(&app).contains(&"Force delete session".to_string()));
     app.session.living = full_app().session.living;
     let mut palette = Palette::default();
-    typed(&mut palette, "force delete", &app);
+    typed_into(&mut palette, "force delete", &app);
     let opened = palette.key(Key::Enter, &app);
     assert_eq!(
         opened.commands[0].id(),
@@ -252,7 +244,7 @@ fn force_delete_picks_any_session_on_disk_and_deletes_it_changes_and_all() {
 fn force_close_picks_a_worktree_and_closes_it_whatever_origin_lacks() {
     let app = full_app();
     let mut palette = Palette::default();
-    typed(&mut palette, "force close", &app);
+    typed_into(&mut palette, "force close", &app);
     palette.key(Key::Enter, &app);
     let prompt = palette.prompt(&app).expect("a worktree to pick");
     assert_eq!(prompt.label, "worktree");

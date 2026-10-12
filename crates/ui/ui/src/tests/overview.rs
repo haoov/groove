@@ -7,7 +7,7 @@ mod markdown;
 use groove_types::{Day, ExternalId, SessionId, SessionKind};
 
 use crate::input::{Delta, Input, handle};
-use crate::tests::{app, full_app, metrics, task};
+use crate::tests::{app, full_app, metrics, render, task, texts_of};
 use crate::{Ui, view};
 
 /// A session that works a task, with the task and its body read.
@@ -35,17 +35,7 @@ fn working_a_task() -> groove_controllers::AppState {
 #[test]
 fn a_task_session_shows_the_six_properties_and_the_body() {
     let app = working_a_task();
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
     for named in [
         "PROPERTIES",
         "Status",
@@ -126,17 +116,7 @@ fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
 #[test]
 fn an_explorer_shows_no_properties_and_no_body() {
     let app = full_app();
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
     assert!(!texts.iter().any(|t| t == "PROPERTIES"), "{texts:?}");
     assert!(!texts.iter().any(|t| t == "BODY"), "{texts:?}");
 }
@@ -171,11 +151,7 @@ fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
         metrics,
         &mut groove_gfx::Fonts::embedded(),
     );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let texts: Vec<String> = texts_of(&frame);
     assert!(texts.iter().any(|t| t == "overview"));
     assert!(texts.iter().any(|t| t == "REPOS AND WORKTREES"));
     assert!(texts.iter().any(|t| t == "mayo"));
@@ -227,11 +203,7 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
         !icons.contains(&groove_gfx::Icon::ArrowDown),
         "behind 0 is not drawn"
     );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let texts: Vec<String> = texts_of(&frame);
     assert!(texts.iter().any(|t| t == "3"));
     assert!(texts.iter().any(|t| t == "1"));
 }
@@ -241,17 +213,7 @@ fn a_session_without_a_worktree_says_so() {
     let mut app = app();
     app.session.selected = Some(SessionId::new("a"));
     let metrics = metrics(1280, 800, 1.0);
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics,
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &Ui::default(), metrics);
     assert!(texts.iter().any(|t| t == "no repo"));
     assert!(texts.iter().any(|t| t == "no worktree"));
 }
@@ -290,12 +252,7 @@ fn the_hours_the_clock_measured_are_offered_to_the_source() {
     );
     let window = metrics(1280, 800, 1.0);
     let mut ui = Ui::default();
-    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, hits) = render(&app, &ui, window);
     assert!(texts.iter().any(|t| t == "log 1h"), "{texts:?}");
     let button = hits
         .rect_of(&crate::hit::Target::LogHours(id.clone()))

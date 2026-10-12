@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::input::rest;
+use crate::tests::render;
 use groove_controllers::{Command, workspace};
 use groove_types::{BlameLine, Caret, Edit, Motion, Timestamp};
 use groove_ui_kit::base::ctx::Metrics;
@@ -56,12 +57,7 @@ fn at(after: u64) -> Metrics {
 }
 
 fn texts(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<String> {
-    let (frame, _) = view(app, ui, metrics, &mut Fonts::embedded());
-    frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect()
+    render(app, ui, metrics).0
 }
 
 #[test]
