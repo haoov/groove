@@ -8,6 +8,8 @@ pub enum NoteButton {
     Delete,
     Post,
     Reply,
+    /// A resolved note folded to one line, or opened out of it.
+    Fold,
 }
 
 impl NoteButton {
@@ -20,6 +22,7 @@ impl NoteButton {
             (NoteButton::Delete, _) => "delete",
             (NoteButton::Post, _) => "post to MR",
             (NoteButton::Reply, _) => "reply",
+            (NoteButton::Fold, _) => "fold",
         }
     }
 }

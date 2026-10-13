@@ -13,6 +13,9 @@ pub struct Header {
     pub at: groove_types::Timestamp,
     /// A reply's header, ruled off from what stands above it.
     pub reply: bool,
+    pub replies: usize,
+    /// The note a click on a resolved one's header or fold acts on.
+    pub folds: Option<groove_types::NoteOrigin>,
 }
 
 /// A row of room a note keeps: above its card, below it, or ruled across it.

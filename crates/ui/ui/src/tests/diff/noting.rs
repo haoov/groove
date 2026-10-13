@@ -259,6 +259,7 @@ fn a_resolved_note_offers_to_open_again() {
     note.resolved = true;
     app.delivery.shown = vec![note];
     let mut ui = on_diff();
+    on_button(&app, &mut ui, crate::hit::NoteButton::Fold);
     let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),

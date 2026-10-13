@@ -3,12 +3,15 @@
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_types::{Anchor, Note, NoteOrigin};
+use groove_types::{Anchor, Note};
 
+mod answer;
+
+use self::answer::answering;
 use super::wrap::{Worded, cols_of, wrapped};
 use crate::Ui;
 use crate::components::Room;
-use crate::views::session::{Face, Noting, Writing};
+use crate::views::session::Face;
 
 /// One note's rows, standing after the row its last line sits on.
 struct Block {
@@ -22,6 +25,8 @@ struct Block {
     acts: bool,
     /// The rows of a reply being typed, in place of the buttons.
     typing: usize,
+    /// A resolved note shown as one line.
+    folded: bool,
     /// What each row of the note says, wrapped once for the frame.
     said: Vec<Worded>,
 }
@@ -41,6 +46,10 @@ pub(crate) enum Slot {
     Typed {
         row: usize,
         reply: bool,
+    },
+    /// A resolved note, folded to one line.
+    Folded {
+        at: usize,
     },
     /// A half row of room around a note's card, or across it.
     Pad {
@@ -75,7 +84,10 @@ impl Inline {
             .iter()
             .enumerate()
             .filter(|(_, note)| !written(note, over))
-            .filter_map(|(at, note)| block(app, view, note, at, cols_of(cols)))
+            .filter_map(|(at, note)| {
+                let folded = note.resolved && !ui.session.unfolded.contains(&note.origin);
+                block(app, view, (note, at, folded), cols_of(cols))
+            })
             .collect();
         let answered = noting.and_then(|one| answering(app, one, &mut blocks));
         if let Some(noting) = noting.filter(|_| answered.is_none())
@@ -88,6 +100,7 @@ impl Inline {
                 at: None,
                 acts: false,
                 typing: 0,
+                folded: false,
                 said: Vec::new(),
             });
         }
@@ -188,6 +201,9 @@ impl Block {
         let Some(at) = self.at else {
             return Slot::Typed { row, reply: false };
         };
+        if self.folded {
+            return Slot::Folded { at };
+        }
         let said = self.said.len().max(1);
         match row.checked_sub(said + BETWEEN) {
             None if row < said => Slot::Note { at, row },
@@ -200,42 +216,37 @@ impl Block {
     }
 }
 
-/// The thread a reply answers takes the reply's rows in place of its buttons; returns that note.
-fn answering(app: &AppState, noting: &Noting, blocks: &mut [Block]) -> Option<usize> {
-    let Writing::Reply(thread) = &noting.writing else {
-        return None;
-    };
-    let shown = &app.delivery.shown;
-    let block = blocks.iter_mut().find(|block| {
-        block
-            .at
-            .and_then(|at| shown.get(at))
-            .is_some_and(|note| note.origin == NoteOrigin::Thread(thread.clone()))
-    })?;
-    let typing = noting.buffer.text().split('\n').count();
-    block.rows += typing - 1;
-    block.typing = typing;
-    block.acts = false;
-    block.at
-}
-
 /// Whether this note is the one being written again.
 fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
     over.is_some_and(|id| note.id() == Some(id))
 }
 
 /// One note's block, on the rows of the file it is about.
-fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Option<Block> {
+fn block(
+    app: &AppState,
+    view: Face,
+    (note, at, folded): (&Note, usize, bool),
+    cols: usize,
+) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, view, anchor)?;
-    let said = wrapped(note, cols);
+    let said = if folded {
+        Vec::new()
+    } else {
+        wrapped(note, cols)
+    };
+    let rows = match folded {
+        true => 1 + PADS,
+        false => said.len().max(1) + BETWEEN + 1 + PADS,
+    };
     Some(Block {
         after,
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: said.len().max(1) + BETWEEN + 1 + PADS,
+        rows,
         at: Some(at),
-        acts: true,
+        acts: !folded,
         typing: 0,
+        folded,
         said,
     })
 }

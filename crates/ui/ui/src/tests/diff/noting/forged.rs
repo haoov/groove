@@ -128,6 +128,7 @@ fn a_resolved_thread_asks_to_be_opened_again() {
     let app = delivered(vec![one]);
     let mut ui = on_diff();
     let origin = groove_types::NoteOrigin::Thread("t1".into());
+    on(&app, &mut ui, origin.clone(), crate::hit::NoteButton::Fold);
     let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),

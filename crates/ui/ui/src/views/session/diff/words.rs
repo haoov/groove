@@ -16,6 +16,8 @@ pub(super) struct Words {
     pub(super) body: String,
     pub(super) prose: Option<groove_ui_kit::markdown::Row>,
     pub(super) head: Option<Header>,
+    /// A resolved note shown as one line.
+    pub(super) folded: bool,
     /// The caret's column and what is held, on a row of the note being typed.
     pub(super) caret: Option<usize>,
     pub(super) held: Option<(usize, usize, bool)>,
@@ -37,6 +39,15 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> 
         },
         Slot::Typed { row, reply } => match ui.session.noting.as_ref() {
             Some(noting) => typed(noting, row, reply),
+            None => Words::default(),
+        },
+        Slot::Folded { at } => match app.delivery.shown.get(at) {
+            Some(note) => Words {
+                head: Some(header(note, 0)),
+                body: subject(note),
+                folded: true,
+                ..Words::default()
+            },
             None => Words::default(),
         },
         Slot::Acts { .. } | Slot::Pad { .. } | Slot::Code(_) => Words::default(),
@@ -64,6 +75,7 @@ fn typed(noting: &Noting, row: usize, reply: bool) -> Words {
         body,
         prose: None,
         head: None,
+        folded: false,
     }
 }
 
@@ -89,7 +101,16 @@ fn header(note: &groove_types::Note, at: usize) -> Header {
         },
         at: said.at,
         reply: at > 0,
+        replies: note.replies(),
+        folds: (note.resolved && at == 0).then(|| note.origin.clone()),
     }
+}
+
+/// The first line a note opens with, its label off.
+fn subject(note: &groove_types::Note) -> String {
+    let body = note.opening().map_or("", |said| said.body.as_str());
+    let words = groove_types::labelled(body).map_or(body, |one| one.rest);
+    words.lines().next().unwrap_or_default().to_string()
 }
 
 /// Two capitals for a name: its first two words' first letters, or a lone word's first two.

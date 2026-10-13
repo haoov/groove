@@ -26,6 +26,8 @@ pub struct Noted<'a> {
     /// The words as Markdown; the plain text is drawn when there is none.
     pub prose: Option<&'a groove_ui_kit::markdown::Row>,
     pub head: Option<&'a Header>,
+    /// A resolved note shown as one line.
+    pub folded: bool,
 }
 
 /// The buttons a note's last row carries, and the note they act on.

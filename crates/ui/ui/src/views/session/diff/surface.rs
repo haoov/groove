@@ -204,6 +204,7 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 said(&held.words[on], (*row == 0, false), resolved)
             }
             Slot::Pad { room } => Line::pad(*room),
+            Slot::Folded { .. } => said(&held.words[on], (true, false), true),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
                 Some(note) => Line::acting(acting_of(app, note)),
                 None => Line::new(""),
@@ -225,6 +226,7 @@ fn said(words: &Words, (first, reply): (bool, bool), resolved: bool) -> Line<'_>
         resolved,
         prose: words.prose.as_ref(),
         head: words.head.as_ref(),
+        folded: words.folded,
     };
     Line::note(&words.body, noted)
 }
