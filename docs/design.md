@@ -179,6 +179,7 @@ which the gutter holds together.
 
 An added or a removed row tints its gutter and its numbers in its own colour, a step
 stronger than its ground.
+In split, a side with no line is hatched, gutter included.
 
 Over the diff, a band holds the whole change — how many files, what it added and removed
 — and the inline and split switch. Over a file, the band names the file.

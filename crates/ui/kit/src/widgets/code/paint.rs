@@ -19,6 +19,10 @@ pub(super) fn coded<A: App>(
     gutter: Block,
     across: f32,
 ) {
+    if code.empty {
+        let (color, gap) = (ctx.styles.hatch(), ctx.tokens.hatch);
+        return ctx.hatched(line, color, gap);
+    }
     if code.noted {
         crate::shape::ground(ctx, line, Ground::Noted);
     }

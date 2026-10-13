@@ -260,6 +260,7 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
         .standing(row.standing)
         .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
         .gutter(ctx.styles.gutter(row.kind))
+        .empty(row.empty)
         .caret(row.caret)
         .held(row.held);
     match ctx.styles.row_ground(row.kind) {

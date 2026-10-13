@@ -40,3 +40,18 @@ fn a_shadow_fades_out_towards_its_edge() {
     assert!(near < middle && near > edge, "it fades: {near}");
     assert!(edge < 40, "and is nearly gone at the edge: {edge}");
 }
+
+#[test]
+fn a_hatch_draws_thin_stripes_and_leaves_the_rest() {
+    let image = drawn(|frame| frame.hatched(Rect::new(0.0, 0.0, 32.0, 32.0), Color::WHITE, 6.0));
+    let all = (0..32).flat_map(|y| (0..32).map(move |x| (x, y)));
+    let lit = all.filter(|(x, y)| image.pixel(*x, *y)[0] > 128).count();
+    assert!(
+        lit > 32 * 32 / 12 && lit < 32 * 32 / 3,
+        "a stripe in every few pixels: {lit}"
+    );
+    let row: Vec<bool> = (0..12).map(|x| image.pixel(x, 0)[0] > 128).collect();
+    let stripes: Vec<usize> = (0..12).filter(|x| row[*x]).collect();
+    assert_eq!(stripes.len(), 2, "one stripe in every six pixels: {row:?}");
+    assert_eq!(stripes[1] - stripes[0], 6, "{row:?}");
+}
