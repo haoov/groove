@@ -1,0 +1,13 @@
+[package]
+name = "groove-kubectl"
+description = "The kubectl reads the agent asks for: their arguments checked against the session's clusters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true
