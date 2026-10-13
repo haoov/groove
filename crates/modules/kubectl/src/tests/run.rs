@@ -38,7 +38,7 @@ async fn an_answer_past_the_limit_is_cut_and_says_so() {
         .unwrap();
     assert!(answer.text.len() < LIMIT + 200);
     assert!(
-        answer.text.contains("cut at 64 KiB"),
+        answer.text.contains("cut at 32 KiB"),
         "the read is told to narrow"
     );
     assert!(!answer.failed);
