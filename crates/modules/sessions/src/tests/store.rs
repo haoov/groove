@@ -173,6 +173,59 @@ async fn an_explorer_promoted_hands_what_it_held_to_the_task_and_is_gone() {
 }
 
 #[tokio::test]
+async fn an_explorer_promoted_hands_its_clusters_to_the_task() {
+    let store = Store::in_memory().await.unwrap();
+    let explorer = explorer("explorer-1", 10);
+    store.create_explorer(&explorer).await.unwrap();
+    let held = groove_types::Attached {
+        context: "hub".into(),
+        namespace: Some("api".into()),
+    };
+    store
+        .attach_cluster(&explorer.id, &held, Timestamp::new(11))
+        .await
+        .unwrap();
+    let session = promoted();
+    store
+        .promote(&explorer.id, &session, &task(), &[])
+        .await
+        .unwrap();
+    assert_eq!(store.clusters_of(&session.id).await.unwrap(), [held]);
+}
+
+#[tokio::test]
+async fn every_table_that_names_a_session_is_moved_on_a_promotion() {
+    let store = Store::in_memory().await.unwrap();
+    let pool = store.db().pool();
+    let tables: Vec<String> =
+        sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'table'")
+            .fetch_all(pool)
+            .await
+            .unwrap();
+    let mut naming = Vec::new();
+    for table in tables {
+        let columns: Vec<String> = sqlx::query_scalar("SELECT name FROM pragma_table_info(?)")
+            .bind(&table)
+            .fetch_all(pool)
+            .await
+            .unwrap();
+        if columns.iter().any(|one| one == "session_id") {
+            naming.push(table);
+        }
+    }
+    let kept = ["routine_sessions"];
+    for table in naming.iter().filter(|one| !kept.contains(&one.as_str())) {
+        let moved = format!("UPDATE {table} SET session_id = ?");
+        assert!(
+            crate::promote::MOVES
+                .iter()
+                .any(|one| one.starts_with(&moved)),
+            "{table} names a session and is not moved"
+        );
+    }
+}
+
+#[tokio::test]
 async fn only_an_explorer_is_promoted_and_a_refusal_leaves_nothing_behind() {
     let store = Store::in_memory().await.unwrap();
     let session = promoted();

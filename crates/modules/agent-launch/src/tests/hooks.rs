@@ -55,7 +55,7 @@ fn the_hook_command_posts_the_payload_to_the_receiver() {
     let loopback = Loopback {
         tools: None,
         hook_url: receiver.hook_url("gh-groove-50"),
-        token: receiver.token.clone(),
+        token: receiver.token("gh-groove-50"),
     };
     let command = hook_command(&runtime, root.path(), &loopback, "Stop");
 

@@ -127,38 +127,53 @@ impl Store {
         self.one(&id).await
     }
 
-    /// New words on a note that stands.
-    pub async fn update(&self, id: &AnnotationId, content: &str) -> Result<Annotation> {
-        let done = sqlx::query("UPDATE annotations SET content = ? WHERE id = ?")
+    /// New words on a note of that session.
+    pub async fn update(
+        &self,
+        session: &SessionId,
+        id: &AnnotationId,
+        content: &str,
+    ) -> Result<Annotation> {
+        let sql = "UPDATE annotations SET content = ? WHERE id = ? AND session_id = ?";
+        let done = sqlx::query(sql)
             .bind(content)
             .bind(id.as_str())
+            .bind(session.as_str())
             .execute(self.db.pool())
             .await
             .map_err(failed)?;
         self.changed(id, done.rows_affected()).await
     }
 
-    pub async fn resolve(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.status(id, AnnotationStatus::Resolved).await
+    pub async fn resolve(&self, session: &SessionId, id: &AnnotationId) -> Result<Annotation> {
+        self.status(session, id, AnnotationStatus::Resolved).await
     }
 
-    pub async fn reopen(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.status(id, AnnotationStatus::Open).await
+    pub async fn reopen(&self, session: &SessionId, id: &AnnotationId) -> Result<Annotation> {
+        self.status(session, id, AnnotationStatus::Open).await
     }
 
-    pub async fn delete(&self, id: &AnnotationId) -> Result<()> {
-        sqlx::query("DELETE FROM annotations WHERE id = ?")
+    pub async fn delete(&self, session: &SessionId, id: &AnnotationId) -> Result<()> {
+        sqlx::query("DELETE FROM annotations WHERE id = ? AND session_id = ?")
             .bind(id.as_str())
+            .bind(session.as_str())
             .execute(self.db.pool())
             .await
             .map_err(failed)?;
         Ok(())
     }
 
-    async fn status(&self, id: &AnnotationId, status: AnnotationStatus) -> Result<Annotation> {
-        let done = sqlx::query("UPDATE annotations SET status = ? WHERE id = ?")
+    async fn status(
+        &self,
+        session: &SessionId,
+        id: &AnnotationId,
+        status: AnnotationStatus,
+    ) -> Result<Annotation> {
+        let sql = "UPDATE annotations SET status = ? WHERE id = ? AND session_id = ?";
+        let done = sqlx::query(sql)
             .bind(status.as_str())
             .bind(id.as_str())
+            .bind(session.as_str())
             .execute(self.db.pool())
             .await
             .map_err(failed)?;

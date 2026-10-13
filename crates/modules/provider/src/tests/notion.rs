@@ -7,6 +7,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Notion;
 
+mod paging;
 mod sprint;
 
 pub(super) fn config() -> NotionConfig {

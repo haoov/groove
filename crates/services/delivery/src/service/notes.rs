@@ -60,20 +60,25 @@ impl Service {
         self.notes.create(new, now).await
     }
 
-    pub async fn update_note(&self, id: &AnnotationId, content: &str) -> Result<Annotation> {
-        self.notes.update(id, content).await
+    pub async fn update_note(
+        &self,
+        session: &SessionId,
+        id: &AnnotationId,
+        content: &str,
+    ) -> Result<Annotation> {
+        self.notes.update(session, id, content).await
     }
 
-    pub async fn resolve_note(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.notes.resolve(id).await
+    pub async fn resolve_note(&self, session: &SessionId, id: &AnnotationId) -> Result<Annotation> {
+        self.notes.resolve(session, id).await
     }
 
-    pub async fn reopen_note(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.notes.reopen(id).await
+    pub async fn reopen_note(&self, session: &SessionId, id: &AnnotationId) -> Result<Annotation> {
+        self.notes.reopen(session, id).await
     }
 
-    pub async fn delete_note(&self, id: &AnnotationId) -> Result<()> {
-        self.notes.delete(id).await
+    pub async fn delete_note(&self, session: &SessionId, id: &AnnotationId) -> Result<()> {
+        self.notes.delete(session, id).await
     }
 
     /// One note of this session posted on the MR, and resolved here once it is there.
@@ -86,7 +91,7 @@ impl Service {
         elsewhere(note, repo)?;
         let (remote, mr) = (self.remote(repo)?, self.held(worktree).await?);
         remote.post_note(repo, &mr.remote_id, posted(note)).await?;
-        self.notes.delete(&note.id).await
+        self.notes.delete(&note.session, &note.id).await
     }
 
     /// Words under a thread of the MR.
@@ -135,7 +140,7 @@ impl Service {
         };
         remote.review(repo, &mr.remote_id, verdict).await?;
         for note in said.notes {
-            self.notes.delete(&note.id).await?;
+            self.notes.delete(&note.session, &note.id).await?;
         }
         Ok(())
     }

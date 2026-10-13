@@ -9,6 +9,7 @@ mod tests;
 
 use std::sync::Arc;
 
+pub use groove_loopback::Keys;
 use groove_loopback::{body, reply};
 use groove_types::{Error, ErrorKind, Result};
 use hyper::body::Incoming;
@@ -21,17 +22,22 @@ pub use call::{Answer, Call, Reply};
 #[cfg(test)]
 use groove_loopback::BODY_MAX;
 
-/// Where an agent reaches its tools, and the token it must carry.
+/// Where an agent reaches its tools, and the tokens each session carries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Server {
     pub port: u16,
-    pub token: String,
+    pub keys: Keys,
 }
 
 impl Server {
     /// The url an agent for this session connects to.
     pub fn sse_url(&self, session: &str) -> String {
         format!("http://127.0.0.1:{}/sse?task={session}", self.port)
+    }
+
+    /// The token that acts as `session`, and as no other.
+    pub fn token(&self, session: &str) -> String {
+        self.keys.of(session)
     }
 }
 
@@ -40,34 +46,47 @@ type Sink = Arc<dyn Fn(Call) + Send + Sync>;
 /// Takes a free loopback port and serves it until the process ends.
 pub fn serve(handle: &Handle, on_call: impl Fn(Call) + Send + Sync + 'static) -> Result<Server> {
     let (live, sink): (Connections, Sink) = (Connections::default(), Arc::new(on_call));
-    let bound = groove_loopback::serve(handle, move |request| {
+    let bound = groove_loopback::serve(handle, move |request, holder| {
         let (live, sink) = (live.clone(), sink.clone());
-        async move { route(request, &live, &sink).await }
+        async move { route(request, &holder, &live, &sink).await }
     })
     .map_err(|e| Error::new(ErrorKind::Agent, format!("no loopback port: {e}")))?;
     Ok(Server {
         port: bound.port,
-        token: bound.token,
+        keys: bound.keys,
     })
 }
 
 /// The two routes: the stream that answers, and the calls that ask.
-async fn route(request: Request<Incoming>, live: &Connections, sink: &Sink) -> Response<Body> {
+async fn route(
+    request: Request<Incoming>,
+    holder: &str,
+    live: &Connections,
+    sink: &Sink,
+) -> Response<Body> {
     match (request.method(), request.uri().path()) {
-        (&Method::GET, "/sse") => stream::open(live, request.uri().query()),
-        (&Method::POST, "/message") => message(request, live, sink).await,
+        (&Method::GET, "/sse") => stream::open(live, request.uri().query(), holder),
+        (&Method::POST, "/message") => message(request, holder, live, sink).await,
         _ => reply(StatusCode::NOT_FOUND),
     }
 }
 
 /// One JSON-RPC message. The answer goes back on the stream, never on this response.
-async fn message(request: Request<Incoming>, live: &Connections, sink: &Sink) -> Response<Body> {
+async fn message(
+    request: Request<Incoming>,
+    holder: &str,
+    live: &Connections,
+    sink: &Sink,
+) -> Response<Body> {
     let Some(id) = param(request.uri().query(), "sessionId") else {
         return reply(StatusCode::BAD_REQUEST);
     };
     let Some(open) = live.open(&id) else {
         return reply(StatusCode::NOT_FOUND);
     };
+    if open.session != holder {
+        return reply(StatusCode::FORBIDDEN);
+    }
     let Some(body) = body(request).await else {
         return reply(StatusCode::PAYLOAD_TOO_LARGE);
     };

@@ -7,6 +7,7 @@ mod tests;
 
 use std::sync::Arc;
 
+pub use groove_loopback::Keys;
 use groove_loopback::{body, reply};
 use groove_types::{Error, ErrorKind, Result};
 use http_body_util::Full;
@@ -16,17 +17,22 @@ use tokio::runtime::Handle;
 
 pub use parse::Post;
 
-/// Where the agent posts its hooks, and the token it must carry.
+/// Where the agent posts its hooks, and the tokens each session carries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Receiver {
     pub port: u16,
-    pub token: String,
+    pub keys: Keys,
 }
 
 impl Receiver {
     /// The url an agent for this session posts to.
     pub fn hook_url(&self, session: &str) -> String {
         format!("http://127.0.0.1:{}/hook/{session}", self.port)
+    }
+
+    /// The token that posts as `session`, and as no other.
+    pub fn token(&self, session: &str) -> String {
+        self.keys.of(session)
     }
 }
 
@@ -35,25 +41,28 @@ type Sink = Arc<dyn Fn(Post) + Send + Sync>;
 /// Takes a free loopback port and serves it until the process ends.
 pub fn serve(handle: &Handle, on_post: impl Fn(Post) + Send + Sync + 'static) -> Result<Receiver> {
     let sink: Sink = Arc::new(on_post);
-    let bound = groove_loopback::serve(handle, move |request| {
+    let bound = groove_loopback::serve(handle, move |request, holder| {
         let sink = sink.clone();
-        async move { route(request, &sink).await }
+        async move { route(request, &holder, &sink).await }
     })
     .map_err(|e| Error::new(ErrorKind::Agent, format!("no loopback port: {e}")))?;
     Ok(Receiver {
         port: bound.port,
-        token: bound.token,
+        keys: bound.keys,
     })
 }
 
 /// The only route there is.
-async fn route(request: Request<Incoming>, sink: &Sink) -> Response<Full<Bytes>> {
+async fn route(request: Request<Incoming>, holder: &str, sink: &Sink) -> Response<Full<Bytes>> {
     if request.method() != Method::POST {
         return reply(StatusCode::METHOD_NOT_ALLOWED);
     }
     let Some(session) = session_of(request.uri().path()) else {
         return reply(StatusCode::NOT_FOUND);
     };
+    if session != holder {
+        return reply(StatusCode::FORBIDDEN);
+    }
     let Some(body) = body(request).await else {
         return reply(StatusCode::PAYLOAD_TOO_LARGE);
     };

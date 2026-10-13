@@ -9,7 +9,7 @@ use groove_http::Graphql;
 use groove_token::Token;
 use groove_types::{Forge, Repo, ReviewMr};
 
-use crate::{Error, Result, Snapshot};
+use crate::{Error, Result, Snapshot, pages};
 
 /// How many of the queue a call asks for.
 const QUEUE_MAX: i64 = 50;
@@ -38,10 +38,16 @@ impl Gitlab {
         let at = serde_json::json!({ "path": path(repo), "branch": branch });
         let reply = self.api.ask(&query::by_branch(), at).await?;
         let nodes = read::nodes(&reply["data"]["project"]["mergeRequests"]);
-        let Some(mr) = nodes.first() else {
+        let own = |one: &&serde_json::Value| {
+            let source = one["sourceProject"]["fullPath"].as_str();
+            source.is_none_or(|from| from.eq_ignore_ascii_case(&path(repo)))
+        };
+        let Some(mr) = nodes.iter().find(own) else {
             return Ok(None);
         };
-        match read::snapshot(mr, &self.viewer(&reply), &self.host) {
+        let mut mr = mr.clone();
+        self.whole(repo, &mut mr).await?;
+        match read::snapshot(&mr, &self.viewer(&reply), &self.host) {
             Some(read) => Ok(Some(self.spanned(repo, read).await)),
             None => Ok(None),
         }
@@ -51,8 +57,9 @@ impl Gitlab {
     pub async fn read_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         let at = serde_json::json!({ "path": path(repo), "iid": number });
         let reply = self.api.ask(&query::by_iid(), at).await?;
-        let mr = &reply["data"]["project"]["mergeRequest"];
-        let read = read::snapshot(mr, &self.viewer(&reply), &self.host).ok_or_else(|| {
+        let mut mr = reply["data"]["project"]["mergeRequest"].clone();
+        self.whole(repo, &mut mr).await?;
+        let read = read::snapshot(&mr, &self.viewer(&reply), &self.host).ok_or_else(|| {
             Error::Invalid(format!(
                 "{} has no merge request {number} on {}",
                 self.host,
@@ -60,6 +67,21 @@ impl Gitlab {
             ))
         })?;
         Ok(self.spanned(repo, read).await)
+    }
+
+    /// The MR's discussions read to their last page.
+    async fn whole(&self, repo: &Repo, mr: &mut serde_json::Value) -> Result<()> {
+        let iid = read::text(&mr["iid"]);
+        for _ in 0..pages::PAGES_MAX {
+            let Some(after) = pages::after(&mr["discussions"]) else {
+                break;
+            };
+            let at = serde_json::json!({ "path": path(repo), "iid": iid, "after": after });
+            let reply = self.api.ask(&query::more(), at).await?;
+            let page = &reply["data"]["project"]["mergeRequest"]["discussions"];
+            pages::extend(&mut mr["discussions"], page);
+        }
+        Ok(())
     }
 
     /// The read with each diff note's range; left as it is when the call fails.

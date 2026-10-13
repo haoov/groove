@@ -5,6 +5,7 @@ use glyphon::{
 };
 
 mod areas;
+mod recent;
 
 use self::areas::{area, mark, rasterize, shape_glyph};
 use crate::fonts::{CellSize, Face, one_paragraph};
@@ -14,7 +15,7 @@ use crate::{Color, Fonts, Rect, Result, Size, TextRun};
 
 const GLYPH_CACHE_CAP: usize = 4096;
 
-/// Above this many shaped lines the pass gives them up.
+/// Above this many shaped lines the pass keeps only the ones the last frame drew.
 const RUN_CACHE_CAP: usize = 2048;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -111,6 +112,7 @@ impl TextPass {
                 height: size.height,
             },
         );
+        self.keep_recent();
         self.runs.clear();
         self.runs.resize_with(layers, Vec::new);
         self.placements.clear();
@@ -125,13 +127,6 @@ impl TextPass {
                 None,
             );
             self.renderers.push(renderer);
-        }
-        if self.glyphs.len() > GLYPH_CACHE_CAP {
-            self.glyphs.clear();
-        }
-        if self.lines.len() > RUN_CACHE_CAP {
-            self.lines.clear();
-            self.index.clear();
         }
     }
 

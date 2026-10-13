@@ -89,3 +89,51 @@ fn a_mono_family_changed_shapes_the_frame_again_in_it() {
     let after = renderer.cached();
     assert_eq!(after.shaped, first.shaped * 2, "everything shaped again");
 }
+
+/// One screen of a long file, scrolled `at` rows down.
+fn scrolled(at: usize) -> Frame {
+    let mut frame = Frame::new(WINDOW, Palette::MOCHA.base);
+    for row in 0..64 {
+        let text = format!("let line_{} = {};", at + row, row);
+        frame.text(text, 4.0, row as f32 * 3.0, 18.0, style());
+    }
+    frame
+}
+
+#[test]
+fn scrolling_past_the_cache_reshapes_nothing_still_on_screen() {
+    let mut renderer = renderer();
+    for page in 0..48 {
+        let screen = scrolled(page * 64);
+        renderer.render(&screen).expect("a page");
+        let shaped = renderer.cached().shaped;
+        renderer.render(&screen).expect("the same page again");
+        let again = renderer.cached().shaped;
+        assert_eq!(again, shaped, "page {page} was shaped twice");
+    }
+}
+
+#[test]
+fn measuring_past_the_cache_keeps_what_is_still_measured() {
+    let mut fonts = Fonts::embedded();
+    let hot: Vec<String> = (0..32).map(|at| format!("label {at}")).collect();
+    let measure = |fonts: &mut Fonts, text: &str| {
+        fonts.measure(text, Font::Sans, Weight::Regular, 13.0);
+    };
+    for one in &hot {
+        measure(&mut fonts, one);
+    }
+    for round in 0..100 {
+        for at in 0..100 {
+            measure(&mut fonts, &format!("once {round} {at}"));
+        }
+        let before = fonts.measured;
+        for one in &hot {
+            measure(&mut fonts, one);
+        }
+        assert_eq!(
+            fonts.measured, before,
+            "round {round} measured the labels again"
+        );
+    }
+}

@@ -1,9 +1,29 @@
 //! The GraphQL Groove sends: one field set, and the two ways to ask for it.
 
+/// One thread's node, on the first page and on the ones after it.
+macro_rules! thread {
+    () => {
+        r"
+  id isResolved path line startLine originalStartLine diffSide
+  comments(first: 100) {
+    nodes { body createdAt line originalLine author { login } }
+  }
+"
+    };
+}
+
+/// One comment's node, the same way.
+macro_rules! comment {
+    () => {
+        "id body createdAt author { login }"
+    };
+}
+
 /// Everything one read of an MR brings back, down to the threads.
-const FIELDS: &str = r"
+const FIELDS: &str = concat!(
+    r"
   id number title body state isDraft url createdAt updatedAt
-  headRefName headRefOid baseRefName reviewDecision
+  headRefName headRefOid baseRefName reviewDecision isCrossRepository
   author { login }
   latestReviews(first: 50) { nodes { state submittedAt author { login } } }
   reviewRequests(first: 50) { nodes { requestedReviewer { ... on User { login } } } }
@@ -30,16 +50,32 @@ const FIELDS: &str = r"
       }
     }
   }
-  reviewThreads(first: 50) {
-    nodes {
-      id isResolved path line startLine originalStartLine diffSide
-      comments(first: 50) {
-        nodes { body createdAt line originalLine author { login } }
-      }
-    }
-  }
-  comments(first: 50) { nodes { id body createdAt author { login } } }
-";
+  reviewThreads(first: 100) { pageInfo { hasNextPage endCursor } nodes {",
+    thread!(),
+    "} }
+  comments(first: 100) { pageInfo { hasNextPage endCursor } nodes {",
+    comment!(),
+    "} }"
+);
+
+const THREAD: &str = thread!();
+const COMMENT: &str = comment!();
+
+/// The page of a list of the MR's after `$after`: `reviewThreads` or `comments`.
+pub fn more(list: &str) -> String {
+    let nodes = match list {
+        "reviewThreads" => THREAD,
+        _ => COMMENT,
+    };
+    let info = crate::pages::PAGE_INFO;
+    format!(
+        r"query($id: ID!, $after: String!) {{
+  node(id: $id) {{ ... on PullRequest {{
+    {list}(first: 100, after: $after) {{ {info} nodes {{ {nodes} }} }}
+  }} }}
+}}"
+    )
+}
 
 /// The open MR a branch is the source of, the one most lately touched.
 pub fn by_branch() -> String {
@@ -48,7 +84,7 @@ pub fn by_branch() -> String {
   viewer {{ login }}
   repository(owner: $owner, name: $repo) {{
     pullRequests(
-      headRefName: $branch, states: [OPEN], first: 1
+      headRefName: $branch, states: [OPEN], first: 10
       orderBy: {{ field: UPDATED_AT, direction: DESC }}
     ) {{ nodes {{ {FIELDS} }} }}
   }}

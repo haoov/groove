@@ -1,6 +1,6 @@
 [package]
 name = "groove-loopback"
-description = "A local HTTP server on 127.0.0.1, behind a bearer token"
+description = "A local HTTP server on 127.0.0.1, behind a bearer token per session"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

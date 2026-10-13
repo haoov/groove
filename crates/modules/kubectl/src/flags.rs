@@ -114,10 +114,12 @@ pub(crate) fn read(args: &[String]) -> Result<Read, String> {
 /// `-ovalue`, `-o=value`, `--name=value`, or the flag alone.
 fn split(arg: &str) -> (&str, Option<String>) {
     let short = !arg.starts_with("--") && arg.len() > 2;
-    if short && long(VALUED, &arg[..2]).is_some() {
-        let value = &arg[2..];
+    let cut = arg.get(..2).zip(arg.get(2..)).filter(|_| short);
+    if let Some((name, value)) = cut
+        && long(VALUED, name).is_some()
+    {
         return (
-            &arg[..2],
+            name,
             Some(value.strip_prefix('=').unwrap_or(value).to_string()),
         );
     }

@@ -1,6 +1,8 @@
 //! The faces the atlas shapes with, and the cell one size gives.
 
 use std::collections::HashMap;
+
+use crate::kept::Kept;
 use std::sync::Arc;
 
 use glyphon::cosmic_text::{FeatureTag, FontFeatures};
@@ -65,7 +67,7 @@ pub struct CellSize {
     pub height: f32,
 }
 
-/// Above this many measured strings a face gives up its widths.
+/// How many measured strings a face keeps in each half of its cache.
 const WIDTH_CACHE_CAP: usize = 4096;
 /// Above this many widths a face gives up the rows it kept.
 const ROWS_WIDTHS_CAP: usize = 64;
@@ -93,10 +95,12 @@ pub struct Fonts {
     pub(crate) system: FontSystem,
     pub(crate) swash: SwashCache,
     /// What a face already measured, by the text it measured.
-    widths: HashMap<Face, HashMap<Box<str>, f32>>,
+    widths: HashMap<Face, Kept<f32>>,
     mono: Family,
     /// How many rows a text took, by its face, then the width it was wrapped to.
-    rows: HashMap<Face, HashMap<u32, HashMap<Box<str>, usize>>>,
+    rows: HashMap<Face, HashMap<u32, Kept<usize>>>,
+    /// How many strings were shaped to be measured.
+    pub(crate) measured: u64,
 }
 
 impl Fonts {
@@ -126,6 +130,7 @@ impl Fonts {
             widths: HashMap::new(),
             mono: Family::Plex,
             rows: HashMap::new(),
+            measured: 0,
         }
     }
 
@@ -159,14 +164,13 @@ impl Fonts {
             return 0.0;
         }
         let face = Face::new(font, weight, size);
-        if let Some(width) = self.widths.get(&face).and_then(|face| face.get(text)) {
-            return *width;
+        if let Some(width) = self.widths.get_mut(&face).and_then(|face| face.get(text)) {
+            return width;
         }
         let width = self.shaped(text, font, weight, size);
-        let widths = self.widths.entry(face).or_default();
-        if widths.len() >= WIDTH_CACHE_CAP {
-            widths.clear();
-        }
+        self.measured += 1;
+        let widths = self.widths.entry(face);
+        let widths = widths.or_insert_with(|| Kept::new(WIDTH_CACHE_CAP));
         widths.insert(text.into(), width);
         width
     }
@@ -181,11 +185,7 @@ impl Fonts {
         width: f32,
     ) -> Option<usize> {
         let face = Face::new(font, weight, size);
-        self.rows
-            .get(&face)?
-            .get(&width.to_bits())?
-            .get(text)
-            .copied()
+        self.rows.get(&face)?.get(&width.to_bits())?.peek(text)
     }
 
     /// Keeps how many rows `text` took at `width`. The wrapping is the caller's.
@@ -202,10 +202,8 @@ impl Fonts {
         if widths.len() >= ROWS_WIDTHS_CAP && !widths.contains_key(&width.to_bits()) {
             widths.clear();
         }
-        let texts = widths.entry(width.to_bits()).or_default();
-        if texts.len() >= WIDTH_CACHE_CAP {
-            texts.clear();
-        }
+        let texts = widths.entry(width.to_bits());
+        let texts = texts.or_insert_with(|| Kept::new(WIDTH_CACHE_CAP));
         texts.insert(text.into(), rows);
     }
 
