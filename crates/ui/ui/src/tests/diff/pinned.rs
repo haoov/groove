@@ -1,6 +1,7 @@
 //! The lines held over the rows: the file they belong to, and the scopes above them.
 
 use groove_controllers::AppState;
+use groove_controllers::workspace_service::HEAD_ROWS;
 
 use super::stream::both;
 use super::{on_diff, view_of, with_files};
@@ -10,17 +11,18 @@ use groove_ui_kit::base::tokens::Tokens;
 
 /// What the band standing over the rows says, its coloured runs joined.
 fn band(app: &AppState, ui: &Ui) -> String {
-    let (frame, _) = view_of(app, ui);
-    let layers = frame.layers();
-    match layers.len() > 1 {
-        true => layers
-            .iter()
-            .skip(1)
-            .flat_map(|layer| layer.texts.iter())
-            .map(|run| run.text.as_str())
-            .collect(),
-        false => String::new(),
-    }
+    let (frame, hits) = view_of(app, ui);
+    let Some(pinned) = hits.rect_of(&Target::Pinned) else {
+        return String::new();
+    };
+    frame
+        .layers()
+        .iter()
+        .skip(1)
+        .flat_map(|layer| layer.texts.iter())
+        .filter(|run| pinned.contains(run.x, run.y))
+        .map(|run| run.text.as_str())
+        .collect()
 }
 
 /// One file deep enough to scroll inside a scope.
@@ -65,8 +67,9 @@ fn the_stream_pins_the_file_it_stands_in() {
     let app = both();
     let mut ui = on_diff();
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
-    *ui.session.scroll_mut() = (head + 1) as f32 * Tokens::new(1.0).line;
-    assert!(band(&app, &ui).contains("src/b.rs"), "{}", band(&app, &ui));
+    *ui.session.scroll_mut() = (head + HEAD_ROWS) as f32 * Tokens::new(1.0).line;
+    let said = band(&app, &ui);
+    assert!(said.contains("b.rs") && said.contains("src"), "{said}");
 }
 
 #[test]
@@ -114,21 +117,21 @@ fn the_diff_names_the_file_by_its_path_the_whole_way_down() {
     );
     let mut ui = on_diff();
     let line = Tokens::new(1.0).line;
-    let said: Vec<String> = (0..16)
+    let (said, held): (Vec<String>, Vec<bool>) = (0..16)
         .map(|row| {
             *ui.session.scroll_mut() = row as f32 * line;
-            band(&app, &ui)
+            let (_, hits) = view_of(&app, &ui);
+            (band(&app, &ui), hits.rect_of(&Target::Pinned).is_some())
         })
-        .collect();
+        .unzip();
     assert_eq!(said[0], "", "nothing has scrolled off yet");
     assert!(
-        said[1..]
-            .iter()
-            .all(|one| one.starts_with("src") || one.starts_with("lib")),
+        held[1..].iter().all(|one| *one),
         "no row after leaves the file out: {said:?}"
     );
     assert!(
-        said.iter().any(|one| one.starts_with("lib/c.rs")),
+        said.iter()
+            .any(|one| one.contains("c.rs") && one.contains("lib")),
         "the next file takes over: {said:?}"
     );
 }
@@ -175,8 +178,11 @@ three
             .rect_of(&Target::Pinned)
             .map(|one| one.h / line)
             .unwrap_or(0.0);
-        assert!(under <= 1.0, "one row at most stands over the rows");
-        if said.starts_with("src/b.rs") {
+        assert!(
+            under <= HEAD_ROWS as f32,
+            "one head at most stands over the rows"
+        );
+        if said.contains("b.rs") {
             assert!(
                 row >= head,
                 "the file is named once its own head has passed"
@@ -193,4 +199,36 @@ fn a_scope_stands_over_the_rows_as_soon_as_its_line_leaves_the_top() {
     *ui.session.scroll_mut() = Tokens::new(1.0).line / 3.0;
     let said = band(&app, &ui);
     assert!(said.contains("mod one {"), "not a whole line later: {said}");
+}
+
+#[test]
+fn the_pinned_head_stands_two_rows_tall_over_a_shadow() {
+    let app = both();
+    let mut ui = on_diff();
+    let line = Tokens::new(1.0).line;
+    *ui.session.scroll_mut() = line;
+    let (frame, hits) = view_of(&app, &ui);
+    let pinned = hits.rect_of(&Target::Pinned).expect("a pinned head");
+    assert_eq!(pinned.h, line * HEAD_ROWS as f32);
+    let shaded = frame
+        .layers()
+        .iter()
+        .flat_map(|layer| layer.quads.iter())
+        .filter(|quad| quad.shape.blur > 0.0)
+        .any(|quad| quad.rect.y < pinned.bottom() && quad.rect.bottom() > pinned.bottom());
+    assert!(shaded, "a shadow falls from its bottom edge");
+}
+
+#[test]
+fn the_next_head_pushes_the_pinned_one_out() {
+    let app = both();
+    let mut ui = on_diff();
+    let line = Tokens::new(1.0).line;
+    let next = app.workspace.changes.head_of("src/b.rs").expect("the file");
+    *ui.session.scroll_mut() = (next - 1) as f32 * line;
+    let (_, hits) = view_of(&app, &ui);
+    let code = hits.rect_of(&Target::Code).expect("the rows");
+    let pinned = hits.rect_of(&Target::Pinned).expect("a pinned head");
+    assert_eq!(pinned.y, code.y, "what is left of it stands at the top");
+    assert_eq!(pinned.h, line, "half of it is pushed out");
 }

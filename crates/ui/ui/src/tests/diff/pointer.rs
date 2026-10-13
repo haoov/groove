@@ -63,7 +63,10 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 3.0 + 1.0);
+    let point = (
+        code.x + tokens.sm + 1.0,
+        code.y + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32 + 1.0,
+    );
     let commands = handle(
         Input::Press {
             x: point.0,
@@ -93,7 +96,9 @@ fn a_click_on_a_removed_line_takes_no_caret() {
     let commands = handle(
         Input::Press {
             x: code.x + tokens.sm + 1.0,
-            y: code.y + tokens.line * 2.0 + 1.0,
+            y: code.y
+                + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32
+                + 1.0,
             mods: Default::default(),
         },
         &mut ui,
@@ -287,7 +292,10 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 3.0 + 1.0);
+    let point = (
+        code.x + tokens.sm + 1.0,
+        code.y + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32 + 1.0,
+    );
     let commands = handle(
         Input::Press {
             x: point.0,

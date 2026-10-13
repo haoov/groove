@@ -1,6 +1,7 @@
 //! Reading a worktree: what changed, what the rows show, what a mark remembers.
 
 use super::*;
+use crate::workspace_service::HEAD_ROWS;
 
 #[test]
 fn load_lists_what_changed_in_the_selected_worktree() {
@@ -179,9 +180,16 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
     let changes = &state.workspace.changes;
     assert_eq!(
         changes.rows(),
-        changes.files().iter().map(|f| f.len() + 1).sum::<usize>()
+        changes
+            .files()
+            .iter()
+            .map(|f| f.len() + HEAD_ROWS)
+            .sum::<usize>()
     );
-    assert_eq!(changes.head_of("b.rs"), Some(changes.files()[0].len() + 1));
+    assert_eq!(
+        changes.head_of("b.rs"),
+        Some(changes.files()[0].len() + HEAD_ROWS)
+    );
     assert!(
         state.workspace.coloured.is_empty(),
         "nothing is on screen yet"

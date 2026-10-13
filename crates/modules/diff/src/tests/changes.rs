@@ -1,7 +1,7 @@
 use groove_types::RowKind;
 
 use crate::tests::summary::{repo, write};
-use crate::{At, Changes, aligned, changes, summary};
+use crate::{At, Changes, HEAD_ROWS, aligned, changes, summary};
 
 fn all(dir: &std::path::Path) -> Changes {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
@@ -45,12 +45,14 @@ fn every_row_of_the_change_belongs_to_a_file() {
     assert_eq!(changes.files().len(), 2, "{:?}", changes.files());
 
     let first = changes.files()[0].path.clone();
-    assert_eq!(changes.at(0), Some(At::Head(&changes.files()[0])));
+    for row in 0..HEAD_ROWS {
+        assert_eq!(changes.at(row), Some(At::Head(&changes.files()[0])));
+    }
     assert_eq!(changes.head_of(&first), Some(0));
-    assert!(matches!(changes.at(1), Some(At::Row(_, 0))));
+    assert!(matches!(changes.at(HEAD_ROWS), Some(At::Row(_, 0))));
 
     let second = changes.head_of("src/lib.rs").expect("where it starts");
-    assert_eq!(second, changes.files()[0].len() + 1);
+    assert_eq!(second, changes.files()[0].len() + HEAD_ROWS);
     assert_eq!(changes.at(second), Some(At::Head(&changes.files()[1])));
     assert_eq!(changes.at(changes.rows()), None, "past the end");
 }
@@ -77,7 +79,9 @@ fn every_file_is_named_by_its_own_head_row() {
     );
     let heads: Vec<&str> = (0..changes.rows())
         .filter_map(|row| match changes.at(row) {
-            Some(At::Head(file)) => Some(file.path.as_str()),
+            Some(At::Head(file)) if changes.head_of(&file.path) == Some(row) => {
+                Some(file.path.as_str())
+            }
             _ => None,
         })
         .collect();

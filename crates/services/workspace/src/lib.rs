@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
-    Aligned, At, Changes, Derived, Document, Opened, UNSHOWN, aligned, column_of, display_of,
-    from_documents, from_text, shown,
+    Aligned, At, Changes, Derived, Document, HEAD_ROWS, Opened, UNSHOWN, aligned, column_of,
+    display_of, from_documents, from_text, shown,
 };
 pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};

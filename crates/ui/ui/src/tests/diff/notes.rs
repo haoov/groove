@@ -224,7 +224,7 @@ fn the_notes_mark_ends_where_a_line_number_ends() {
     let numbers: Vec<f32> = frame.layers()[0]
         .texts
         .iter()
-        .filter(|run| code.contains(run.x, run.y) && run.text.parse::<u32>().is_ok())
+        .filter(|run| code.contains(run.x, run.y) && super::numeral(&run.text))
         .map(|run| run.x + width_of(&run.text, run.style))
         .collect();
     let ends = numbers.first().copied().expect("a line number");

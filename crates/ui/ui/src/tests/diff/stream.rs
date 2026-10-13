@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::tests::{changed_files, pressed, release};
+use groove_controllers::workspace_service::HEAD_ROWS;
 use groove_controllers::{Command, workspace};
 use groove_types::{Caret, LineMark};
 
@@ -18,13 +19,23 @@ pub(super) fn both() -> AppState {
 
 #[test]
 fn every_changed_file_draws_under_a_row_naming_it() {
-    let drawn = texts(&both(), &on_diff());
-    assert!(
-        !drawn.iter().any(|text| text == "src"),
-        "no directory stands on a row of its own: {drawn:?}"
-    );
+    let ui = on_diff();
+    let (frame, hits) = view_of(&both(), &ui);
+    let code = hits.rect_of(&Target::Code).expect("the rows");
+    let runs: Vec<_> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| code.contains(run.x, run.y))
+        .collect();
+    let drawn: Vec<String> = runs.iter().map(|run| run.text.clone()).collect();
     for (path, before, after) in FILES {
-        assert!(drawn.iter().any(|text| text == path), "{path}: {drawn:?}");
+        let (folder, name) = path.rsplit_once('/').expect("a folder");
+        let named = runs.iter().find(|run| run.text == name).expect("its name");
+        assert!(
+            runs.iter()
+                .any(|run| run.text == folder && run.y == named.y),
+            "its folder stands beside its name, never on a row of its own: {drawn:?}"
+        );
         assert!(drawn.iter().any(|text| text == before.trim()));
         assert!(drawn.iter().any(|text| text == after.trim()));
     }
@@ -37,7 +48,10 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
     let (_, hits) = view_of(&app, &ui);
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (hits.chars().left + 1.0, code.y + tokens.line * 2.0 + 1.0);
+    let point = (
+        hits.chars().left + 1.0,
+        code.y + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32 + 1.0,
+    );
     let commands = handle(
         Input::Press {
             x: point.0,
@@ -315,7 +329,7 @@ fn a_file_read_dims_its_head() {
         .texts
         .iter()
         .filter(|run| code.contains(run.x, run.y))
-        .find(|run| run.text == "src/a.rs")
+        .find(|run| run.text == "a.rs")
         .expect("its head");
     assert_eq!(
         faint.style.color,
@@ -351,6 +365,8 @@ fn a_file_head_says_it_can_be_clicked() {
     let head = hits
         .rect_of(&Target::Head("src/a.rs".into()))
         .expect("the head takes the pointer");
+    let line = Tokens::new(1.0).line;
+    assert_eq!(head.h, line * HEAD_ROWS as f32, "a head takes two rows");
     let inside = (head.x + head.w / 2.0, head.y + head.h / 2.0);
     assert_eq!(
         hits.cursor_at(inside.0, inside.1),
@@ -364,7 +380,7 @@ fn a_file_head_says_it_can_be_clicked() {
 }
 
 #[test]
-fn the_header_names_the_top_file_in_the_diff_and_the_active_one_in_files() {
+fn the_header_names_the_active_file_in_files_and_none_in_the_diff() {
     let mut app = both();
     let mut ui = on_diff();
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
@@ -387,18 +403,13 @@ fn the_header_names_the_top_file_in_the_diff_and_the_active_one_in_files() {
             .collect::<Vec<String>>()
     };
     assert!(
-        header(&app, &ui).iter().any(|text| text.ends_with("a.rs")),
-        "with nothing open it names the file the rows start on: {:?}",
+        !header(&app, &ui).iter().any(|text| text.ends_with(".rs")),
+        "the diff's header names no file, its heads do: {:?}",
         header(&app, &ui)
     );
 
     crate::tests::shows(&mut app, "src/b.rs", FILES[1].1, FILES[1].2);
     changed_files(&mut app, &FILES);
-    let named = header(&app, &ui);
-    assert!(
-        named.iter().any(|text| text.ends_with("a.rs")),
-        "the diff keeps the file its rows start on: {named:?}"
-    );
     ui.session.tab = crate::views::session::Tab::Files;
     let named = header(&app, &ui);
     assert!(

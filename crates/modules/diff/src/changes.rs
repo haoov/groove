@@ -17,6 +17,9 @@ pub use build::{aligned, from_sides};
 
 use build::merge;
 
+/// How many rows a file's head takes.
+pub const HEAD_ROWS: usize = 2;
+
 /// Where a row of the whole surface belongs.
 #[derive(Debug, PartialEq, Eq)]
 pub enum At<'a> {
@@ -51,7 +54,7 @@ impl Changes {
                 true => 0,
                 false => file.len(),
             };
-            rows += shown + 1;
+            rows += shown + HEAD_ROWS;
         }
         let digits = files.iter().map(widest).max().unwrap_or(1);
         Self {
@@ -145,9 +148,9 @@ impl Changes {
             .checked_sub(1)?;
         let file = self.files.get(at)?;
         let head = self.starts[at];
-        match row == head {
+        match row < head + HEAD_ROWS {
             true => Some(At::Head(file)),
-            false => Some(At::Row(file, row - head - 1)),
+            false => Some(At::Row(file, row - head - HEAD_ROWS)),
         }
     }
 
@@ -159,7 +162,7 @@ impl Changes {
         }
         let head = self.starts[at];
         let row = self.files[at].hunked.layout.position(line)?;
-        Some(head + 1 + row)
+        Some(head + HEAD_ROWS + row)
     }
 
     /// The row this file's own head sits on.

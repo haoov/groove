@@ -183,6 +183,7 @@ fn the_header_s_button_is_drawn_with_a_rounded_border_around_it() {
     let ring = groove_gfx::Shape {
         radius: tokens.round,
         stroke: 1.0,
+        ..groove_gfx::Shape::default()
     };
     assert_eq!(rings, vec![ring], "one ring, its corners rounded");
 }

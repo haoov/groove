@@ -111,6 +111,11 @@ fn view_of(app: &AppState, ui: &Ui) -> (groove_gfx::Frame, crate::Hits) {
     view(app, ui, window(), &mut Fonts::embedded())
 }
 
+/// Whether a drawn text is a line number.
+fn numeral(text: &str) -> bool {
+    !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit())
+}
+
 /// The marks the file view drew, by colour.
 fn marks(app: &AppState) -> Vec<LineMark> {
     let mut ui = on_diff();

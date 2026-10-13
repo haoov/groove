@@ -27,3 +27,16 @@ fn a_ring_draws_its_edge_and_leaves_its_inside() {
     assert!(image.pixel(16, 4)[0] > 200, "the edge is drawn");
     assert!(image.pixel(16, 16)[0] < 16, "the inside is not");
 }
+
+#[test]
+fn a_shadow_fades_out_towards_its_edge() {
+    let image = drawn(|frame| frame.shadow(Rect::new(0.0, 0.0, 32.0, 32.0), Color::WHITE, 8.0));
+    let (middle, near, edge) = (
+        image.pixel(16, 16)[0],
+        image.pixel(16, 4)[0],
+        image.pixel(16, 0)[0],
+    );
+    assert!(middle > 240, "the middle is whole: {middle}");
+    assert!(near < middle && near > edge, "it fades: {near}");
+    assert!(edge < 40, "and is nearly gone at the edge: {edge}");
+}

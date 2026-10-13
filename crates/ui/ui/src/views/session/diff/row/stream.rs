@@ -5,10 +5,14 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{Aligned, At, Colours, Opened, display_of, shown};
+use groove_controllers::workspace_service::{
+    Aligned, At, Colours, HEAD_ROWS, Opened, display_of, shown,
+};
 use groove_types::{Caret, DiffView, Highlight, Row, RowKind};
 
-use super::{Drawn, Side, caret, columns_in, held, is_read, matched, open, standing, text_of};
+use super::{
+    Drawn, Side, caret, columns_in, counted, held, is_read, matched, open, standing, text_of,
+};
 use crate::Ui;
 
 /// Every changed file's rows, each under a row naming the file.
@@ -23,7 +27,7 @@ pub(super) fn streamed(
     let colours = coloured(app, ui, window.clone());
     window
         .map(|row| match changes.at(row) {
-            Some(At::Head(file)) => head(app, file, changes.is_folded(&file.path)),
+            Some(At::Head(file)) => head(app, file, row),
             Some(At::Row(file, at)) => {
                 let side = file.row(at).map_or(side, |one| source(&one, view, side));
                 one(
@@ -91,12 +95,16 @@ fn stretch(range: &mut Range<usize>, line: Option<u32>) {
 }
 
 /// The row that names a file, standing above its own rows.
-fn head(app: &AppState, file: &Aligned, folded: bool) -> Drawn {
+fn head(app: &AppState, file: &Aligned, row: usize) -> Drawn {
+    let changes = &app.workspace.changes;
+    let at = changes.head_of(&file.path).map_or(0, |head| row - head);
     Drawn {
         text: file.path.clone(),
         head: true,
-        folded,
+        folded: changes.is_folded(&file.path),
         read: is_read(app, &file.path),
+        part: (at, HEAD_ROWS),
+        counts: counted(app, &file.path),
         file: Some(file.path.clone()),
         ..Drawn::default()
     }

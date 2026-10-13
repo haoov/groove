@@ -12,6 +12,9 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
+    if code.covered {
+        return;
+    }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);
     }
@@ -37,6 +40,8 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         head: line.head,
         folded: line.folded,
         read: line.read,
+        part: line.part,
+        counts: line.counts,
         caret: line.caret,
         held: line.held,
         found: line.found,

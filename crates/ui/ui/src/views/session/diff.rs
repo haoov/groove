@@ -3,6 +3,7 @@
 mod blame;
 mod finder;
 mod header;
+mod heads;
 mod map;
 mod notes;
 mod offers;

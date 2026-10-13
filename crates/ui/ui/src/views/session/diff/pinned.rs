@@ -1,19 +1,21 @@
 //! The lines held at the top of the surface: the file, and the scopes around it.
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{At, Document, shown};
+use groove_controllers::workspace_service::{At, Document, HEAD_ROWS, shown};
 use groove_gfx::Rect;
 use groove_types::Highlight;
 
 use super::notes::Inline;
 use crate::Ui;
-use crate::components::{Gutters, Line, Rows, code, first, head_mark};
+use crate::components::{Gutters, Line, Rows, code, first};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::Face;
 use groove_ui_kit::base::tokens::{PINNED_DEEP, PINNED_SHARE};
+use groove_ui_kit::shape::shadow_under;
 
 /// One line held above the rows.
+#[derive(Clone)]
 struct Pin {
     number: String,
     text: String,
@@ -22,7 +24,7 @@ struct Pin {
 }
 
 /// What a pin stands for: the file, or a scope around the rows.
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 enum Kind {
     Head,
     Scope,
@@ -41,15 +43,20 @@ pub(super) fn draw(
     }
     let numbers: Vec<Vec<&str>> = pins.iter().map(|pin| vec![pin.number.as_str()]).collect();
     let height = ctx.tokens.line * pins.len() as f32;
-    let band = Rect::new(body.x, body.y, body.w, height);
-    let ground = ctx.styles.raised();
     let named = pins.iter().find(|pin| pin.kind == Kind::Head);
+    let pushed = named.and_then(|pin| pushed(ctx, (app, ui, inline), &pin.text, height));
+    let band = Rect::new(body.x, body.y + pushed.unwrap_or(0.0), body.w, height);
+    let ground = ctx.styles.raised();
     let read = named.is_some_and(|pin| super::row::is_read(app, &pin.text));
     let lines: Vec<Line<'_>> = pins
         .iter()
         .enumerate()
         .map(|(at, pin)| match pin.kind {
-            Kind::Head => Line::head(&pin.text).read(read),
+            Kind::Head if at > 0 => Line::covered(),
+            Kind::Head => Line::head(&pin.text)
+                .read(read)
+                .part((0, pins.len()))
+                .counts(super::row::counted(app, &pin.text)),
             Kind::Scope => Line::new(&pin.text)
                 .gutters(&numbers[at])
                 .spans(&pin.spans)
@@ -57,24 +64,34 @@ pub(super) fn draw(
         })
         .collect();
     ctx.layer();
-    let drawn = code(
-        ctx,
-        band,
-        Rows {
+    ctx.clipped(body, |ctx| {
+        shadow_under(ctx, band);
+        let rows = Rows {
             lines: &lines,
             first: 0,
             gutters,
             across: ui.session.across(),
-        },
-        0.0,
-    );
-    ctx.hit(band, Target::Pinned);
-    let named = pins.iter().position(|pin| pin.kind == Kind::Head);
-    if let Some((line, at)) = named.and_then(|at| Some((drawn.get(at)?, at))) {
-        let path = pins[at].text.clone();
-        ctx.hit(*line, Target::Head(path.clone()));
-        ctx.hit(head_mark(ctx, *line), Target::Read(path));
-    }
+        };
+        let drawn = code(ctx, band, rows, 0.0);
+        ctx.hit(band, Target::Pinned);
+        if let Some(pin) = named.filter(|_| !drawn.is_empty()) {
+            super::offers::head_hits(ctx, band, &pin.text);
+        }
+    });
+}
+
+/// How far the next file's head, coming up under the pinned one, pushes it up.
+fn pushed(
+    ctx: &Ctx,
+    (app, ui, inline): (&AppState, &Ui, &Inline),
+    path: &str,
+    height: f32,
+) -> Option<f32> {
+    let changes = &app.workspace.changes;
+    let head = changes.head_of(path)?;
+    let (next, _, _) = changes.placed().find(|(start, _, _)| *start > head)?;
+    let top = inline.shifted(next) as f32 * ctx.tokens.line - ui.session.scroll();
+    Some((top - height).min(0.0))
 }
 
 /// The scopes around the first row the pinned band leaves showing.
@@ -82,12 +99,12 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<
     if ui.session.face() == Face::File {
         return scoped(ctx, body, app, ui, inline);
     }
-    let named =
-        file_under(ctx, app, ui, inline, 0).and_then(|_| file_under(ctx, app, ui, inline, 1));
-    named
-        .map(|path| said(&path, Kind::Head))
-        .into_iter()
-        .collect()
+    if first(ctx.tokens.line, ui.session.scroll()) == 0 {
+        return Vec::new();
+    }
+    file_under(ctx, app, ui, inline, HEAD_ROWS)
+        .map(|path| vec![said(&path, Kind::Head); HEAD_ROWS])
+        .unwrap_or_default()
 }
 
 /// The file of the row that stands `under` rows below the top of the surface.
@@ -147,7 +164,7 @@ fn room(ctx: &Ctx, body: Rect) -> usize {
 fn standing(app: &AppState, top: usize) -> Option<String> {
     match app.workspace.changes.at(top)? {
         At::Row(file, _) => Some(file.path.clone()),
-        At::Head(_) => above(app, top),
+        At::Head(file) => above(app, app.workspace.changes.head_of(&file.path)?),
     }
 }
 

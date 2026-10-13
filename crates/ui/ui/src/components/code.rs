@@ -7,7 +7,7 @@ use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
-pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark};
+pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark, head_of};
 
 use self::row::draw;
 use crate::ctx::Ctx;
@@ -54,6 +54,12 @@ pub struct Line<'a> {
     pub folded: bool,
     /// A head row whose file has been read.
     pub read: bool,
+    /// Which of its head's rows a head row is, and how many the head takes.
+    pub part: (usize, usize),
+    /// What a head row's file added and removed.
+    pub counts: Option<(u32, u32)>,
+    /// A row the one above it already draws over: a head's later rows.
+    pub covered: bool,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -78,7 +84,15 @@ pub struct Line<'a> {
 impl<'a> Line<'a> {
     /// Whether the row carries gutters; a row that names a file has none.
     pub fn numbered(&self) -> bool {
-        !self.head && !self.banner && self.said.is_none() && self.acting.is_none()
+        !self.head && !self.banner && !self.covered && self.said.is_none() && self.acting.is_none()
+    }
+
+    /// A row the one above it already draws over.
+    pub fn covered() -> Self {
+        Self {
+            covered: true,
+            ..Self::new("")
+        }
     }
 
     pub fn new(text: &'a str) -> Self {
@@ -93,6 +107,9 @@ impl<'a> Line<'a> {
             head: false,
             folded: false,
             read: false,
+            part: (0, 1),
+            counts: None,
+            covered: false,
             caret: None,
             held: None,
             found: &[],
@@ -151,6 +168,16 @@ impl<'a> Line<'a> {
 
     pub fn read(mut self, read: bool) -> Self {
         self.read = read;
+        self
+    }
+
+    pub fn part(mut self, part: (usize, usize)) -> Self {
+        self.part = part;
+        self
+    }
+
+    pub fn counts(mut self, counts: Option<(u32, u32)>) -> Self {
+        self.counts = counts;
         self
     }
 
