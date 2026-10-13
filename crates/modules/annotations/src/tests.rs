@@ -107,7 +107,7 @@ async fn new_words_replace_the_old_ones() {
         .await
         .expect("a note");
     let said = store
-        .update(&made.id, "nitpick: name it")
+        .update(&made.session, &made.id, "nitpick: name it")
         .await
         .expect("the note");
     assert_eq!(said.content, "nitpick: name it");
@@ -121,9 +121,12 @@ async fn a_note_resolves_and_opens_again() {
         .create(note("src/lib.rs", 1, 1), at(1))
         .await
         .expect("a note");
-    let shut = store.resolve(&made.id).await.expect("resolved");
+    let shut = store
+        .resolve(&made.session, &made.id)
+        .await
+        .expect("resolved");
     assert_eq!(shut.status, AnnotationStatus::Resolved);
-    let again = store.reopen(&made.id).await.expect("open");
+    let again = store.reopen(&made.session, &made.id).await.expect("open");
     assert_eq!(again.status, AnnotationStatus::Open);
 }
 
@@ -134,7 +137,10 @@ async fn a_deleted_note_is_gone_from_the_session() {
         .create(note("src/lib.rs", 1, 1), at(1))
         .await
         .expect("a note");
-    store.delete(&made.id).await.expect("deleted");
+    store
+        .delete(&made.session, &made.id)
+        .await
+        .expect("deleted");
     let read = store.list(&SessionId::new("s")).await.expect("the notes");
     assert!(read.is_empty());
     assert!(store.get(&made.id).await.expect("a read").is_none());
@@ -144,6 +150,33 @@ async fn a_deleted_note_is_gone_from_the_session() {
 async fn a_write_to_a_note_that_is_gone_says_so() {
     let store = store().await;
     let id = AnnotationId::new("nothing");
-    let refused = store.resolve(&id).await.expect_err("no such note");
+    let refused = store
+        .resolve(&SessionId::new("s"), &id)
+        .await
+        .expect_err("no such note");
     assert!(refused.message.contains("no note nothing"), "{refused:?}");
+}
+
+#[tokio::test]
+async fn a_session_writes_no_note_of_another() {
+    let store = store().await;
+    let made = store
+        .create(note("src/lib.rs", 1, 1), at(1))
+        .await
+        .expect("a note");
+    let other = SessionId::new("other");
+    let refused = store.update(&other, &made.id, "not mine").await;
+    assert!(refused.is_err(), "{refused:?}");
+    assert!(store.resolve(&other, &made.id).await.is_err());
+    store
+        .delete(&other, &made.id)
+        .await
+        .expect("a delete of nothing");
+    let kept = store
+        .get(&made.id)
+        .await
+        .expect("a read")
+        .expect("still there");
+    assert_eq!(kept.content, made.content);
+    assert_eq!(kept.status, AnnotationStatus::Open);
 }

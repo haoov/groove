@@ -119,16 +119,14 @@ pub fn drop_asks(state: &mut AppState, session: &SessionId) {
     }
 }
 
-/// The worktree the write names, or the one its own session has selected.
+/// The worktree of its own session the write names, or the one that session has selected.
 pub(crate) fn worktree_of(state: &AppState, write: &Write) -> Option<groove_types::Worktree> {
-    let named = crate::tools::worktree_named(state, write.text("worktree_id"));
-    named.or_else(|| {
-        state
-            .session
-            .get(&write.session)?
-            .selected_worktree()
-            .cloned()
-    })
+    let open = state.session.get(&write.session)?;
+    let found = match write.text("worktree_id") {
+        Some(named) => open.worktrees.iter().find(|one| one.id.as_str() == named),
+        None => open.selected_worktree(),
+    };
+    found.cloned()
 }
 
 fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: Write) {

@@ -26,7 +26,7 @@ fn answering(on_call: impl Fn(crate::Call) + Send + Sync + 'static) -> (Runtime,
 async fn connected(server: &Server) -> (reqwest::Response, String) {
     let mut stream = reqwest::Client::new()
         .get(server.sse_url(SESSION))
-        .bearer_auth(&server.token)
+        .bearer_auth(server.token(SESSION))
         .send()
         .await
         .expect("the stream opens");
@@ -64,7 +64,7 @@ fn data_of(event: &str) -> String {
 async fn ask(server: &Server, post: &str, call: Value) -> reqwest::StatusCode {
     reqwest::Client::new()
         .post(format!("http://127.0.0.1:{}{post}", server.port))
-        .bearer_auth(&server.token)
+        .bearer_auth(server.token(SESSION))
         .json(&call)
         .send()
         .await
@@ -107,12 +107,36 @@ fn a_stream_without_the_token_is_refused() {
 }
 
 #[test]
+fn a_session_s_token_opens_no_stream_and_makes_no_call_as_another() {
+    let (runtime, server) = started();
+    runtime.block_on(async {
+        let other = reqwest::Client::new()
+            .get(server.sse_url("gh-other-1"))
+            .bearer_auth(server.token(SESSION))
+            .send()
+            .await
+            .expect("the server answers");
+        assert_eq!(other.status(), 403);
+        let (_stream, post) = connected(&server).await;
+        let status = reqwest::Client::new()
+            .post(format!("http://127.0.0.1:{}{post}", server.port))
+            .bearer_auth(server.token("gh-other-1"))
+            .json(&call(1, "tools/list", json!({})))
+            .send()
+            .await
+            .expect("the server answers")
+            .status();
+        assert_eq!(status, 403);
+    });
+}
+
+#[test]
 fn a_stream_bound_to_no_session_is_refused() {
     let (runtime, server) = started();
     let status = runtime.block_on(async {
         reqwest::Client::new()
             .get(format!("http://127.0.0.1:{}/sse", server.port))
-            .bearer_auth(&server.token)
+            .bearer_auth(server.token(SESSION))
             .send()
             .await
             .expect("the server answers")
@@ -312,7 +336,9 @@ fn a_call_with_no_session_a_body_that_is_no_json_or_too_large_is_refused() {
         let (_stream, post) = connected(&server).await;
         let posted = |path: String, body: Vec<u8>| {
             let url = format!("http://127.0.0.1:{}{path}", server.port);
-            let asked = reqwest::Client::new().post(url).bearer_auth(&server.token);
+            let asked = reqwest::Client::new()
+                .post(url)
+                .bearer_auth(server.token(SESSION));
             async move { asked.body(body).send().await.expect("an answer").status() }
         };
         let fine = serde_json::to_vec(&call(1, "tools/list", json!({}))).unwrap();
