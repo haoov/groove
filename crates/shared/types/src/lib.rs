@@ -38,16 +38,18 @@ mod task;
 mod terminal;
 mod time;
 mod timeline;
+mod toggle;
 
 #[cfg(test)]
 mod tests;
 
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
-pub use aging::{Aging, agings, human_age};
+pub use aging::{Aging, agings, human_age, tells_time};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
     AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
+    server_of, sync_policy,
 };
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use cells::{cell_value, compare_cells};
@@ -67,12 +69,12 @@ pub use described::{
 };
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
-    Row, RowKind, TEXT_MAX_BYTES, subject_of,
+    Row, RowKind, TEXT_MAX_BYTES, is_sha, short_sha, subject_of,
 };
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
-pub use health::{Health, ready_health, status_health};
+pub use health::{Health, count_health, ready_health, status_health};
 pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use logs::{Level, LogKey, LogLine, LogRange, LogSource, LogTime, level, log_time};
 pub use mapping::{Kind, Mapped, Mapping, Property};
@@ -95,3 +97,4 @@ pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, Tim
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell, Selected};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};
+pub use toggle::toggle;

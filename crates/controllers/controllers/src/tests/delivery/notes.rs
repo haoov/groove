@@ -7,22 +7,11 @@ use crate::Services;
 use crate::delivery::NoteAct as Act;
 
 /// The fixture with a worktree, ready to take notes.
-fn ready(home: &std::path::Path, spawner: &SyncSpawner) -> (crate::AppState, Services) {
-    pooled_clone(home);
-    let services = services(spawner, home);
-    let mut state = state(home);
-    worktree(&mut state, &services, spawner);
-    (state, services)
-}
-
-fn send(
-    state: &mut crate::AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-    command: delivery::Command,
-) {
-    dispatch(Cmd::Delivery(command), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
+fn ready() -> (tempfile::TempDir, SyncSpawner, crate::AppState, Services) {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    (home, spawner, state, services)
 }
 
 fn leave(
@@ -66,9 +55,7 @@ fn first(state: &crate::AppState) -> AnnotationId {
 
 #[test]
 fn a_note_left_on_a_line_reads_back_on_the_list() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
 
     leave(&mut state, &services, &spawner, 4, "issue: this leaks");
     assert!(state.errors.is_empty(), "{:?}", state.errors);
@@ -80,9 +67,7 @@ fn a_note_left_on_a_line_reads_back_on_the_list() {
 
 #[test]
 fn the_notes_of_the_session_read_by_line() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
 
     leave(&mut state, &services, &spawner, 9, "second");
     leave(&mut state, &services, &spawner, 2, "first");
@@ -95,9 +80,7 @@ fn the_notes_of_the_session_read_by_line() {
 
 #[test]
 fn new_words_replace_the_old_ones() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
 
     leave(&mut state, &services, &spawner, 1, "issue: this leaks");
     let id = first(&state);
@@ -115,9 +98,7 @@ fn new_words_replace_the_old_ones() {
 
 #[test]
 fn a_resolved_note_stays_on_the_list_as_resolved() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
 
     leave(&mut state, &services, &spawner, 1, "issue: this leaks");
     let id = first(&state);
@@ -133,9 +114,7 @@ fn a_resolved_note_stays_on_the_list_as_resolved() {
 
 #[test]
 fn a_deleted_note_leaves_the_list() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
 
     leave(&mut state, &services, &spawner, 1, "issue: this leaks");
     let id = first(&state);
@@ -150,9 +129,7 @@ fn a_deleted_note_leaves_the_list() {
 
 #[test]
 fn a_thread_the_forge_answered_joins_the_list_without_a_read() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
 
     leave(&mut state, &services, &spawner, 1, "issue: this leaks");
     let worktree = state
@@ -234,9 +211,7 @@ fn details() -> groove_types::MrDetails {
 
 #[test]
 fn the_surface_shows_the_notes_of_the_session_selected_now() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services) = ready(home.path(), &spawner);
+    let (_home, spawner, mut state, services) = ready();
     leave(&mut state, &services, &spawner, 4, "issue: this leaks");
     let noted = state.session.selected.take();
     crate::workspace::follow(&mut state, &spawner);

@@ -244,6 +244,15 @@ pub fn column_of(rect: Rect, specs: &[Spec]) -> Vec<Rect> {
     nodes.iter().map(|node| boxes.rect(*node)).collect()
 }
 
+/// `rect` laid out top to bottom from `offset` above its top, one box for each spec.
+pub fn column_from(rect: Rect, offset: f32, specs: &[Spec]) -> Vec<Rect> {
+    let moved = Rect {
+        y: rect.y - offset,
+        ..rect
+    };
+    column_of(moved, specs)
+}
+
 /// `rect` laid out left to right, one box for each spec.
 pub fn row_in<const N: usize>(rect: Rect, specs: [Spec; N]) -> [Rect; N] {
     split(rect, specs, Boxes::row)

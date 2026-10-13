@@ -12,8 +12,6 @@ pub struct Follow {
     pub objects: Vec<Arc<Described>>,
     pub synced: bool,
     pub failed: Option<String>,
-    readers: BTreeSet<String>,
-    stop: Stop,
 }
 
 /// Context, namespace and name: one pod, or one Helm release.
@@ -21,12 +19,14 @@ pub type Named = (String, String, String);
 
 #[derive(Debug, Default)]
 pub struct Follows {
-    followed: BTreeMap<FollowKey, Follow>,
+    followed: super::leases::Leases<FollowKey, Follow>,
     pub yamls: super::yamls::Yamls,
     /// Each pod's last usage and when it was read; none where no metrics-server answers.
     usage: BTreeMap<Named, (Option<Usage>, Timestamp)>,
     helm: BTreeMap<Named, Option<u32>>,
     asking: BTreeSet<Named>,
+    /// The pods whose last usage read failed.
+    failing: BTreeSet<Named>,
 }
 
 impl Follows {
@@ -36,52 +36,52 @@ impl Follows {
 
     /// Every key `reader` reads.
     pub fn read_by<'a>(&'a self, reader: &'a str) -> impl Iterator<Item = &'a FollowKey> {
-        let reads = move |(key, one): (&'a FollowKey, &'a Follow)| {
-            one.readers.contains(reader).then_some(key)
-        };
-        self.followed.iter().filter_map(reads)
+        self.followed.read_by(reader)
     }
 
     /// `reader` reads `key`; the stop of a watcher to start, when none ran for it.
     pub fn lease(&mut self, key: &FollowKey, reader: &str) -> Option<&Stop> {
-        let started = !self.followed.contains_key(key);
-        let one = self.followed.entry(key.clone()).or_default();
-        one.readers.insert(reader.to_string());
-        started.then_some(&one.stop)
+        self.followed.lease(key, reader, Follow::default)
+    }
+
+    pub(super) fn wake(&self, context: &str) {
+        self.followed.wake(|key| key.context == context);
     }
 
     /// `reader` reads nothing any more; the keys it leaves without a reader.
-    pub fn release(&mut self, reader: &str) -> Vec<FollowKey> {
-        let mut unread = Vec::new();
-        for (key, one) in &mut self.followed {
-            if one.readers.remove(reader) && one.readers.is_empty() {
-                unread.push(key.clone());
-            }
-        }
-        unread
+    pub fn release(&mut self, reader: &str) -> Vec<(FollowKey, u64)> {
+        self.followed.release(reader)
     }
 
     /// The watcher stopped and its objects dropped, if nothing reads it still.
-    pub fn drop_unread(&mut self, key: &FollowKey) {
-        if self
-            .followed
-            .get(key)
-            .is_some_and(|one| one.readers.is_empty())
-            && let Some(one) = self.followed.remove(key)
-        {
-            one.stop.stop();
+    pub fn drop_unread(&mut self, key: &FollowKey, released: u64) {
+        if self.followed.drop_unread(key, released).is_some() {
             self.yamls.drop(key);
+            self.forget(key);
         }
+    }
+
+    /// The usage of the pod `key` named, and the revisions of a namespace no key follows now.
+    fn forget(&mut self, key: &FollowKey) {
+        let namespace = key.namespace.clone().unwrap_or_default();
+        if let Some(name) = key.named_one() {
+            let pod = (key.context.clone(), namespace, name.to_string());
+            self.usage.remove(&pod);
+            self.failing.remove(&pod);
+        }
+        let followed = &self.followed;
+        self.helm.retain(|(context, namespace, _), _| {
+            let on = |one: &FollowKey| one.context == *context;
+            let within =
+                |one: &FollowKey| one.namespace.as_deref().unwrap_or_default() == namespace;
+            followed.keys().any(|one| on(one) && within(one))
+        });
     }
 
     /// A batch of a watcher still held; one dropped meanwhile is ignored.
     pub fn apply(&mut self, key: &FollowKey, batch: Followed) {
         self.landed(key, batch);
-        let whole = key
-            .fields
-            .as_deref()
-            .is_some_and(|one| one.starts_with("metadata.name="));
-        if whole {
+        if key.named_one().is_some() {
             let first = self.followed.get(key).and_then(|one| one.objects.first());
             self.yamls.refresh(key, first.map(|one| &**one));
         }
@@ -131,7 +131,15 @@ impl Follows {
 
     pub fn set_usage(&mut self, pod: Named, usage: Option<Usage>, at: Timestamp) {
         self.asking.remove(&pod);
+        self.failing.remove(&pod);
         self.usage.insert(pod, (usage, at));
+    }
+
+    /// A usage read failed: none held; true unless the last one failed too.
+    pub fn fail_usage(&mut self, pod: Named, at: Timestamp) -> bool {
+        self.asking.remove(&pod);
+        self.usage.insert(pod.clone(), (None, at));
+        self.failing.insert(pod)
     }
 
     pub fn set_helm(&mut self, release: Named, revision: Option<u32>) {

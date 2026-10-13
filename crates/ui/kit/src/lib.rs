@@ -4,5 +4,7 @@ pub mod base;
 pub mod layout;
 pub mod markdown;
 pub mod shape;
+#[cfg(test)]
+mod tests;
 pub mod text;
 pub mod widgets;

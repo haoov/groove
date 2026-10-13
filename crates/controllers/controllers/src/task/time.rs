@@ -60,7 +60,7 @@ pub(crate) fn log_hours(
     asker: Asker,
 ) {
     let Some(time) = state.task.measured(id) else {
-        return asker.refused("nothing has been measured for it yet");
+        return asker.refused(state, "nothing has been measured for it yet");
     };
     let seconds = time.unlogged_seconds;
     if seconds <= 0 {

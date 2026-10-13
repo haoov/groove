@@ -7,7 +7,9 @@ use groove_ui_kit::base::style::Role;
 use super::super::SettingsUi;
 use super::mapping::{Held, mapping};
 use super::switch::switch;
-use super::{Row, Section, Value, grouped};
+use super::{Row, Section, grouped};
+
+const P: Section = Section::Providers;
 
 pub(super) fn providers(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     let mut out = grouped("Notion", notion(app, settings));
@@ -23,9 +25,14 @@ fn notion(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
         return out;
     };
     out.extend([
-        field("database", "database id", &notion.database_id),
-        field("user", "user id assignee", &notion.user_id),
-        state("token", "token secret", "held".into(), Role::Ok),
+        Row::text(P, "database", "database id", &notion.database_id),
+        Row::text(P, "user", "user id assignee", &notion.user_id),
+        Row::state(
+            P,
+            ("token", "token secret"),
+            ("held".into(), Role::Ok),
+            None,
+        ),
     ]);
     out.extend(mapping(&Held::Notion(notion)));
     out
@@ -42,8 +49,8 @@ fn github(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
         None => "from gh",
     };
     out.extend([
-        field("host", "host issues", &github.host),
-        state("token", "token secret", token.into(), Role::Ok),
+        Row::text(P, "host", "host issues", &github.host),
+        Row::state(P, ("token", "token secret"), (token.into(), Role::Ok), None),
     ]);
     out.extend(mapping(&Held::Github(github)));
     out
@@ -65,25 +72,7 @@ fn forges(app: &AppState) -> Vec<Row> {
             None if app.config.tools.is_some() => ("no cli", Role::Warn),
             None => ("not checked yet", Role::Muted),
         };
-        state(label, "token cli", shown.into(), role)
+        Row::state(P, (label, "token cli"), (shown.into(), role), None)
     };
     vec![row("gh"), row("glab")]
-}
-
-fn field(label: &'static str, words: &'static str, text: &str) -> Row {
-    let value = Value::Text {
-        text: text.to_string(),
-        mono: true,
-    };
-    Row::new(Section::Providers, label, words, value)
-}
-
-fn state(label: &'static str, words: &'static str, shown: String, role: Role) -> Row {
-    let act = None;
-    Row::new(
-        Section::Providers,
-        label,
-        words,
-        Value::State { shown, role, act },
-    )
 }

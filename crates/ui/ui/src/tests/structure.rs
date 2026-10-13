@@ -169,14 +169,24 @@ const KEPT_BY_HAND: [&str; 18] = [
     "components/code/row/note.rs",
 ];
 
-/// What cuts a rect by hand.
-const CUTS: [&str; 5] = [
+/// What cuts a rect or places a box by hand.
+const CUTS: [&str; 10] = [
     "take_left(",
     "take_right(",
     "take_top(",
     "take_bottom(",
     "Rect::new(",
+    "Rect {",
+    ".until(",
+    ".until_y(",
+    "- rect.x",
+    ".x +",
 ];
+
+/// Whether `line` lays a box out by hand; a function returning a `Rect` does not.
+fn cuts(line: &str) -> bool {
+    CUTS.iter().any(|cut| line.contains(cut)) && !line.contains("-> Rect {")
+}
 
 #[test]
 fn a_view_lays_out_through_the_kit() {
@@ -187,7 +197,7 @@ fn a_view_lays_out_through_the_kit() {
             continue;
         }
         for (at, line) in code_lines(&text) {
-            if CUTS.iter().any(|cut| line.contains(cut)) {
+            if cuts(line) {
                 offenders.push(format!("{path}:{}: {}", at + 1, line.trim()));
             }
         }

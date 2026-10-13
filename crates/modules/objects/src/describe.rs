@@ -4,6 +4,8 @@ mod argo;
 mod container;
 mod pod;
 
+pub(crate) use argo::automated;
+
 use std::sync::Arc;
 
 use groove_types::{Described, EventRow, Owner, Timestamp};

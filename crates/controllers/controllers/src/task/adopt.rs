@@ -29,7 +29,7 @@ pub fn adopt(
         .get(session)
         .is_some_and(|open| matches!(open.session.kind, SessionKind::Explorer));
     if !explorer {
-        return asker.refused(NOT_EXPLORER);
+        return asker.refused(state, NOT_EXPLORER);
     }
     let sources = state.task.sources(state.config.config.as_ref());
     let job = state.begin(format!("reading {}", key.external_id()));
@@ -57,7 +57,10 @@ fn told(
     asker: Asker,
 ) {
     if let Some(other) = super::working(state, &read.task).filter(|one| *one != explorer) {
-        return asker.refused(format!("{other} already works {}", read.task.short_id));
+        return asker.refused(
+            state,
+            format!("{other} already works {}", read.task.short_id),
+        );
     }
     let (short, title) = (read.task.short_id.clone(), read.task.title.clone());
     asker.done(|| {
@@ -125,18 +128,50 @@ fn became(
     worktrees: Vec<Worktree>,
     read: Fetched,
 ) {
-    let launch_dir = crate::agent::launch_dir(state);
-    if let Err(e) =
-        groove_agent_service::hand_over(&launch_dir, explorer.as_str(), session.id.as_str())
-    {
-        state.failed(e);
-    }
-    crate::agent::forget(state, explorer);
     let id = session.id.clone();
+    hand_over(state, spawner, explorer, &id);
     state.session.promoted(explorer, session, worktrees);
     let external_id = read.task.external_id.clone();
     state.task.synced(read);
     super::status::set(state, spawner, &external_id, StatusIntent::InProgress);
     crate::workspace::follow(state, spawner);
-    crate::agent::start(state, spawner, id, crate::session::FIRST_SIZE);
+}
+
+/// The explorer's conversation handed to `to`, then `to`'s agent started.
+fn hand_over(state: &mut AppState, spawner: &dyn Spawner, explorer: &SessionId, to: &SessionId) {
+    let dir = crate::agent::launch_dir(state);
+    let (from, at) = (explorer.clone(), to.clone());
+    let mut turn = state.agent.writing(explorer);
+    let write = async move {
+        turn.wait().await;
+        let handed = groove_agent_service::hand_over(&dir, from.as_str(), at.as_str()).await;
+        let forgot = groove_agent_service::forget(&dir, from.as_str()).await;
+        turn.end();
+        both(handed, forgot)
+    };
+    let (explorer, to) = (explorer.clone(), to.clone());
+    crate::agent::rewrite(
+        state,
+        spawner,
+        to.clone(),
+        write,
+        move |state, spawner, _| {
+            state.agent.written(&explorer);
+            crate::agent::start(state, spawner, to, crate::session::FIRST_SIZE);
+        },
+    );
+}
+
+/// The hand-over's result, and the forget's failure said beside its own.
+fn both(
+    handed: groove_types::Result<()>,
+    forgot: groove_types::Result<()>,
+) -> groove_types::Result<()> {
+    match (handed, forgot) {
+        (Err(mut e), Err(also)) => {
+            e.message = format!("{}; and its launch files stay: {}", e.message, also.message);
+            Err(e)
+        }
+        (handed, forgot) => handed.and(forgot),
+    }
 }

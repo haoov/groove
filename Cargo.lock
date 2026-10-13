@@ -1319,11 +1319,8 @@ version = "1.0.0-alpha.3"
 dependencies = [
  "groove-agent-launch",
  "groove-approvals",
- "groove-git",
  "groove-hooks",
  "groove-mcp",
- "groove-routines",
- "groove-skills",
  "groove-terminal",
  "groove-tools",
  "groove-types",
@@ -1368,6 +1365,7 @@ dependencies = [
  "groove-objects",
  "groove-text",
  "groove-types",
+ "tokio",
 ]
 
 [[package]]
@@ -1387,8 +1385,12 @@ dependencies = [
 name = "groove-config-service"
 version = "1.0.0-alpha.3"
 dependencies = [
+ "groove-agent-launch",
  "groove-config",
+ "groove-terminal",
  "groove-types",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1411,8 +1413,10 @@ dependencies = [
  "groove-cluster-service",
  "groove-config-service",
  "groove-delivery-service",
+ "groove-routine-service",
  "groove-session-service",
  "groove-shell-service",
+ "groove-skill-service",
  "groove-task-service",
  "groove-types",
  "groove-workspace-service",
@@ -1439,11 +1443,13 @@ dependencies = [
  "groove-annotations",
  "groove-browser",
  "groove-forge",
+ "groove-git",
  "groove-mrs",
  "groove-sessions",
  "groove-types",
  "serde_json",
  "sqlx",
+ "tempfile",
  "tokio",
  "wiremock",
 ]
@@ -1467,6 +1473,7 @@ dependencies = [
  "arboard",
  "groove-types",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1525,6 +1532,7 @@ dependencies = [
  "groove-types",
  "ignore",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1652,11 +1660,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-routine-service"
+version = "1.0.0-alpha.3"
+dependencies = [
+ "groove-routines",
+ "groove-types",
+]
+
+[[package]]
 name = "groove-routines"
 version = "1.0.0-alpha.3"
 dependencies = [
  "groove-types",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1669,6 +1686,7 @@ dependencies = [
  "groove-types",
  "groove-worktree",
  "serde_json",
+ "tokio",
  "uuid",
 ]
 
@@ -1692,12 +1710,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-skill-service"
+version = "1.0.0-alpha.3"
+dependencies = [
+ "groove-git",
+ "groove-routines",
+ "groove-skills",
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "groove-skills"
 version = "1.0.0-alpha.3"
 dependencies = [
  "groove-types",
  "serde_json",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1720,6 +1752,7 @@ dependencies = [
  "alacritty_terminal",
  "groove-exec",
  "groove-types",
+ "tokio",
 ]
 
 [[package]]
@@ -1805,6 +1838,7 @@ dependencies = [
  "ignore",
  "notify",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -1818,6 +1852,7 @@ dependencies = [
  "groove-text",
  "groove-types",
  "groove-watch",
+ "tokio",
 ]
 
 [[package]]

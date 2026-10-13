@@ -5,23 +5,8 @@ use wiremock::matchers::path;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::cluster::Command;
+use crate::tests::fixture::kubeconfig;
 use crate::{Command as Cmd, dispatch};
-
-fn kubeconfig(home: &std::path::Path, server: &str) {
-    let yaml = format!(
-        "apiVersion: v1
-kind: Config
-clusters:
-- {{name: kind, cluster: {{server: '{server}'}}}}
-users:
-- {{name: kind, user: {{token: not-a-real-token}}}}
-contexts:
-- {{name: kind, context: {{cluster: kind, user: kind}}}}
-"
-    );
-    std::fs::create_dir_all(home.join(".kube")).unwrap();
-    std::fs::write(home.join(".kube/config"), yaml).unwrap();
-}
 
 #[test]
 fn a_scan_lists_the_contexts_of_the_kubeconfig_and_one_runs_at_a_time() {
@@ -194,6 +179,45 @@ fn a_session_attaches_a_known_context_on_a_namespace_or_whole_each_replacing_the
 }
 
 #[test]
+fn a_session_s_clusters_are_written_in_the_order_they_changed_whichever_job_runs_first() {
+    use crate::session::Command as Session;
+    use groove_types::Attached;
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    kubeconfig(home.path(), "http://127.0.0.1:9");
+    let run = |state: &mut crate::AppState, command| {
+        dispatch(command, state, &services, &spawner);
+        spawner.drain(state, &services);
+    };
+    run(
+        &mut state,
+        Cmd::Session(Session::OpenExplorer { title: None }),
+    );
+    run(&mut state, Cmd::Cluster(Command::ScanContexts));
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    run(&mut state, Cmd::Config(add));
+    let session = state.session.selected.clone().expect("the explorer");
+    let on = |namespace: Option<&str>| Attached {
+        context: "kind".into(),
+        namespace: namespace.map(str::to_string),
+    };
+    let held = crate::tests::fixture::Held::default();
+    for attached in [on(None), on(Some("paxone"))] {
+        let session = session.clone();
+        let attach = Cmd::Session(Session::AttachCluster { session, attached });
+        dispatch(attach, &mut state, &services, &held);
+    }
+    let jobs = held.take();
+    for job in jobs.into_iter().rev() {
+        spawner.block_on(job)(&mut state, &services, &spawner);
+    }
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    let stored = spawner.block_on(services.session.contents(&session));
+    assert_eq!(stored.expect("contents").clusters, [on(Some("paxone"))]);
+}
+
+#[test]
 fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
     use groove_cluster_service::Followed;
     use groove_types::{Caret, Described, Edit, FollowKey, KubeKind, Motion};
@@ -255,4 +279,23 @@ fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
         .expect("the yaml");
     assert_eq!(buffer.caret(), Caret::new(1, 0));
     assert!(!buffer.text().contains('x'));
+}
+
+#[test]
+fn a_settings_scan_asked_while_a_read_runs_still_checks_every_added_context() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    kubeconfig(home.path(), "http://127.0.0.1:9");
+    let scan = || Cmd::Cluster(Command::ScanContexts);
+    dispatch(scan(), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    dispatch(Cmd::Config(add), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let read = Cmd::Cluster(Command::ReadContexts);
+    dispatch(read, &mut state, &services, &spawner);
+    assert!(state.cluster.scanning);
+    dispatch(scan(), &mut state, &services, &spawner);
+    assert!(state.cluster.checking("kind"));
 }

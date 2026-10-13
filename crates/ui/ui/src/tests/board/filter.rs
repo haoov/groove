@@ -6,7 +6,7 @@ use groove_gfx::Fonts;
 use super::texts;
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
-use crate::tests::{click, full_app, press, task, window};
+use crate::tests::{click, full_app, press, task, typed, window};
 use crate::{Surface, Ui, view};
 
 /// The board with two tasks up next, and the filter holding `text`.
@@ -114,9 +114,7 @@ fn enter_takes_the_offer_the_keyboard_stands_on() {
         ..Ui::default()
     };
     press(Key::Char('/'), Modifiers::default(), &mut ui, &app);
-    for c in "stat".chars() {
-        press(Key::Char(c), Modifiers::default(), &mut ui, &app);
-    }
+    typed("stat", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(ui.board.filter.text(), "status:", "the field it named");
     press(Key::Enter, Modifiers::default(), &mut ui, &app);

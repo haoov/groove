@@ -12,5 +12,8 @@ groove-contexts = { path = "../../modules/contexts" }
 groove-objects = { path = "../../modules/objects" }
 groove-types = { path = "../../shared/types" }
 
+[dev-dependencies]
+tokio.workspace = true
+
 [lints]
 workspace = true

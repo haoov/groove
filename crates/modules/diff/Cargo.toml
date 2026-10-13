@@ -11,10 +11,11 @@ groove-git = { path = "../git" }
 groove-text = { path = "../text" }
 groove-types = { path = "../../shared/types" }
 imara-diff.workspace = true
+tokio = { workspace = true, features = ["fs"] }
 
 [dev-dependencies]
 tempfile.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["fs", "rt-multi-thread"] }
 
 [lints]
 workspace = true

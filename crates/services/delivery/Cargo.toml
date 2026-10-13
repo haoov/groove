@@ -10,12 +10,14 @@ publish.workspace = true
 groove-annotations = { path = "../../modules/annotations" }
 groove-browser = { path = "../../modules/browser" }
 groove-forge = { path = "../../modules/forge" }
+groove-git = { path = "../../modules/git" }
 groove-mrs = { path = "../../modules/mrs" }
 groove-sessions = { path = "../../modules/sessions" }
 groove-types = { path = "../../shared/types" }
 
 [dev-dependencies]
 serde_json.workspace = true
+tempfile.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
 wiremock.workspace = true

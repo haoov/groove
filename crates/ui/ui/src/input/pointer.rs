@@ -32,6 +32,7 @@ use self::surface::{
     at, blamed, closing, composed, folded, holds, in_files, jump, landed, lensed, reached, switch,
     unfolded,
 };
+use super::selection;
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
 use crate::{Held, Overlay, Ui};
@@ -58,8 +59,6 @@ pub(super) fn press(
     }
 }
 
-pub(crate) use agent::{copied as agent_copied, released as agent_released};
-
 /// The pointer moved: a boundary follows it, or the open file holds more.
 pub(super) fn moved(
     x: f32,
@@ -73,8 +72,8 @@ pub(super) fn moved(
         Some(Held::Edge(_)) => drag_to(ui, x, y, metrics),
         Some(Held::Task(_)) => carried(x, y, ui, app, metrics),
         Some(Held::Lens) => lensed(y, ui, app, hits, metrics),
-        Some(Held::AgentText | Held::AgentClick) => {
-            return agent::dragged(ui, app, (x, y), metrics);
+        Some(Held::Clicking(_) | Held::Selecting(_)) => {
+            return selection::carried(ui, app, (x, y), hits, metrics);
         }
         Some(Held::Text) => return extended(x, y, ui, app, hits, metrics),
         Some(Held::Column(_)) => resources::dragged(ui, x, metrics),
@@ -239,9 +238,7 @@ fn selecting(
 
 /// One file's found lines hidden under their own row, or shown again.
 fn shut(ui: &mut Ui, path: String) -> Vec<Command> {
-    if !ui.session.shut.remove(&path) {
-        ui.session.shut.insert(path);
-    }
+    groove_types::toggle(&mut ui.session.shut, path);
     Vec::new()
 }
 
@@ -294,7 +291,7 @@ fn elsewhere(
     board::acted(target, ui, app)
         .or_else(|| rail::acted(target, ui))
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
-        .or_else(|| shell::acted(target, ui, app, metrics))
+        .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))
         .or_else(|| settings::acted(target, ui, app, hits))
         .or_else(|| resources::acted(target, ui, app, hits))
 }

@@ -161,7 +161,6 @@ pub(crate) fn needs_walk(app: &AppState, ui: &Ui) -> bool {
     browsing(ui) && holds(app) && app.workspace.paths().is_empty() && !app.workspace.walking
 }
 
-/// Whether a worktree is selected at all.
 fn holds(app: &AppState) -> bool {
     app.session.selected_worktree().is_some()
 }
@@ -176,10 +175,7 @@ fn empty(app: &AppState) -> &'static str {
 }
 
 fn says(ctx: &mut Ctx, body: Rect, text: &str) {
-    let line = Rect {
-        h: ctx.tokens.row,
-        ..body
-    };
+    let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     Label::new(text, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }

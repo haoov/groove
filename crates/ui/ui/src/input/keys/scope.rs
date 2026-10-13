@@ -37,11 +37,7 @@ pub(super) fn in_scope(
         Key::Char(' ') => How::Toggle,
         key => {
             typing(key, mods, &mut scoping.query);
-            let lines = scope_lines(app, open, &ui.session.resources, scoping);
-            let first = lines
-                .iter()
-                .position(|one| !matches!(one, ScopeLine::Heading(_)));
-            scoping.cursor = first.filter(|_| !scoping.query.is_empty());
+            scope_changed(ui, app);
             return Some(Vec::new());
         }
     };
@@ -50,6 +46,19 @@ pub(super) fn in_scope(
         return Some(Vec::new());
     };
     Some(pick((at, how), ui, app))
+}
+
+/// The panel's query changed: the cursor on the first line that acts, none for an empty query.
+pub(in crate::input) fn scope_changed(ui: &mut Ui, app: &AppState) {
+    let (Some(Overlay::Scope(scoping)), Some(open)) = (&mut ui.overlay, app.session.selected())
+    else {
+        return;
+    };
+    let lines = scope_lines(app, open, &ui.session.resources, scoping);
+    let first = lines
+        .iter()
+        .position(|one| !matches!(one, ScopeLine::Heading(_)));
+    scoping.cursor = first.filter(|_| !scoping.query.is_empty());
 }
 
 /// The next line that acts, down or up from the cursor; the first one when there is none.

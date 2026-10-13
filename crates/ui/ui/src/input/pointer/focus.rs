@@ -24,6 +24,10 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
         Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
         Some(
             Target::Tab(_)
+            | Target::Overview
+            | Target::Worktree(_)
+            | Target::LogHours(_)
+            | Target::Link(_)
             | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
@@ -35,7 +39,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceClose(_)
             | Target::ResourceView(_)
             | Target::ArgoFilter(_)
-            | Target::ResourceFold(_)
+            | Target::ResourceFold(..)
             | Target::ContainerUsage(..)
             | Target::ResourceSection(_)
             | Target::ResourceOpen(_)

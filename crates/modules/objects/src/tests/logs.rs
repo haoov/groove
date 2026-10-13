@@ -87,3 +87,28 @@ async fn a_stream_that_ends_with_nothing_new_waits_longer_each_time() {
         "at once, then after 1 s; the next after 2 s more"
     );
 }
+
+#[tokio::test]
+async fn a_stream_parked_on_a_missing_context_tries_again_when_woken() {
+    let dir = tempfile::tempdir().expect("a temp dir");
+    let paths = vec![kubeconfig(dir.path(), "http://127.0.0.1:9")];
+    let failed = Arc::new(Mutex::new(0));
+    let counted = failed.clone();
+    let stop = Stop::new();
+    let key = LogKey {
+        context: "gone".into(),
+        ..worker(LogRange::All)
+    };
+    let running = tokio::spawn(logs(paths, key, &stop, move |batch| {
+        if matches!(batch, Logged::Failed(_)) {
+            *counted.lock().expect("the count") += 1;
+        }
+    }));
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(*failed.lock().expect("the count"), 1);
+    stop.wake();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    stop.stop();
+    running.await.expect("the stream ends");
+    assert_eq!(*failed.lock().expect("the count"), 2);
+}

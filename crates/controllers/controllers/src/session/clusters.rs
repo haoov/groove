@@ -2,6 +2,8 @@
 
 use groove_types::{Attached, Error, SessionId, Timestamp};
 
+use groove_session_service::ClusterWrite;
+
 use super::Command;
 use crate::spawn::record;
 use crate::{AppState, Services, Spawner};
@@ -31,12 +33,8 @@ pub fn attach(
     session: &SessionId,
     attached: Attached,
 ) {
-    if state.config.cluster(&attached.context).is_none() {
-        let why = format!(
-            "Groove does not know the context `{}`: add it in Settings › Clusters first",
-            attached.context
-        );
-        return state.failed(Error::invalid(why));
+    if let Err(e) = state.config.known_cluster(&attached.context) {
+        return state.failed(e);
     }
     let attached = Attached {
         namespace: attached.namespace.filter(|one| !one.trim().is_empty()),
@@ -46,13 +44,9 @@ pub fn attach(
         return state.failed(Error::not_found(format!("no open session {session}")));
     };
     let replaced = open.attach(attached.clone());
-    let (service, id, now) = (services.session.clone(), session.clone(), Timestamp::now());
-    record(spawner, async move {
-        for one in &replaced {
-            service.detach_cluster(&id, one).await?;
-        }
-        service.attach_cluster(&id, &attached, now).await
-    });
+    let mut writes: Vec<ClusterWrite> = replaced.into_iter().map(ClusterWrite::Detach).collect();
+    writes.push(ClusterWrite::Attach(attached, Timestamp::now()));
+    written(services, spawner, session, writes);
 }
 
 pub fn detach(
@@ -66,8 +60,17 @@ pub fn detach(
         return state.failed(Error::not_found(format!("no open session {session}")));
     };
     open.detach(&attached);
-    let (service, id) = (services.session.clone(), session.clone());
-    record(spawner, async move {
-        service.detach_cluster(&id, &attached).await
-    });
+    written(
+        services,
+        spawner,
+        session,
+        vec![ClusterWrite::Detach(attached)],
+    );
+}
+
+/// `writes` held behind the ones asked before, then flushed in a job.
+fn written(services: &Services, spawner: &dyn Spawner, id: &SessionId, writes: Vec<ClusterWrite>) {
+    services.session.hold_clusters(id, writes);
+    let service = services.session.clone();
+    record(spawner, async move { service.flush_clusters().await });
 }

@@ -15,7 +15,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled};
+use groove_ui_kit::shape::{after_mark, hairline, hoverable, square};
 use groove_ui_kit::text::{Label, row};
 use groove_ui_kit::widgets::lead;
 use groove_ui_kit::widgets::{Side, pane};
@@ -68,7 +68,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let up = ui.showing(app) == Surface::Board;
     if up {
-        groove_ui_kit::shape::ground(ctx, rect, Ground::Held);
+        groove_ui_kit::shape::chosen_ground(ctx, rect);
     }
     hoverable(ctx, rect, Target::Board);
     let (md, _size) = (ctx.tokens.md, ctx.tokens.icon);
@@ -78,7 +78,7 @@ fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     Label::new("Board", ctx.styles.label(Role::Text)).draw(ctx, room);
     hairline(ctx, rect, ctx.styles.line());
     if up {
-        ruled(ctx, rect, ctx.styles.chosen());
+        groove_ui_kit::shape::chosen_rules(ctx, rect);
     }
 }
 
@@ -153,7 +153,7 @@ fn footer(ctx: &mut Ctx, rect: Rect) {
     hoverable(ctx, rect, Target::SettingsOpen);
     let style = ctx.styles.small(Role::Faint);
     let md = ctx.tokens.md;
-    let mark = leading(ctx, rect, rect.x + md);
+    let mark = square(rect.pad(Edges::across(md, 0.0)), ctx.tokens.icon);
     groove_ui_kit::widgets::icon(ctx, mark, Mark::Settings, Role::Faint);
     row(ctx, rect, after_mark(ctx, md), "settings", style);
 }

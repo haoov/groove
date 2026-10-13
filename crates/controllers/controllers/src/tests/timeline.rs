@@ -2,7 +2,7 @@
 
 use groove_types::TimelineKind;
 
-use super::fixture::{pooled_clone, until, worktree};
+use super::fixture::{pooled_clone, send, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, workspace};
 
 /// Every line the selected session's log holds, newest first.
@@ -19,16 +19,6 @@ fn log(
         .into_iter()
         .map(|one| (one.kind, one.subject))
         .collect()
-}
-
-fn send(
-    state: &mut crate::AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-    command: workspace::Command,
-) {
-    dispatch(Cmd::Workspace(command), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
 }
 
 #[test]

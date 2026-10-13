@@ -89,7 +89,7 @@ impl Draft {
     /// The field after the one that has the keys, round to the first.
     pub fn next(&mut self) {
         let count = self.fields.len();
-        self.at = Some(self.at.map_or(0, |at| (at + 1) % count));
+        self.at = (count > 0).then(|| self.at.map_or(0, |at| (at + 1) % count));
     }
 
     pub fn focused(&mut self) -> Option<&mut Field> {

@@ -12,7 +12,7 @@ mod tabs;
 use crate::hit::Target;
 use crate::input::Key;
 use crate::layout::{Layout, Split};
-use crate::tests::{ALT_SHIFT, WINDOW, click, full_app, press, window};
+use crate::tests::{ALT_SHIFT, WINDOW, click, full_app, press, render, window};
 use crate::views::session::Tab;
 use crate::views::session::files::listing;
 use crate::{Ui, view};
@@ -262,12 +262,7 @@ fn a_directory_row_folds_its_files_away_and_back() {
 #[test]
 fn a_clean_worktree_says_so_in_both_places() {
     let app = full_app();
-    let (frame, _) = view(&app, &on_diff(), window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &on_diff(), window());
     assert!(texts.iter().any(|t| t == "nothing changed"));
     assert!(texts.iter().any(|t| t == "No change in this worktree."));
 }
@@ -308,12 +303,7 @@ fn files_loaded_for_another_worktree_are_never_shown() {
     let mut app = with_files(&["crates/ui/ui/src/tokens.rs"]);
     app.workspace.worktree = Some(groove_types::WorktreeId::new("somewhere-else"));
     let ui = on_diff();
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &ui, window());
     assert!(
         texts.iter().any(|t| t == "nothing changed"),
         "a summary of another worktree is not this worktree's: {texts:?}"
@@ -371,13 +361,8 @@ fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
 #[test]
 fn the_strip_names_the_three_tabs_the_workspace_has() {
     let app = with_files(&["src/one/alpha.rs"]);
-    let (frame, _) = view(&app, &on_diff(), window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
-    for tab in ["overview", "diff", "files"] {
+    let (texts, _) = render(&app, &on_diff(), window());
+    for tab in ["OVERVIEW", "DIFF", "FILES"] {
         assert!(texts.iter().any(|one| one == tab), "{tab}: {texts:?}");
     }
 }
@@ -386,12 +371,7 @@ fn the_strip_names_the_three_tabs_the_workspace_has() {
 fn the_list_says_what_the_change_is_read_against_and_picks_one() {
     let app = with_files(&["a.txt"]);
     let mut ui = on_diff();
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect();
+    let (drawn, hits) = render(&app, &ui, window());
     for mode in groove_types::DiffMode::ALL {
         assert!(
             drawn.iter().any(|one| one == mode.label()),

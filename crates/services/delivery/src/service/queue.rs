@@ -22,7 +22,7 @@ impl Service {
 }
 
 async fn queue_of(host: &str) -> groove_types::Result<Vec<ReviewMr>> {
-    Ok(Remote::of_host(host)?.review_queue().await?)
+    Ok(Remote::shared(host)?.review_queue().await?)
 }
 
 /// The hosts of the pool's clones, each once.
@@ -41,7 +41,7 @@ pub(crate) fn hosts(pool: &[PoolEntry]) -> Vec<String> {
 pub(crate) fn local(mut mr: ReviewMr, pool: &[PoolEntry]) -> ReviewMr {
     mr.local_path = pool
         .iter()
-        .find(|entry| entry.holds(&mr.project))
+        .find(|entry| mr.held_by(entry))
         .map(|entry| entry.path.to_string_lossy().into_owned());
     mr
 }

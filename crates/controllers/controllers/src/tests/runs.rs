@@ -1,6 +1,6 @@
 //! Routines at work: on the session an event is about, once, not selected, with auto-approve on.
 
-use groove_agent_service::routines::{Listed, parse};
+use groove_routine_service::routines::{Listed, parse};
 use groove_types::{AgentStatus, SessionId};
 
 use crate::tests::fixture::{fresh, until};
@@ -12,7 +12,7 @@ const DIGEST: &str =
 
 fn listed(state: &mut AppState, id: &str, text: &str) {
     let name = id.trim_start_matches("user:");
-    state.agent.routines.push(Listed {
+    state.routine.routines.push(Listed {
         id: id.into(),
         read: parse(id, name, text),
     });
@@ -101,23 +101,23 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     routine::watch(&mut state, &services, &spawner);
     assert!(
         state
-            .agent
+            .routine
             .runs
             .running
             .iter()
             .all(|run| run.session == away)
     );
-    assert_eq!(state.agent.runs.running.len(), 1);
+    assert_eq!(state.routine.runs.running.len(), 1);
     until(&spawner, &services, &mut state, |s| {
         screen(s, &away, 2) == "got /groove:fix-notes"
     });
 
-    let run = &mut state.agent.runs.running[0];
+    let run = &mut state.routine.runs.running[0];
     run.went = true;
     status(&mut state, &away, AgentStatus::Done { seen: false });
     routine::watch(&mut state, &services, &spawner);
     assert!(
-        state.agent.runs.running.is_empty(),
+        state.routine.runs.running.is_empty(),
         "its agent stopped, the run is over"
     );
     spawner.drain(&mut state, &services);
@@ -134,14 +134,14 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     routine::watch(&mut state, &services, &spawner);
     status(&mut state, &away, AgentStatus::Done { seen: false });
     routine::watch(&mut state, &services, &spawner);
-    assert!(state.agent.runs.running.is_empty(), "once a session");
+    assert!(state.routine.runs.running.is_empty(), "once a session");
 
     state.session.selected = Some(away.clone());
     routine::watch(&mut state, &services, &spawner);
     state.session.selected = Some(here);
     routine::watch(&mut state, &services, &spawner);
     assert!(
-        !state.agent.runs.queued_since_seen("user:notes", &away),
+        !state.routine.runs.queued_since_seen("user:notes", &away),
         "looked at, its count is back to zero"
     );
 }
@@ -171,9 +171,11 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
     state.task.reading = false;
     routine::watch(&mut state, &services, &spawner);
     assert!(
-        state.agent.runs.running.is_empty(),
+        state.routine.runs.running.is_empty(),
         "a read alone moves nothing"
     );
+    let thread = home.path().join(format!("data/agent-launch/{id}.thread"));
+    std::fs::write(&thread, "the-last-run").unwrap();
     state.task.tasks[0].status = "Done".into();
     routine::watch(&mut state, &services, &spawner);
 
@@ -183,10 +185,10 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
             .terminal(&id)
             .is_some_and(|t| t.screen().line(0) == first)
     });
-    let thread = home.path().join(format!("data/agent-launch/{id}.thread"));
+    let now = std::fs::read_to_string(&thread).unwrap_or_default();
     assert!(
-        thread.is_file(),
-        "each run starts a conversation of its own"
+        !now.is_empty() && now != "the-last-run",
+        "each run starts a conversation of its own: {now}"
     );
 }
 
@@ -214,7 +216,7 @@ fn a_standalone_routine_s_button_runs_it_whatever_the_rules_but_a_bound_one_has_
 
     explorer("here", &mut state, &services, &spawner);
     dispatch(run("user:notes"), &mut state, &services, &spawner);
-    assert_eq!(state.agent.runs.running.len(), 1, "only the digest runs");
+    assert_eq!(state.routine.runs.running.len(), 1, "only the digest runs");
     assert!(
         state
             .errors
@@ -236,6 +238,46 @@ fn an_event_on_a_session_with_auto_approve_off_starts_nothing() {
     routine::watch(&mut state, &services, &spawner);
     status(&mut state, &away, AgentStatus::Done { seen: false });
     routine::watch(&mut state, &services, &spawner);
-    assert!(state.agent.runs.running.is_empty() && state.agent.runs.waiting.is_empty());
-    assert!(!state.agent.runs.queued_since_seen("user:notes", &away));
+    assert!(state.routine.runs.running.is_empty() && state.routine.runs.waiting.is_empty());
+    assert!(!state.routine.runs.queued_since_seen("user:notes", &away));
+}
+
+const DAILY: &str = "---\nskills: platform:follow-ups\nkind: standalone\non: daily\n---\nSum up.\n";
+
+#[test]
+fn the_daily_routine_runs_on_the_day_s_first_look_and_not_again_that_day() {
+    let (home, spawner, services, mut state) = fresh();
+    listed(&mut state, "user:daily", DAILY);
+    on("user:daily", &mut state, &services, &spawner);
+    let id = state
+        .session
+        .routine_session("user:daily")
+        .expect("its session");
+    until(&spawner, &services, &mut state, |s| {
+        s.agent.terminal(&id).is_some()
+    });
+    auto(&mut state, &id, true);
+    routine::watch(&mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert!(
+        state.routine.runs.running.is_empty(),
+        "the rail is not back"
+    );
+
+    (state.session.restored, state.skill.listed) = (true, true);
+    routine::watch(&mut state, &services, &spawner);
+    let first = "ready Routine `daily`, started by daily.";
+    until(&spawner, &services, &mut state, |s| {
+        s.agent
+            .terminal(&id)
+            .is_some_and(|t| t.screen().line(0) == first)
+    });
+    let day = std::fs::read_to_string(home.path().join("data/routines/day"));
+    assert!(day.is_ok_and(|one| !one.is_empty()), "the day written down");
+
+    state.routine.runs.dawned = false;
+    routine::watch(&mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.routine.runs.running.len(), 1, "once a day");
+    assert!(state.routine.runs.waiting.is_empty(), "once a day");
 }

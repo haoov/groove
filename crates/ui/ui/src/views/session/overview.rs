@@ -12,7 +12,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_of};
+use groove_ui_kit::layout::{Spec, column_from};
 use groove_ui_kit::shape::after_mark;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Row, list};
@@ -42,17 +42,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let parts = parts(app, open);
     let heights: Vec<f32> = parts.iter().map(|part| height(ctx, part)).collect();
     let specs: Vec<Spec> = heights.iter().map(|h| Spec::default().height(*h)).collect();
-    let top = area.y - ui.session.overview;
     let tall: f32 = heights.iter().sum();
-    let rects = column_of(
-        Rect {
-            y: top,
-            h: tall,
-            ..area
-        },
-        &specs,
-    );
+    let rects = column_from(area, ui.session.overview, &specs);
     let mut prose = 0.0;
+    ctx.hit(area, Target::Overview);
     ctx.clipped(area, |ctx| {
         for (part, rect) in parts.iter().zip(rects) {
             prose += draw_part(ctx, app, open, (area, rect), part);
@@ -87,7 +80,7 @@ fn parts<'a>(app: &'a AppState, open: &'a Open) -> Vec<Part<'a>> {
         parts.extend(held.map(Part::Worktree));
         parts.push(Part::Gap);
     }
-    if !open.clusters.is_empty() {
+    if open.holds_clusters() {
         parts.extend([Part::Rule, Part::Heading("Clusters")]);
         parts.extend(clusters::parts(app, open));
     }

@@ -5,15 +5,15 @@ use groove_types::{AppCondition, AppPart, AppSource, Operation, SyncedResource, 
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, column_of, row_in};
 use groove_ui_kit::shape::Panel;
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::text::Label;
 
 use super::super::opened::{Opens, Section};
-use super::describe::Block;
+use super::describe::{Block, Tally};
 use super::sections::Fact;
 use crate::ctx::Ctx;
 
 /// The operation, then the conditions where there are some.
-pub(super) fn parts(app: &AppPart) -> Vec<(Section, String, Vec<Block<'_>>)> {
+pub(super) fn parts(app: &AppPart) -> Vec<(Section, Tally, Vec<Block<'_>>)> {
     let mut out = Vec::new();
     if let Some(operation) = &app.operation {
         let mut held = vec![Block::Operation(operation)];
@@ -25,10 +25,10 @@ pub(super) fn parts(app: &AppPart) -> Vec<(Section, String, Vec<Block<'_>>)> {
             true => "running",
             false => "last sync",
         };
-        out.push((Section::Operation, said.to_string(), held));
+        out.push((Section::Operation, Tally::Note(said.to_string()), held));
     }
     if !app.conditions.is_empty() {
-        let count = app.conditions.len().to_string();
+        let count = Tally::Count(app.conditions.len());
         let held = app.conditions.iter().map(Block::AppCondition).collect();
         out.push((Section::Conditions, count, held));
     }
@@ -46,16 +46,10 @@ pub(super) fn tint(app: &AppPart) -> Option<Role> {
 }
 
 /// A row of the operation, on its colour from the panel's edge to the other.
-pub(super) fn ground(ctx: &mut Ctx, rect: Rect, role: Role) {
-    let md = ctx.tokens.md;
-    let wide = Rect {
-        x: rect.x - md,
-        w: rect.w + md * 2.0,
-        ..rect
-    };
+pub(super) fn ground(ctx: &mut Ctx, line: Rect, role: Role) {
     Panel::default()
         .ground(ctx.styles.tint(role))
-        .draw(ctx, wide);
+        .draw(ctx, line);
 }
 
 /// `✗ Sync failed to a1b2c3d · started 4m ago by auto-sync · 38s · retry 2`.
@@ -71,21 +65,24 @@ pub(super) fn operation(ctx: &mut Ctx, rect: Rect, operation: &Operation, now: T
     if operation.running() {
         room = turning(ctx, room, role);
     }
-    Label::new(said, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.sm);
+    Label::new(said, ctx.styles.body(role)).left(ctx, &mut room, ctx.tokens.sm);
     let mut about = Vec::new();
     if let Some(revision) = &operation.revision {
-        about.push(format!("to {}", short(revision)));
+        about.push(format!("to {}", groove_types::short_sha(revision)));
     }
     if let Some(started) = operation.started {
         let by = match operation.by.is_empty() {
             true => String::new(),
             false => format!(" by {}", operation.by),
         };
-        about.push(format!("started {} ago{by}", ago(started.age_at(now))));
+        about.push(format!(
+            "started {} ago{by}",
+            groove_types::human_age(started.age_at(now).as_secs())
+        ));
     }
     let ended = operation.finished.or(operation.running().then_some(now));
     if let (Some(started), Some(ended)) = (operation.started, ended) {
-        about.push(ago(started.age_at(ended)));
+        about.push(groove_types::human_age(started.age_at(ended).as_secs()));
     }
     if operation.retries > 0 {
         about.push(format!("retry {}", operation.retries));
@@ -105,14 +102,15 @@ pub(super) fn turning(ctx: &mut Ctx, room: Rect, role: Role) -> Rect {
 }
 
 pub(super) fn said(ctx: &mut Ctx, rect: Rect, message: &str) {
-    Label::new(message, ctx.styles.small(Role::Text)).draw(ctx, rect);
+    Label::new(message, ctx.styles.body(Role::Text)).draw(ctx, rect);
 }
 
 /// A resource the sync could not apply: its kind and name, then why.
 pub(super) fn broke(ctx: &mut Ctx, rect: Rect, one: &SyncedResource) {
     let mark = Spec::default().width(ctx.tokens.lg);
     let kind = Spec::default().width(ctx.tokens.aside_near);
-    let name = Spec::default().width(ctx.tokens.aside_mid);
+    let name = ctx.tokens.aside_mid * ctx.tokens.text / ctx.tokens.small;
+    let name = Spec::default().width(name);
     let [at, of, named, why] = row_in(rect, [mark, kind, name, Spec::fill()]);
     Label::new("✗", ctx.styles.small(Role::Bad)).draw(ctx, at);
     let tag = match one.hook {
@@ -120,8 +118,8 @@ pub(super) fn broke(ctx: &mut Ctx, rect: Rect, one: &SyncedResource) {
         false => one.kind.to_lowercase(),
     };
     Label::new(&tag, ctx.styles.small(Role::Ghost)).draw(ctx, of);
-    Label::new(&one.name, ctx.styles.small(Role::Text)).draw(ctx, named);
-    Label::new(&one.message, ctx.styles.small(Role::Bad)).draw(ctx, why);
+    Label::new(&one.name, ctx.styles.body(Role::Text)).draw(ctx, named);
+    Label::new(&one.message, ctx.styles.body(Role::Bad)).draw(ctx, why);
 }
 
 /// A condition: a warning in yellow, an error in red, then what it says and since when.
@@ -131,12 +129,12 @@ pub(super) fn condition(ctx: &mut Ctx, rect: Rect, one: &AppCondition, now: Time
         false => Role::Bad,
     };
     let mut room = rect;
-    Label::new(&one.kind, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.md);
+    Label::new(&one.kind, ctx.styles.body(role)).left(ctx, &mut room, ctx.tokens.md);
     if let Some(at) = one.at {
-        let since = format!("{} ago", ago(at.age_at(now)));
+        let since = format!("{} ago", groove_types::human_age(at.age_at(now).as_secs()));
         Label::new(&since, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, ctx.tokens.md);
     }
-    Label::new(&one.message, ctx.styles.small(Role::Text)).draw(ctx, room);
+    Label::new(&one.message, ctx.styles.body(Role::Text)).draw(ctx, room);
 }
 
 /// Where it syncs to and on which context, once the kubeconfig is `read`, and how.
@@ -144,9 +142,10 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
     let to = &app.destination;
     let cluster = to.name.clone().or(to.server.clone()).unwrap_or_default();
     let namespace = to.namespace.clone().unwrap_or_default();
-    let (said, role) = match app.automated {
-        Some((prune, heal)) => (automated(prune, heal), Role::Ok),
-        None => ("manual".to_string(), Role::Muted),
+    let said = groove_types::sync_policy(app.automated);
+    let role = match app.automated.is_some() {
+        true => Role::Ok,
+        false => Role::Muted,
     };
     let context = match context {
         Some(name) => Some(Fact::new("context", name, Role::Text)),
@@ -171,8 +170,8 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
 }
 
 /// What it syncs from: a row a source, each with the revision it synced to.
-pub(super) fn sourced(app: &AppPart) -> (Section, String, Vec<Block<'_>>) {
-    let count = app.sources.len().to_string();
+pub(super) fn sourced(app: &AppPart) -> (Section, Tally, Vec<Block<'_>>) {
+    let count = Tally::Count(app.sources.len());
     (
         Section::Sources,
         count,
@@ -196,8 +195,8 @@ pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&s
     Label::new(said, ctx.styles.small(Role::Ghost)).draw(ctx, kind);
     let mut room = head;
     let gap = ctx.tokens.md;
-    Label::new(&named(one), ctx.styles.small(Role::Text)).left(ctx, &mut room, gap);
-    Label::new(&one.target, ctx.styles.small(Role::Muted)).left(ctx, &mut room, gap);
+    Label::new(&named(one), ctx.styles.body(Role::Text)).left(ctx, &mut room, gap);
+    Label::new(&one.target, ctx.styles.body(Role::Muted)).left(ctx, &mut room, gap);
     if let Some(revision) = &one.synced {
         Label::new("synced", ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.sm);
         synced(ctx, &mut room, (one, revision), last);
@@ -225,7 +224,7 @@ pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&s
 
 /// The revision a source synced to, short; a git commit links to its diff.
 fn synced(ctx: &mut Ctx, room: &mut Rect, (one, revision): (&AppSource, &str), last: Option<&str>) {
-    let opens = (one.chart.is_none() && commit(revision)).then(|| Opens::Revision {
+    let opens = (one.chart.is_none() && groove_types::is_sha(revision)).then(|| Opens::Revision {
         repo: one.repo.clone(),
         target: one.target.clone(),
         sha: revision.to_string(),
@@ -235,7 +234,7 @@ fn synced(ctx: &mut Ctx, room: &mut Rect, (one, revision): (&AppSource, &str), l
     } else {
         Role::Text
     };
-    let shown = short(revision);
+    let shown = groove_types::short_sha(revision);
     let synced = super::copy::Copied::new(&shown, role, last).copies(revision);
     synced.opens(opens).left(ctx, room, ctx.tokens.md);
 }
@@ -253,31 +252,13 @@ fn named(one: &AppSource) -> String {
     }
 }
 
-fn automated(prune: bool, heal: bool) -> String {
-    let mut said = "auto".to_string();
-    if prune {
-        said.push_str(" · prune");
-    }
-    if heal {
-        said.push_str(" · heal");
-    }
-    said
-}
-
-/// A repository's address without its scheme and `.git`.
+/// A repository's address without its scheme, its credentials and `.git`.
 fn bare(repo: &str) -> String {
     let path = repo.split_once("://").map_or(repo, |(_, rest)| rest);
+    let host = path.find('/').unwrap_or(path.len());
+    let path = match path[..host].rfind('@') {
+        Some(at) => &path[at + 1..],
+        None => path,
+    };
     path.trim_end_matches(".git").to_string()
-}
-
-/// A commit's first seven characters; a tag as it is.
-fn short(revision: &str) -> String {
-    match commit(revision) {
-        true => revision[..7].to_string(),
-        false => revision.to_string(),
-    }
-}
-
-fn commit(revision: &str) -> bool {
-    revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit())
 }

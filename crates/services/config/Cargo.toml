@@ -1,6 +1,6 @@
 [package]
 name = "groove-config-service"
-description = "The config capability: the parsed config file and the last environment check"
+description = "The config capability: the parsed config file, the last environment check and the claude sign-in"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,6 +9,13 @@ publish.workspace = true
 [dependencies]
 groove-types = { path = "../../shared/types" }
 groove-config = { path = "../../modules/config" }
+groove-agent-launch = { path = "../../modules/agent-launch" }
+groove-terminal = { path = "../../modules/terminal" }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
 
 [lints]
 workspace = true

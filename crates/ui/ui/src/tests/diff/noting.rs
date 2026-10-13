@@ -2,6 +2,7 @@
 //! the keyboard asks for.
 
 mod forged;
+mod typing;
 
 use groove_controllers::delivery;
 use groove_gfx::Fonts;
@@ -9,6 +10,7 @@ use groove_types::{Anchor, Caret, Selection};
 
 use super::*;
 use crate::input::{Key, Modifiers};
+use crate::tests::typed;
 use crate::views::session::Noting;
 
 /// The right button on the row `line` of the open file.
@@ -46,12 +48,6 @@ fn press(key: Key, ui: &mut Ui, app: &AppState) -> Vec<groove_controllers::Comma
         &crate::hit::Hits::default(),
         window(),
     )
-}
-
-fn typed(text: &str, ui: &mut Ui, app: &AppState) {
-    for c in text.chars() {
-        press(Key::Char(c), ui, app);
-    }
 }
 
 #[test]
@@ -102,6 +98,9 @@ fn picking_the_note_opens_an_empty_row_to_type_in() {
         Some(Anchor::line("src/lib.rs", 1))
     );
     assert!(ui.menu().is_none(), "the menu shuts behind it");
+    typed("x", &mut ui, &app);
+    let said = ui.session.noting.as_ref().map(|one| one.buffer.text());
+    assert_eq!(said.as_deref(), Some("x"), "the row takes the keys");
 }
 
 #[test]
@@ -110,6 +109,7 @@ fn the_words_typed_draw_in_the_row_under_the_line() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
+    ui.focus = crate::Focus::Workspace;
     typed("leaks", &mut ui, &app);
     let drawn = row_texts(&app, &ui);
     assert!(
@@ -130,6 +130,7 @@ fn a_note_being_typed_takes_a_row_of_its_own() {
     ui.session.tab = crate::views::session::Tab::Files;
     let rows = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
+    ui.focus = crate::Focus::Workspace;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         rows + 1,
@@ -143,6 +144,7 @@ fn the_words_leave_a_note_when_the_keyboard_says_so() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
     typed("issue: this leaks", &mut ui, &app);
     let commands = press(Key::Enter, &mut ui, &app);
     assert!(ui.session.noting.is_none(), "the row closes behind it");
@@ -163,6 +165,7 @@ fn nothing_typed_leaves_no_note() {
     let app = opened();
     let mut ui = on_diff();
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
     let commands = press(Key::Enter, &mut ui, &app);
     assert!(commands.is_empty(), "{commands:?}");
     assert!(ui.session.noting.is_none());
@@ -173,6 +176,7 @@ fn escape_drops_the_words_and_asks_nothing() {
     let app = opened();
     let mut ui = on_diff();
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
     typed("issue", &mut ui, &app);
     let commands = press(Key::Escape, &mut ui, &app);
     assert!(commands.is_empty(), "{commands:?}");
@@ -184,6 +188,7 @@ fn what_is_pasted_goes_into_the_note() {
     let app = opened();
     let mut ui = on_diff();
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
     handle(
         Input::Paste("issue: this leaks".into()),
         &mut ui,
@@ -296,7 +301,7 @@ fn what_is_typed_over_a_note_writes_that_note_again() {
     let mut ui = on_diff();
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     if let Some(noting) = ui.session.noting.as_mut() {
-        noting.field.set("nitpick: name it");
+        noting.buffer = groove_controllers::workspace_service::Buffer::plain("nitpick: name it");
     }
     let commands = press(Key::Enter, &mut ui, &app);
     assert_eq!(
@@ -429,6 +434,7 @@ fn shift_enter_breaks_the_line_and_the_note_keeps_it() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    ui.focus = crate::Focus::Workspace;
     typed("issue: this leaks", &mut ui, &app);
     let before = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     let shift = Modifiers {

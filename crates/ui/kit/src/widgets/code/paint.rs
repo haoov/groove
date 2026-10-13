@@ -9,6 +9,7 @@ use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::ruled;
 use crate::text::{Label, row};
+use crate::widgets::{caret_bar, text_band};
 
 /// A line of code: its grounds, its marks, its numbers and its text, `across` to the left.
 pub(super) fn coded<A: App>(
@@ -129,10 +130,7 @@ fn holding<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, held: (usize, u
         end += ctx.advance;
     }
     let color = ctx.styles.held();
-    ctx.quad(
-        Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h),
-        color,
-    );
+    text_band(ctx, rect, (start, end), color);
 }
 
 /// What a search found, under the text; the one it stands on in peach.
@@ -155,10 +153,7 @@ fn shade<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, at: (usize, usize
     let style = ctx.styles.code(Role::Text);
     let start = upto(ctx, text, at.0, &style);
     let end = upto(ctx, text, at.1, &style);
-    ctx.quad(
-        Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h),
-        color,
-    );
+    text_band(ctx, rect, (start, end), color);
 }
 
 /// How wide the first `column` characters are; ASCII by the code font's advance, unshaped.
@@ -174,8 +169,8 @@ fn upto<A: App>(ctx: &mut Ctx<'_, A>, text: &str, column: usize, style: &TextSty
 fn caret<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, column: usize) {
     let style = ctx.styles.code(Role::Text);
     let at = rect.x + upto(ctx, text, column, &style);
-    let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
-    ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
+    let color = ctx.styles.caret();
+    caret_bar(ctx, at, rect, color);
 }
 
 /// A row across the width: its own ground, its text in the middle.

@@ -148,17 +148,13 @@ fn skilled(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
     Some(vec![Command::Agent(asked)])
 }
 
-/// A routine switched on or off, or run; one of its triggers switched.
+/// A routine switched on or off; one of its triggers switched.
 fn routined(target: &Target) -> Option<Vec<Command>> {
     let asked = match target {
         Target::RoutineOn(id) => config::Command::SwitchRoutine {
             id: id.clone(),
             on: true,
         },
-        Target::RoutineRun(id) => {
-            let run = groove_controllers::agent::Command::RunRoutine { id: id.clone() };
-            return Some(vec![Command::Agent(run)]);
-        }
         Target::RoutineOff(id) => config::Command::SwitchRoutine {
             id: id.clone(),
             on: false,

@@ -15,14 +15,15 @@ use groove_ui_kit::widgets::Search;
 /// A row for each term the search narrows by. Returns what they took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
     let bar = &ui.session.bar;
-    if !bar.in_use() {
-        return Rect { h: 0.0, ..rect };
-    }
     let shown: &[Term] = &Term::ALL;
-    let whole = Rect {
-        h: ctx.tokens.row * shown.len() as f32,
-        ..rect
+    let tall = match bar.in_use() {
+        true => ctx.tokens.row * shown.len() as f32,
+        false => 0.0,
     };
+    let [whole, _] = column_in(rect, [Spec::default().height(tall), Spec::fill()]);
+    if !bar.in_use() {
+        return whole;
+    }
     groove_ui_kit::shape::ground(ctx, whole, Ground::Work);
     hairline(ctx, whole, ctx.styles.line());
     let lines = column_in(

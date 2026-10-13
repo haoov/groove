@@ -7,7 +7,7 @@ use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::square;
 use crate::text::{Label, row};
-use crate::widgets::Field;
+use crate::widgets::{Field, caret_after};
 
 pub struct Search<'a, T> {
     pub field: &'a Field,
@@ -82,7 +82,7 @@ impl<'a, T: Clone + PartialEq> Search<'a, T> {
             Label::new(prefix, style).left(ctx, &mut room, ctx.tokens.sm);
         }
         let (text, role) = match (self.typing, self.field.is_empty()) {
-            (true, _) => (self.field.shown(), Role::Text),
+            (true, _) => (self.field.text().to_string(), Role::Text),
             (false, true) => (self.hint.to_string(), self.quiet),
             (false, false) => (self.field.text().to_string(), self.rest),
         };
@@ -91,6 +91,9 @@ impl<'a, T: Clone + PartialEq> Search<'a, T> {
             false => ctx.styles.body(role),
         };
         row(ctx, room, 0.0, &text, style);
+        if self.typing {
+            caret_after(ctx, room, 0.0, self.field.before(), style);
+        }
         room.take_left(ctx.measure(&text, &style));
         room
     }

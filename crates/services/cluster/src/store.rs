@@ -1,11 +1,14 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
 mod follows;
+mod leases;
 mod logs;
+mod related;
 mod yamls;
 
 pub use follows::{Follow, Follows, Named};
 pub use logs::{CAP, Log, Logs, Streaming};
+pub use related::Up;
 pub use yamls::Yamls;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -24,18 +27,22 @@ pub struct Watched {
     pub failed: Option<String>,
     /// Moves on with every change to the rows.
     pub revision: u64,
-    readers: BTreeSet<String>,
-    stop: Stop,
 }
+
+/// The wait after a first failed discovery, doubled with each failure after it up to `LONGEST`.
+const RETRY: std::time::Duration = std::time::Duration::from_secs(1);
+const LONGEST: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// The watchers and the kinds, beside the rest of the `cluster` slice.
 #[derive(Debug, Default)]
 pub struct Store {
-    watched: BTreeMap<WatchKey, Watched>,
-    kinds: BTreeMap<String, Vec<KubeKind>>,
+    watched: leases::Leases<WatchKey, Watched>,
+    kinds: BTreeMap<String, (Vec<KubeKind>, Timestamp)>,
     discovering: BTreeSet<String>,
     /// The discoveries that failed in a row, by context, while one waits to try again.
     refused: BTreeMap<String, u32>,
+    /// The contexts whose failed discovery waits to try again.
+    waiting: BTreeSet<String>,
     namespaces: BTreeMap<String, Vec<String>>,
     /// When a time cell next reads differently.
     due: Option<Timestamp>,
@@ -49,13 +56,20 @@ impl Store {
     }
 
     pub fn kinds(&self, context: &str) -> Option<&[KubeKind]> {
-        self.kinds.get(context).map(Vec::as_slice)
+        self.kinds.get(context).map(|(kinds, _)| kinds.as_slice())
+    }
+
+    /// When the kinds of `context` were last discovered.
+    pub fn discovered(&self, context: &str) -> Option<Timestamp> {
+        self.kinds.get(context).map(|(_, at)| *at)
     }
 
     pub fn set_kinds(&mut self, context: &str, kinds: Vec<KubeKind>) {
         self.discovering.remove(context);
         self.refused.remove(context);
-        self.kinds.insert(context.to_string(), kinds);
+        self.waiting.remove(context);
+        let at = Timestamp::now();
+        self.kinds.insert(context.to_string(), (kinds, at));
     }
 
     /// The namespaces of `context`, as last listed.
@@ -76,64 +90,54 @@ impl Store {
         self.discovering.contains(context)
     }
 
-    /// A discovery of `context` failed and stays begun; the failures in a row.
-    pub fn refuse_discovery(&mut self, context: &str) -> u32 {
+    /// A discovery of `context` failed and stays begun; the failures in a row, and the wait before the next.
+    pub fn refuse_discovery(&mut self, context: &str) -> (u32, std::time::Duration) {
+        self.waiting.insert(context.to_string());
         let failures = self.refused.entry(context.to_string()).or_default();
         *failures += 1;
-        *failures
+        let wait = RETRY
+            .saturating_mul(1 << failures.saturating_sub(1).min(16))
+            .min(LONGEST);
+        (*failures, wait)
     }
 
     /// `context` may be discovered again, unless another failure or a sign-in came since `failures`.
     pub fn retry_discovery(&mut self, context: &str, failures: u32) {
         if self.refused.get(context) == Some(&failures) {
             self.discovering.remove(context);
+            self.waiting.remove(context);
         }
     }
 
-    /// `context` signed in: a discovery waiting on a failure may run now.
+    /// `context` signed in: a discovery waiting on a failure may run now, and its streams try again.
     pub fn signed_in(&mut self, context: &str) {
-        if self.refused.remove(context).is_some() {
+        self.watched.wake(|key| key.context == context);
+        self.follows.wake(context);
+        self.logs.wake(context);
+        self.refused.remove(context);
+        if self.waiting.remove(context) {
             self.discovering.remove(context);
         }
     }
 
     /// Every key `reader` reads.
     pub fn read_by<'a>(&'a self, reader: &'a str) -> impl Iterator<Item = &'a WatchKey> {
-        self.watched
-            .iter()
-            .filter(move |(_, one)| one.readers.contains(reader))
-            .map(|(key, _)| key)
+        self.watched.read_by(reader)
     }
 
     /// `reader` reads `key`; the stop of a watcher to start, when none ran for it.
     pub fn lease(&mut self, key: &WatchKey, reader: &str) -> Option<&Stop> {
-        let started = !self.watched.contains_key(key);
-        let one = self.watched.entry(key.clone()).or_default();
-        one.readers.insert(reader.to_string());
-        started.then_some(&one.stop)
+        self.watched.lease(key, reader, Watched::default)
     }
 
     /// `reader` reads nothing any more; the keys it leaves without a reader.
-    pub fn release(&mut self, reader: &str) -> Vec<WatchKey> {
-        let mut unread = Vec::new();
-        for (key, one) in &mut self.watched {
-            if one.readers.remove(reader) && one.readers.is_empty() {
-                unread.push(key.clone());
-            }
-        }
-        unread
+    pub fn release(&mut self, reader: &str) -> Vec<(WatchKey, u64)> {
+        self.watched.release(reader)
     }
 
     /// The watcher stopped and its rows dropped, if nothing reads it still.
-    pub fn drop_unread(&mut self, key: &WatchKey) {
-        if self
-            .watched
-            .get(key)
-            .is_some_and(|one| one.readers.is_empty())
-            && let Some(one) = self.watched.remove(key)
-        {
-            one.stop.stop();
-        }
+    pub fn drop_unread(&mut self, key: &WatchKey, released: u64) {
+        self.watched.drop_unread(key, released);
     }
 
     pub fn due(&self) -> Option<Timestamp> {
@@ -179,8 +183,7 @@ impl Store {
         }
         one.revision += 1;
         match batch {
-            Batch::Reset { columns, mut rows } => {
-                rows.sort_by(|a, b| place(a).cmp(&place(b)));
+            Batch::Reset { columns, rows } => {
                 (one.columns, one.rows, one.synced) = (columns, rows, true);
             }
             Batch::Changes(deltas) => changed(one, deltas),
@@ -193,7 +196,7 @@ impl Store {
 /// A batch in one pass: rows changed in place, the gone ones swept once, the new merged in.
 fn changed(one: &mut Watched, deltas: Vec<Delta>) {
     let (mut fresh, mut gone) = (Vec::<ObjectRow>::new(), Vec::new());
-    let mut born: HashMap<String, usize> = HashMap::new();
+    let mut born: HashMap<(String, String), usize> = HashMap::new();
     for delta in deltas {
         match delta {
             Delta::Columns(columns) => one.columns = columns,
@@ -202,13 +205,17 @@ fn changed(one: &mut Watched, deltas: Vec<Delta>) {
                 .binary_search_by(|held| place(held).cmp(&place(&row)))
             {
                 Ok(at) => one.rows[at] = row,
-                Err(_) => match born.get(&row.uid) {
-                    Some(at) => fresh[*at] = row,
-                    None => {
-                        born.insert(row.uid.clone(), fresh.len());
-                        fresh.push(row);
+                Err(_) => {
+                    let (namespace, name) = place(&row);
+                    let at = (namespace.to_string(), name.to_string());
+                    match born.get(&at) {
+                        Some(at) => fresh[*at] = row,
+                        None => {
+                            born.insert(at, fresh.len());
+                            fresh.push(row);
+                        }
                     }
-                },
+                }
             },
             Delta::Gone(row) => gone.push(row),
         }

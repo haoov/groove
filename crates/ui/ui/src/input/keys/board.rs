@@ -40,14 +40,14 @@ pub(super) fn chosen(
         _ => return Vec::new(),
     };
     ui.board.chosen = Some((asked[next].project.clone(), asked[next].iid));
-    let row = crate::views::board::review::height(&metrics.tokens());
+    let row = crate::views::board::card(&metrics.tokens());
     let extent = hits.extent(Scroller::Column(List::Review as u8));
     ui.board.review = kept(ui.board.review, (next, row), (asked.len(), extent));
     Vec::new()
 }
 
 /// The offset that shows row `at`, moved as little as it can be.
-fn kept(offset: f32, (at, row): (usize, f32), (count, extent): (usize, f32)) -> f32 {
+pub(super) fn kept(offset: f32, (at, row): (usize, f32), (count, extent): (usize, f32)) -> f32 {
     if extent <= 0.0 {
         return 0.0;
     }

@@ -73,6 +73,22 @@ fn press(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command>
     handle(input, ui, app, &Hits::default(), window())
 }
 
+/// Each character of `text` as a key; what the last one asked.
+fn typed(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let mut last = Vec::new();
+    for c in text.chars() {
+        last = press(Key::Char(c), Modifiers::default(), ui, app);
+    }
+    last
+}
+
+/// Each character of `text` as a key in the palette.
+fn typed_into(palette: &mut crate::palette::Palette, text: &str, app: &AppState) {
+    for c in text.chars() {
+        palette.key(Key::Char(c), app);
+    }
+}
+
 /// A click in the middle of what was drawn there.
 fn click(rect: Rect, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
     let input = Input::Press {
@@ -110,6 +126,30 @@ fn pressed(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comm
 
 fn release(ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
     handle(Input::Release, ui, app, hits, window())
+}
+
+/// What the bottom layer of a frame says, in draw order.
+fn texts_of(frame: &groove_gfx::Frame) -> Vec<String> {
+    frame.layers()[0]
+        .texts
+        .iter()
+        .map(|run| run.text.clone())
+        .collect()
+}
+
+/// What every layer of a frame says, bottom layer first.
+fn all_texts(frame: &groove_gfx::Frame) -> Vec<String> {
+    frame
+        .layers()
+        .iter()
+        .flat_map(|layer| layer.texts.iter().map(|run| run.text.clone()))
+        .collect()
+}
+
+/// One frame drawn: what its bottom layer says, and its hits.
+fn render(app: &AppState, ui: &Ui, metrics: Metrics) -> (Vec<String>, Hits) {
+    let (frame, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
+    (texts_of(&frame), hits)
 }
 
 /// The open file, and the whole change it belongs to.

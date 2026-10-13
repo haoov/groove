@@ -2,7 +2,7 @@
 
 use groove_gfx::Rect;
 
-use super::super::{Acting, Noted};
+use super::super::{Acting, Line, Noted};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
 use groove_ui_kit::base::ground::Ground;
@@ -10,11 +10,11 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::box_in;
 use groove_ui_kit::text::{elide, row};
-use groove_ui_kit::widgets::Button;
 use groove_ui_kit::widgets::code::Block;
+use groove_ui_kit::widgets::{Button, typed_line};
 
 /// One row of a note: its ground, its mark, its author, its words.
-pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutter: Block) {
+pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
     groove_ui_kit::shape::ground(ctx, line, Ground::Deep);
     let role = match said.resolved {
         true => Role::Faint,
@@ -31,8 +31,8 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutte
         let link = |url: &str| Target::Link(url.to_string());
         return groove_ui_kit::markdown::row(ctx, rect, prose, role, &link);
     }
-    let text = elide(ctx, text, &words, rect.w);
-    row(ctx, rect, 0.0, &text, words);
+    let text = elide(ctx, code.text, &words, rect.w);
+    typed_line(ctx, rect, (&text, words), (code.caret, code.held));
 }
 
 /// Who said it and which lines, at the row's end; returns where they start.

@@ -1,12 +1,14 @@
 //! The commit box: its message, its one button, and the menu behind it.
 
+mod typing;
+
 use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Fonts;
 use groove_types::{FileDiff, FileStatus};
 
 use crate::hit::Target;
 use crate::input::{Input, handle};
-use crate::tests::{full_app, window};
+use crate::tests::{full_app, render, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -343,12 +345,7 @@ fn a_branch_with_nothing_left_to_push_offers_a_merge_request() {
         crate::views::session::commit::primary(&app),
         Some(Command::Delivery(delivery::Command::CreateMr))
     );
-    let (frame, _) = view(&app, &sidebar(), window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &sidebar(), window());
     assert!(texts.iter().any(|t| t == "open mr"), "{texts:?}");
 }
 
@@ -463,5 +460,37 @@ fn picking_a_verdict_asks_for_the_review() {
         [groove_controllers::Command::Delivery(
             delivery::Command::Say(Say::Review(groove_types::ReviewVerdict::Comment))
         )]
+    );
+}
+
+#[test]
+fn a_commit_box_not_drawn_takes_no_key_and_no_paste() {
+    let app = listed(&[file("a.txt", true)]);
+    let mut ui = sidebar();
+    ui.settle(&app);
+    (ui.focus, ui.session.composing) = (crate::Focus::Sidebar, true);
+    for hidden in [Tab::Resources, Tab::Diff] {
+        ui.session.tab = hidden;
+        ui.session.reading = hidden == Tab::Diff;
+        let plain = crate::input::Modifiers::default();
+        let typed = crate::tests::press(crate::input::Key::Char('a'), plain, &mut ui, &app);
+        let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+        let input = crate::input::Input::Paste("b".into());
+        let pasted = crate::input::handle(input, &mut ui, &app, &hits, window());
+        let message =
+            |one: &Command| matches!(one, Command::Workspace(workspace::Command::Message(_)));
+        assert!(
+            !typed.iter().chain(&pasted).any(message),
+            "{hidden:?}: the message takes nothing"
+        );
+    }
+    (ui.focus, ui.session.tab) = (crate::Focus::Workspace, Tab::Resources);
+    ui.settle(&app);
+    ui.session.tab = Tab::Diff;
+    ui.settle(&app);
+    assert!(ui.session.commits(), "the box is drawn again");
+    assert!(
+        !ui.session.composing,
+        "but it let go of the keys while hidden"
     );
 }

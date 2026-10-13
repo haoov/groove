@@ -63,6 +63,19 @@ impl Remote {
         Self::of_host(&repo.host)
     }
 
+    /// The forge of a host, made once and reused: one token read and one connection pool a host.
+    pub fn shared(host: &str) -> Result<std::sync::Arc<Self>> {
+        static HELD: std::sync::Mutex<Vec<(String, std::sync::Arc<Remote>)>> =
+            std::sync::Mutex::new(Vec::new());
+        let mut held = HELD.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((_, one)) = held.iter().find(|(at, _)| at == host) {
+            return Ok(one.clone());
+        }
+        let made = std::sync::Arc::new(Self::of_host(host)?);
+        held.push((host.to_string(), made.clone()));
+        Ok(made)
+    }
+
     pub fn kind(&self) -> Forge {
         match self {
             Remote::Github(_) => Forge::Github,

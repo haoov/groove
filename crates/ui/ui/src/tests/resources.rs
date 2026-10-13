@@ -14,6 +14,8 @@ mod argo;
 mod argo_links;
 mod argo_sync;
 mod copy;
+mod fixture;
+mod kinds;
 mod list;
 mod load;
 mod logs;
@@ -207,20 +209,6 @@ fn the_tab_asks_a_watcher_a_namespace_and_the_kinds_it_lacks_and_lets_go_once_le
 }
 
 #[test]
-fn a_kind_in_the_sidebar_is_listed_from_the_top() {
-    let (app, mut ui) = listing();
-    ui.session.resources.scroll = 40.0;
-    let (_, hits) = drawn(&app, &ui);
-    let deployments = kind("apps", "Deployment", "deployments", true);
-    let at = hits
-        .rect_of(&Target::ResourceKind(deployments.clone()))
-        .expect("the deployments row");
-    click(at, &mut ui, &app, &hits);
-    assert_eq!(ui.session.resources.kind, Some(deployments));
-    assert_eq!(ui.session.resources.scroll, 0.0);
-}
-
-#[test]
 fn the_find_key_opens_the_list_s_bar_and_esc_shuts_it_while_empty() {
     let (app, mut ui) = listing();
     clicked_in(&app, &mut ui);
@@ -230,14 +218,7 @@ fn the_find_key_opens_the_list_s_bar_and_esc_shuts_it_while_empty() {
     };
     press(crate::input::Key::Char('f'), ctrl, &mut ui, &app);
     assert!(ui.session.resources.finding && ui.session.resources.typing);
-    for c in "api".chars() {
-        press(
-            crate::input::Key::Char(c),
-            Default::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("api", &mut ui, &app);
     let (texts, _) = drawn(&app, &ui);
     assert!(texts.iter().any(|one| one == "Pods · 1"), "{texts:?}");
     press(crate::input::Key::Escape, Default::default(), &mut ui, &app);
@@ -246,29 +227,6 @@ fn the_find_key_opens_the_list_s_bar_and_esc_shuts_it_while_empty() {
     ui.session.resources.typing = true;
     press(crate::input::Key::Escape, Default::default(), &mut ui, &app);
     assert!(!ui.session.resources.finding);
-}
-
-#[test]
-fn the_sidebar_s_search_narrows_the_kinds_and_a_heading_folds_its_own() {
-    let (app, mut ui) = listing();
-    ui.session.resources.filter.set("node");
-    let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "Nodes"), "{texts:?}");
-    assert!(!texts.iter().any(|one| one == "Deployments"), "{texts:?}");
-    ui.session.resources.filter.clear();
-    let (_, hits) = drawn(&app, &ui);
-    let heading = hits.rect_of(&Target::ResourceGroup(groove_types::KindHeading::Builtin(
-        groove_types::Builtin::Workloads,
-    )));
-    click(
-        heading.expect("the workloads heading"),
-        &mut ui,
-        &app,
-        &hits,
-    );
-    let (texts, _) = drawn(&app, &ui);
-    assert!(!texts.iter().any(|one| one == "Deployments"), "{texts:?}");
-    assert!(texts.iter().any(|one| one == "Nodes"), "{texts:?}");
 }
 
 #[test]
@@ -290,162 +248,14 @@ fn a_lone_context_picked_wears_its_hue_in_its_picker() {
     assert_eq!(picked, Some(styles.color(Role::Hue(hue))));
 }
 
-#[test]
-fn a_crd_stands_under_its_own_group_and_the_rbac_kinds_under_theirs() {
-    let (mut app, ui) = listing();
-    let mut kinds = app.cluster.store.kinds("staging").expect("known").to_vec();
-    kinds.push(kind("postgresql.cnpg.io", "Cluster", "clusters", true));
-    kinds.push(kind(
-        "rbac.authorization.k8s.io",
-        "ClusterRole",
-        "clusterroles",
-        false,
-    ));
-    app.cluster.store.set_kinds("staging", kinds);
-    let (texts, _) = drawn(&app, &ui);
-    for shown in ["POSTGRESQL.CNPG.IO", "Clusters", "RBAC", "Clusterroles"] {
-        assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
-    }
-    let at = |label: &str| texts.iter().position(|one| one == label);
-    assert!(at("RBAC") < at("POSTGRESQL.CNPG.IO") && at("POSTGRESQL.CNPG.IO") < at("CLUSTER"));
-}
-
-#[test]
-fn ctrl_shift_p_searches_the_kinds_by_name_group_or_group_and_kind() {
-    let (mut app, mut ui) = listing();
-    let mut kinds = app.cluster.store.kinds("staging").expect("known").to_vec();
-    kinds.push(kind("networking.k8s.io", "Ingress", "ingresses", true));
-    kinds.push(kind("rbac.authorization.k8s.io", "Role", "roles", true));
-    kinds.push(kind(
-        "rbac.authorization.k8s.io",
-        "RoleBinding",
-        "rolebindings",
-        true,
-    ));
-    app.cluster.store.set_kinds("staging", kinds);
-    clicked_in(&app, &mut ui);
-    let both = crate::input::Modifiers {
-        ctrl: true,
-        shift: true,
-        ..Default::default()
-    };
-    press(crate::input::Key::Char('p'), both, &mut ui, &app);
-    assert!(ui.session.resources.filtering && !ui.session.resources.typing);
-    let shown = |app: &AppState, ui: &Ui| {
-        let (texts, _) = drawn(app, ui);
-        let kinds = [
-            "Pods",
-            "Deployments",
-            "Nodes",
-            "Ingresses",
-            "Roles",
-            "Rolebindings",
-        ];
-        texts
-            .into_iter()
-            .filter(|one| kinds.contains(&one.as_str()))
-            .collect::<Vec<_>>()
-    };
-    ui.session.resources.filter.set("networking");
-    assert_eq!(shown(&app, &ui), ["Ingresses"]);
-    ui.session.resources.filter.set("rbac/binding");
-    assert_eq!(shown(&app, &ui), ["Rolebindings"]);
-    ui.session.resources.filter.set("rbac/");
-    assert_eq!(shown(&app, &ui), ["Roles", "Rolebindings"]);
-}
-
 /// The focus where a session opens it, then a click on the Resources tab, as the user gives it.
 fn clicked_in(app: &AppState, ui: &mut Ui) {
     ui.focus = crate::Focus::Agent;
     let (_, hits) = drawn(app, ui);
     let tab = hits
         .rect_of(&Target::Tab(Tab::Resources))
-        .expect("the resources tab");
+        .expect("the Kubernetes tab");
     click(tab, ui, app, &hits);
-}
-
-#[test]
-fn a_click_on_the_sidebar_s_bar_and_typing_narrow_the_kinds_and_leave_the_rows_be() {
-    let (app, mut ui) = listing();
-    ui.focus = crate::Focus::Agent;
-    let (_, hits) = drawn(&app, &ui);
-    let bar = hits
-        .rect_of(&Target::ResourceFilter)
-        .expect("the sidebar's bar");
-    click(bar, &mut ui, &app, &hits);
-    for c in "node".chars() {
-        press(
-            crate::input::Key::Char(c),
-            Default::default(),
-            &mut ui,
-            &app,
-        );
-    }
-    assert_eq!(ui.session.resources.filter.text(), "node");
-    assert!(ui.session.resources.search.is_empty());
-    let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "Pods · 3"), "{texts:?}");
-    assert!(texts.iter().any(|one| one == "Nodes"), "{texts:?}");
-    assert!(!texts.iter().any(|one| one == "Deployments"), "{texts:?}");
-}
-
-#[test]
-fn in_the_kind_search_the_arrows_step_through_the_lines_enter_folds_a_heading_or_lists_a_kind() {
-    use crate::views::session::resources::{Line, shown};
-    let (app, mut ui) = listing();
-    clicked_in(&app, &mut ui);
-    let both = crate::input::Modifiers {
-        ctrl: true,
-        shift: true,
-        ..Default::default()
-    };
-    let key = |key, ui: &mut Ui| {
-        press(key, Default::default(), ui, &app);
-    };
-    press(crate::input::Key::Char('p'), both, &mut ui, &app);
-    key(crate::input::Key::Char('d'), &mut ui);
-    let lines = shown(&app, &ui);
-    let stood = |ui: &Ui| ui.session.resources.cursor.map(|at| lines[at].clone());
-    assert!(
-        matches!(stood(&ui), Some(Line::Kind(_))),
-        "typing stands on the first kind"
-    );
-    key(crate::input::Key::Up, &mut ui);
-    let Some(Line::Heading(heading, _)) = stood(&ui) else {
-        panic!("a heading above it: {:?}", stood(&ui));
-    };
-    key(crate::input::Key::Enter, &mut ui);
-    assert!(ui.session.resources.folded.contains(&heading) && ui.session.resources.filtering);
-    let under = shown(&app, &ui);
-    assert!(
-        under.len() < lines.len(),
-        "the folded heading's kinds are gone"
-    );
-    key(crate::input::Key::Enter, &mut ui);
-    assert!(
-        !ui.session.resources.folded.contains(&heading),
-        "Enter again opens it"
-    );
-    key(crate::input::Key::Down, &mut ui);
-    let Some(Line::Kind(kind)) = stood(&ui) else {
-        panic!("a kind below it: {:?}", stood(&ui));
-    };
-    key(crate::input::Key::Enter, &mut ui);
-    assert_eq!(ui.session.resources.kind, Some(kind));
-    assert!(!ui.session.resources.filtering);
-}
-
-#[test]
-fn the_kind_listed_stands_on_the_held_ground_between_the_rules() {
-    use groove_ui_kit::base::style::Styles;
-    let (app, ui) = listing();
-    let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    let held = Styles::new(app.config.theme(), window().tokens()).held();
-    let quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
-    assert!(
-        quads.into_iter().any(|one| one.color == held),
-        "a quad on the held ground"
-    );
 }
 
 #[test]
@@ -481,4 +291,30 @@ fn a_session_closed_or_deleted_lets_go_of_the_watchers_its_list_held() {
         .retain(|one| one.session.id.as_str() != "a");
     app.session.selected = None;
     assert_eq!(clustered(&app, &ui), [release]);
+}
+
+#[test]
+fn the_strip_names_the_cluster_tab_kubernetes_in_capitals() {
+    let (app, ui) = listing();
+    let (texts, _) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "KUBERNETES"), "{texts:?}");
+    assert!(!texts.iter().any(|one| one == "k8s"), "{texts:?}");
+}
+
+#[test]
+fn the_list_rows_read_at_the_body_size_under_small_headers() {
+    let (app, ui) = listing();
+    use groove_ui_kit::base::style::Role;
+    let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), window().tokens());
+    let (body, small) = (styles.body(Role::Text).size, styles.small(Role::Text).size);
+    let size = |text: &str| {
+        let runs = frame.layers().iter().flat_map(|layer| layer.texts.iter());
+        runs.clone()
+            .find(|one| one.text == text)
+            .map(|one| one.style.size)
+    };
+    for (text, wanted) in [("api-0", body), ("CrashLoopBackOff", body), ("NAME", small)] {
+        assert_eq!(size(text), Some(wanted), "{text}");
+    }
 }

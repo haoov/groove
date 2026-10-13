@@ -22,7 +22,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     match call.tool.as_str() {
         "get_active_task" => session::active(state, call),
         "list_tasks" => task::tasks(state, call),
-        "list_repos" => session::repos(state, services, call),
+        "list_repos" => session::repos(state, services, spawner, call),
         "get_task_diff" => work::diff(state, spawner, call),
         "get_commit_log" => work::log(state, spawner, call),
         "get_status" => work::status(state, services, spawner, call),
@@ -31,7 +31,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "get_mr_ci" => forge::ci(state, services, spawner, call),
         "get_annotations" => files::notes(state, services, spawner, call),
         "list_skills" => session::skills(state, call),
-        "read_user_skill" => session::skill(state, call),
+        "read_user_skill" => session::skill(state, spawner, call),
         "get_task_body" => task::body(state, spawner, call),
         "get_task_template" => task::template(state, spawner, call),
         "read_file" => files::read(state, spawner, call),
@@ -54,12 +54,7 @@ pub(crate) fn about<'a>(state: &'a AppState, call: &Call) -> Option<&'a Open> {
     let Some(task) = call.text("task_id") else {
         return state.session.get(&session(call));
     };
-    let external = state
-        .task
-        .get(task)
-        .map(|one| one.external_id.clone())
-        .unwrap_or_else(|| ExternalId::new(task));
-    state.session.working(&external)
+    state.session.working(&state.task.resolve(task))
 }
 
 /// The task a read is about: the one its `task_id` names, or the session's own.
@@ -67,8 +62,7 @@ pub(crate) fn task_of(state: &AppState, call: &Call) -> Option<ExternalId> {
     let Some(named) = call.text("task_id") else {
         return about(state, call).and_then(|open| open.session.kind.task().cloned());
     };
-    let known = state.task.get(named).map(|one| one.external_id.clone());
-    Some(known.unwrap_or_else(|| ExternalId::new(named)))
+    Some(state.task.resolve(named))
 }
 
 /// Every worktree of that session.

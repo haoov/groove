@@ -3,10 +3,10 @@
 use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
-    Aligned, At, Changes, Derived, Document, Opened, aligned, column_of, display_of,
+    Aligned, At, Changes, Derived, Document, Opened, UNSHOWN, aligned, column_of, display_of,
     from_documents, from_text, shown,
 };
-pub use groove_editor::{Clipboard, Memory, clipboard};
+pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
@@ -18,9 +18,11 @@ use groove_watch::{QUIET, Watch};
 mod blame;
 mod buffer;
 mod buffers;
+mod filing;
 mod git;
 mod paths;
 mod read;
+mod revision;
 mod rows;
 
 #[cfg(test)]
@@ -28,6 +30,7 @@ mod tests;
 
 pub use blame::{Blames, Read, blame};
 pub use buffers::Buffers;
+pub use filing::Filing;
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{
@@ -35,6 +38,7 @@ pub use read::{
     derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, revision,
     summary, summary_against,
 };
+pub use revision::{Revision, Step};
 pub use rows::Way;
 
 /// What the workspace holds for the selected worktree.
@@ -77,13 +81,19 @@ pub struct State {
     pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
-    /// A repo's slug to select a worktree of, and a commit of it to show once read.
-    pub revision: Option<(String, Option<String>)>,
+    /// A repo's slug to select a worktree of in a session, and a commit of it to show once read.
+    pub revision: Option<Revision>,
+    /// Moves on with each commit asked to show; only the last one asked lands.
+    pub opening: u64,
     pub watching: Option<WorktreeId>,
+    /// The worktree a watch is being built for.
+    pub watch_asked: Option<WorktreeId>,
     /// The buffers a read of the colours and the rows is out for.
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     pub blames: Blames,
     watch: Option<Watch>,
+    /// The end of each worktree's last file operation, which the next one waits for.
+    filings: BTreeMap<WorktreeId, tokio::sync::oneshot::Receiver<()>>,
 }
 
 impl State {
@@ -117,6 +127,8 @@ impl State {
         self.moved();
         if !self.holds(&worktree) {
             self.clear_paths();
+            self.stop();
+            self.found.clear();
         }
         self.worktree = Some(worktree);
         self.files = files;
@@ -227,25 +239,29 @@ pub async fn git_dir(dir: &Path) -> Option<PathBuf> {
     groove_git::Git::at(dir).git_dir().await.ok()
 }
 
-/// Watches `dir` and git's own directory, until the state is cleared.
-pub fn watch(
-    state: &mut State,
-    worktree: WorktreeId,
+/// A watch on `dir` and git's own directory; `None` when `dir` is gone.
+pub async fn watcher(
     dir: &Path,
     git: Option<PathBuf>,
     on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
-) -> Result<()> {
-    state.watch = None;
-    state.watching = None;
-    let watch = groove_watch::watch(dir, git.into_iter().collect(), QUIET, on_change)?;
-    state.watching = Some(worktree);
-    state.watch = Some(watch);
-    Ok(())
+) -> Result<Option<Watch>> {
+    if !dir.exists() {
+        return Ok(None);
+    }
+    let also = git.into_iter().collect();
+    groove_watch::watching(dir.to_path_buf(), also, QUIET, on_change)
+        .await
+        .map(Some)
+}
+
+/// The watch held until the state is cleared, in place of the last one.
+pub fn hold(state: &mut State, watch: Option<(WorktreeId, Watch)>) {
+    (state.watching, state.watch) = watch.unzip();
 }
 
 /// Writes the buffer to the file it came from.
-pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
-    groove_editor::save(dir, path, text)
+pub async fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
+    groove_editor::save(dir, path, text).await
 }
 
 /// What the outside world tells this capability.

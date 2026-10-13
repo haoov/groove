@@ -74,10 +74,7 @@ pub(crate) fn stages(part: &AppPart) -> Vec<Stage<'_>> {
 fn waves<'a>(part: &'a AppPart, operation: &'a Operation) -> BTreeMap<i64, Vec<Step<'a>>> {
     let mut waves: BTreeMap<i64, Vec<Step>> = BTreeMap::new();
     for one in part.resources.iter().filter(|one| !one.hook) {
-        let result = operation
-            .applied
-            .iter()
-            .find(|done| !done.hook && one.is(done));
+        let result = part.result(one);
         let state = match result {
             Some(done) if done.broke() => State::Failed,
             Some(done) if operation.running() && done.hook_phase == "Running" => State::Applying,

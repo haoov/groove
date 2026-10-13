@@ -9,7 +9,7 @@ mod paths;
 mod search;
 
 use crate::asker::Asker;
-pub(crate) use commits::due as revision_due;
+pub(crate) use commits::{due as revision_due, ended as revision_ended};
 pub(crate) use editor::copied;
 use groove_types::{DiffMode, Edit, Selection};
 
@@ -56,8 +56,12 @@ pub enum Command {
     Copy,
     /// `workspace.cut`: the same, and out of the buffer.
     Cut,
+    /// `workspace.copy_text`: text a field holds, to the clipboard.
+    CopyText { text: String },
     /// `workspace.paste`: the clipboard, over what the carets hold.
     Paste,
+    /// `workspace.read_clipboard`: the clipboard read off the main thread, for the surface to paste.
+    ReadClipboard,
     /// `workspace.stage`: one path into the index.
     Stage { path: String },
     /// `workspace.unstage`: one path back out of it.
@@ -111,7 +115,9 @@ impl Command {
             Command::SaveFile => "workspace.save_file",
             Command::Copy => "workspace.copy",
             Command::Cut => "workspace.cut",
+            Command::CopyText { .. } => "workspace.copy_text",
             Command::Paste => "workspace.paste",
+            Command::ReadClipboard => "workspace.read_clipboard",
             Command::Stage { .. } => "workspace.stage",
             Command::Unstage { .. } => "workspace.unstage",
             Command::Discard { .. } => "workspace.discard",
@@ -174,7 +180,9 @@ pub fn dispatch(
         Command::SaveFile => save_file(state, spawner),
         Command::Copy => copy(state, services, spawner),
         Command::Cut => cut(state, services, spawner),
+        Command::CopyText { text } => copied(services, spawner, text),
         Command::Paste => paste(state, services, spawner),
+        Command::ReadClipboard => editor::read_clipboard(services, spawner),
         Command::Stage { path } => index(state, spawner, Act::Stage, path),
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
         Command::Discard { path } => index(state, spawner, Act::Discard, path),
@@ -222,6 +230,19 @@ impl Asked {
     /// Whether the selection is still the one this was read for.
     pub(crate) fn holds(&self, state: &AppState) -> bool {
         Self::now(state).as_ref() == Some(self)
+    }
+
+    /// The same, whatever commit the surface shows meanwhile.
+    pub(crate) fn holds_place(&self, state: &AppState) -> bool {
+        Self::now(state).is_some_and(|now| {
+            Self {
+                commit: None,
+                ..now
+            } == Self {
+                commit: None,
+                ..self.clone()
+            }
+        })
     }
 }
 

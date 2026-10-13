@@ -61,7 +61,7 @@ impl Inline {
             blocks.push(Block {
                 after,
                 from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: noting.field.text().split('\n').count(),
+                rows: noting.buffer.text().split('\n').count(),
                 at: None,
                 acts: false,
                 said: Vec::new(),
@@ -189,6 +189,14 @@ fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Opt
 /// The anchor's own first line, as an anchor of its own.
 fn starts(anchor: &Anchor) -> Anchor {
     Anchor::line(anchor.path.clone(), anchor.start_line)
+}
+
+/// Whether the note being typed is drawn: no commit shown, and its line in the view.
+pub(crate) fn noting_drawn(app: &AppState, ui: &Ui) -> bool {
+    let Some(noting) = ui.session.noting.as_ref() else {
+        return false;
+    };
+    app.workspace.commit.is_none() && anchored(app, ui.session.face(), &noting.anchor).is_some()
 }
 
 /// The row an anchor's last line stands on, in the view that draws it.

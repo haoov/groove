@@ -16,18 +16,17 @@ mod wants;
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Described, Health};
+use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, Tab, Text};
 
-pub use grouped::WIDTHS as ARGO_WIDTHS;
 pub use wants::{due, wants};
 
 use super::View;
-use super::list::plan::colour;
+use super::health::{colour, status_colour};
 use super::opened::Opened;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -46,7 +45,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
         View::Describe => describe::draw(ctx, rest, app, (tab, object)),
         View::Resources => match object.app.as_deref() {
             Some(part) => {
-                let dragged = ui.session.resources.widths.get(ARGO_WIDTHS);
+                let dragged = &ui.session.resources.tab_widths;
                 managed::draw(ctx, rest, (app, tab, part), dragged)
             }
             None => describe::draw(ctx, rest, app, (tab, object)),
@@ -90,7 +89,7 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
         .map(|one| Role::Hue(one.hue));
     let faint = ctx.styles.small(Role::Ghost);
     let last = tab.copied.as_deref();
-    let copied = |text, role| copy::Copied::new(text, role, last);
+    let copied = |text, role| copy::Copied::new(text, role, last).small();
     copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut crumbs, gap);
     if let Some(namespace) = &link.namespace {
         Label::new("›", faint).left(ctx, &mut crumbs, gap);
@@ -107,10 +106,7 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
 
 /// What the object says of itself: a pod's status, a workload's ready replicas, an Application's sync and health.
 fn stands(object: &Described) -> Vec<(String, Role)> {
-    let worded = |word: &str| {
-        let health = groove_types::status_health(word).unwrap_or(Health::Waiting);
-        (word.to_string(), colour(health))
-    };
+    let worded = |word: &str| (word.to_string(), status_colour(word));
     if let Some(pod) = &object.pod {
         return vec![worded(&pod.status)];
     }
@@ -123,10 +119,7 @@ fn stands(object: &Described) -> Vec<(String, Role)> {
     let Some((ready, desired)) = object.replicas else {
         return Vec::new();
     };
-    let role = match ready >= desired {
-        true => Role::Ok,
-        false => Role::Warn,
-    };
+    let role = colour(groove_types::count_health(ready, desired));
     vec![(format!("{ready}/{desired} ready"), role)]
 }
 

@@ -49,11 +49,11 @@ fn beside(path: &str, name: &str) -> String {
 }
 
 /// One path operation, under the worktree and nowhere else.
-pub fn path_op(dir: &Path, op: &PathOp) -> Result<()> {
+pub async fn path_op(dir: &Path, op: &PathOp) -> Result<()> {
     match op {
-        PathOp::Create { path, folder } => groove_editor::create(dir, path, *folder),
-        PathOp::Rename { from, to } => groove_editor::rename(dir, from, to),
-        PathOp::Copy { from, to } => groove_editor::copy(dir, from, to),
-        PathOp::Delete { path } => groove_editor::delete(dir, path),
+        PathOp::Create { path, folder } => groove_editor::create(dir, path, *folder).await,
+        PathOp::Rename { from, to } => groove_editor::rename(dir, from, to).await,
+        PathOp::Copy { from, to } => groove_editor::copy(dir, from, to).await,
+        PathOp::Delete { path } => groove_editor::delete(dir, path).await,
     }
 }

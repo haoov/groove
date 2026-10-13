@@ -6,7 +6,7 @@ use groove_types::{SessionId, SessionKind};
 
 use crate::hit::{Hits, Target};
 use crate::layout::{Edge, Layout};
-use crate::tests::{full_app, handle, open, window};
+use crate::tests::{full_app, handle, open, render, window};
 use crate::{Surface, Ui, view};
 
 /// The full app with a routine's session beside the explorers, on disk too.
@@ -28,13 +28,7 @@ fn routed() -> AppState {
 }
 
 fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
-    let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());
-    let texts = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect();
-    (texts, hits)
+    render(app, ui, window())
 }
 
 #[test]
@@ -72,7 +66,7 @@ fn a_routine_session_is_its_agent_pane_alone_and_off_the_board() {
     assert_eq!(layout.agent.right(), layout.window.w);
     assert!(layout.workspace.is_empty() && layout.sidebar.is_empty());
     let (texts, hits) = drawn(&app, &ui);
-    assert!(!texts.iter().any(|t| t == "overview"), "{texts:?}");
+    assert!(!texts.iter().any(|t| t == "OVERVIEW"), "{texts:?}");
     assert!(hits.rect_of(&Target::Split(Edge::Agent)).is_none());
 
     ui.surface = Surface::Board;
@@ -107,10 +101,10 @@ fn a_routine_session_s_rail_item_runs_its_routine_unless_a_run_is_on() {
     };
     assert_eq!(asked, [groove_controllers::Command::Agent(wanted)]);
 
-    app.agent
+    app.routine
         .runs
         .running
-        .push(groove_controllers::agent_service::runs::Run {
+        .push(groove_controllers::routine_service::runs::Run {
             routine: "user:digest".into(),
             session: SessionId::new("routine-user-digest"),
             trigger: None,

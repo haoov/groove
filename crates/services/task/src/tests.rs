@@ -20,7 +20,7 @@ fn config(host: &str) -> groove_types::Config {
 
 #[test]
 fn the_same_config_keeps_the_same_sources_and_a_new_one_builds_them_again() {
-    let state = State::default();
+    let mut state = State::default();
     let one = config("https://github.example");
     let first = state.sources(Some(&one));
     assert_eq!(first.len(), 1);
@@ -46,11 +46,11 @@ fn a_template_asked_of_no_source_in_particular_names_the_ones_to_pick_from() {
     .map(Some)
     .expect("a notion config");
     let sources = State::default().sources(Some(&both));
-    let said = crate::unpicked(&sources, None);
+    let said = crate::asked::unpicked(&sources, None);
     assert!(
         said.to_string().contains("notion, github") || said.to_string().contains("github, notion"),
         "{said}"
     );
-    let none = crate::unpicked(&[], None);
+    let none = crate::asked::unpicked(&[], None);
     assert!(none.to_string().contains("no source is set up"), "{none}");
 }

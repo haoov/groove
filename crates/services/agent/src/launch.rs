@@ -22,8 +22,18 @@ pub struct LaunchPaths {
     pub tools: Option<Server>,
 }
 
+impl crate::State {
+    /// Whether `session`'s agent has a terminal it has not exited.
+    pub fn alive(&self, session: &groove_types::SessionId) -> bool {
+        let exited = |one: &groove_types::SessionActivity| {
+            matches!(one.status, groove_types::AgentStatus::Exited { .. })
+        };
+        self.terminal(session).is_some() && !self.activity(session).is_some_and(exited)
+    }
+}
+
 /// Plans the command line and spawns it on a terminal of `cols` by `rows`, `prompt` its first message.
-pub fn launch(
+pub async fn launch(
     session: &Session,
     paths: &LaunchPaths,
     cwd: &Path,
@@ -42,30 +52,15 @@ pub fn launch(
         },
         &paths.plugin_dirs,
         loopback(paths, session).as_ref(),
-    )?;
+    )
+    .await?;
     let launch = match prompt {
         Some(prompt) => launch.asking(prompt),
         None => launch,
     };
     Terminal::spawn(launch.spec(cols, rows), palette, hooks)
+        .await
         .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
-}
-
-/// `claude auth login` on a terminal of `cols` by `rows`.
-pub fn login(
-    home: &Path,
-    (cols, rows): (u16, u16),
-    palette: AnsiPalette,
-    hooks: Hooks,
-) -> Result<Terminal, Error> {
-    let spec = groove_agent_launch::login(home, cols, rows);
-    Terminal::spawn(spec, palette, hooks)
-        .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
-}
-
-/// The `claude` a launch runs.
-pub fn claude_bin(home: &Path) -> String {
-    groove_agent_launch::claude_bin(home)
 }
 
 /// Every session posts its hooks to its own url, and asks its tools on its own stream.

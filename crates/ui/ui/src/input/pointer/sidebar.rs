@@ -55,9 +55,7 @@ pub(super) fn twisty(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
         crate::hit::Target::Group(dir) => (&mut ui.session.closed, dir),
         _ => return Vec::new(),
     };
-    if !held.remove(&path) {
-        held.insert(path);
-    }
+    groove_types::toggle(held, path);
     Vec::new()
 }
 

@@ -14,6 +14,8 @@ pub struct FollowKey {
     pub fields: Option<String>,
 }
 
+const NAMED: &str = "metadata.name=";
+
 impl FollowKey {
     /// The one object named `name`.
     pub fn named(context: &str, kind: &KubeKind, namespace: Option<&str>, name: &str) -> Self {
@@ -21,8 +23,13 @@ impl FollowKey {
             context: context.to_string(),
             kind: kind.clone(),
             namespace: namespace.map(String::from),
-            fields: Some(format!("metadata.name={name}")),
+            fields: Some(format!("{NAMED}{name}")),
         }
+    }
+
+    /// The name of the one object the key reads, when it reads one.
+    pub fn named_one(&self) -> Option<&str> {
+        self.fields.as_deref()?.strip_prefix(NAMED)
     }
 }
 
@@ -142,4 +149,39 @@ pub struct EventRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Usage {
     pub containers: Vec<(String, f64, f64)>,
+}
+
+impl Described {
+    /// The Helm release it, or `top` above it, was installed by: its namespace and name.
+    pub fn helm_release(&self, top: Option<&Described>) -> Option<(String, String)> {
+        for one in top.into_iter().chain(std::iter::once(self)) {
+            if let Some(name) = one.marked("meta.helm.sh/release-name") {
+                let namespace = one.marked("meta.helm.sh/release-namespace");
+                return Some((namespace.or(one.namespace.clone())?, name));
+            }
+            if one.marked("app.kubernetes.io/managed-by").as_deref() == Some("Helm")
+                && let Some(name) = one.marked("app.kubernetes.io/instance")
+            {
+                return Some((one.namespace.clone()?, name));
+            }
+        }
+        None
+    }
+
+    /// Whether this Service's selector picks `object` by its labels.
+    pub fn selects(&self, object: &Described) -> bool {
+        !self.selector.is_empty()
+            && self
+                .selector
+                .iter()
+                .all(|pair| object.labels.contains(pair))
+    }
+
+    /// The value an annotation or a label holds under `key`.
+    fn marked(&self, key: &str) -> Option<String> {
+        let mut pairs = self.annotations.iter().chain(self.labels.iter());
+        pairs
+            .find(|(at, _)| at == key)
+            .map(|(_, value)| value.clone())
+    }
 }

@@ -12,6 +12,7 @@ use groove_types::{Attached, RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::asker::Asker;
 
+pub(crate) use delete::delete_then;
 pub use delete::{delete, delete_local, force_delete};
 pub(crate) use open::{Start, begun, begun_with};
 pub use open::{close, open, open_explorer, restore, select};

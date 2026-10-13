@@ -7,7 +7,10 @@ pub fn batch(out: &[u8], paths: &[&str]) -> HashMap<String, String> {
     let mut found = HashMap::new();
     let mut at = 0;
     for path in paths {
-        let Some(line) = out[at..].iter().position(|byte| *byte == b'\n') else {
+        let Some(line) = out
+            .get(at..)
+            .and_then(|rest| rest.iter().position(|b| *b == b'\n'))
+        else {
             break;
         };
         let header = String::from_utf8_lossy(&out[at..at + line]);
@@ -16,7 +19,7 @@ pub fn batch(out: &[u8], paths: &[&str]) -> HashMap<String, String> {
         let Some(size) = size else {
             continue;
         };
-        let end = (at + size).min(out.len());
+        let end = at.saturating_add(size).min(out.len());
         let text = String::from_utf8_lossy(&out[at..end]).into_owned();
         found.insert((*path).to_string(), text);
         at = end + 1;

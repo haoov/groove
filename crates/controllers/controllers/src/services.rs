@@ -1,8 +1,6 @@
 //! The service handles the binary builds and every controller reads.
 
-use std::sync::Arc;
-
-use groove_workspace_service::{Clipboard, Memory};
+use groove_workspace_service::Clipboard;
 
 /// The services' module handles, built by the binary and read by every controller.
 #[derive(Clone)]
@@ -10,8 +8,9 @@ pub struct Services {
     pub session: groove_session_service::Service,
     pub task: groove_task_service::Service,
     pub delivery: groove_delivery_service::Service,
+    pub config: groove_config_service::Keeper,
     /// What the open file copies through.
-    pub clipboard: Arc<dyn Clipboard>,
+    pub clipboard: Clipboard,
 }
 
 impl Services {
@@ -22,7 +21,8 @@ impl Services {
             delivery: groove_delivery_service::Service::beside(session.store()),
             session,
             task: groove_task_service::Service::in_memory().await?,
-            clipboard: Arc::new(Memory::default()),
+            config: groove_config_service::Keeper::default(),
+            clipboard: Clipboard::memory(),
         })
     }
 }

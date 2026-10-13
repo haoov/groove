@@ -20,13 +20,14 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, picker, screen};
+use groove_ui_kit::widgets::{Button, caret_after, picker, screen};
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &SettingsUi) {
     let band = Spec::default().height(ctx.tokens.header);
     let [bar, area] = column_in(area, [band, Spec::fill()]);
     super::back(ctx, bar);
-    let [head, mut body] = column_in(area.pad(Edges::all(ctx.tokens.md)), [band, Spec::fill()]);
+    let inner = area.pad(Edges::all(ctx.tokens.md));
+    let [head, mut body] = column_in(inner, [band, Spec::fill()]);
     let query = settings.search.text();
     let searching = !query.is_empty();
     let shown: Vec<Row> = rows(app, settings)
@@ -44,11 +45,9 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
     if !searching && settings.section == Section::Clusters {
         return clusters::draw(ctx, body, app);
     }
-    let login = app.agent.login.as_ref();
+    let login = app.config.login.as_ref();
     if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
-        let pane = super::login_pane(ctx.window, &ctx.tokens);
-        body = body.until_y(pane.y);
-        signing_in(ctx, pane, terminal);
+        body = signing_in(ctx, inner, terminal);
     }
     let lines = lines(&shown, searching);
     let (row, heading) = (
@@ -101,12 +100,18 @@ fn group(ctx: &mut Ctx, rect: Rect, name: &str) {
     Label::new(name, ctx.styles.label(Role::Faint)).draw(ctx, line);
 }
 
-/// The sign-in's terminal, which has the keys while it runs.
-fn signing_in(ctx: &mut Ctx, pane: Rect, terminal: &Terminal) {
+/// The sign-in's terminal, which has the keys while it runs; returns the form's body above it.
+fn signing_in(ctx: &mut Ctx, inner: Rect, terminal: &Terminal) -> Rect {
+    let pane = super::login_pane(ctx.window, &ctx.tokens);
     groove_ui_kit::shape::ground(ctx, pane, Ground::Deep);
     ctx.hit(pane, Target::Login);
-    let origin = (pane.x + ctx.tokens.sm, pane.y + ctx.tokens.sm);
+    let inside = pane.pad(Edges::all(ctx.tokens.sm));
+    let origin = (inside.x, inside.y);
     screen(ctx, pane, origin, (&terminal.screen(), true));
+    let [upper, _] = column_in(inner, [Spec::fill(), Spec::fill()]);
+    let band = Spec::default().height(ctx.tokens.header);
+    let [_, body] = column_in(upper, [band, Spec::fill()]);
+    body
 }
 
 /// One row: its label, its group when a search mixes them, its value at the right.
@@ -153,9 +158,9 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         }
         Value::Input {
             shown,
-            focused,
+            caret,
             target,
-        } => input(ctx, room, (shown, *focused), target),
+        } => input(ctx, room, (shown, caret.as_deref()), target),
         Value::Picker {
             shown,
             role,
@@ -228,15 +233,19 @@ fn held_words(
 }
 
 /// A field on its own ground, raised while it has the keys.
-fn input(ctx: &mut Ctx, room: Rect, (shown, focused): (&str, bool), target: &Target) {
+fn input(ctx: &mut Ctx, room: Rect, (shown, caret): (&str, Option<&str>), target: &Target) {
     let sm = ctx.tokens.sm;
     let field = room.pad(Edges::across(0.0, sm));
-    let (ground, role) = match focused {
-        true => (Ground::Raised, Role::Text),
-        false => (Ground::Band, Role::Muted),
+    let (ground, role) = match caret {
+        Some(_) => (Ground::Raised, Role::Text),
+        None => (Ground::Band, Role::Muted),
     };
     groove_ui_kit::shape::ground(ctx, field, ground);
     ctx.hit(field, target.clone());
     let text = field.pad(Edges::across(sm, sm));
-    Label::new(shown, ctx.styles.code(role)).draw(ctx, text);
+    let style = ctx.styles.code(role);
+    Label::new(shown, style).draw(ctx, text);
+    if let Some(before) = caret {
+        caret_after(ctx, text, 0.0, before, style);
+    }
 }

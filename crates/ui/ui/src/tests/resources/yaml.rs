@@ -3,8 +3,8 @@
 use groove_controllers::Command;
 use groove_types::Described;
 
+use super::fixture::{crashing, lands, link, opened, runs, wheel};
 use super::pods;
-use super::tab::{crashing, lands, link, opened, runs, wheel};
 use crate::Ui;
 use crate::hit::Target;
 use crate::tests::settings::drawn;

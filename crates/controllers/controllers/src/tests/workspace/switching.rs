@@ -4,17 +4,17 @@ use groove_types::{Edit, WorktreeSpec};
 
 use super::*;
 
-fn send(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, command: Cmd) {
-    dispatch(command, state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
-}
-
 /// A worktree with its commits read, and a second one on `other` beside it, the first selected.
-fn two(home: &std::path::Path, spawner: &SyncSpawner) -> (crate::AppState, Services, String) {
-    pooled_clone(home);
-    let services = services(spawner, home);
-    let mut state = state(home);
-    worktree(&mut state, &services, spawner);
+fn two() -> (
+    tempfile::TempDir,
+    SyncSpawner,
+    crate::AppState,
+    Services,
+    String,
+) {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
     let (session, repo) = {
         let one = state.session.selected_worktree().expect("a worktree");
         (one.session.clone(), one.repo.clone())
@@ -28,17 +28,17 @@ fn two(home: &std::path::Path, spawner: &SyncSpawner) -> (crate::AppState, Servi
         repo,
         spec,
     };
-    send(&mut state, &services, spawner, Cmd::Session(add));
+    send(&mut state, &services, &spawner, Cmd::Session(add));
     send(
         &mut state,
         &services,
-        spawner,
+        &spawner,
         Cmd::Workspace(workspace::Command::GetCommits),
     );
     let open = state.session.selected().expect("the session");
     let other = open.worktrees.iter().find(|one| one.branch == "other");
     let other = other.expect("the second worktree").path.clone();
-    (state, services, other)
+    (home, spawner, state, services, other)
 }
 
 fn select(state: &mut crate::AppState, branch: &str) -> Cmd {
@@ -55,9 +55,7 @@ fn select(state: &mut crate::AppState, branch: &str) -> Cmd {
 
 #[test]
 fn a_commit_shown_goes_when_another_worktree_is_selected_and_stays_through_a_reload() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, other) = two(home.path(), &spawner);
+    let (_home, spawner, mut state, services, other) = two();
     let sha = state.workspace.log[0].sha.clone();
     let open = Cmd::Workspace(workspace::Command::OpenCommit { sha });
     send(&mut state, &services, &spawner, open);
@@ -102,9 +100,7 @@ fn a_commit_shown_goes_when_another_worktree_is_selected_and_stays_through_a_rel
 
 #[test]
 fn nothing_writes_before_the_worktree_selected_is_read() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let (mut state, services, other) = two(home.path(), &spawner);
+    let (_home, spawner, mut state, services, other) = two();
     let first = state
         .session
         .selected_worktree()

@@ -23,27 +23,14 @@ pub(super) fn create(
             .reply
             .failed("create_annotation needs the note itself");
     };
-    let Some((start_line, end_line)) = lines(&write) else {
+    let numbered = write
+        .number("line")
+        .map(|line| (line, write.number("end_line")));
+    let Some(anchor) = numbered.and_then(|(line, end)| Anchor::numbered(path, line, end)) else {
         return write.reply.failed("create_annotation needs a line");
-    };
-    let anchor = Anchor {
-        path,
-        start_line,
-        end_line,
     };
     let act = NoteAct::Create { anchor, content };
     noted(state, services, spawner, write, act);
-}
-
-/// The lines the note stands on, as the file numbers them.
-fn lines(write: &Write) -> Option<(u32, u32)> {
-    let line = |one: i64| u32::try_from(one.max(1) - 1).ok();
-    let start = line(write.number("line")?)?;
-    let end = match write.number("end_line") {
-        Some(one) => line(one)?,
-        None => start,
-    };
-    Some((start.min(end), start.max(end)))
 }
 
 /// A note's words written again.

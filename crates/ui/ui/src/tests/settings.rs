@@ -2,21 +2,13 @@
 
 use groove_controllers::config_service::Preference;
 use groove_controllers::{AppState, Command, config};
-use groove_gfx::Fonts;
 use groove_types::{Found, ProviderId, Secret, Tool};
 
 use super::*;
 use crate::hit::Target;
-use crate::view;
 
 pub(super) fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
-    let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());
-    let texts = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
-    (texts, hits)
+    render(app, ui, window())
 }
 
 pub(super) fn opened() -> (AppState, Ui) {
@@ -120,6 +112,13 @@ fn setup_shows_each_program_in_its_state_and_offers_the_claude_sign_in() {
     let asked = click(sign_in, &mut ui, &app, &hits);
     let login = config::Command::Login { cols: 80, rows: 24 };
     assert_eq!(asked, [Command::Config(login)]);
+
+    app.config.signing_in = true;
+    let (_, hits) = drawn(&app, &ui);
+    assert!(
+        hits.rect_of(&Target::SettingsLoginEnd).is_some(),
+        "while its terminal is spawned the sign-in can be cancelled"
+    );
 }
 
 #[test]
@@ -133,12 +132,7 @@ fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
     }
     ui.settings.section = crate::views::settings::Section::Providers;
     let tall = metrics(1280, 1600, 1.0);
-    let (frame, _) = view(&app, &ui, tall, &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &ui, tall);
     for shown in [
         "Notion",
         "GitHub",
@@ -167,15 +161,7 @@ fn a_form_taller_than_the_window_scrolls_to_its_last_group() {
     let app = crate::tests::bar::sourced(app, true, true);
     ui.settings.section = crate::views::settings::Section::Providers;
     let short = metrics(1280, 400, 1.0);
-    let texts = |ui: &Ui| {
-        let (frame, hits) = view(&app, ui, short, &mut Fonts::embedded());
-        let texts: Vec<String> = frame.layers()[0]
-            .texts
-            .iter()
-            .map(|t| t.text.clone())
-            .collect();
-        (texts, hits)
-    };
+    let texts = |ui: &Ui| render(&app, ui, short);
     let (before, hits) = texts(&ui);
     assert!(
         !before.iter().any(|t| t == "Forge tokens"),
@@ -194,12 +180,6 @@ fn a_form_taller_than_the_window_scrolls_to_its_last_group() {
     assert!(ui.settings.scroll > 0.0);
     let (after, _) = texts(&ui);
     assert!(after.iter().any(|t| t == "Forge tokens"), "{after:?}");
-}
-
-fn typed(text: &str, ui: &mut Ui, app: &AppState) {
-    for c in text.chars() {
-        press(Key::Char(c), Modifiers::default(), ui, app);
-    }
 }
 
 #[test]
@@ -262,9 +242,7 @@ fn the_palette_opens_settings_too() {
     let app = full_app();
     let mut ui = Ui::default();
     press(Key::Char('k'), ALT, &mut ui, &app);
-    for c in "settings".chars() {
-        press(Key::Char(c), Modifiers::default(), &mut ui, &app);
-    }
+    typed("settings", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert!(ui.settings.open);
     assert!(ui.palette().is_none());
@@ -301,13 +279,13 @@ fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
         enabled: Vec::new(),
     };
     app.config.config.as_mut().expect("a config").shared = Some(shared);
-    let plugin = |name: &str| groove_controllers::agent_service::skills::Plugin {
+    let plugin = |name: &str| groove_controllers::skill_service::skills::Plugin {
         name: name.into(),
         dir: format!("/data/shared/plugins/{name}").into(),
     };
-    app.agent.shared = Some(groove_controllers::agent_service::shared::Shared {
+    app.skill.shared = Some(groove_controllers::skill_service::shared::Shared {
         path: "/data/shared".into(),
-        marketplace: groove_controllers::agent_service::skills::Marketplace {
+        marketplace: groove_controllers::skill_service::skills::Marketplace {
             name: "groove-agent".into(),
             plugins: vec![plugin("platform"), plugin("review")],
         },
@@ -367,14 +345,14 @@ fn skill(id: &str, enabled: bool) -> groove_types::Skill {
 fn skilled() -> (AppState, Ui) {
     let (app, mut ui) = opened();
     let mut app = crate::tests::bar::sourced(app, false, false);
-    app.agent.skills = vec![
+    app.skill.skills = vec![
         skill("groove:save-task", true),
         skill("platform:follow-ups", false),
         skill("user:ship-it", true),
     ];
-    app.agent.shared = Some(groove_controllers::agent_service::shared::Shared {
+    app.skill.shared = Some(groove_controllers::skill_service::shared::Shared {
         path: "/data/shared".into(),
-        marketplace: groove_controllers::agent_service::skills::Marketplace {
+        marketplace: groove_controllers::skill_service::skills::Marketplace {
             name: "groove-agent".into(),
             plugins: Vec::new(),
         },

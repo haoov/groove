@@ -58,7 +58,12 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
-    out.extend(resources::wants(app, up, &ui.session.resources));
+    out.extend(resources::wants(
+        app,
+        up,
+        &ui.session.resources,
+        metrics.now,
+    ));
     out.extend(resources::tab_wants(
         app,
         up,
@@ -127,7 +132,7 @@ fn schemas(app: &AppState, ui: &Ui) -> Vec<Command> {
 
 /// The sign-in's grid to Setup's pane, while Settings shows it.
 fn login_fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Option<Command> {
-    let terminal = app.agent.login.as_ref().filter(|_| ui.settings.open)?;
+    let terminal = app.config.login.as_ref().filter(|_| ui.settings.open)?;
     let tokens = metrics.tokens();
     let pane = settings::login_pane(metrics.size.rect(), &tokens);
     let (cols, rows) = crate::layout::grid_in(pane, &tokens, metrics.cell);

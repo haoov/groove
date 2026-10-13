@@ -130,3 +130,96 @@ fn a_context_is_added_once_changed_on_its_own_and_removed() {
         .collect();
     assert_eq!(left, ["staging"]);
 }
+
+#[tokio::test]
+async fn an_older_config_held_after_a_newer_one_never_replaces_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    keeper.hold(dir.path(), with(12.0, 13.0).config.unwrap(), 1);
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path()).unwrap().expect("the file is there");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (14.0, 2));
+}
+
+#[tokio::test]
+async fn what_is_held_reaches_the_disk_on_a_flush_with_no_job_left() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    let panes = groove_types::Panes {
+        rail: 260.0,
+        agent: 600.0,
+        sidebar: 380.0,
+        commit: 120.0,
+        feed: 200.0,
+        manual: 220.0,
+    };
+    keeper.hold(dir.path(), with(15.0, 13.0).config.unwrap(), 1);
+    keeper.hold_panes(dir.path(), panes);
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path())
+        .unwrap()
+        .expect("the config is there");
+    assert_eq!(kept.ui.font_size, 15.0);
+    let file = groove_config::panes::path(dir.path());
+    assert_eq!(groove_config::panes::load(&file).unwrap(), Some(panes));
+}
+
+#[tokio::test]
+async fn after_a_failed_write_an_older_config_is_never_written() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    let blocker = dir.path().join("config.json.tmp");
+    std::fs::create_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    assert!(keeper.flush().await.is_err(), "the failure is said");
+    std::fs::remove_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(12.0, 13.0).config.unwrap(), 1);
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path())
+        .unwrap()
+        .expect("the failed one, tried again");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (14.0, 2));
+}
+
+#[tokio::test]
+async fn a_failed_write_is_tried_again_unless_a_newer_one_is_held() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    let blocker = dir.path().join("config.json.tmp");
+    std::fs::create_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    assert!(keeper.flush().await.is_err());
+    std::fs::remove_dir(&blocker).unwrap();
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path()).unwrap().expect("tried again");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (14.0, 2));
+    assert!(keeper.quit().await.is_ok(), "nothing is lost");
+
+    std::fs::create_dir(&blocker).unwrap();
+    keeper.hold(dir.path(), with(15.0, 13.0).config.unwrap(), 3);
+    assert!(keeper.flush().await.is_err());
+    keeper.hold(dir.path(), with(16.0, 13.0).config.unwrap(), 4);
+    std::fs::remove_dir(&blocker).unwrap();
+    keeper.flush().await.unwrap();
+    let kept = crate::load(dir.path()).unwrap().expect("the newer one");
+    assert_eq!((kept.ui.font_size, keeper.kept()), (16.0, 4));
+}
+
+#[tokio::test]
+async fn a_write_that_failed_out_of_sight_fails_the_quit() {
+    let dir = tempfile::tempdir().unwrap();
+    let keeper = crate::Keeper::default();
+    std::fs::create_dir(dir.path().join("config.json.tmp")).unwrap();
+    keeper.hold(dir.path(), with(14.0, 13.0).config.unwrap(), 2);
+    let _lost = keeper.flush().await;
+    assert!(keeper.quit().await.is_err(), "the quit says it");
+}
+
+#[test]
+fn a_skill_switched_before_the_first_run_says_there_is_no_config() {
+    let mut state = State::default();
+    let refused = state.switch_skill("user:mine", false).map(drop);
+    let said = refused.expect_err("nothing to write").message;
+    assert!(said.contains("first run"), "{said}");
+}

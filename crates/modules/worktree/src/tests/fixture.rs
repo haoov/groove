@@ -98,7 +98,7 @@ impl Fixture {
 
     /// The pooled clone, registered.
     pub async fn repo(&self) -> groove_types::Repo {
-        let clones = self.pool.list();
+        let clones = self.pool.list().await.unwrap();
         let clone = Pool::resolve("mayo", &clones).unwrap();
         self.pool.register(clone).await.unwrap()
     }

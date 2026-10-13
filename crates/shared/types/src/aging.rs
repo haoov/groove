@@ -59,7 +59,7 @@ pub fn agings(
                     out.push(aging(cell, received, said, Some(lead.to_string())));
                 }
             }
-            _ if column.date || name == "age" || SINCE.contains(&name.as_str()) => {
+            _ if tells_time(column) => {
                 if let Some(said) = crate::cells::read_age(text) {
                     out.push(aging(cell, received, said, None));
                 }
@@ -68,6 +68,12 @@ pub fn agings(
         }
     }
     out
+}
+
+/// Whether a server column writes its cells as a time.
+pub fn tells_time(column: &TableColumn) -> bool {
+    let name = column.name.to_lowercase();
+    column.date || name == "age" || SINCE.contains(&name.as_str())
 }
 
 /// `kubectl`'s age: seconds below 2 minutes, minutes and seconds below 10, and so on up to years.

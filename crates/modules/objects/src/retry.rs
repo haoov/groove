@@ -23,6 +23,14 @@ impl Backoff {
         }
     }
 
+    /// As `after`, but a followed log waits on a 400 as on a transient error.
+    pub(crate) fn after_logs(&mut self, error: &Error, previous: bool) -> Duration {
+        match error {
+            Error::Api { status: 400, .. } if !previous => self.grow(),
+            _ => self.after(error),
+        }
+    }
+
     /// The wait now; the next one doubles.
     pub(crate) fn grow(&mut self) -> Duration {
         let wait = self.0;

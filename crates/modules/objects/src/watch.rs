@@ -1,11 +1,13 @@
 //! One watcher: the list a page at a time, then the watch from its version, in batches.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{Stream, StreamExt};
 use groove_kube::{Change, Client, Query};
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp, WatchKey};
+use tokio::sync::Notify;
 use tokio::sync::watch as signal;
 use tokio::time::Instant;
 
@@ -18,7 +20,7 @@ const MOST: usize = 10_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Batch {
-    /// Every row the list holds now, which replace the ones held.
+    /// Every row the list holds now, by namespace then name, which replace the ones held.
     Reset {
         columns: Vec<TableColumn>,
         rows: Vec<ObjectRow>,
@@ -40,19 +42,41 @@ pub enum Delta {
 
 /// What ends a watcher: stopped or dropped, the watcher ends at its next step.
 #[derive(Debug)]
-pub struct Stop(signal::Sender<bool>);
+pub struct Stop(signal::Sender<bool>, Arc<Notify>);
 
 impl Stop {
-    pub(crate) fn subscribe(&self) -> signal::Receiver<bool> {
-        self.0.subscribe()
+    pub(crate) fn subscribe(&self) -> Heard {
+        Heard(self.0.subscribe(), self.1.clone())
     }
 
     pub fn new() -> Self {
-        Self(signal::channel(false).0)
+        Self(signal::channel(false).0, Arc::new(Notify::new()))
     }
 
     pub fn stop(&self) {
         let _ = self.0.send(true);
+    }
+
+    /// A watcher waiting to open again tries now.
+    pub fn wake(&self) {
+        self.1.notify_waiters();
+    }
+}
+
+pub(crate) struct Heard(signal::Receiver<bool>, Arc<Notify>);
+
+impl Heard {
+    pub(crate) async fn stopped(&mut self) {
+        let _ = self.0.wait_for(|on| *on).await;
+    }
+
+    /// Waits `wait`, or less when woken; false once stopped.
+    pub(crate) async fn rest(&mut self, wait: Duration) -> bool {
+        tokio::select! {
+            _ = self.0.wait_for(|on| *on) => false,
+            _ = tokio::time::sleep(wait) => true,
+            _ = self.1.notified() => true,
+        }
     }
 }
 
@@ -69,12 +93,12 @@ pub fn watch(
     stop: &Stop,
     send: impl Fn(Batch) + Send + Sync + 'static,
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
-    let mut stopped = stop.0.subscribe();
+    let mut heard = stop.subscribe();
     async move {
         let (mut backoff, mut shown) = (Backoff::new(), false);
         loop {
             let ended = tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
+                _ = heard.stopped() => return,
                 ended = cycle(&paths, &key, &send, (&mut shown, &mut backoff)) => ended,
             };
             let wait = match ended {
@@ -84,9 +108,8 @@ pub fn watch(
                     backoff.after(&e)
                 }
             };
-            tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
-                _ = tokio::time::sleep(wait) => {}
+            if !heard.rest(wait).await {
+                return;
             }
         }
     }
@@ -162,7 +185,7 @@ async fn listed(
     Ok((page.version, table))
 }
 
-/// By namespace then name, the order the store keeps, so the main thread sorts nothing.
+/// By namespace then name, the order the store keeps.
 fn sorted(mut rows: Vec<ObjectRow>) -> Vec<ObjectRow> {
     rows.sort_by(|a, b| (&a.namespace, &a.name).cmp(&(&b.namespace, &b.name)));
     rows

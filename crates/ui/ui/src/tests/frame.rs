@@ -4,18 +4,10 @@ use groove_types::{Rgb, Screen, ScreenCell};
 
 use crate::input::{Key, Modifiers, encode};
 use crate::layout::{Layout, Split};
-use crate::tests::{metrics, press};
+use crate::tests::{all_texts, metrics, press};
 use crate::{Ui, view};
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::widgets::grid_of;
-
-fn texts(frame: &groove_gfx::Frame) -> Vec<String> {
-    frame
-        .layers()
-        .iter()
-        .flat_map(|l| l.texts.iter().map(|t| t.text.clone()))
-        .collect()
-}
 
 #[test]
 fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
@@ -33,7 +25,7 @@ fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
         Palette::LATTE.mantle,
         "the chrome sits under the work"
     );
-    let texts = texts(&frame);
+    let texts = all_texts(&frame);
     assert!(texts.iter().any(|t| t == "Board"));
     assert!(texts.iter().any(|t| t == "LIVE"), "{texts:?}");
     assert!(

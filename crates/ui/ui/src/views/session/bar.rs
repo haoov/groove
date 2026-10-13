@@ -10,7 +10,7 @@ use groove_gfx::Edges;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::box_in;
+use groove_ui_kit::shape::square;
 use groove_ui_kit::text::row;
 use groove_ui_kit::widgets::{Button, Toggle};
 
@@ -30,7 +30,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 /// The reload, the skills menu and the auto-approve switch, from the row's own end.
 fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let id = open.session.id.clone();
-    let stale = app.agent.stale(&id);
+    let started = app.agent.agent(&id).map(|one| one.started_at);
+    let stale = started.is_some_and(|at| app.skill.newer_than(at));
     let auto = open.state.auto_approve;
     let (ground, xs) = (ctx.styles.ground(), ctx.tokens.xs);
     let mut room = line.pad(Edges::across(0.0, xs));
@@ -70,10 +71,10 @@ fn reload_role(stale: bool) -> Role {
 /// What the row says when nothing waits: the agent's own name for itself.
 fn said(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let size = ctx.tokens.small;
-    let box_ = box_in(line, line.x + ctx.tokens.md, size);
+    let box_ = square(line.pad(Edges::across(ctx.tokens.md, 0.0)), size);
     groove_ui_kit::widgets::icon(ctx, box_, Mark::Busy, Role::Faint);
     let style = ctx.styles.small(Role::Faint);
     let at = ctx.tokens.md + size + ctx.tokens.xs;
-    let count = counted(app.agent.skills_for(&open.session.kind).len());
+    let count = counted(app.skill.skills_for(&open.session.kind).len());
     row(ctx, line, at, &count, style);
 }

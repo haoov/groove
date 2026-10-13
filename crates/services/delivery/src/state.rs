@@ -20,6 +20,8 @@ pub struct State {
     pub reviews: Vec<ReviewMr>,
     /// The review queue has been read once.
     pub reviews_read: bool,
+    /// Moves on with every answer taken for a worktree.
+    taken: BTreeMap<WorktreeId, u64>,
 }
 
 /// What an MR write does.
@@ -70,6 +72,7 @@ impl State {
         delivered: Delivered,
         now: Timestamp,
     ) -> Vec<Line> {
+        *self.taken.entry(worktree.clone()).or_default() += 1;
         let before = self.held(worktree).and_then(Held::state);
         let mut held = Held::from(delivered);
         held.read_at = Some(now);
@@ -78,8 +81,19 @@ impl State {
         lines
     }
 
+    /// How many answers were taken so far for the worktree.
+    pub fn taken(&self, worktree: &WorktreeId) -> u64 {
+        self.taken.get(worktree).copied().unwrap_or_default()
+    }
+
+    /// Whether an answer was taken for the worktree since `taken` was read.
+    pub fn overtaken(&self, worktree: &WorktreeId, taken: u64) -> bool {
+        self.taken(worktree) != taken
+    }
+
     /// The forge has no MR for the worktree.
     pub fn gone(&mut self, worktree: &WorktreeId) {
+        *self.taken.entry(worktree.clone()).or_default() += 1;
         self.held.remove(worktree);
     }
 

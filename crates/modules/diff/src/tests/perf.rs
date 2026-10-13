@@ -45,9 +45,10 @@ fn time_reading_a_file() {
         }
         let full = started.elapsed() / RUNS;
 
+        let runtime = tokio::runtime::Runtime::new().expect("a runtime");
         let started = Instant::now();
         for _ in 0..RUNS {
-            reopened(dir.path(), path, file.old.clone());
+            runtime.block_on(reopened(dir.path(), path, file.old.clone()));
         }
         let again = started.elapsed() / RUNS;
         println!("{lines:>5} lines: open {full:?}, reopen {again:?}");

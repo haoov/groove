@@ -14,7 +14,6 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::{ago, row};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
@@ -61,7 +60,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
         columns: &columns,
         rows: Rows {
             first,
-            under: height(&tokens) - first,
+            under: super::row::card(&tokens) - first,
             ruled: true,
         },
         count: asked.len(),
@@ -70,14 +69,10 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
         sorted: Some(ui.board.reviews.sorted()),
     };
     let now = ctx.now;
-    let extent = table.draw(ctx, body, |at| shown(asked[at], now));
+    let laid = table.draw(ctx, body, |at| shown(asked[at], now));
     ctx.app
         .hits
-        .scrolls(Scroller::Column(List::Review as u8), extent);
-}
-
-pub fn height(tokens: &Tokens) -> f32 {
-    super::row::item(tokens) + tokens.line + tokens.xs
+        .scrolls(Scroller::Column(List::Review as u8), laid.extent);
 }
 
 fn columns() -> [Column<'static, Target>; 2] {
@@ -112,16 +107,12 @@ fn shown(mr: &ReviewMr, now: Timestamp) -> Shown<'_, Target> {
         let (word, role) = crate::components::review_said(review);
         under.push(Cell::small(word, role).badge());
     }
-    Shown {
-        cells: vec![
-            Cell::label(mr.title.as_str(), Role::Text).mark(Mark::of_forge(mr.forge), 0, state(mr)),
-            Cell::small(ago(mr.updated_at.age_at(now)), Role::Faint),
-        ],
-        under,
-        target: Some(Target::Review(mr.project.clone(), mr.iid)),
-        acts: Vec::new(),
-        band: false,
-    }
+    Shown::row(vec![
+        Cell::label(mr.title.as_str(), Role::Text).mark(Mark::of_forge(mr.forge), 0, state(mr)),
+        Cell::small(ago(mr.updated_at.age_at(now)), Role::Faint),
+    ])
+    .under(under)
+    .target(Target::Review(mr.project.clone(), mr.iid))
 }
 
 fn state(mr: &ReviewMr) -> Role {

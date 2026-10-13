@@ -54,7 +54,26 @@ fn past_its_cap_a_stream_sheds_its_oldest_lines_and_counts_them_still() {
         held.buffer().lines(),
         "the text sheds the same lines"
     );
-    assert!(logs.release("resource").contains(&key));
-    logs.drop_unread(&key);
+    assert!(logs.release("resource").contains(&(key.clone(), 1)));
+    logs.drop_unread(&key, 1);
     assert!(logs.get(&key).is_none());
+}
+
+#[test]
+fn a_line_holding_carriage_returns_is_shed_whole_past_the_cap() {
+    let mut logs = Logs::default();
+    let key = worker();
+    logs.lease(&key, "resource");
+    let bar = "#\r".repeat(CAP / 16);
+    for at in 0..12 {
+        logs.apply(&key, Logged::Lines(vec![line(at, &bar)]));
+    }
+    let held = logs.get(&key).expect("the stream");
+    assert!(held.bytes() <= CAP, "{} bytes", held.bytes());
+    let text = held.buffer().text();
+    assert!(text.len() <= CAP * 2, "{} bytes of text", text.len());
+    assert!(
+        text.starts_with("14:02:"),
+        "the text starts on a whole line"
+    );
 }

@@ -73,6 +73,17 @@ pub fn watch(
     })
 }
 
+/// The same watch, its tree walked off the async threads.
+pub async fn watching(
+    dir: PathBuf,
+    also: Vec<PathBuf>,
+    quiet: Duration,
+    on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
+) -> Result<Watch> {
+    let walked = tokio::task::spawn_blocking(move || watch(&dir, also, quiet, on_change)).await;
+    walked.map_err(|e| Error::new(ErrorKind::Io, format!("cannot watch: {e}")))?
+}
+
 fn failed(e: notify::Error) -> Error {
     Error::new(ErrorKind::Io, format!("cannot watch: {e}"))
 }

@@ -6,6 +6,7 @@ use groove_controllers::{Command, workspace};
 use super::explorer::browsing;
 use super::*;
 use crate::input::{Input, Modifiers};
+use crate::tests::render;
 use crate::views::session::Asked;
 use crate::{Losing, Of};
 
@@ -209,12 +210,7 @@ fn deleting_a_path_asks_in_its_own_row_first() {
     assert!(asked.is_empty(), "it asks before it deletes");
     assert_eq!(ui.losing(), Some(&Losing::Path("src".into())));
 
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
+    let (texts, hits) = render(&app, &ui, window());
     assert!(texts.iter().any(|one| one == "delete it?"), "{texts:?}");
     let rect = hits.rect_of(&Target::Discard).expect("the answer");
     let done = crate::input::handle(

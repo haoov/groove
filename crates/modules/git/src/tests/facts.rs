@@ -66,6 +66,18 @@ async fn the_base_ref_prefers_the_pin_then_falls_back() {
 }
 
 #[tokio::test]
+async fn the_base_branch_is_the_base_ref_named_on_origin() {
+    let fx = Fixture::new();
+    let git = fx.git();
+    let pinned = git.base_branch(Some("release/1.0")).await.unwrap();
+    assert_eq!(pinned, "release/1.0");
+    let missing = git.base_branch(Some("no-such-branch")).await.unwrap();
+    assert_eq!(missing, "main", "origin/HEAD read as its branch");
+    sh(&fx.work, &["remote", "set-head", "origin", "--delete"]);
+    assert_eq!(git.base_branch(None).await.unwrap(), "main");
+}
+
+#[tokio::test]
 async fn a_remote_branch_of_the_same_name_the_branch_does_not_track_is_not_its_own() {
     let fx = Fixture::new();
     let git = fx.git();

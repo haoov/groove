@@ -64,18 +64,7 @@ pub(crate) fn row(
 
 /// `auto · prune · heal`, as its sync policy reads; `manual` without one.
 pub(crate) fn automated(spec: Option<&serde_json::Value>) -> String {
-    let Some(policy) = spec.and_then(|one| one.pointer("/syncPolicy/automated")) else {
-        return "manual".to_string();
-    };
-    let on = |key: &str| policy[key].as_bool().unwrap_or_default();
-    let mut said = "auto".to_string();
-    if on("prune") {
-        said.push_str(" · prune");
-    }
-    if on("selfHeal") {
-        said.push_str(" · heal");
-    }
-    said
+    groove_types::sync_policy(spec.and_then(crate::describe::automated))
 }
 
 /// What it synced to: its one revision, or each of its sources', shortened.
@@ -84,7 +73,7 @@ pub(crate) fn revisions(status: Option<&serde_json::Value>) -> String {
         return String::new();
     };
     if let Some(one) = sync["revision"].as_str().filter(|one| !one.is_empty()) {
-        return short(one);
+        return groove_types::short_sha(one);
     }
     let all = sync["revisions"]
         .as_array()
@@ -93,16 +82,7 @@ pub(crate) fn revisions(status: Option<&serde_json::Value>) -> String {
     let all: Vec<String> = all
         .iter()
         .filter_map(|one| one.as_str())
-        .map(short)
+        .map(groove_types::short_sha)
         .collect();
     all.join(" · ")
-}
-
-/// A commit's first seven characters; a tag or a chart version as it is.
-pub(crate) fn short(revision: &str) -> String {
-    let commit = revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit());
-    match commit {
-        true => revision[..7].to_string(),
-        false => revision.to_string(),
-    }
 }

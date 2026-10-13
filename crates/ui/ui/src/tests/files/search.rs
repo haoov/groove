@@ -1,6 +1,7 @@
 //! The sidebar's search bar: where it opens, and what a path or a text narrows.
 
 use super::*;
+use crate::tests::{all_texts, typed};
 
 #[test]
 fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
@@ -13,14 +14,7 @@ fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
         "the keyboard is in the bar"
     );
 
-    for c in "two/be".chars() {
-        press(
-            Key::Char(c),
-            crate::input::Modifiers::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("two/be", &mut ui, &app);
     let left = crate::views::session::files::narrowed(&app, &ui);
     let paths: Vec<&str> = left.iter().map(|file| file.path.as_str()).collect();
     assert_eq!(paths, ["src/two/beta.rs"], "the one path that matches");
@@ -81,14 +75,7 @@ fn the_chord_shows_the_bar_it_opens_from_a_tab_that_has_no_sidebar() {
     );
     assert!(ui.session.bar.typing.is_some(), "and it has the keyboard");
 
-    for c in "two".chars() {
-        press(
-            Key::Char(c),
-            crate::input::Modifiers::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("two", &mut ui, &app);
     let left = crate::views::session::files::narrowed(&app, &ui);
     let paths: Vec<&str> = left.iter().map(|file| file.path.as_str()).collect();
     assert_eq!(paths, ["src/two/beta.rs"]);
@@ -146,14 +133,7 @@ fn a_path_finds_a_file_that_never_changed() {
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
     press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    for c in "beta".chars() {
-        press(
-            Key::Char(c),
-            crate::input::Modifiers::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("beta", &mut ui, &app);
     let left = crate::views::session::files::narrowed(&app, &ui);
     let paths: Vec<&str> = left.iter().map(|file| file.path.as_str()).collect();
     assert_eq!(paths, ["src/two/beta.rs"], "a file outside the diff");
@@ -166,14 +146,7 @@ fn a_changed_file_stands_before_an_unchanged_one_and_only_once() {
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
     press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    for c in "alpha".chars() {
-        press(
-            Key::Char(c),
-            crate::input::Modifiers::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("alpha", &mut ui, &app);
     let left = crate::views::session::files::narrowed(&app, &ui);
     let paths: Vec<&str> = left.iter().map(|file| file.path.as_str()).collect();
     assert_eq!(paths, ["src/one/alpha.rs", "src/one/alpha_test.rs"]);
@@ -208,14 +181,7 @@ fn a_file_with_no_change_offers_nothing_to_stage() {
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
     press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    for c in "beta".chars() {
-        press(
-            Key::Char(c),
-            crate::input::Modifiers::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("beta", &mut ui, &app);
     ui.hover = Some(Target::File("src/two/beta.rs".into()));
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(
@@ -240,12 +206,7 @@ fn a_file_with_no_change_shows_its_own_lines() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let texts: Vec<String> = frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.texts.iter())
-        .map(|t| t.text.clone())
-        .collect();
+    let texts: Vec<String> = all_texts(&frame);
     assert!(
         !texts.iter().any(|t| t.contains("No change in this")),
         "the tab does not claim there is nothing: {texts:?}"
@@ -265,14 +226,7 @@ fn opening_a_file_the_change_does_not_hold_shows_it_as_a_file() {
     ui.session.view = groove_types::DiffView::Inline;
     ui.focus = crate::Focus::Sidebar;
     press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    for c in "beta".chars() {
-        press(
-            Key::Char(c),
-            crate::input::Modifiers::default(),
-            &mut ui,
-            &app,
-        );
-    }
+    typed("beta", &mut ui, &app);
     let asked = press(
         Key::Enter,
         crate::input::Modifiers::default(),

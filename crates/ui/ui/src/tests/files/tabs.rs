@@ -94,6 +94,25 @@ fn the_middle_button_closes_a_tab() {
 }
 
 #[test]
+fn an_open_question_or_menu_takes_the_middle_button_and_escape_closes_the_question() {
+    let (app, mut ui) = tabbed();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let tab = hits
+        .rect_of(&Target::OpenTab("a.rs".into()))
+        .expect("the tab");
+    let (x, y) = (tab.x + tab.w / 3.0, tab.y + tab.h / 2.0);
+    ui.overlay = Some(crate::Overlay::Losing(Losing::Tab("b.rs".into())));
+    let asked = handle(Input::Middle { x, y }, &mut ui, &app, &hits, window());
+    assert!(asked.is_empty(), "{asked:?}");
+    let escape = Input::Key {
+        key: crate::input::Key::Escape,
+        mods: Default::default(),
+    };
+    handle(escape, &mut ui, &app, &hits, window());
+    assert_eq!(ui.overlay, None);
+}
+
+#[test]
 fn a_double_click_on_a_tab_keeps_it() {
     let (app, mut ui) = tabbed();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());

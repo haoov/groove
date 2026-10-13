@@ -433,3 +433,30 @@ fn an_answer_read_for_another_selection_is_dropped() {
         "read in the working mode, landed in the base one"
     );
 }
+
+#[test]
+fn a_watch_that_lands_after_its_worktree_left_installs_nothing() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    state.workspace.clear();
+    workspace::follow(&mut state, &spawner);
+    let session = state.session.selected.clone().expect("a session");
+    let close = Cmd::Session(session::Command::Close { session });
+    dispatch(close, &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert!(state.workspace.watching.is_none(), "no session is open");
+}
+
+#[test]
+fn a_worktree_followed_again_while_its_watch_is_built_builds_no_second_one() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    state.workspace.clear();
+    let held = crate::tests::fixture::Held::over(&spawner);
+    workspace::follow(&mut state, &held);
+    let first = held.take().len();
+    workspace::follow(&mut state, &held);
+    assert_eq!(held.take().len(), 0, "the first follow asked {first} jobs");
+}

@@ -63,6 +63,18 @@ fn an_added_context_shows_its_settings_and_login_and_the_rest_offer_an_add() {
 }
 
 #[test]
+fn the_context_column_fits_the_widest_name_not_the_longest() {
+    let (mut app, ui) = clusters();
+    for name in ["iiiiiiiiijjj", "WMWMWMWMWM"] {
+        app.config.add_cluster(name);
+    }
+    let (texts, _) = drawn(&app, &ui);
+    for name in ["iiiiiiiiijjj", "WMWMWMWMWM"] {
+        assert!(texts.iter().any(|one| one == name), "{name}: {texts:?}");
+    }
+}
+
+#[test]
 fn each_line_lights_under_the_pointer_and_only_its_toggles_and_buttons_act() {
     let (app, mut ui) = clusters();
     let (_, hits) = drawn(&app, &ui);
@@ -96,11 +108,7 @@ fn a_context_s_dot_opens_the_hues_and_one_picked_becomes_its_colour() {
         .expect("hub's dot");
     click(dot, &mut ui, &app, &hits);
     let (frame, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    let texts: Vec<String> = frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.texts.iter().map(|one| one.text.clone()))
-        .collect();
+    let texts: Vec<String> = all_texts(&frame);
     for hue in groove_types::Hue::ALL {
         assert!(
             texts.iter().any(|one| one == hue.name()),

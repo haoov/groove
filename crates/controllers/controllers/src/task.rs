@@ -180,6 +180,7 @@ fn stored(services: &Services, spawner: &dyn Spawner) {
 pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     stored(services, spawner);
     if state.task.reading {
+        state.task.again = true;
         return;
     }
     let sources = state.task.sources(state.config.config.as_ref());
@@ -193,15 +194,20 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let job = state.begin("reading the tasks");
     spawner.spawn(Box::pin(async move {
         let read = list(&sources).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.end(job);
-            state.task.reading = false;
-            match read {
-                Ok(tasks) => state.task.loaded(tasks),
-                Err(e) => state.failed(e),
-            }
-            attention::reread(state, Timestamp::now());
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                state.task.reading = false;
+                match read {
+                    Ok(tasks) => state.task.loaded(tasks),
+                    Err(e) => state.failed(e),
+                }
+                attention::reread(state, Timestamp::now());
+                if std::mem::take(&mut state.task.again) {
+                    load(state, services, spawner);
+                }
+            },
+        ) as Continuation
     }));
 }
 

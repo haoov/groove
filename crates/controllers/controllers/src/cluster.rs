@@ -84,11 +84,7 @@ pub fn dispatch(
         Command::CheckContext { context } => check(state, spawner, context),
         Command::Discover { context, again } => objects::discover(state, spawner, context, again),
         Command::Watch { reader, key } => objects::watch(state, spawner, &reader, key),
-        Command::Release { reader } => {
-            objects::release(state, spawner, &reader);
-            follows::release(state, spawner, &reader);
-            logs::release(state, spawner, &reader);
-        }
+        Command::Release { reader } => release(state, spawner, &reader),
         Command::Follow { reader, key } => follows::follow(state, spawner, &reader, *key),
         Command::Caret { key, edit } => {
             state.cluster.store.follows.yamls.edit(&key, &edit);
@@ -116,10 +112,46 @@ pub fn dispatch(
     }
 }
 
+/// Every stream `reader` leaves unread ends after `IDLE`, unless read again by then.
+fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
+    let store = &mut state.cluster.store;
+    later(spawner, store.release(reader), |state, key, n| {
+        state.cluster.store.drop_unread(key, n)
+    });
+    later(spawner, store.follows.release(reader), |state, key, n| {
+        state.cluster.store.follows.drop_unread(key, n)
+    });
+    later(spawner, store.logs.release(reader), |state, key, n| {
+        state.cluster.store.logs.drop_unread(key, n)
+    });
+}
+
+/// Each key handed to `dropped` once `IDLE` has passed, with the release it came from.
+fn later<K: Send + 'static>(
+    spawner: &dyn Spawner,
+    keys: Vec<(K, u64)>,
+    dropped: fn(&mut AppState, &K, u64),
+) {
+    for (key, released) in keys {
+        let sink = spawner.sink();
+        spawner.detach(Box::pin(async move {
+            tokio::time::sleep(objects::IDLE).await;
+            sink.deliver(Box::new(
+                move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                    dropped(state, &key, released)
+                },
+            ));
+        }));
+    }
+}
+
 /// One scan at a time; a second ask while it runs is the same answer.
 /// The contexts read; with `check`, every context added to Groove checked again.
 fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
     if !state.cluster.begin_scan() {
+        if check {
+            check_added(state, spawner);
+        }
         return;
     }
     let paths = state.env.kubeconfig.clone();
@@ -136,9 +168,21 @@ fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
                 Err(e) => {
                     apply(Event::Cluster(ClusterEvent::Unread), state);
                     state.failed(e);
+                    unscanned(spawner);
                 }
             },
         ) as Continuation
+    }));
+}
+
+/// A scan that failed may be asked again once `IDLE` has passed.
+fn unscanned(spawner: &dyn Spawner) {
+    let sink = spawner.sink();
+    spawner.detach(Box::pin(async move {
+        tokio::time::sleep(objects::IDLE).await;
+        sink.deliver(Box::new(
+            |state: &mut AppState, _: &Services, _: &dyn Spawner| state.cluster.scanned = false,
+        ));
     }));
 }
 

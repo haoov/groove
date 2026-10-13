@@ -8,7 +8,7 @@ use groove_controllers::agent_service::Agent;
 
 use crate::hit::Target;
 use crate::input::{Delta, Input};
-use crate::tests::{WINDOW, app, full_app, handle, metrics, open, window};
+use crate::tests::{WINDOW, app, full_app, handle, metrics, open, render, window};
 use crate::{Ui, view};
 use groove_ui_kit::text::ago;
 
@@ -70,12 +70,7 @@ fn a_row_says_how_long_the_agent_has_waited() {
     working(&mut app, "a", 0);
     let mut metrics = window();
     metrics.now = Timestamp::new(7_200);
-    let (frame, _) = view(&app, &Ui::default(), metrics, &mut Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &Ui::default(), metrics);
     assert!(texts.iter().any(|t| t == "2h"), "{texts:?}");
     assert!(texts.iter().any(|t| t == "working"));
 }

@@ -1,0 +1,14 @@
+[package]
+name = "groove-routine-service"
+description = "The routine capability: the routine files and their runs, which event starts which and where"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-routines = { path = "../../modules/routines" }
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true

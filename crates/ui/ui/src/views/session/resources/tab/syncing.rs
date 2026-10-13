@@ -34,7 +34,7 @@ pub(super) fn draw(
     ctx: &mut Ctx,
     body: Rect,
     (tab, part): (&Opened, &AppPart),
-    dragged: Option<&BTreeMap<String, f32>>,
+    dragged: &BTreeMap<String, f32>,
 ) {
     let row = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [line, room] = column_in(body, [row, Spec::fill()]);
@@ -49,7 +49,7 @@ pub(super) fn draw(
         grouped::order(&mut stage.steps, tab, key);
     }
     hairline(ctx, line, ctx.styles.line());
-    progress(ctx, inside, (part, operation), &stages);
+    progress(ctx, line, (part, operation), &stages);
     let mut lines = Vec::new();
     for stage in &stages {
         let shut = tab.folded(&stage.title, stage.settled());
@@ -85,7 +85,7 @@ fn progress(
     let steps = stages.iter().flat_map(|stage| &stage.steps);
     let total = steps.clone().count().max(1);
     let done = steps.filter(|one| one.state == State::Done).count();
-    let mut room = line;
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let said = format!("{done} of {total}");
     Label::new(&said, ctx.styles.small(Role::Faint)).right(ctx, &mut room, ctx.tokens.sm);
     let gap = Spec::default().width(ctx.tokens.md);
@@ -94,18 +94,15 @@ fn progress(
     let thick = Spec::default().height(ctx.tokens.sm);
     let [_, track, _] = column_in(bar, [Spec::fill(), thick, Spec::fill()]);
     Panel::default().ground(ctx.styles.line()).draw(ctx, track);
-    let filled = Rect {
-        w: track.w * done as f32 / total as f32,
-        ..track
-    };
+    let part = Spec::default().width(track.w * done as f32 / total as f32);
+    let [filled, _] = row_in(track, [part, Spec::fill()]);
     let working = ctx.styles.color(Role::Working);
     Panel::default().ground(working).draw(ctx, filled);
     argo::operation(ctx, room, operation, ctx.now);
 }
 
-/// `▾ ⟳ wave 0 38 16 applied · 2 applying · 20 waiting`.
+/// `⟳ wave 0 38 16 applied · 2 applying · 20 waiting`, after the fold caret.
 fn heading<'a>(stage: &'a Stage<'a>, shut: bool, turn: u8) -> Shown<'a, Target> {
-    let fold = if shut { "▸" } else { "▾" };
     let (mark, role) = match () {
         _ if stage.count(State::Failed) > 0 => ("✗", Role::Bad),
         _ if stage.count(State::Applying) > 0 => ("⟳", Role::Working),
@@ -126,13 +123,12 @@ fn heading<'a>(stage: &'a Stage<'a>, shut: bool, turn: u8) -> Shown<'a, Target> 
     .map(|state| format!("{} {}", stage.count(state), word(state)))
     .collect();
     let cells = vec![
-        Cell::small(fold, Role::Ghost),
         marked(mark, role, turn),
         Cell::small(stage.title.as_str(), Role::Text),
         Cell::small(stage.steps.len().to_string(), Role::Ghost),
         Cell::small(said.join(" · "), role),
     ];
-    grouped::heading(&stage.title, cells)
+    grouped::heading((&stage.title, shut), cells)
 }
 
 fn step<'a>(one: &Step<'a>, turn: u8) -> Shown<'a, Target> {
@@ -152,11 +148,11 @@ fn step<'a>(one: &Step<'a>, turn: u8) -> Shown<'a, Target> {
     } else {
         Role::Faint
     };
-    grouped::row(vec![
+    Shown::row(vec![
         marked(mark, role, turn),
         kind(one),
-        Cell::small(one.name, Role::Text),
-        Cell::small(said, tone),
+        Cell::body(one.name, Role::Text),
+        Cell::body(said, tone),
     ])
 }
 

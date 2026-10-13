@@ -28,6 +28,8 @@ pub struct Finding {
     pub at: usize,
     /// The view the hits were read from.
     pub view: Face,
+    /// What they were read from: the documents' stamp and the edited buffer's revision.
+    pub read: (u64, u64),
 }
 
 impl Finding {
@@ -81,6 +83,13 @@ impl Finding {
             .filter(|hit| hit.row == row)
             .map(|hit| hit.range.clone())
     }
+}
+
+/// What the hits would be read from now.
+pub fn read_of(app: &AppState, ui: &crate::Ui) -> (u64, u64) {
+    let edited = crate::views::session::diff::edited(app, ui);
+    let revision = edited.map_or(0, |one| one.buffer.revision());
+    (app.workspace.stamp, revision)
 }
 
 /// Every match of `query` in what the view shows, in reading order.

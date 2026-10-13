@@ -1,157 +1,32 @@
 //! An object's own tab: opened from its row, what it reads, and what it draws.
 
 use groove_controllers::cluster::Command as Cluster;
-use groove_controllers::cluster_service::Followed;
 use groove_controllers::{AppState, Command};
-use groove_types::{
-    Condition, Container, Described, EventRow, FollowKey, Owner, PodPart, State, Timestamp, Usage,
-};
+use groove_types::{Described, EventRow, FollowKey, Timestamp, Usage};
 
-use super::{kind, listing, pods};
+use super::fixture::{base, crashing, lands, link, opened, runs, unfold, unfold_events, wheel};
+use super::{kind, pods};
 use crate::Ui;
 use crate::hit::Target;
 use crate::tests::settings::drawn;
 use crate::tests::{click, window};
-use crate::views::session::resources::Link;
-
-fn base(uid: &str, name: &str) -> Described {
-    Described {
-        uid: uid.into(),
-        name: name.into(),
-        namespace: Some("paxone".into()),
-        labels: vec![("app".into(), "worker".into())],
-        annotations: vec![("meta.helm.sh/release-name".into(), "paxone-staging".into())],
-        created: None,
-        owners: Vec::new(),
-        replicas: None,
-        selector: Vec::new(),
-        pod: None,
-        app: None,
-        event: None,
-        yaml: "".into(),
-    }
-}
-
-fn worker() -> Container {
-    Container {
-        name: "worker".into(),
-        image: "backend:4.21.3".into(),
-        init: false,
-        state: State::Waiting {
-            reason: "CrashLoopBackOff".into(),
-        },
-        ready: false,
-        restarts: 14,
-        last: None,
-        ports: vec!["http 8080/TCP".into()],
-        liveness: None,
-        readiness: None,
-        mounts: vec!["tls → /etc/tls ro".into()],
-        cpu: (Some("250m".into()), Some("1".into())),
-        memory: (Some("512Mi".into()), Some("1Gi".into())),
-    }
-}
-
-pub(super) fn crashing() -> Described {
-    let pod = PodPart {
-        status: "CrashLoopBackOff".into(),
-        node: Some("gra9-node-2".into()),
-        ip: Some("10.2.4.118".into()),
-        qos: Some("Burstable".into()),
-        priority: None,
-        started: None,
-        conditions: vec![Condition {
-            kind: "Ready".into(),
-            met: false,
-            reason: Some("ContainersNotReady".into()),
-            since: None,
-        }],
-        containers: vec![worker()],
-        uses: vec![groove_types::Used {
-            tag: "secret".into(),
-            name: "paxone-db-legacy".into(),
-            how: vec!["env worker".into()],
-        }],
-    };
-    Described {
-        owners: vec![Owner {
-            api_version: "apps/v1".into(),
-            kind: "ReplicaSet".into(),
-            name: "worker-5d6b".into(),
-        }],
-        pod: Some(Box::new(pod)),
-        yaml: "metadata:\n  name: api-0\nstatus:\n  restartCount: 14\n".into(),
-        ..base("paxone/api-0", "api-0")
-    }
-}
-
-/// The listing, its kinds widened to what a tab reads, and api-0's tab open.
-pub(super) fn opened() -> (AppState, Ui) {
-    let (mut app, mut ui) = listing();
-    let kinds = vec![
-        pods(),
-        kind("apps", "ReplicaSet", "replicasets", true),
-        kind("apps", "Deployment", "deployments", true),
-        kind("", "Event", "events", true),
-        kind("", "Service", "services", true),
-        kind("", "Secret", "secrets", true),
-    ];
-    app.cluster.store.set_kinds("staging", kinds);
-    let (_, hits) = drawn(&app, &ui);
-    let row = hits
-        .rect_of(&Target::ResourceRow("paxone/api-0".into()))
-        .expect("api-0's row");
-    click(row, &mut ui, &app, &hits);
-    (app, ui)
-}
-
-pub(super) fn link(name: &str, of: groove_types::KubeKind) -> Link {
-    Link {
-        context: "staging".into(),
-        kind: of,
-        namespace: Some("paxone".into()),
-        name: name.into(),
-    }
-}
 
 /// The texts drawn on a wide screen, where the tab's columns have their room.
 fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
     let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (frame, _) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
-    let small = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
-        .small(groove_ui_kit::base::style::Role::Text)
+    let body = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
+        .body(groove_ui_kit::base::style::Role::Text)
         .size;
     for shown in ["gra9-node-2", "Ready"] {
         let one = texts.clone().find(|one| one.text == shown);
         assert!(
-            one.is_none_or(|one| one.style.size == small),
-            "{shown} at the small size"
+            one.is_none_or(|one| one.style.size == body),
+            "{shown} at the body size"
         );
     }
     texts.map(|one| one.text.clone()).collect()
-}
-
-/// The events unfolded by a click on their heading, as they stand folded at first.
-pub(super) fn unfold_events(app: &AppState, ui: &mut Ui) {
-    unfold(app, ui, crate::views::session::resources::Section::Events);
-}
-
-/// `section` unfolded by a click on its heading.
-fn unfold(app: &AppState, ui: &mut Ui, section: crate::views::session::resources::Section) {
-    let section = Target::ResourceSection(section);
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
-    let (_, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
-    let heading = hits.rect_of(&section).expect("the events' heading");
-    click(heading, ui, app, &hits);
-}
-
-pub(super) fn lands(app: &mut AppState, key: &FollowKey, objects: Vec<Described>) {
-    app.cluster.store.follows.lease(key, "resource");
-    app.cluster
-        .store
-        .follows
-        .apply(key, Followed::Reset(objects));
 }
 
 #[test]
@@ -178,7 +53,7 @@ const DESCRIBED: [&str; 20] = [
     "gra9-node-2",
     "CONDITIONS",
     "SUMMARY",
-    "RELATIONS",
+    "RELATIONS · 2",
     "owned by",
     "worker-5d6b",
     "2/3 ready",
@@ -282,17 +157,6 @@ fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them()
     }
 }
 
-/// Every run drawn on a wide screen.
-pub(super) fn runs(app: &AppState, ui: &Ui) -> Vec<groove_gfx::TextRun> {
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
-    let (frame, _) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
-    frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.texts.clone())
-        .collect()
-}
-
 #[test]
 fn a_container_not_ready_stands_unfolded_and_its_usage_tells_request_and_limit_under_the_pointer() {
     let (mut app, mut ui) = opened();
@@ -314,25 +178,12 @@ fn a_container_not_ready_stands_unfolded_and_its_usage_tells_request_and_limit_u
     ui.hover = None;
     let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
-    let row = hits.rect_of(&Target::ResourceFold("container/worker".into()));
+    let row = hits.rect_of(&Target::ResourceFold("container/worker".into(), false));
     click(row.expect("the worker's row"), &mut ui, &app, &hits);
     assert!(
         !shown(&app, &ui).iter().any(|text| text == "http 8080/TCP"),
         "a click folds it"
     );
-}
-
-/// The wheel turned over `at`, on a wide screen.
-pub(super) fn wheel(app: &AppState, ui: &mut Ui, at: (f32, f32), (across, down): (f32, f32)) {
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
-    let (_, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
-    let delta = crate::input::Delta::Pixels { across, down };
-    let input = crate::input::Input::Scroll {
-        x: at.0,
-        y: at.1,
-        delta,
-    };
-    crate::input::handle(input, ui, app, &hits, metrics);
 }
 
 #[test]
@@ -466,4 +317,53 @@ fn behind_an_object_s_tab_the_list_lets_its_watchers_go_and_its_ages_rest() {
     let tick = Command::Cluster(Cluster::Age { now });
     assert!(!asked.contains(&tick), "no tick for rows nobody sees");
     assert_eq!(crate::ages_due(&app, &ui), None, "and no wake for them");
+}
+
+#[test]
+fn an_event_reason_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
+    let (mut app, mut ui) = opened();
+    let key = link("api-0", pods()).key();
+    lands(&mut app, &key, vec![crashing()]);
+    let events = FollowKey {
+        fields: Some("involvedObject.uid=paxone/api-0".into()),
+        kind: kind("", "Event", "events", true),
+        ..key.clone()
+    };
+    let reason = "FailedCreatePodSandBoxAgain";
+    let event = Described {
+        event: Some(EventRow {
+            warning: true,
+            reason: reason.into(),
+            count: 1,
+            last: None,
+            message: "m".into(),
+            about: "pod/api-0".into(),
+        }),
+        ..base("e1", "e1")
+    };
+    lands(&mut app, &events, vec![event]);
+    unfold_events(&app, &mut ui);
+    let texts = wide(&app, &ui);
+    assert!(texts.iter().any(|one| one == reason), "{texts:?}");
+}
+
+#[test]
+fn the_list_search_lets_go_of_the_keys_once_a_tab_shows() {
+    let (app, mut ui) = super::listing();
+    ui.session.resources.typing = true;
+    let (_, hits) = drawn(&app, &ui);
+    let row = hits
+        .rect_of(&Target::ResourceRow("paxone/api-0".into()))
+        .expect("api-0's row");
+    click(row, &mut ui, &app, &hits);
+    assert!(ui.session.resources.tab().is_some(), "the tab shows");
+    assert!(!ui.session.resources.typing, "opening it took the keys");
+
+    ui.session.resources.typing = true;
+    crate::tests::typed("x", &mut ui, &app);
+    assert_eq!(
+        ui.session.resources.search.text(),
+        "",
+        "the search under the tab is not drawn"
+    );
 }

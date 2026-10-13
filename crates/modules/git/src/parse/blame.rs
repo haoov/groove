@@ -4,9 +4,6 @@ use std::collections::HashMap;
 
 use groove_types::{BlameLine, Timestamp};
 
-/// How many characters of a sha the blame shows.
-const SHORT: usize = 7;
-
 /// What porcelain prints once per commit, for that commit's later lines.
 #[derive(Clone, Default)]
 struct Meta {
@@ -28,7 +25,7 @@ pub fn blame(text: &str) -> Vec<BlameLine> {
             let seen = known.get(&sha).cloned().unwrap_or_default();
             lines.push(BlameLine {
                 line,
-                short_sha: sha.chars().take(SHORT).collect(),
+                short_sha: groove_types::short_sha(&sha),
                 author: seen.author,
                 at: Timestamp::new(seen.at),
                 summary: seen.summary,

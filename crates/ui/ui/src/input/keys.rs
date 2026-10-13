@@ -10,24 +10,27 @@ mod noting;
 mod panes;
 mod resources;
 mod scope;
+mod worded;
 
 use groove_controllers::{AppState, Command};
 
+use super::typed::Typed;
 use super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
 use crate::views::session::Term;
-use crate::views::session::resources::Line;
 use crate::views::settings::Draft;
 use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
 use agent::{to_agent, to_shell};
 use bar::{finding, in_bar, opened, typing};
+pub(in crate::input) use bar::{refound, searches};
 use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
-pub(in crate::input) use scope::pick;
+pub(in crate::input) use resources::{kinds_changed, search_changed};
+pub(in crate::input) use scope::{pick, scope_changed};
 
 pub(super) fn key_input(
     key: Key,
@@ -40,7 +43,8 @@ pub(super) fn key_input(
     if let Some(action) = ui.settings.binding {
         return bound(action, key, mods, ui, app);
     }
-    if (ui.examining().is_some() || ui.menu().is_some()) && key == Key::Escape {
+    let asking = ui.examining().is_some() || ui.menu().is_some() || ui.losing().is_some();
+    if asking && key == Key::Escape {
         ui.overlay = None;
         return Vec::new();
     }
@@ -74,80 +78,19 @@ fn in_session(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    if ui.session.naming.is_some() {
-        return in_name(key, mods, ui);
-    }
-    if ui.session.noting.is_some() {
-        return in_note(key, mods, ui);
-    }
-    if ui.session.bar.typing.is_some() {
-        return in_bar(key, mods, ui, app, keymap);
-    }
-    if ui.session.resources.typing || ui.session.resources.filtering {
-        return in_resources(key, mods, ui, app);
+    match super::typed::keyed(ui, app) {
+        Some(Typed::Naming) => return in_name(key, mods, ui),
+        Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
+        Some(Typed::Bar(_)) => return in_bar(key, mods, ui, app, keymap),
+        Some(Typed::Kinds | Typed::Search) => {
+            return resources::in_resources((key, mods), ui, app, seen);
+        }
+        None => {}
     }
     if let Some(commands) = finding((key, mods), ui, app, keymap, seen) {
         return commands;
     }
     in_pane((key, mods), ui, app, keymap, seen)
-}
-
-/// A Resources search has the keys: Enter gives them back; Esc too, and shuts an empty find bar.
-fn in_resources(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    if ui.session.resources.filtering {
-        return in_kinds(key, mods, ui, app);
-    }
-    let held = &mut ui.session.resources;
-    match key {
-        Key::Enter => held.typing = false,
-        Key::Escape => {
-            held.finding &= !held.search.is_empty();
-            held.typing = false;
-        }
-        key => {
-            typing(key, mods, &mut held.search);
-            held.scroll = 0.0;
-        }
-    }
-    Vec::new()
-}
-
-/// The kind search: arrows step through the lines; Enter folds a heading or lists a kind.
-fn in_kinds(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let shown = crate::views::session::resources::shown(app, ui);
-    let held = &mut ui.session.resources;
-    let last = shown.len().checked_sub(1);
-    match key {
-        Key::Down => {
-            held.cursor = held
-                .cursor
-                .map_or(Some(0), |at| Some(at + 1))
-                .zip(last)
-                .map(|(at, end)| at.min(end))
-        }
-        Key::Up => held.cursor = held.cursor.map(|at| at.saturating_sub(1)),
-        Key::Enter => match held.cursor.and_then(|at| shown.get(at)) {
-            Some(Line::Heading(heading, _)) => {
-                if !held.folded.remove(heading) {
-                    held.folded.insert(heading.clone());
-                }
-            }
-            Some(Line::Kind(kind)) => {
-                (held.kind, held.scroll) = (Some(kind.clone()), 0.0);
-                (held.filtering, held.cursor) = (false, None);
-            }
-            None => (held.filtering, held.cursor) = (false, None),
-        },
-        Key::Escape => (held.filtering, held.cursor) = (false, None),
-        key => {
-            typing(key, mods, &mut held.filter);
-            let lines = crate::views::session::resources::shown(app, ui);
-            let first = lines.iter().position(|one| matches!(one, Line::Kind(_)));
-            ui.session.resources.cursor = first;
-            return Vec::new();
-        }
-    }
-    Vec::new()
 }
 
 /// No bar holds the keyboard: the pane that has it takes the key, after the chords it binds.
@@ -160,7 +103,7 @@ fn in_pane(
 ) -> Vec<Command> {
     let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
-        return app::copied(app);
+        return app::copied(ui.focus, app);
     }
     let bars = [
         (Action::OpenPath, Term::Path, !raw),
@@ -204,7 +147,7 @@ fn bound(action: Action, key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState)
 /// Settings holds the keyboard: the search, a source's field, a running sign-in, else Esc back.
 fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let settings = &mut ui.settings;
-    let signing_in = app.agent.login.is_some();
+    let signing_in = app.config.login.is_some();
     if let Some(draft) = settings.draft.as_mut().filter(|one| one.at.is_some()) {
         return in_draft(key, mods, draft);
     }

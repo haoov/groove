@@ -58,7 +58,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let held = app
         .session
         .selected()
-        .is_some_and(|open| !open.clusters.is_empty());
+        .is_some_and(|open| open.holds_clusters());
     let up: Vec<Tab> = Tab::ALL
         .into_iter()
         .filter(|tab| *tab != Tab::Resources || held)

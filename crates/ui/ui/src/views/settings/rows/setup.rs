@@ -13,33 +13,31 @@ pub(super) fn setup(app: &AppState) -> Vec<Row> {
     let env = &app.env;
     let root = app.config.worktree_root(&env.home);
     let paths = vec![
-        path(
+        Row::text(
+            Section::Setup,
             "config",
             "file path json",
             shown(&env.config_file(), &env.home),
         ),
-        path(
+        Row::text(
+            Section::Setup,
             "state",
             "database sqlite path",
             shown(&env.database(), &env.home),
         ),
-        path(
+        Row::text(
+            Section::Setup,
             "worktree root",
             "path pool clones git",
             shown(&root, &env.home),
         ),
     ];
     let tools = app.config.tools.iter().flatten();
-    let signing_in = app.agent.login.is_some();
+    let signing_in = app.config.login.is_some() || app.config.signing_in;
     let checks = std::iter::once(checked(app)).chain(tools.map(|one| tool(one, signing_in)));
     let mut out = grouped("Paths", paths);
     out.extend(grouped("Environment", checks.collect()));
     out
-}
-
-fn path(label: &'static str, words: &'static str, text: String) -> Row {
-    let value = Value::Text { text, mono: true };
-    Row::new(Section::Setup, label, words, value)
 }
 
 /// The check as a whole: running, every program ready, or how many are not.

@@ -1,5 +1,6 @@
 //! The `shell` controller: one function per user action on a session's own terminals.
 
+use groove_agent_service::Select;
 use groove_shell_service::{Event as ShellEvent, Hooks, spawn, spec};
 use groove_types::SessionId;
 
@@ -55,6 +56,32 @@ pub enum Command {
         col: usize,
         row: usize,
     },
+    /// `shell.select`: a selection of a terminal's grid, begun at a cell or carried to one.
+    Select {
+        session: SessionId,
+        id: u64,
+        col: usize,
+        row: usize,
+        kind: Select,
+        from: bool,
+    },
+    /// `shell.click`: the left button on a terminal, for the program that reads it.
+    Click {
+        session: SessionId,
+        id: u64,
+        col: usize,
+        row: usize,
+        down: bool,
+    },
+    /// `shell.drag`: the pointer moved with the button down, for that same program.
+    Drag {
+        session: SessionId,
+        id: u64,
+        col: usize,
+        row: usize,
+    },
+    /// `shell.copy`: what is selected on a terminal's grid, to the clipboard.
+    Copy { session: SessionId, id: u64 },
 }
 
 impl Command {
@@ -70,6 +97,10 @@ impl Command {
             Command::Paste { .. } => "shell.paste",
             Command::Resize { .. } => "shell.resize",
             Command::Scroll { .. } => "shell.scroll",
+            Command::Select { .. } => "shell.select",
+            Command::Click { .. } => "shell.click",
+            Command::Drag { .. } => "shell.drag",
+            Command::Copy { .. } => "shell.copy",
         }
     }
 }
@@ -95,6 +126,11 @@ pub fn dispatch(
         Command::CloseTab { session, tab } => ended(state.shell.close_tab(&session, tab)),
         Command::SelectTab { session, tab } => state.shell.select_tab(&session, tab),
         Command::Focus { session, id } => state.shell.focus(&session, id),
+        Command::Copy { session, id } => {
+            if let Some(terminal) = state.shell.terminal(&session, id) {
+                crate::grid::copy(terminal, services, spawner);
+            }
+        }
         typed => to_terminal(state, typed),
     }
 }
@@ -105,7 +141,10 @@ fn to_terminal(state: &AppState, command: Command) {
         Command::Send { session, id, .. }
         | Command::Paste { session, id, .. }
         | Command::Resize { session, id, .. }
-        | Command::Scroll { session, id, .. } => (session, *id),
+        | Command::Scroll { session, id, .. }
+        | Command::Select { session, id, .. }
+        | Command::Click { session, id, .. }
+        | Command::Drag { session, id, .. } => (session, *id),
         _ => return,
     };
     let Some(terminal) = state.shell.terminal(session, id) else {
@@ -118,6 +157,18 @@ fn to_terminal(state: &AppState, command: Command) {
         Command::Scroll {
             lines, col, row, ..
         } => terminal.wheel(*lines, (*col, *row)),
+        Command::Click { col, row, down, .. } => terminal.click((*col, *row), *down),
+        Command::Drag { col, row, .. } => terminal.drag((*col, *row)),
+        Command::Select {
+            col,
+            row,
+            kind,
+            from,
+            ..
+        } => {
+            crate::grid::select(terminal, (*col, *row), *kind, *from);
+            Ok(())
+        }
         _ => Ok(()),
     };
 }
@@ -130,20 +181,25 @@ fn open(
     (session, beside): (SessionId, bool),
     size: (u16, u16),
 ) {
-    let cwd = match services.session.session_dir(&session) {
-        Ok(dir) => dir,
-        Err(e) => return state.failed(e),
-    };
     let id = state.shell.reserve(&session, beside);
     let palette = groove_agent_service::palette(state.config.theme());
     let program = state.env.shell.clone();
-    let sink = spawner.sink();
+    let (sink, service) = (spawner.sink(), services.session.clone());
     spawner.spawn(Box::pin(async move {
         let hooks = hooks(&sink, &session, id);
-        let result = spawn(spec(&program, cwd, size), palette, hooks);
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.shell.started(&session, id, result);
-        }) as Continuation
+        let result = match service.session_dir(&session).await {
+            Ok(cwd) => Ok(spawn(spec(&program, cwd, size), palette, hooks).await),
+            Err(e) => Err(e),
+        };
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match result {
+                Ok(result) => state.shell.started(&session, id, result),
+                Err(e) => {
+                    state.shell.close(&session, id);
+                    state.failed(e);
+                }
+            },
+        ) as Continuation
     }));
 }
 

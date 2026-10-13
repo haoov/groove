@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use groove_types::{Error, Result, Skill};
 
-use crate::{CORE, Dirs, NAMED, USER, is_name, manifest, names, read_plugin};
+use crate::disk::{manifest, names, read_plugin};
+use crate::{CORE, Dirs, NAMED, USER, is_name};
 
 /// A shared repo read as a marketplace: its own name, and the plugins it holds.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,7 +22,7 @@ pub struct Plugin {
 }
 
 /// The marketplace a shared repo is, read from `.claude-plugin/marketplace.json` at its root.
-pub fn marketplace(repo: &Path) -> Result<Marketplace> {
+pub(crate) fn marketplace(repo: &Path) -> Result<Marketplace> {
     let read = json(&repo.join(".claude-plugin").join("marketplace.json"))
         .map_err(|why| Error::invalid(format!("the shared repo is no marketplace: {why}")))?;
     let name = read["name"].as_str().unwrap_or_default().to_string();

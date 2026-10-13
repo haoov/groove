@@ -12,6 +12,11 @@ impl Field {
         &self.text
     }
 
+    /// The text before the caret.
+    pub fn before(&self) -> &str {
+        &self.text[..self.byte(self.at)]
+    }
+
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
@@ -35,13 +40,6 @@ impl Field {
     /// `text` at the caret, on the one line a field holds.
     pub fn paste(&mut self, text: &str) {
         for c in Self::one_line(text).chars() {
-            self.insert(c);
-        }
-    }
-
-    /// `text` at the caret, its line breaks kept.
-    pub fn paste_lines(&mut self, text: &str) {
-        for c in text.trim().chars().filter(|one| *one != '\r') {
             self.insert(c);
         }
     }
@@ -81,18 +79,6 @@ impl Field {
 
     pub fn end(&mut self) {
         self.at = self.chars();
-    }
-
-    /// The text with a bar drawn where the caret is.
-    pub fn shown(&self) -> String {
-        let at = self.byte(self.at);
-        format!("{}\u{2502}{}", &self.text[..at], &self.text[at..])
-    }
-
-    /// The same, a bullet for each character.
-    pub fn masked(&self) -> String {
-        let (before, after) = (self.at, self.chars() - self.at);
-        format!("{}\u{2502}{}", "•".repeat(before), "•".repeat(after))
     }
 
     fn chars(&self) -> usize {

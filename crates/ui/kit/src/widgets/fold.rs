@@ -1,9 +1,9 @@
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::square;
+use crate::shape::{hoverable, square};
 
 /// A directory's folder, open or shut, from the left of `room`.
 pub fn folder<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: Role) -> Rect {
@@ -21,6 +21,25 @@ pub fn fold<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: Rol
     caret(ctx, room, (open, size), role)
 }
 
+/// A square of `room`'s height at its left that folds on a click, its caret in the middle.
+pub fn fold_box<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    room: &mut Rect,
+    (open, target): (bool, A::Target),
+    role: Role,
+) -> Rect {
+    let box_ = room.take_left(room.h);
+    hoverable(ctx, box_, target);
+    let mut slot = box_.pad(Edges::across((box_.h - ctx.tokens.small) / 2.0, 0.0));
+    fold(ctx, &mut slot, open, role);
+    box_
+}
+
+/// A fold caret's turn.
+pub fn fold_turn(open: bool) -> u8 {
+    if open { 0 } else { Mark::RIGHTWARDS }
+}
+
 /// A fold caret of `size`.
 pub fn caret<A: App>(
     ctx: &mut Ctx<'_, A>,
@@ -30,7 +49,6 @@ pub fn caret<A: App>(
 ) -> Rect {
     let box_ = square(room.take_left(size), size);
     room.take_left(ctx.tokens.xs);
-    let turn = if open { 0 } else { Mark::RIGHTWARDS };
-    ctx.icon(box_, Mark::Down, turn, ctx.styles.color(role));
+    ctx.icon(box_, Mark::Down, fold_turn(open), ctx.styles.color(role));
     box_
 }

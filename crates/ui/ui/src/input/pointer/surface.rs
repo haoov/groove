@@ -219,6 +219,9 @@ pub(super) fn composed(
 
 /// The middle button on a file's tab closes it, as its cross does.
 pub(crate) fn middle(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    if ui.overlay.is_some() {
+        return Vec::new();
+    }
     match hits.at(x, y) {
         Some(Target::OpenTab(path) | Target::CloseTab(path)) => closing(ui, app, path),
         _ => Vec::new(),

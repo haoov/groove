@@ -1,7 +1,7 @@
 //! The Agent section's skills: the core ones always on, the user's own and the shared ones switchable.
 
 use groove_controllers::AppState;
-use groove_controllers::agent_service::skills::{CORE, USER};
+use groove_controllers::skill_service::skills::{CORE, USER};
 use groove_types::Skill;
 
 use super::super::SettingsUi;
@@ -9,12 +9,12 @@ use super::{Row, Section, Value, grouped};
 
 pub(super) fn skills(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     let of = |plugin: fn(&str) -> bool| -> Vec<Row> {
-        let held = app.agent.skills.iter().filter(|one| plugin(&one.plugin));
+        let held = app.skill.skills.iter().filter(|one| plugin(&one.plugin));
         held.map(|one| row(one, settings)).collect()
     };
     let mut out = grouped("Core skills", of(|plugin| plugin == CORE));
     out.extend(grouped("Your skills", of(|plugin| plugin == USER)));
-    if app.agent.shared.is_some() {
+    if app.skill.shared.is_some() {
         out.extend(grouped(
             "Shared skills",
             of(|plugin| plugin != CORE && plugin != USER),

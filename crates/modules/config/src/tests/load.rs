@@ -42,13 +42,24 @@ fn a_broken_file_names_itself() {
     assert_eq!(groove_types::Error::from(err).kind, ErrorKind::Invalid);
 }
 
-#[test]
-fn a_saved_config_loads_back_as_it_was_written() {
+#[tokio::test]
+async fn a_written_config_loads_back_as_it_was() {
     let dir = tempfile::tempdir().unwrap();
     let file = path(&dir.path().join("groove"));
     std::fs::write(dir.path().join("seed.json"), FILE).unwrap();
     let mut config = load(&dir.path().join("seed.json")).unwrap().unwrap();
     config.preferences.poll_interval_secs = 90;
-    crate::save(&file, &config).unwrap();
+    crate::write(&file, &config).await.unwrap();
     assert_eq!(load(&file).unwrap(), Some(config));
+}
+
+#[tokio::test]
+async fn a_write_that_cannot_finish_leaves_the_old_file_whole() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = path(dir.path());
+    std::fs::write(&file, FILE).unwrap();
+    let config = load(&file).unwrap().unwrap();
+    std::fs::create_dir(dir.path().join("config.json.tmp")).unwrap();
+    assert!(crate::write(&file, &config).await.is_err());
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), FILE);
 }

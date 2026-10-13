@@ -4,6 +4,7 @@ use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::{Edit, Motion};
 
 use super::super::{Key, Modifiers};
+use super::worded::{Asked, asked};
 use crate::editor::Editing;
 use crate::keymap::{Action, Keymap};
 use crate::{Focus, Ui};
@@ -73,7 +74,7 @@ pub(super) fn in_sidebar(
     app: &AppState,
     keymap: &Keymap,
 ) -> Vec<Command> {
-    if !ui.session.composing {
+    if !(ui.session.composing && ui.session.commits()) {
         return in_list(key, ui, app);
     }
     if key == Key::Escape {
@@ -84,28 +85,22 @@ pub(super) fn in_sidebar(
         ui.session.composing = false;
         return vec![Command::Workspace(workspace::Command::Commit)];
     }
-    in_message(key, mods)
+    in_message(key, mods, app, keymap)
 }
 
-/// What a keystroke asks of the message.
-fn in_message(key: Key, mods: Modifiers) -> Vec<Command> {
-    if mods.ctrl {
-        return Vec::new();
-    }
-    let edit = match key {
-        Key::Char(c) if !mods.alt => Edit::Insert(c.to_string()),
-        Key::Enter => Edit::Newline,
-        Key::Backspace => Edit::Backspace,
-        Key::Delete => Edit::Delete,
-        Key::Left => Edit::Move(Motion::Left),
-        Key::Right => Edit::Move(Motion::Right),
-        Key::Up => Edit::Move(Motion::Up),
-        Key::Down => Edit::Move(Motion::Down),
-        Key::Home => Edit::Move(Motion::LineStart),
-        Key::End => Edit::Move(Motion::LineEnd),
-        _ => return Vec::new(),
+/// What a keystroke asks of the message: a line, or what a note's buffer answers.
+fn in_message(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap) -> Vec<Command> {
+    let asked = match key {
+        Key::Enter if !mods.ctrl => Asked {
+            edit: Some(Edit::Newline),
+            copied: None,
+        },
+        _ => asked(&app.workspace.message, keymap, key, mods),
     };
-    vec![Command::Workspace(workspace::Command::Message(edit))]
+    let edit = asked
+        .edit
+        .map(|edit| Command::Workspace(workspace::Command::Message(edit)));
+    asked.copied.into_iter().chain(edit).collect()
 }
 
 /// Up and down open the file above or below in the list.

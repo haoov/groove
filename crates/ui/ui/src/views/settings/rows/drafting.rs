@@ -13,9 +13,10 @@ pub(super) fn fields(draft: &Draft, section: Section) -> Vec<Row> {
     let row = |(at, (ask, field)): (usize, (&Ask, &Field))| {
         let focused = draft.at == Some(at);
         let target = Target::SettingsDraftField(at);
+        let caret = focused.then(|| before(ask, field));
         let value = Value::Input {
             shown: shown(ask, field, focused),
-            focused,
+            caret,
             target,
         };
         Row::new(section, ask.label, ask.hint, value)
@@ -25,11 +26,16 @@ pub(super) fn fields(draft: &Draft, section: Section) -> Vec<Row> {
 
 fn shown(ask: &Ask, field: &Field, focused: bool) -> String {
     match (focused, ask.secret, field.is_empty()) {
-        (true, true, _) => field.masked(),
-        (true, false, _) => field.shown(),
         (false, _, true) => ask.hint.to_string(),
-        (false, true, false) => "•".repeat(field.text().chars().count()),
-        (false, false, false) => field.text().to_string(),
+        (_, true, _) => "•".repeat(field.text().chars().count()),
+        (_, false, _) => field.text().to_string(),
+    }
+}
+
+fn before(ask: &Ask, field: &Field) -> String {
+    match ask.secret {
+        true => "•".repeat(field.before().chars().count()),
+        false => field.before().to_string(),
     }
 }
 

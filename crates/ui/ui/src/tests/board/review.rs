@@ -3,6 +3,7 @@
 use groove_types::{Forge, ReviewMr, Timestamp};
 
 use super::*;
+use crate::tests::all_texts;
 
 fn asked(project: &str, iid: u64, title: &str, author: &str, ago: i64) -> ReviewMr {
     ReviewMr {
@@ -39,12 +40,7 @@ fn waiting() -> AppState {
 
 fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
-    frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.texts.iter())
-        .map(|one| one.text.clone())
-        .collect()
+    all_texts(&frame)
 }
 
 #[test]

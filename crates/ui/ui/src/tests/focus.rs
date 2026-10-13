@@ -109,3 +109,22 @@ fn a_click_on_the_agent_takes_the_keys_from_the_search_bars() {
     );
     assert!(!escape.is_empty(), "the agent hears it");
 }
+
+#[test]
+fn a_click_on_the_overview_takes_the_keys_from_the_agent() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    assert_eq!(ui.session.tab, Tab::Overview);
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let ground = hits.rect_of(&Target::Overview).expect("the overview");
+    let (x, y) = (ground.x + ground.w / 2.0, ground.bottom() - 2.0);
+    crate::tests::pressed(x, y, &mut ui, &app, &hits);
+    assert_eq!(ui.focus, Focus::Workspace);
+    let typed = press(
+        Key::Char('a'),
+        crate::input::Modifiers::default(),
+        &mut ui,
+        &app,
+    );
+    assert!(typed.is_empty(), "the agent no longer hears the keys");
+}

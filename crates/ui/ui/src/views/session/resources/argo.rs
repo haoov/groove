@@ -43,8 +43,6 @@ impl Filter {
 pub struct ArgoUi {
     /// None is what needs attention, or all when nothing does.
     pub filter: Option<Filter>,
-    /// The column the rows of each group sort by, and whether descending.
-    pub sort: Option<(String, bool)>,
 }
 
 impl ArgoUi {

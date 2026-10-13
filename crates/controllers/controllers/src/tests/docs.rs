@@ -163,7 +163,7 @@ fn every_crate_says_what_it_holds() {
     );
 }
 
-/// Every `fn name(` declared under `crates/`.
+/// Every test declared under `crates/`.
 fn functions() -> Vec<String> {
     let mut out = Vec::new();
     rust_under(&repo_root().join("crates"), &mut out);
@@ -177,12 +177,52 @@ fn rust_under(dir: &Path, out: &mut Vec<String>) {
             rust_under(&path, out);
         } else if path.extension().is_some_and(|e| e == "rs") {
             let text = fs::read_to_string(&path).expect("a source file");
-            out.extend(text.match_indices("fn ").filter_map(|(at, _)| {
-                let rest = &text[at + 3..];
-                rest.find('(').map(|end| rest[..end].trim().to_string())
-            }));
+            out.extend(tests_in(&text));
         }
     }
+}
+
+/// The name of each `fn` under a `#[test]` or a `#[tokio::test]`.
+fn tests_in(text: &str) -> Vec<String> {
+    let marks = text
+        .match_indices("#[test]")
+        .chain(text.match_indices("#[tokio::test"));
+    marks
+        .filter_map(|(at, _)| {
+            let rest = &text[at..];
+            let rest = &rest[rest.find("fn ")? + 3..];
+            rest.find('(').map(|end| rest[..end].trim().to_string())
+        })
+        .collect()
+}
+
+/// The prose's paragraphs, each one line.
+fn paragraphs(text: &str) -> Vec<String> {
+    let mut out = vec![String::new()];
+    for line in prose(text) {
+        match line.trim() {
+            "" => out.push(String::new()),
+            line => out.last_mut().expect("one").extend([" ", line]),
+        }
+    }
+    out
+}
+
+/// The spans of each sentence that opens with "enforced by", in any case.
+fn enforcing(paragraph: &str) -> Vec<&str> {
+    let lower = paragraph.to_lowercase();
+    let mut out = Vec::new();
+    for (at, _) in lower.match_indices("enforced by") {
+        let rest = &paragraph[at..];
+        let mut quoted = false;
+        let end = rest.char_indices().find(|(_, c)| {
+            quoted ^= *c == '`';
+            *c == '.' && !quoted
+        });
+        let sentence = &rest[..end.map_or(rest.len(), |(at, _)| at)];
+        out.extend(spans(sentence));
+    }
+    out
 }
 
 #[test]
@@ -190,9 +230,8 @@ fn every_test_a_rule_names_exists() {
     let known = functions();
     let mut missing = Vec::new();
     for (path, text) in docs() {
-        let named = prose(&text)
-            .filter_map(|line| line.split_once("Enforced by").map(|(_, rest)| rest))
-            .flat_map(spans);
+        let paragraphs = paragraphs(&text);
+        let named = paragraphs.iter().flat_map(|one| enforcing(one));
         for name in named.filter(|n| !known.iter().any(|k| k == n)) {
             missing.push(format!("{}: {name}", path.display()));
         }

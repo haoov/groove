@@ -36,6 +36,9 @@ impl State {
     pub fn edit(&mut self, edit: &Edit) -> Option<String> {
         let stream = self.commit.is_none();
         let open = self.active_mut()?;
+        if open.unshown && !matches!(edit, Edit::Move(_) | Edit::Extend(_)) {
+            return None;
+        }
         let touched = open.new.edit(edit);
         if touched.is_empty() {
             return None;
@@ -71,12 +74,13 @@ impl State {
         }
     }
 
-    /// The buffer marked as what the disk holds.
-    pub fn saved(&mut self, worktree: &WorktreeId, path: &str) {
+    /// The buffer marked as what the disk holds, unless it changed since `revision` was written.
+    pub fn saved(&mut self, worktree: &WorktreeId, path: &str, revision: u64) {
         let held = self
             .buffers
             .get_mut(worktree)
-            .and_then(|one| one.get_mut(path));
+            .and_then(|one| one.get_mut(path))
+            .filter(|open| open.new.revision() == revision);
         if let Some(open) = held {
             open.new.saved();
         }

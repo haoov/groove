@@ -14,7 +14,7 @@ mod yaml;
 mod tests;
 
 pub use describe::describe;
-pub use discovery::{kinds, namespaces};
+pub use discovery::{FRESH, kinds, namespaces};
 pub use follow::{Change, Followed, follow};
 pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};

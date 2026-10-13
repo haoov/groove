@@ -1,9 +1,11 @@
 //! The files a launch writes beside the agent: the prompt, the plugin dir.
 
-use std::fs::{self, OpenOptions, Permissions};
-use std::io::Write;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::fs::Permissions;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+
+use tokio::fs::{self, OpenOptions};
+use tokio::io::AsyncWriteExt;
 
 use groove_types::{Error, ErrorKind, Result};
 
@@ -22,9 +24,9 @@ impl LaunchDir {
     }
 
     /// Writes the file and returns its path as an argument.
-    pub fn write(&self, name: &str, contents: &str) -> Result<String> {
+    pub async fn write(&self, name: &str, contents: &str) -> Result<String> {
         let path = self.dir.join(format!("{}.{name}", self.session));
-        write_private(&path, contents).map_err(|source| {
+        write_private(&path, contents).await.map_err(|source| {
             Error::new(
                 ErrorKind::Agent,
                 format!("cannot write {}: {source}", path.display()),
@@ -34,16 +36,18 @@ impl LaunchDir {
     }
 }
 
-fn write_private(path: &Path, contents: &str) -> std::io::Result<()> {
+async fn write_private(path: &Path, contents: &str) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent).await?;
     }
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
         .mode(0o600)
-        .open(path)?;
-    file.set_permissions(Permissions::from_mode(0o600))?;
-    file.write_all(contents.as_bytes())
+        .open(path)
+        .await?;
+    file.set_permissions(Permissions::from_mode(0o600)).await?;
+    file.write_all(contents.as_bytes()).await?;
+    file.flush().await
 }

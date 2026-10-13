@@ -34,13 +34,11 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
         Target::ResourceSearch => (held.typing, held.filtering) = (true, false),
         Target::ResourceFilter => (held.filtering, held.typing) = (true, false),
         Target::ResourceGroup(group) => {
-            if !held.folded.remove(group) {
-                held.folded.insert(group.clone());
-            }
+            groove_types::toggle(&mut held.folded, group.clone());
         }
         Target::ResourceSort(label) => {
             let sort = match held.tab_mut() {
-                Some(tab) => &mut tab.argo.sort,
+                Some(tab) => &mut tab.sort,
                 None => &mut held.sort,
             };
             *sort = match sort.take() {
@@ -118,7 +116,7 @@ pub(super) fn ranged(ui: &mut Ui, at: usize) {
 fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
     match target {
         Target::ResourceOpen(link) => held.open((**link).clone()),
-        Target::ResourceTab(at) => held.showing = Some(*at),
+        Target::ResourceTab(at) => (held.showing, held.typing) = (Some(*at), false),
         Target::ResourceClose(at) => held.close(*at),
         _ => {
             let Some(tab) = held.tab_mut() else {
@@ -133,11 +131,9 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                     (tab.argo.filter, tab.scroll) = (Some(*filter), 0.0);
                     tab.toggled.clear();
                 }
-                Target::ResourceFold(key) => tab.fold(key),
+                Target::ResourceFold(key, shut) => tab.fold(key, *shut),
                 Target::ResourceSection(section) => {
-                    if !tab.shut.remove(section) {
-                        tab.shut.insert(*section);
-                    }
+                    groove_types::toggle(&mut tab.shut, *section);
                 }
                 _ => return false,
             }
@@ -170,8 +166,8 @@ pub(super) fn held(
     let open = app.session.selected();
     let held = &ui.session.resources;
     let kind = match held.tab() {
-        Some(_) => Some(resources::ARGO_WIDTHS.to_string()),
-        None => open.and_then(|open| resources::kind(app, open, held).map(|one| one.plural)),
+        Some(_) => Some(None),
+        None => open.and_then(|open| resources::kind(app, open, held).map(|one| Some(one.plural))),
     };
     let header = hits.rect_of(&Target::ResourceSort(label.clone()));
     if let (Some(kind), Some(header)) = (kind, header) {
@@ -193,6 +189,10 @@ pub(super) fn dragged(ui: &mut Ui, x: f32, metrics: Metrics) {
     };
     let least = metrics.tokens().icon * 2.0;
     let width = (drag.width + x - drag.from).max(least);
-    let widths = ui.session.resources.widths.entry(drag.kind).or_default();
+    let held = &mut ui.session.resources;
+    let widths = match drag.kind {
+        Some(kind) => held.widths.entry(kind).or_default(),
+        None => &mut held.tab_widths,
+    };
     widths.insert(drag.label, width);
 }

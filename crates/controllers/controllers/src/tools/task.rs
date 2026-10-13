@@ -13,7 +13,7 @@ pub(super) fn tasks(state: &AppState, call: Call) {
 }
 
 /// The task's page, as its source holds it now.
-pub(super) fn body(state: &AppState, spawner: &dyn Spawner, call: Call) {
+pub(super) fn body(state: &mut AppState, spawner: &dyn Spawner, call: Call) {
     let Some(id) = super::task_of(state, &call) else {
         return call.reply.failed(super::NO_TASK);
     };
@@ -38,7 +38,7 @@ pub(super) fn body(state: &AppState, spawner: &dyn Spawner, call: Call) {
 }
 
 /// The headings a new task starts from, and where it is filed.
-pub(super) fn template(state: &AppState, spawner: &dyn Spawner, call: Call) {
+pub(super) fn template(state: &mut AppState, spawner: &dyn Spawner, call: Call) {
     let which = match call.text("provider").map(ProviderId::parse).transpose() {
         Ok(which) => which,
         Err(e) => return call.reply.failed(e.to_string()),

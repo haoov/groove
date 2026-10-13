@@ -27,3 +27,12 @@ fn each_host_gets_the_client_its_own_forge_asks_for() {
     let gitlab = Remote::of(&repo("gitlab.wiremind.io")).expect("a gitlab client");
     assert_eq!(gitlab.kind(), Forge::Gitlab);
 }
+
+#[test]
+fn a_host_s_forge_is_made_once_and_reused() {
+    let first = Remote::shared("github.com").expect("github");
+    let again = Remote::shared("github.com").expect("github");
+    assert!(std::sync::Arc::ptr_eq(&first, &again));
+    let other = Remote::shared("gitlab.example.com").expect("gitlab");
+    assert!(!std::sync::Arc::ptr_eq(&first, &other));
+}

@@ -88,22 +88,23 @@ pub async fn opened_at(dir: &Path, sha: &str, path: &str) -> Result<Opened> {
 pub const COMMITS_MAX: usize = 100;
 
 /// Every line under the worktree holding `query`, in batches as they are found.
-pub fn grep(
+pub async fn grep(
     dir: &Path,
     query: &str,
     under: &str,
     search: std::sync::Arc<Search>,
-    found: impl FnMut(Vec<Found>) + Send,
-) {
-    groove_grep::walk(dir, query, under, FOUND_MAX, search, found);
+    found: impl FnMut(Vec<Found>) + Send + 'static,
+) -> Result<()> {
+    groove_grep::walk(dir, (query, under), FOUND_MAX, search, found).await
 }
 
 /// How many matches a search across the worktree keeps.
 pub const FOUND_MAX: usize = 500;
 
 /// Every file of the worktree, for the path term to narrow by.
-pub fn paths(dir: &Path) -> Vec<FileDiff> {
-    groove_grep::paths(dir, PATHS_MAX)
+pub async fn paths(dir: &Path) -> Result<Vec<FileDiff>> {
+    let paths = groove_grep::paths(dir, PATHS_MAX).await?;
+    let listed = paths
         .into_iter()
         .map(|path| FileDiff {
             path,
@@ -112,30 +113,29 @@ pub fn paths(dir: &Path) -> Vec<FileDiff> {
             status: FileStatus::Unchanged,
             staged: None,
         })
-        .collect()
+        .collect();
+    Ok(listed)
 }
 
 /// How many of a worktree's paths the list keeps.
 pub const PATHS_MAX: usize = 20_000;
 
 /// Both sides of these paths, parsed, read in one git process.
-pub async fn painted(dir: &Path, paths: Vec<String>, rev: &str) -> Vec<(String, Painted)> {
-    let heads = groove_git::Git::at(dir)
-        .blobs(rev, &paths)
-        .await
-        .unwrap_or_default();
-    paths
-        .into_iter()
-        .map(|path| {
-            let before = heads.get(&path).map(String::as_str).unwrap_or_default();
-            let after = std::fs::read_to_string(dir.join(&path)).unwrap_or_default();
-            let painted = Painted {
-                old: Document::new(&path, before),
-                new: Document::new(&path, &after),
-            };
-            (path, painted)
-        })
-        .collect()
+pub async fn painted(dir: &Path, paths: Vec<String>, rev: &str) -> Result<Vec<(String, Painted)>> {
+    let heads = groove_git::Git::at(dir).blobs(rev, &paths).await?;
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        let before =
+            groove_diff::committed(heads.get(&path).map(String::as_str).unwrap_or_default());
+        let after = groove_diff::working(dir, &path).await;
+        let (before, after) = groove_diff::paired(before, &after);
+        let painted = Painted {
+            old: Document::new(&path, before),
+            new: Document::new(&path, after),
+        };
+        out.push((path, painted));
+    }
+    Ok(out)
 }
 
 /// One file of the worktree, both sides and the rows between them.
@@ -144,8 +144,8 @@ pub async fn opened(dir: &Path, path: &str, rev: &str) -> Result<Opened> {
 }
 
 /// The same file, against the HEAD side already read for it.
-pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
-    groove_diff::reopened(dir, path, old)
+pub async fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
+    groove_diff::reopened(dir, path, old).await
 }
 
 /// The colours and the alignment of the document the buffer now holds.

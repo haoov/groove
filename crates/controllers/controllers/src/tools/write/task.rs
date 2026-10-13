@@ -33,7 +33,7 @@ pub(super) fn finish(
 
 /// The explorer made the session of the task the write names.
 pub(super) fn adopt(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
-    let key = match groove_task_service::referenced(write.text("task").unwrap_or_default()) {
+    let key = match groove_types::TaskKey::referenced(write.text("task").unwrap_or_default()) {
         Ok(key) => key,
         Err(e) => return write.reply.failed(e.to_string()),
     };

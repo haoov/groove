@@ -7,7 +7,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Act, Cell, Column, Rows, Shown, Sorted, Table, Width};
+use groove_ui_kit::widgets::{Act, Cell, Column, Rows, Shown, Slot, Sorted, Table, Width};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -88,10 +88,12 @@ fn table<'a>(columns: &'a [Column<'a, Target>], count: usize, line: f32) -> Tabl
 
 /// One line an added context: its hue and context, its switches, its login and its removal.
 fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
-    let contexts = widest(added.iter().map(|one| one.context.clone()));
+    let label = |text: &str| Cell::label(text.to_string(), Role::Text);
+    let contexts = widest(ctx, label, added.iter().map(|one| one.context.clone()));
+    let sample = Cell::label(contexts, Role::Text);
     let columns = [
         column("", Width::Fit("")),
-        column("context", Width::Fit(&contexts)),
+        column("context", Width::FitCell(&sample)),
         column("read-only", Width::Fit("read-only")),
         column(
             "login",
@@ -105,42 +107,36 @@ fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
     table.draw(ctx, rect, |at| context(app, &added[at]));
 }
 
-/// The longest of `texts`, which a column fits.
-fn widest(texts: impl Iterator<Item = String>) -> String {
+/// The widest of `texts` as `cell` draws them, which a column fits.
+fn widest(
+    ctx: &mut Ctx,
+    cell: impl Fn(&str) -> Cell<'static>,
+    texts: impl Iterator<Item = String>,
+) -> String {
     texts
-        .max_by_key(|one| one.chars().count())
+        .map(|one| (cell(&one).wide(ctx), one))
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, one)| one)
         .unwrap_or_default()
 }
 
 fn context<'a>(app: &AppState, one: &'a ClusterConfig) -> Shown<'a, Target> {
     let name = one.context.clone();
-    let switch = |on, change| Some(Act::Toggle(on, Target::ClusterSet(name.clone(), change)));
+    let switch = |on, change| Act::Toggle(on, Target::ClusterSet(name.clone(), change));
     let (said, role) = login(app, &one.context);
     let hue = Role::Hue(one.hue);
-    let blank = || Cell::small("", Role::Text);
-    Shown {
-        cells: vec![
-            blank(),
-            Cell::label(one.context.as_str(), hue),
-            blank(),
-            Cell::small(said, role),
-            blank(),
-        ],
-        under: Vec::new(),
-        target: Some(Target::ClusterRow(name.clone())),
-        acts: vec![
-            Some(Act::Mark(
-                Mark::Context,
-                hue,
-                Target::ClusterHue(name.clone()),
-            )),
-            None,
-            switch(one.read_only, ClusterChange::ReadOnly(!one.read_only)),
-            None,
-            Some(Act::Button("remove", Target::ClusterRemove(name.clone()))),
-        ],
-        band: false,
-    }
+    Shown::row(vec![
+        Slot::from(Act::Mark(
+            Mark::Context,
+            hue,
+            Target::ClusterHue(name.clone()),
+        )),
+        Cell::label(one.context.as_str(), hue).into(),
+        switch(one.read_only, ClusterChange::ReadOnly(!one.read_only)).into(),
+        Cell::small(said, role).into(),
+        Act::Button("remove", Target::ClusterRemove(name.clone())).into(),
+    ])
+    .target(Target::ClusterRow(name.clone()))
 }
 
 /// What the last check found; a refusal is fixed from a terminal, never from here.
@@ -162,8 +158,9 @@ fn login(app: &AppState, context: &str) -> (String, Role) {
 
 /// One line a context the kubeconfig names that Groove does not know yet.
 fn unknown(ctx: &mut Ctx, rect: Rect, rest: &[&KubeContext]) {
-    let contexts = widest(rest.iter().map(|one| one.name.clone()));
-    let servers = widest(rest.iter().filter_map(|one| one.server.clone()));
+    let small = |text: &str| Cell::small(text.to_string(), Role::Text);
+    let contexts = widest(ctx, small, rest.iter().map(|one| one.name.clone()));
+    let servers = widest(ctx, small, rest.iter().filter_map(|one| one.server.clone()));
     let columns = [
         column("context", Width::Fit(&contexts)),
         column("server", Width::Fit(&servers)),
@@ -175,16 +172,11 @@ fn unknown(ctx: &mut Ctx, rect: Rect, rest: &[&KubeContext]) {
     table.draw(ctx, rect, |at| {
         let one = rest[at];
         let add = Target::ClusterAdd(one.name.clone());
-        Shown {
-            cells: vec![
-                Cell::small(one.name.as_str(), Role::Text),
-                Cell::small(one.server.as_deref().unwrap_or_default(), Role::Muted),
-                Cell::small("", Role::Text),
-            ],
-            under: Vec::new(),
-            target: Some(Target::ClusterRow(one.name.clone())),
-            acts: vec![None, None, Some(Act::Button("add", add))],
-            band: false,
-        }
+        Shown::row(vec![
+            Slot::from(Cell::small(one.name.as_str(), Role::Text)),
+            Cell::small(one.server.as_deref().unwrap_or_default(), Role::Muted).into(),
+            Act::Button("add", add).into(),
+        ])
+        .target(Target::ClusterRow(one.name.clone()))
     });
 }

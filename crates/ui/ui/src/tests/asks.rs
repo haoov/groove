@@ -9,16 +9,12 @@ use super::bar::{ask, asking, session_ui};
 use crate::Ui;
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
-use crate::tests::{click, press, window};
+use crate::tests::{all_texts, click, press, window};
 
 /// Every text the frame drew, over every layer.
 fn texts(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
     let (frame, _) = crate::view(app, ui, window(), &mut Fonts::embedded());
-    frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.texts.iter().map(|run| run.text.clone()))
-        .collect()
+    all_texts(&frame)
 }
 
 fn committing() -> groove_controllers::AppState {

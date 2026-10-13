@@ -39,11 +39,8 @@ fn an_empty_pool_asks_nothing_and_leaves_the_column_empty() {
 
 #[test]
 fn the_queue_asks_the_clones_on_disk_and_not_what_the_ui_listed() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let clone = pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     assert!(state.session.pool.is_empty(), "nothing has listed it yet");
 
     dispatch(

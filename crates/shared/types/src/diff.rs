@@ -142,6 +142,19 @@ pub struct RepoDiff {
     pub files: Vec<FileDiff>,
 }
 
+/// A full commit sha: forty hex characters.
+pub fn is_sha(revision: &str) -> bool {
+    revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit())
+}
+
+/// A commit's first seven characters; a tag, a branch or a chart version as it is.
+pub fn short_sha(revision: &str) -> String {
+    match is_sha(revision) {
+        true => revision[..7].to_string(),
+        false => revision.to_string(),
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CommitEntry {
     pub sha: String,

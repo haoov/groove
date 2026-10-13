@@ -10,7 +10,7 @@ code holds the how. [trace.md](trace.md) follows one action through all of it.
 flowchart TD
     ui["ui — groove (bin) · ui · ui-kit<br/>present, translate input"]
     controllers["controllers<br/>one function per user action"]
-    services["services — task · session · workspace · delivery · agent · shell · config · cluster<br/>one part of the app each"]
+    services["services — task · session · workspace · delivery · agent · skill · routine · shell · config · cluster<br/>one part of the app each"]
     modules["modules<br/>one concern each"]
     base["base — db · http · exec · gfx · loopback · kube<br/>one way out of the process each"]
     shared["shared — types<br/>the vocabulary and its pure rules"]
@@ -56,7 +56,8 @@ Enforced by `no_service_depends_on_a_service`.
 **A controller function is the only place two services meet**, and the only place
 that knows what to undo when a later step fails.
 *Example:* `task.finish` tells the provider the task is done, then asks `session` to tear
-the worktrees down; a teardown that fails leaves the status as it was.
+the worktrees down; a refused status stops the teardown, and a failed teardown keeps the
+session while the task stays done.
 Not enforced by a test.
 
 **One function is one action**, whether it calls one service or four. A read is a
@@ -66,8 +67,8 @@ variant of `workspace::Command`.
 Not enforced by a test.
 
 **The command id is `controller.function`.** That one string is the palette entry, the
-keybinding target, the agent's tool name and the timeline label. The namespace stays
-flat however the code is split.
+agent's tool name and the timeline label. The keymap names its own actions, such as
+`editor.save` for `workspace.save_file`. The namespace stays flat however the code is split.
 *Example:* `workspace.push`, from `Command::id`, whether it lives in `workspace.rs` or
 `workspace/git.rs`.
 Not enforced by a test.
@@ -80,12 +81,14 @@ Enforced by `every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_
 **`AppState` is the sum of the services' slices**, owned on the main thread. A
 controller receives it whole and hands each service its slice.
 *Example:* `state.session`, `state.workspace`, `state.delivery`: one field a service.
+Beside the slices and the feed, one field is a hand-off to the ui: `pasted`, a clipboard
+read it takes back as a paste.
 Enforced by the compiler.
 
 **Every concept has one home.** Whatever needs it calls that home and never derives it
 again.
-*Example:* a worktree's base branch is `base_ref` in `git`; the diff, the teardown and
-the MR's target all ask it.
+*Example:* a worktree's base branch is `base_ref` in `git`; the diff and the teardown
+ask it, and the MR's target asks `base_branch`, the same ref named on origin.
 Not enforced by a test.
 
 **A module keeps its own error enum only when a caller matches a variant**, or its
@@ -105,8 +108,9 @@ Growth is answered inside the services and controllers that exist.
 - **A view file draws one region.** Over the ceiling it becomes a directory named after
   the region, one file per part. No bucket names: a directory is a region, never
   `components`.
-- **Ui state sits with its view.** `Ui` keeps only what crosses views: focus, the splits,
-  the palette, the colour cache.
+- **Ui state sits with its view.** `Ui` holds one part per view. Beside those parts it
+  keeps only what crosses views: the surface, focus, the splits, the overlay the palette
+  stands in, what the pointer holds and where, and the caches the frames build.
 - **One module convention: `name.rs` beside `name/`.** No `mod.rs`. Not enforced by a test.
 - **Ceilings:** 300 lines a file, 50 lines a function; a test file may stand to 500 and a
   test to 100, since a test is one scenario. Examples are exempt.
@@ -140,6 +144,8 @@ flowchart LR
 **The one rule the compiler cannot enforce:** no IO in `dispatch`, `apply` or a
 continuation. *Example:* `remote` reads the worktree's status inside its job, not in its
 continuation. Not enforced by a test.
+Before the loop starts, `main` reads the config and the panes with their blocking `load`;
+nothing after the loop starts calls them.
 
 ## Commands, continuations, events
 
@@ -210,7 +216,7 @@ directly.
 | base | each crate standalone: an in-memory database; a mock server for `http` with redaction asserted on the wire; a scripted binary for `exec`; golden images from `Frame` fixtures for `gfx` |
 | modules | each against the base: `forge` and `provider` on a fake `http`; `terminal` asserts the grid from a byte stream; `text` pure; `git` on temp repos with repo-local identity and no signing |
 | services | each in isolation, on fakes of its modules |
-| controllers | drive the API headlessly, assert `AppState`; a `SyncSpawner` runs the job and its continuation at once |
+| controllers | drive the API headlessly, assert `AppState`; a `SyncSpawner` runs the job at once, and `drain` applies its continuation |
 | ui | assert the `Frame` against a fixture `AppState`; no GPU |
 
 A test states one behaviour we want, named as the sentence it asserts. Never "the bug
