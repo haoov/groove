@@ -69,6 +69,11 @@ Core skills (`groove`), the user's own (`user`), and the team's (see
 a save asks like any write. A worktree row's state names the skill that fits it, and its
 button sends that skill.
 
+**A skill can act on a Kubernetes resource.** Its `groove-resources` lists the kinds it acts
+on, `*` for every one. It then leaves the session's menus and stands on the right-click of a
+resource of those kinds, in the list and on its tab, sent with the resource's context,
+namespace, kind and name.
+
 ## Shared skills, knowledge, routines
 
 As [../shared.md](../shared.md) describes them.

@@ -3,6 +3,7 @@
 mod check;
 mod flags;
 mod run;
+mod secrets;
 
 #[cfg(test)]
 mod tests;

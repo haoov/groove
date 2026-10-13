@@ -3,6 +3,7 @@
 use groove_types::{Attached, Error};
 
 use crate::flags::{Read, read};
+use crate::secrets::shows_secrets;
 
 /// The reads the agent may ask, each by the words that name it.
 const VERBS: &[&[&str]] = &[
@@ -22,9 +23,6 @@ const VERBS: &[&[&str]] = &[
 
 /// The reads that name no namespace.
 const UNSCOPED: &[&str] = &["explain", "api-resources", "api-versions", "version"];
-
-/// The outputs of a get that show no secret's data.
-const PLAIN: &[&str] = &["wide", "name"];
 
 /// The lines of a log read when the read names no bound.
 const TAIL: &str = "--tail=200";
@@ -59,7 +57,8 @@ pub fn check(context: &str, args: &[String], attached: &[Attached]) -> Result<Ch
         argv.extend(scoped(context, &read, attached)?);
     }
     if verb == "get" && shows_secrets(&read) {
-        let why = "a secret's data is not read: get secrets without -o, or describe one";
+        let why = "a secret's data is not read: get secrets as a table, describe one, or name its \
+                   metadata fields with -o jsonpath";
         return Err(Error::invalid(why));
     }
     match verb.as_str() {
@@ -140,23 +139,6 @@ fn scoped(context: &str, read: &Read, attached: &[Attached]) -> Result<Vec<Strin
         (None, [only]) => Ok(vec!["--namespace".to_string(), only.to_string()]),
         (None, _) => refused("name the namespace with -n".into()),
     }
-}
-
-/// Whether a get prints the data of a secret it names.
-fn shows_secrets(read: &Read) -> bool {
-    let printed = read
-        .value("--output")
-        .is_some_and(|output| !PLAIN.contains(&output));
-    printed && read.words.iter().skip(1).any(|word| names_secrets(word))
-}
-
-/// `secret`, `secrets/x`, `pods,secrets` or `secrets.v1`.
-fn names_secrets(word: &str) -> bool {
-    word.split(',').any(|one| {
-        let kind = one.split('/').next().unwrap_or_default();
-        let base = kind.split('.').next().unwrap_or_default();
-        matches!(base.to_ascii_lowercase().as_str(), "secret" | "secrets")
-    })
 }
 
 /// Whether a log read names how much to read.

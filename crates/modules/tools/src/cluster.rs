@@ -11,7 +11,8 @@ fn kube() -> Tool {
              (get, describe, logs, events, top, explain, api-resources, api-versions, \
              version, auth can-i, rollout history, rollout status). The namespace must be \
              one the session holds. A secret's data is never shown. The answer is cut at \
-             64 KiB; narrow it with a selector, -o jsonpath or --tail."
+             32 KiB; narrow it with a selector, -o jsonpath, --tail or --limit-bytes. A \
+             secret shows its metadata only, by named field: -o jsonpath={.metadata.managedFields}."
             .to_string(),
         schema: takes(
             &["context", "args"],

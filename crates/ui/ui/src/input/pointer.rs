@@ -12,6 +12,7 @@ mod resources;
 mod settings;
 mod shell;
 mod sidebar;
+mod skilled;
 mod surface;
 
 pub(super) use menu::asked;
