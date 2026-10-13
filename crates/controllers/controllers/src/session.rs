@@ -1,6 +1,8 @@
 //! The `session` controller: one function per user action on the `session` service.
 
 mod clusters;
+
+pub(crate) use clusters::{attach as attach_cluster, detach as detach_cluster};
 mod delete;
 pub(crate) mod feed;
 mod open;

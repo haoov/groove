@@ -28,6 +28,15 @@ pub struct Paths<'a> {
     pub knowledge: Option<&'a Path>,
 }
 
+/// The cluster tools the agent never runs itself: it reads through Groove's `kube` tool.
+const DENIED: [&str; 5] = [
+    "Bash(kubectl:*)",
+    "Bash(helm:*)",
+    "Bash(k9s:*)",
+    "Bash(kubectx:*)",
+    "Bash(kubens:*)",
+];
+
 /// The command line, ready to spawn.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Launch {
@@ -49,6 +58,8 @@ impl Launch {
         if let Some(loopback) = loopback {
             args.extend(loopback.args(&files).await?);
         }
+        args.push("--disallowedTools".into());
+        args.extend(DENIED.iter().map(|one| one.to_string()));
         args.push("--append-system-prompt-file".into());
         let prompt = core_prompt(session, paths.knowledge);
         args.push(files.write("prompt.md", &prompt).await?);

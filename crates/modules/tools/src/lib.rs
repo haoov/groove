@@ -2,6 +2,7 @@
 
 pub mod answers;
 mod arguments;
+mod cluster;
 mod reads;
 mod said;
 pub mod wording;
@@ -42,6 +43,7 @@ impl Tool {
 /// Every tool Groove answers, reads first.
 pub fn all() -> Vec<Tool> {
     let mut out = reads::all();
+    out.extend(cluster::all());
     out.extend(writes::all());
     out
 }
@@ -80,6 +82,15 @@ pub(crate) fn takes(
 /// One string argument, with what it is for.
 pub(crate) fn text(description: impl Into<String>) -> serde_json::Value {
     serde_json::json!({ "type": "string", "description": description.into() })
+}
+
+/// A list of strings, each one argument as written.
+pub(crate) fn strings(description: impl Into<String>) -> serde_json::Value {
+    serde_json::json!({
+        "type": "array",
+        "items": { "type": "string" },
+        "description": description.into(),
+    })
 }
 
 /// One whole-number argument.

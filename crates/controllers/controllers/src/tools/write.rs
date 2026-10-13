@@ -8,6 +8,7 @@ use crate::workspace::git::Remote;
 use crate::{AppState, Services, Spawner};
 use groove_delivery_service::MrAct;
 
+mod clusters;
 mod forge;
 mod git;
 mod notes;
@@ -151,6 +152,8 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "finish_task" => task::finish(state, services, spawner, write),
         "adopt_task" => task::adopt(state, spawner, write),
         "save_user_skill" => skills::save(state, spawner, write),
+        "attach_cluster" => clusters::attach(state, services, spawner, write),
+        "detach_cluster" => clusters::detach(state, services, spawner, write),
         _ => write
             .reply
             .failed(format!("groove runs no {} yet", write.tool)),

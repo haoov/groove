@@ -39,11 +39,18 @@ takes that session as its default.
 **The tool descriptions are the one source** of how the agent writes. The core prompt and
 the skills point to the tools; they never restate them.
 
+**The agent reads a cluster only through Groove.** It never runs `kubectl` itself: the
+launch denies it in Bash. It asks the `kube` tool, and Groove checks the arguments before it
+runs the binary as an argument list, never through a shell. A read names a context the
+session holds and a namespace it holds, takes only read verbs and flags, and never prints
+a secret's data. Attaching or letting go of a cluster is a write, through the queue.
+
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
 forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
-repos and worktrees; and the agent's turns, so the feed can say when it worked.
+repos and worktrees; the agent's cluster reads; and the agent's turns, so the feed can say
+when it worked.
 
 **It does not hold the tools the agent ran on files.** A write or a shell command is the
 agent's status, which the rail shows live, not its history.

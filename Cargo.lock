@@ -1362,6 +1362,7 @@ name = "groove-cluster-service"
 version = "1.0.0-alpha.3"
 dependencies = [
  "groove-contexts",
+ "groove-kubectl",
  "groove-objects",
  "groove-text",
  "groove-types",

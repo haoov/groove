@@ -19,12 +19,20 @@ enum Account {
 
 /// Every program the app runs; `claude` is the path the agent launches.
 pub async fn check(claude: &str) -> Vec<Tool> {
-    let (git, claude, curl, glab, gh) = tokio::join!(
-        probe("git", "git", Account::None),
-        probe("claude", claude, Account::Json),
-        probe("curl", "curl", Account::None),
-        probe("glab", "glab", Account::Status),
-        probe("gh", "gh", Account::Status),
+    const VERSION: &[&str] = &["--version"];
+    let (git, claude, curl, glab, gh, kubectl, jq) = tokio::join!(
+        probe("git", "git", VERSION, Account::None),
+        probe("claude", claude, VERSION, Account::Json),
+        probe("curl", "curl", VERSION, Account::None),
+        probe("glab", "glab", VERSION, Account::Status),
+        probe("gh", "gh", VERSION, Account::Status),
+        probe(
+            "kubectl",
+            "kubectl",
+            &["version", "--client"],
+            Account::None
+        ),
+        probe("jq", "jq", VERSION, Account::None),
     );
     vec![
         tool("git", "worktrees, diffs, commits", true, git),
@@ -32,6 +40,8 @@ pub async fn check(claude: &str) -> Vec<Tool> {
         tool("curl", "the agent's status on the rail", false, curl),
         tool("glab", "GitLab merge requests and CI", false, glab),
         tool("gh", "GitHub pull requests and CI", false, gh),
+        tool("kubectl", "the agent's cluster reads", false, kubectl),
+        tool("jq", "the agent's filters on a cluster read", false, jq),
     ]
 }
 
@@ -44,9 +54,9 @@ fn tool(name: &'static str, purpose: &'static str, required: bool, found: Option
     }
 }
 
-async fn probe(name: &str, program: &str, account: Account) -> Option<Found> {
+async fn probe(name: &str, program: &str, args: &[&str], account: Account) -> Option<Found> {
     let out = Run::new(program)
-        .args(["--version"])
+        .args(args.iter().copied())
         .timeout(WAIT)
         .text()
         .await;

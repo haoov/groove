@@ -2,6 +2,7 @@
 
 mod files;
 mod forge;
+mod kube;
 mod session;
 mod task;
 mod work;
@@ -35,6 +36,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "get_task_body" => task::body(state, spawner, call),
         "get_task_template" => task::template(state, spawner, call),
         "read_file" => files::read(state, spawner, call),
+        "kube" => kube::read(state, services, spawner, call),
         tool => match groove_agent_service::tools::named(tool) {
             Some(one) if one.writes => write::asked(state, services, spawner, call),
             _ => call.reply.failed(format!("groove answers no {tool} yet")),
