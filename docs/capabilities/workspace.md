@@ -71,7 +71,9 @@ author and its status, kept in Groove's database. The notes list shows the sessi
 notes and the MR's threads as one list.
 
 **One open note a line.** A note stands in the surface under the line it was left on,
-in a card from the code's column, with its buttons under it. Its words are typed on the same kind of buffer a file is, so a
+in a card from the code's column, with its buttons under it. Each comment opens on a
+header: the author's initials and name, where the note lives, its Conventional Comments
+label and decoration, its lines and its age. Its words are typed on the same kind of buffer a file is, so a
 caret, a selection, an undo and the clipboard work there too.
 
 **What a note offers depends on what holds it.** A note of the session is written again,

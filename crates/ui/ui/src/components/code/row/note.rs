@@ -2,19 +2,20 @@
 
 use groove_gfx::Rect;
 
-use super::super::{Acting, Line, Noted};
+use super::super::{Acting, Header, Line, Noted};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{box_in, card_row};
-use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::shape::{box_in, card_row, top_rule};
+use groove_ui_kit::text::{Label, ago, elide, row};
 use groove_ui_kit::widgets::code::Block;
-use groove_ui_kit::widgets::{Button, typed_line};
+use groove_ui_kit::widgets::{Badge, Button, typed_line};
 
 /// One row of a note: its part of the card, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
-    let card = card(ctx, line, gutter);
+    let card = slotted(ctx, line, gutter);
     card_row(ctx, card, (false, false));
     let role = match said.resolved {
         true => Role::Faint,
@@ -23,24 +24,84 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, 
     if said.opens {
         gutter_mark(ctx, line, gutter, Role::Muted);
     }
+    if let Some(head) = said.head {
+        return header(ctx, (line, card), gutter, head, role);
+    }
     let by = by(ctx, card, said);
     let at = gutter.content(ctx, line);
     let words = ctx.styles.body(role);
-    let rect = Rect::new(at, line.y, (by - at - ctx.tokens.sm).max(0.0), line.h);
     if let Some(prose) = said.prose {
+        let at = at + ctx.tokens.xl;
+        let rect = Rect::new(at, line.y, (by - at - ctx.tokens.sm).max(0.0), line.h);
         let link = |url: &str| Target::Link(url.to_string());
         return groove_ui_kit::markdown::row(ctx, rect, prose, role, &link);
     }
+    let rect = Rect::new(at, line.y, (by - at - ctx.tokens.sm).max(0.0), line.h);
+    let field = Rect::new(
+        at - ctx.tokens.xs,
+        line.y,
+        card.right() - ctx.tokens.sm - at,
+        line.h,
+    );
+    groove_ui_kit::shape::ground(ctx, field, Ground::Deep);
     let text = elide(ctx, code.text, &words, rect.w);
     typed_line(ctx, rect, (&text, words), (code.caret, code.held));
 }
 
+/// A comment's header: initials, author, source and label from the left; lines and age at the end.
+fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Header, role: Role) {
+    if head.reply {
+        let rule = ctx.styles.line();
+        top_rule(ctx, card, rule);
+    }
+    let at = gutter.content(ctx, line);
+    let mut room = Rect::new(
+        at,
+        line.y,
+        (card.right() - ctx.tokens.sm - at).max(0.0),
+        line.h,
+    );
+    let faint = ctx.styles.small(Role::Faint);
+    let age = ago(head.at.age_at(ctx.now));
+    Label::new(&age, faint).right(ctx, &mut room, ctx.tokens.sm);
+    Label::new(&head.lines, faint).right(ctx, &mut room, ctx.tokens.sm);
+    let initials = room.take_left(ctx.tokens.xl);
+    Label::new(&head.initials, ctx.styles.initials(Role::Muted)).draw(ctx, initials);
+    Label::new(&head.author, ctx.styles.label(role)).left(ctx, &mut room, ctx.tokens.sm);
+    Label::new(head.source, faint).left(ctx, &mut room, ctx.tokens.sm);
+    let Some((label, decoration)) = head.label.as_ref() else {
+        return;
+    };
+    let chip = Badge::new(label, label_role(label)).at(ctx, line, room.x);
+    if let Some(decoration) = decoration {
+        Badge::new(decoration, Role::Faint).at(ctx, line, chip.right() + ctx.tokens.xs);
+    }
+}
+
+/// The colour a Conventional Comments label reads in.
+fn label_role(label: &str) -> Role {
+    match label {
+        "issue" => Role::Bad,
+        "suggestion" => Role::Working,
+        "question" => Role::Attention,
+        "todo" => Role::Warn,
+        "praise" => Role::Ok,
+        _ => Role::Faint,
+    }
+}
+
 /// The half of a pad row the card reaches into: its lower half above the card, its upper below.
 pub(super) fn padded(ctx: &mut Ctx, line: Rect, top: bool, gutter: Block) {
-    let card = card(ctx, line, gutter);
+    let card = slotted(ctx, line, gutter);
     let half = card.h / 2.0;
     let y = if top { card.y + half } else { card.y };
     card_row(ctx, Rect::new(card.x, y, card.w, half), (top, !top));
+}
+
+/// A note's row on the deepest ground, and where its card stands on it.
+fn slotted(ctx: &mut Ctx, line: Rect, gutter: Block) -> Rect {
+    groove_ui_kit::shape::ground(ctx, line, Ground::Deep);
+    card(ctx, line, gutter)
 }
 
 /// Where a note's card stands on one of its rows: from just before the code to short of the end.
@@ -75,7 +136,7 @@ fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, role: Role) {
 
 /// What a note offers, as buttons from the column its words start on.
 pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
-    let card = card(ctx, line, gutter);
+    let card = slotted(ctx, line, gutter);
     card_row(ctx, card, (false, false));
     let offered = offered(acting);
     let mut at = gutter.content(ctx, line);

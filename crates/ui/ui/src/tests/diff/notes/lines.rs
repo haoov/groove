@@ -46,7 +46,12 @@ fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     let drawn = row_texts(&app, &ui);
-    for word in body.split_whitespace() {
+    let words = groove_types::labelled(body).expect("a label").rest;
+    assert!(
+        drawn.iter().any(|one| one == "issue"),
+        "the label: {drawn:?}"
+    );
+    for word in words.split_whitespace() {
         assert!(
             drawn
                 .iter()

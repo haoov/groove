@@ -99,3 +99,43 @@ impl Note {
             .is_some_and(|one| one.path == path && one.rows().contains(&line))
     }
 }
+
+/// The labels Conventional Comments names.
+const LABELS: [&str; 12] = [
+    "praise",
+    "nitpick",
+    "suggestion",
+    "issue",
+    "todo",
+    "question",
+    "thought",
+    "chore",
+    "note",
+    "typo",
+    "polish",
+    "quibble",
+];
+
+/// A comment's Conventional Comments label and its decoration, when its first line opens on one.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Labelled<'a> {
+    pub label: &'a str,
+    pub decoration: Option<&'a str>,
+    /// What the comment says once its label is taken off.
+    pub rest: &'a str,
+}
+
+/// `issue (blocking): it leaks` read as its label, decoration and the words after them.
+pub fn labelled(body: &str) -> Option<Labelled<'_>> {
+    let (head, rest) = body.split_once(':')?;
+    let (label, decoration) = match head.split_once('(') {
+        Some((label, inside)) => (label.trim(), Some(inside.strip_suffix(')')?.trim())),
+        None => (head.trim(), None),
+    };
+    let label = LABELS.iter().find(|one| label.eq_ignore_ascii_case(one))?;
+    Some(Labelled {
+        label,
+        decoration: decoration.filter(|one| !one.is_empty()),
+        rest: rest.trim_start(),
+    })
+}

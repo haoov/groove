@@ -43,7 +43,7 @@ fn a_note_draws_under_the_line_it_was_left_on() {
     let drawn = in_editor(&app);
     let at = |text: &str| drawn.iter().position(|one| one == text);
     let line = at("fn TWO() {}").or_else(|| at("TWO")).expect("the line");
-    let words = at("issue: this leaks").expect("the note");
+    let words = at("this leaks").expect("the note");
     assert!(words > line, "the note stands under its line: {drawn:?}");
     assert_eq!(at("reviewer").map(|one| one < words), Some(true));
 }
@@ -65,7 +65,11 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
         .collect();
     card.sort_by(|a, b| a.y.total_cmp(&b.y));
     let heights: Vec<f32> = card.iter().map(|rect| rect.h).collect();
-    assert_eq!(heights, [line / 2.0, line, line, line / 2.0], "{card:?}");
+    assert_eq!(
+        heights,
+        [line / 2.0, line, line, line, line / 2.0],
+        "{card:?}"
+    );
     assert!(card[0].x > code.x && card[0].right() < code.right());
     let edge = |y: f32| {
         quads
@@ -74,14 +78,46 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
     };
     assert!(edge(card[0].y), "closed half a row under the code above");
     assert!(
-        edge(card[3].bottom() - thin),
+        edge(card[4].bottom() - thin),
         "and half a row over the code below"
     );
+    let deep: Vec<groove_gfx::Rect> = quads
+        .iter()
+        .filter(|quad| quad.color == styles.deep() && code.contains(quad.rect.x, quad.rect.y))
+        .map(|quad| quad.rect)
+        .collect();
+    assert_eq!(
+        deep.len(),
+        5,
+        "every row of the note stands on the deepest ground"
+    );
     assert!(
-        !quads
-            .iter()
-            .any(|quad| quad.color == styles.deep() && code.contains(quad.rect.x, quad.rect.y)),
-        "no deep ground under the note"
+        deep.iter().all(|rect| rect.w > card[0].w),
+        "wider than its card"
+    );
+}
+
+#[test]
+fn each_comment_opens_on_a_header_that_names_who_from_where_and_its_label() {
+    let mut one = note(1, "Marie Dupont", "issue (blocking): this leaks");
+    one.said.push(said("haoov", "fixed"));
+    let drawn = in_editor(&noted(vec![one]));
+    let at = |text: &str| drawn.iter().position(|one| one == text);
+    let header = ["MD", "Marie Dupont", "MR", "issue", "blocking"].map(&at);
+    assert!(header.iter().all(Option::is_some), "{drawn:?}");
+    let words = at("this leaks").expect("the words, their label off");
+    assert!(header.iter().all(|one| one.is_some_and(|one| one < words)));
+    let reply = at("HA").expect("the reply's own header");
+    assert!(at("haoov").is_some_and(|one| one > reply) && at("fixed") > Some(reply));
+    assert!(
+        !drawn.iter().any(|one| one.contains("issue (blocking)")),
+        "{drawn:?}"
+    );
+    let local = in_editor(&noted(vec![own(1, "thought: maybe")]));
+    assert!(local.iter().any(|one| one == "local"), "{local:?}");
+    assert!(
+        local.iter().any(|one| one == "me") && local.iter().any(|one| one == "ME"),
+        "the user's own note reads as theirs: {local:?}"
     );
 }
 
@@ -93,13 +129,13 @@ fn a_note_takes_a_row_of_the_surface() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 4,
-        "room above, the note, the row of buttons under it, room below"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 5,
+        "room above, its header, its words, the row of buttons, room below"
     );
 }
 
 #[test]
-fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
+fn a_thread_takes_a_header_and_a_row_for_every_comment_of_it() {
     let mut one = note(1, "reviewer", "issue: this leaks");
     one.said.push(said("haoov", "fixed"));
     let bare = opened();
@@ -108,8 +144,8 @@ fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
-        "a row for each note of it, a blank above the reply, the buttons, room above and below"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 7,
+        "a header and a row for each comment of it, the buttons, room above and below"
     );
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|one| one == "fixed"), "{drawn:?}");
@@ -120,7 +156,7 @@ fn a_note_pushes_the_lines_under_it_down() {
     let app = noted(vec![note(0, "reviewer", "issue: this leaks")]);
     let drawn = in_editor(&app);
     let at = |text: &str| drawn.iter().position(|one| one == text);
-    let words = at("issue: this leaks").expect("the note");
+    let words = at("this leaks").expect("the note");
     let after = at("TWO").expect("the line under it");
     assert!(after > words, "the note pushes the rows down: {drawn:?}");
 }
@@ -131,10 +167,7 @@ fn a_note_on_another_file_draws_nothing_here() {
     one.anchor = Some(Anchor::line("other.rs", 1));
     let app = noted(vec![one]);
     let drawn = in_editor(&app);
-    assert!(
-        !drawn.iter().any(|one| one == "issue: this leaks"),
-        "{drawn:?}"
-    );
+    assert!(!drawn.iter().any(|one| one == "this leaks"), "{drawn:?}");
 }
 
 #[test]
@@ -154,7 +187,7 @@ fn a_note_draws_in_the_diff_views_too() {
     for view in [DiffView::Inline, DiffView::Split] {
         let drawn = in_view(&app, crate::views::session::Face::Stream(view));
         assert!(
-            drawn.iter().any(|one| one.starts_with("issue: this l")),
+            drawn.iter().any(|one| one.starts_with("this l")),
             "{view:?}: {drawn:?}"
         );
     }
@@ -174,11 +207,11 @@ fn a_click_on_a_note_moves_no_caret() {
             row,
         )
     };
-    for row in 1..=4 {
+    for row in 1..=5 {
         assert_eq!(line_at(row), None, "row {row} is the note left on row 0");
     }
     assert_eq!(
-        line_at(5),
+        line_at(6),
         Some(("src/lib.rs".to_string(), 1)),
         "the line after it is the file's second"
     );
@@ -261,7 +294,7 @@ fn width_of(text: &str, style: groove_gfx::TextStyle) -> f32 {
 }
 
 #[test]
-fn what_a_note_says_starts_where_the_code_does() {
+fn a_note_s_header_starts_where_the_code_does_and_its_words_a_step_in() {
     let app = noted(vec![own(1, "issue: this leaks")]);
     let ui = on_diff();
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -269,10 +302,25 @@ fn what_a_note_says_starts_where_the_code_does() {
     let words = frame.layers()[0]
         .texts
         .iter()
-        .find(|run| run.text == "issue: this leaks" && code.contains(run.x, run.y))
+        .find(|run| run.text == "this leaks" && code.contains(run.x, run.y))
         .map(|run| run.x)
         .expect("the words");
-    assert_eq!(words, hits.chars().left, "on the code's own column");
+    let initials = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "ME" && code.contains(run.x, run.y))
+        .map(|run| run.x)
+        .expect("the initials");
+    assert_eq!(
+        initials,
+        hits.chars().left,
+        "the header on the code's own column"
+    );
+    assert_eq!(
+        words,
+        hits.chars().left + Tokens::new(1.0).xl,
+        "the words a step in, under the author"
+    );
 }
 
 #[test]

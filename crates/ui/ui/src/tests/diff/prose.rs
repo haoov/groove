@@ -59,7 +59,7 @@ fn a_split_view_draws_a_note_once_on_its_new_side() {
     let runs: Vec<_> = frame.layers()[0]
         .texts
         .iter()
-        .filter(|one| one.text == "issue: said once")
+        .filter(|one| one.text == "said once")
         .collect();
     assert_eq!(runs.len(), 1, "one side draws it");
     let code = hits.rect_of(&Target::Code).expect("the new side's rows");

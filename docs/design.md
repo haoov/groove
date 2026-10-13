@@ -232,8 +232,9 @@ caret, a selection, an undo and the clipboard work there too; Enter is a line of
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the
 workspace, its header, the board's own header, the commit box, the agent pane's frame.
-The bands sit under it: the rail, the sidebar, a column's heading, a menu, a file's head. A terminal is the deepest — the agent's pty and the terminal widget, and
-nothing else.
+The bands sit under it: the rail, the sidebar, a column's heading, a menu, a file's head.
+The deepest holds the agent's pty, the terminal widget, a note's own rows under its card,
+and the field a note is typed in — nothing else.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the

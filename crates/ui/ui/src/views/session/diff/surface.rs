@@ -199,35 +199,33 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     .blame(super::blame::on(row, held.said)),
                 None => Line::new(""),
             },
-            Slot::Note { at, row } => Line::note(
-                &held.words[on].body,
-                Noted {
-                    author: &held.words[on].author,
-                    lines: &held.words[on].lines,
-                    opens: *row == 0,
-                    resolved: app.delivery.shown.get(*at).is_some_and(|one| one.resolved),
-                    prose: held.words[on].prose.as_ref(),
-                },
-            ),
+            Slot::Note { at, row } => {
+                let resolved = app.delivery.shown.get(*at).is_some_and(|one| one.resolved);
+                said(&held.words[on], *row == 0, resolved)
+            }
             Slot::Pad { top } => Line::pad(*top),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
                 Some(note) => Line::acting(acting_of(app, note)),
                 None => Line::new(""),
             },
-            Slot::Typed { row } => Line::note(
-                &held.words[on].body,
-                Noted {
-                    author: &held.words[on].author,
-                    lines: &held.words[on].lines,
-                    opens: *row == 0,
-                    resolved: false,
-                    prose: None,
-                },
-            )
-            .caret(held.words[on].caret)
-            .held(held.words[on].held),
+            Slot::Typed { row } => said(&held.words[on], *row == 0, false)
+                .caret(held.words[on].caret)
+                .held(held.words[on].held),
         })
         .collect()
+}
+
+/// A row of a note, from what it says.
+fn said(words: &Words, opens: bool, resolved: bool) -> Line<'_> {
+    let noted = Noted {
+        author: &words.author,
+        lines: &words.lines,
+        opens,
+        resolved,
+        prose: words.prose.as_ref(),
+        head: words.head.as_ref(),
+    };
+    Line::note(&words.body, noted)
 }
 
 /// What a note's own row of buttons acts on.

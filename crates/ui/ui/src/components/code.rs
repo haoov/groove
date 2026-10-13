@@ -1,11 +1,13 @@
 //! The code surface: a row's parts, and the gutters every row shares.
 
+mod header;
 mod place;
 mod row;
 
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
+pub use self::header::Header;
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark, head_of};
 
@@ -23,6 +25,7 @@ pub struct Noted<'a> {
     pub resolved: bool,
     /// The words as Markdown; the plain text is drawn when there is none.
     pub prose: Option<&'a groove_ui_kit::markdown::Row>,
+    pub head: Option<&'a Header>,
 }
 
 /// The buttons a note's last row carries, and the note they act on.

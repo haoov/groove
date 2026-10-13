@@ -5,7 +5,7 @@ use std::ops::Range;
 use groove_controllers::AppState;
 use groove_types::{Anchor, Note};
 
-use super::wrap::{cols_of, wrapped};
+use super::wrap::{Worded, cols_of, wrapped};
 use crate::Ui;
 use crate::views::session::Face;
 
@@ -20,7 +20,7 @@ struct Block {
     /// The note's own row of buttons, under what it says.
     acts: bool,
     /// What each row of the note says, wrapped once for the frame.
-    said: Vec<(String, groove_ui_kit::markdown::Row)>,
+    said: Vec<Worded>,
 }
 
 /// A row of the surface: a view row, a note row, a note's buttons, or the note being typed.
@@ -85,8 +85,8 @@ impl Inline {
         Self { blocks }
     }
 
-    /// What one row of a note says: who said it, and the words on that row.
-    pub(crate) fn said(&self, at: usize, row: usize) -> (String, groove_ui_kit::markdown::Row) {
+    /// What one row of a note holds: a comment's header, or a line of its words.
+    pub(crate) fn said(&self, at: usize, row: usize) -> Worded {
         self.blocks
             .iter()
             .find(|block| block.at == Some(at))
