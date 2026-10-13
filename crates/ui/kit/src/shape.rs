@@ -149,3 +149,16 @@ pub fn ground<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, ground: Ground) {
     let color = ground.color(&ctx.styles);
     ctx.quad(rect, color);
 }
+
+/// A shade fading down from under `band`, onto what it stands over.
+pub fn shadow_under<A: App>(ctx: &mut Ctx<'_, A>, band: Rect) {
+    let blur = ctx.tokens.sm;
+    let rect = Rect::new(
+        band.x - blur,
+        band.bottom() - blur,
+        band.w + blur * 2.0,
+        blur * 2.0,
+    );
+    let color = ctx.styles.shadow();
+    ctx.shadow(rect, color, blur);
+}

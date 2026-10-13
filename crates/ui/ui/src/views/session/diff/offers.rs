@@ -9,7 +9,7 @@ use groove_controllers::workspace::Way;
 
 use super::notes::Slot;
 use super::row::Drawn;
-use crate::components::{Gutters, head_mark};
+use crate::components::{Gutters, head_mark, head_of};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::Face;
@@ -23,25 +23,45 @@ pub(super) fn marks(
     slots: &[Slot],
     rows: &[Drawn],
     first: usize,
+    (gutters, view, side, rect): (Gutters, Face, Side, Rect),
+) {
+    ctx.clipped(rect, |ctx| {
+        for (line, slot) in drawn.iter().zip(slots) {
+            marked(ctx, *line, slot, rows, first, (gutters, view, side));
+        }
+    });
+}
+
+/// One row's marks: a gap's arrows, or a head's fold and read box.
+fn marked(
+    ctx: &mut Ctx,
+    line: Rect,
+    slot: &Slot,
+    rows: &[Drawn],
+    first: usize,
     numbers: (Gutters, Face, Side),
 ) {
-    for (line, slot) in drawn.iter().zip(slots) {
-        let Slot::Code(at) = slot else {
-            continue;
-        };
-        let Some(row) = rows.get(at - first) else {
-            continue;
-        };
-        if let RowKind::Gap(_) = row.kind {
-            gap_marks(ctx, *line, *at, numbers.0, numbers.1, numbers.2);
-            continue;
-        }
-        let Some(path) = row.file.as_ref().filter(|_| row.head) else {
-            continue;
-        };
-        ctx.hit(*line, Target::Head(path.clone()));
-        ctx.hit(head_mark(ctx, *line), Target::Read(path.clone()));
+    let Slot::Code(at) = slot else {
+        return;
+    };
+    let Some(row) = rows.get(at - first) else {
+        return;
+    };
+    if let RowKind::Gap(_) = row.kind {
+        gap_marks(ctx, line, *at, numbers.0, numbers.1, numbers.2);
+        return;
     }
+    let split = numbers.1 == Face::Stream(DiffView::Split);
+    let Some(path) = row.file.as_ref().filter(|_| row.head && !split) else {
+        return;
+    };
+    head_hits(ctx, head_of(line, row.part), path);
+}
+
+/// A head folds its file on a click, and its box marks the file read.
+pub(super) fn head_hits(ctx: &mut Ctx, whole: Rect, path: &str) {
+    ctx.hit(whole, Target::Head(path.to_string()));
+    ctx.hit(head_mark(ctx, whole), Target::Read(path.to_string()));
 }
 
 /// The arrows a gap wears: down where the old line stands, up where the new one does.

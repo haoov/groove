@@ -127,6 +127,10 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.rounded(rect, color, radius);
     }
 
+    pub(crate) fn shadow(&mut self, rect: Rect, color: Color, blur: f32) {
+        self.frame.shadow(rect, color, blur);
+    }
+
     pub(crate) fn ring(&mut self, rect: Rect, color: Color, radius: f32, stroke: f32) {
         self.frame.ring(rect, color, radius, stroke);
     }

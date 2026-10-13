@@ -53,7 +53,7 @@ fn the_file_view_shows_what_is_there_now_and_nothing_that_went() {
     let drawn = in_view(&opened(), crate::views::session::Face::File);
     assert!(drawn.iter().any(|t| t == "TWO"), "the new line: {drawn:?}");
     assert!(!drawn.iter().any(|t| t == "two"), "not the old one");
-    let numbers: Vec<&String> = drawn.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
+    let numbers: Vec<&String> = drawn.iter().filter(|t| super::numeral(t)).collect();
     assert_eq!(numbers, ["1", "2", "3"], "the file's own numbers");
 }
 
@@ -63,12 +63,35 @@ fn split_draws_each_side_with_its_own_numbers() {
     let drawn = in_view(&app, crate::views::session::Face::Stream(DiffView::Split));
     assert!(drawn.iter().any(|t| t == "two"), "the old side: {drawn:?}");
     assert!(drawn.iter().any(|t| t == "TWO"), "and the new one");
-    let numbers: Vec<&String> = drawn.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
+    let numbers: Vec<&String> = drawn.iter().filter(|t| super::numeral(t)).collect();
     assert_eq!(
         numbers,
         ["1", "2", "3", "1", "2", "3"],
         "three rows a side, each numbered once: {drawn:?}"
     );
+}
+
+#[test]
+fn split_draws_one_head_across_both_sides() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.view = DiffView::Split;
+    let (frame, hits) = view_of(&app, &ui);
+    let code = hits.rect_of(&Target::Code).expect("the rows");
+    let names = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.text == "lib.rs")
+        .count();
+    assert_eq!(names, 1, "the file is named once");
+    let head = hits
+        .rect_of(&Target::Head("src/lib.rs".into()))
+        .expect("its head");
+    assert!(
+        head.x < code.x,
+        "it starts on the old side: {head:?} {code:?}"
+    );
+    assert_eq!(head.right(), code.right(), "and ends on the new");
 }
 
 #[test]
@@ -86,7 +109,7 @@ fn the_file_view_draws_the_whole_file_not_the_alignment() {
         !file.iter().any(|t| t.starts_with('\u{2026}')),
         "the file view elides nothing"
     );
-    let numbers: Vec<&String> = file.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
+    let numbers: Vec<&String> = file.iter().filter(|t| super::numeral(t)).collect();
     assert_eq!(numbers[..3], ["1", "2", "3"], "from the first line");
     assert_eq!(numbers.len(), 30, "every line: {numbers:?}");
 }

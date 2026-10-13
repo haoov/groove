@@ -1,4 +1,4 @@
-//! The band above the rows: the path, what it changed, and the three views.
+//! The band above the rows: on the diff, the whole change and its views; on a file, its path.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -15,14 +15,15 @@ use groove_ui_kit::shape::{hairline, square};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{self, Text, changes};
 
-/// The file's path, what it changed, and which view it is drawn in.
+/// The band over the diff or over the open file.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
     hairline(ctx, band, ctx.styles.line());
     let mut room = band;
     if ui.session.tab == Tab::Diff {
         switch(ctx, &mut room, ui.session.view);
+        return totals(ctx, room, app);
     }
-    if let Some(counts) = counted(app, path) {
+    if let Some(counts) = super::row::counted(app, path) {
         changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
     }
     let dirty = app
@@ -48,15 +49,23 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
 fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
     for view in DiffView::ALL.into_iter().rev() {
         let tab = widgets::Tab::new(view.label(), Target::View(view), view == current);
-        let tab = tab.text(Text::Small).quiet(Role::Faint).tight();
+        let tab = tab.text(Text::Body).quiet(Role::Faint).tight();
         tab.right(ctx, room, 0.0);
     }
 }
 
-/// The summary's counts for this path.
-fn counted(app: &AppState, path: &str) -> Option<(u32, u32)> {
-    files::changed(app)
-        .iter()
-        .find(|file| file.path == path)
-        .map(|file| (file.added, file.deleted))
+/// How many files the change touches, and what it added and removed in all.
+fn totals(ctx: &mut Ctx, mut room: Rect, app: &AppState) {
+    let files = files::changed(app);
+    let added = files.iter().map(|file| file.added).sum();
+    let deleted = files.iter().map(|file| file.deleted).sum();
+    changes(ctx, &mut room, (added, deleted), |ctx, role| {
+        ctx.styles.code(role)
+    });
+    let said = match files.len() {
+        1 => "1 file".to_string(),
+        many => format!("{many} files"),
+    };
+    let md = ctx.tokens.md;
+    Label::new(&said, ctx.styles.body(Role::Muted)).draw(ctx, room.pad(Edges::across(md, md)));
 }

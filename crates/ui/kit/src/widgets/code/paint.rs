@@ -186,9 +186,10 @@ fn caret<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, column: usize) {
     caret_bar(ctx, at, rect, color);
 }
 
-/// A row across the width: its own ground, its text in the middle.
+/// A row across the width: a rule above and below, its text in the middle.
 pub(super) fn banner<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, text: &str) {
-    crate::shape::ground(ctx, line, Ground::Band);
+    let rule = ctx.styles.line();
+    ruled(ctx, line, rule);
     let label = Label::new(text, ctx.styles.code(Role::Ghost));
     let width = label.width(ctx);
     label.draw(
@@ -197,19 +198,33 @@ pub(super) fn banner<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, text: &str) {
     );
 }
 
-/// A row naming a file: its own ground, a caret for its rows, its name.
+/// A file's head, whole, drawn from whichever of its rows `line` is.
 pub(super) fn head<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>) {
+    let whole = super::head_of(line, code.part);
     let role = match code.read {
         true => Role::Faint,
         false => Role::Text,
     };
-    let (ground, style) = (ctx.styles.raised(), ctx.styles.label(role));
-    ctx.quad(line, ground);
+    let (ground, rule) = (ctx.styles.band(), ctx.styles.line());
+    ctx.quad(whole, ground);
+    ruled(ctx, whole, rule);
     let (xs, size) = (ctx.tokens.xs, ctx.tokens.icon);
-    let mut room = line.pad(Edges::across(xs, 0.0));
+    let mut room = whole.pad(Edges::across(xs, 0.0));
     crate::widgets::caret(ctx, &mut room, (!code.folded, size), Role::Faint);
-    row(ctx, room, 0.0, code.text, style);
-    box_(ctx, head_mark(ctx, line), code.read);
+    room.take_right(ctx.tokens.md + size);
+    if let Some(counts) = code.counts {
+        crate::widgets::changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
+    }
+    let (folder, name) = match code.text.rsplit_once('/') {
+        Some((folder, name)) => (folder, name),
+        None => ("", code.text),
+    };
+    let named = Label::new(name, ctx.styles.file_head(role)).draw(ctx, room);
+    room.take_left(named.w + ctx.tokens.sm);
+    Label::new(folder, ctx.styles.body(Role::Faint))
+        .cut_start()
+        .draw(ctx, room);
+    box_(ctx, head_mark(ctx, whole), code.read);
 }
 
 /// The box that says whether a file is read, ticked once it is.

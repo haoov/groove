@@ -180,6 +180,9 @@ which the gutter holds together.
 An added or a removed row tints its gutter and its numbers in its own colour, a step
 stronger than its ground.
 
+Over the diff, a band holds the whole change — how many files, what it added and removed
+— and the inline and split switch. Over a file, the band names the file.
+
 The new side is editable in every mode. A caret lives in the document, never in a row, so
 it stays where the user left it while the rows move under it. A removed line belongs to the
 old document and takes no caret. **Where the caret is** is two rules, above its row and
@@ -199,19 +202,20 @@ surface, `ctrl+f` opens a bar over the file's own header, with the count at its 
 hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc ends
 it. `ctrl+shift+p` opens a file by its path.
 
-**Finding your way in a big change.** Four answers, and none of them is a bigger tree:
+**Finding your way in a big change.** Three answers, and none of them is a bigger tree:
 
 - **The path, once.** The file list strips the whole change's common root and shows it
   once, then collapses every directory chain with a single child. A file reads as its name
   first and the rest of its path behind it, dimmed. Where the name carries no meaning,
   `mod.rs` and its like, the directory is the name.
-- **Where am I.** The file pins at the top of the surface, and under it the scopes the
-  visible rows sit in, stacked as they nest, read from the syntax tree.
-- **Crossing a directory.** In a scroll over several files, a band marks where the path
-  changes, showing only the segments that differ from the file above.
+- **Where am I.** In the diff, each file opens on a head two rows tall: its name, its
+  folder dimmed after it, then its counts and its read box at its end. The head of the
+  file the rows stand in pins at the top, over a soft shadow, until the next file's head
+  pushes it out. In the file view, the scopes
+  the visible rows sit in pin instead, stacked as they nest, read from the syntax tree.
 - **What is left.** One column down the edge holds the whole change: a band per file, its
   height its diff's length, its hunks as marks, the viewport as a lens that drags. A file
-  marked read dims; a file carrying a note is marked. What is left is what is still bright.
+  marked read dims. What is left is what is still bright.
   A file is marked read by the user, never by scrolling past it. The marks belong to the
   session and outlive the window.
 
@@ -227,8 +231,7 @@ caret, a selection, an undo and the clipboard work there too; Enter is a line of
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the
 workspace, its header, the board's own header, the commit box, the agent pane's frame.
-The bands sit under it: the rail, the sidebar, a column's heading, a menu, a band across
-the rows. A terminal is the deepest — the agent's pty and the terminal widget, and
+The bands sit under it: the rail, the sidebar, a column's heading, a menu, a file's head. A terminal is the deepest — the agent's pty and the terminal widget, and
 nothing else.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the

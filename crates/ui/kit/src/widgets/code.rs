@@ -22,6 +22,10 @@ pub struct Code<'a, T> {
     pub mark: Option<Color>,
     pub banner: bool,
     pub head: bool,
+    /// Which of its head's rows this one is, and how many the head takes.
+    pub part: (usize, usize),
+    /// What a head's file added and removed.
+    pub counts: Option<(u32, u32)>,
     pub folded: bool,
     pub read: bool,
     /// In characters.
@@ -52,6 +56,15 @@ pub fn draw<A: App>(
         return paint::banner(ctx, line, code.text);
     }
     paint::coded(ctx, line, code, gutter, across);
+}
+
+/// The whole head a head row is part `at` of, `rows` rows tall.
+pub fn head_of(line: Rect, (at, rows): (usize, usize)) -> Rect {
+    Rect {
+        y: line.y - at as f32 * line.h,
+        h: line.h * rows.max(1) as f32,
+        ..line
+    }
 }
 
 /// Where a head row carries the mark that says its file is read.

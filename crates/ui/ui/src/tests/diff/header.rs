@@ -4,25 +4,47 @@ use super::*;
 use crate::tests::render;
 
 #[test]
-fn the_header_names_the_file_and_what_it_changed() {
+fn the_diff_header_counts_the_whole_change_and_names_no_file() {
     let app = opened();
-    let drawn = texts(&app, &on_diff());
-    assert!(drawn.iter().any(|t| t == "src/lib.rs"), "{drawn:?}");
-    assert!(drawn.iter().any(|t| t == "+1"), "what it added: {drawn:?}");
-    assert!(drawn.iter().any(|t| t == "-1"), "and what it took away");
+    let ui = on_diff();
+    let (frame, hits) = view_of(&app, &ui);
+    let band = hits
+        .rect_of(&Target::View(DiffView::Inline))
+        .expect("the switch");
+    let header: Vec<&str> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|text| (text.y - band.y).abs() < band.h)
+        .map(|text| text.text.as_str())
+        .collect();
+    assert!(header.contains(&"1 file"), "{header:?}");
+    assert!(
+        header.contains(&"+1") && header.contains(&"-1"),
+        "{header:?}"
+    );
+    assert!(!header.iter().any(|t| t.contains("lib.rs")), "{header:?}");
 }
 
 #[test]
-fn a_long_path_keeps_its_end() {
+fn the_files_header_names_the_open_file() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|t| t == "src/lib.rs"), "{drawn:?}");
+}
+
+#[test]
+fn a_head_names_the_file_first_and_keeps_the_end_of_its_folder() {
     let long = "crates/ui/ui/src/views/session/diff/surface.rs";
     let mut app = with_files();
     crate::tests::shows(&mut app, long, OLD, NEW);
     let drawn = texts(&app, &on_diff());
-    let path = drawn
-        .iter()
-        .find(|text| text.ends_with("surface.rs"))
-        .expect("the name survives: {drawn:?}");
-    assert!(path.ends_with("diff/surface.rs"), "{path}");
+    assert!(drawn.iter().any(|t| t == "surface.rs"), "{drawn:?}");
+    assert!(
+        drawn.iter().any(|t| t.ends_with("session/diff")),
+        "the folder after it: {drawn:?}"
+    );
 }
 
 #[test]
@@ -60,7 +82,8 @@ fn the_files_tab_has_no_view_to_switch() {
 #[test]
 fn the_header_says_when_the_file_owes_the_disk() {
     let app = opened();
-    let ui = on_diff();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let band = crate::layout::Layout::of(window(), &ui).workspace;
     let marks = |app: &AppState| {
@@ -69,7 +92,7 @@ fn the_header_says_when_the_file_owes_the_disk() {
             .icons
             .iter()
             .filter(|icon| icon.color == styles.color(groove_ui_kit::base::style::Role::Warn))
-            .filter(|icon| icon.rect.y < band.y + Tokens::new(1.0).row * 2.0)
+            .filter(|icon| icon.rect.y < band.y + Tokens::new(1.0).row * 4.0)
             .count()
     };
     assert_eq!(marks(&app), 0, "nothing is owed yet");

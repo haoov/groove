@@ -16,7 +16,7 @@ mod tests;
 
 #[cfg(test)]
 pub(crate) use alignment::{align, hunks};
-pub use changes::{Aligned, At, Changes, aligned, changes};
+pub use changes::{Aligned, At, Changes, HEAD_ROWS, aligned, changes};
 pub use commit::{at_commit, commits, opened_at};
 pub use groove_text::{Buffer, Document, column_of, display_of};
 pub use layout::Layout;

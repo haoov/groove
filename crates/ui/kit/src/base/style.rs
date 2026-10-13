@@ -5,7 +5,7 @@ use groove_types::{Capture, ThemeName};
 
 mod diff;
 
-use crate::base::tokens::{SCRIM_ALPHA, Tokens};
+use crate::base::tokens::{SCRIM_ALPHA, SHADOW_ALPHA, Tokens};
 
 /// What a text or a mark means. Colour follows the role, never the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +76,11 @@ impl Styles {
     /// A section's name inside a surface; drawn upper case.
     pub fn heading(&self, role: Role) -> TextStyle {
         self.sans(self.tokens.heading, Weight::Medium, role)
+    }
+
+    /// A file's name where it heads its own rows.
+    pub fn file_head(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.h3, Weight::Medium, role)
     }
 
     pub fn body(&self, role: Role) -> TextStyle {
@@ -185,6 +190,18 @@ impl Styles {
     /// The bar where the caret sits.
     pub fn caret(&self) -> Color {
         self.palette.text
+    }
+
+    /// The alpha a tint takes on this theme, stronger on a light ground.
+    fn alpha(&self, (dark, light): (u8, u8)) -> u8 {
+        let base = self.palette.base;
+        let lightness = u16::from(base.r) + u16::from(base.g) + u16::from(base.b);
+        if lightness > 384 { light } else { dark }
+    }
+
+    /// The shade under what stands over the rows.
+    pub fn shadow(&self) -> Color {
+        Color::BLACK.with_alpha(self.alpha(SHADOW_ALPHA))
     }
 
     /// The work's own ground: the window, the workspace, the agent's pane.

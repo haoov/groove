@@ -34,11 +34,13 @@ pub struct Quad {
     pub shape: Shape,
 }
 
-/// How a quad is cut: its corners' radius, and the width of its edge when only that is drawn.
+/// How a quad is cut: its corners' radius, the width of its edge when only that is drawn, its fade.
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Shape {
     pub radius: f32,
     pub stroke: f32,
+    /// How far the quad fades out inside its edge; none keeps it sharp.
+    pub blur: f32,
 }
 
 /// One icon, drawn in its own box.
@@ -130,14 +132,28 @@ impl Frame {
             color,
             Shape {
                 radius,
-                stroke: 0.0,
+                ..Shape::default()
             },
         );
     }
 
     /// An edge `stroke` wide just inside `rect`, its corners rounded by `radius`.
     pub fn ring(&mut self, rect: Rect, color: Color, radius: f32, stroke: f32) {
-        self.shaped(rect, color, Shape { radius, stroke });
+        let shape = Shape {
+            radius,
+            stroke,
+            ..Shape::default()
+        };
+        self.shaped(rect, color, shape);
+    }
+
+    /// A shade filling `rect` that fades out over its last `blur` pixels.
+    pub fn shadow(&mut self, rect: Rect, color: Color, blur: f32) {
+        let shape = Shape {
+            blur,
+            ..Shape::default()
+        };
+        self.shaped(rect, color, shape);
     }
 
     fn shaped(&mut self, rect: Rect, color: Color, shape: Shape) {

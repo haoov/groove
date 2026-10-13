@@ -16,13 +16,6 @@ impl Styles {
         }
     }
 
-    /// The alpha a tint takes on this theme, stronger on a light ground.
-    fn alpha(&self, (dark, light): (u8, u8)) -> u8 {
-        let base = self.palette.base;
-        let lightness = u16::from(base.r) + u16::from(base.g) + u16::from(base.b);
-        if lightness > 384 { light } else { dark }
-    }
-
     /// The colour of a row that came or went.
     fn changed(&self, kind: RowKind) -> Option<Color> {
         match kind {

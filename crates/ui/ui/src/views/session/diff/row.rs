@@ -40,6 +40,10 @@ pub(super) struct Drawn {
     pub(super) folded: bool,
     /// A head row whose file has been read.
     pub(super) read: bool,
+    /// Which of its head's rows a head row is, and how many the head takes.
+    pub(super) part: (usize, usize),
+    /// What a head row's file added and removed.
+    pub(super) counts: Option<(u32, u32)>,
     /// The file a head row names.
     pub(super) file: Option<String>,
     /// What a search found on this row, in the columns the row draws.
@@ -247,4 +251,12 @@ pub(super) fn held(buffer: &Buffer, ui: &Ui, line: usize) -> Option<(usize, usiz
 /// The line as it is, for counting columns over what is drawn.
 pub(super) fn text_of(buffer: &Buffer, line: usize) -> String {
     buffer.line(line).unwrap_or_default().to_string()
+}
+
+/// What the summary says a file added and removed.
+pub(super) fn counted(app: &AppState, path: &str) -> Option<(u32, u32)> {
+    crate::views::session::files::changed(app)
+        .iter()
+        .find(|file| file.path == path)
+        .map(|file| (file.added, file.deleted))
 }

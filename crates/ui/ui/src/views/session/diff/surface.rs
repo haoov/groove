@@ -47,6 +47,7 @@ fn beside(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) {
     groove_ui_kit::shape::side_rule(ctx, body, left.right(), rule);
     surface(ctx, left, app, ui, inline, (Side::Old, false));
     surface(ctx, right, app, ui, inline, (Side::New, true));
+    super::heads::across(ctx, body, app, ui, inline);
 }
 
 /// Draws the rows the surface has room for, and says where a click can land.
@@ -80,6 +81,7 @@ fn surface(
         first: code_rows.start,
         notes: side != Side::Old,
         said: said.as_ref(),
+        heads: view != Face::Stream(DiffView::Split),
     };
     let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, ui, view);
@@ -95,7 +97,7 @@ fn surface(
     };
     let drawn = code(ctx, rect, shown, scroll);
     if clickable {
-        let at = (numbers, view, side);
+        let at = (numbers, view, side, rect);
         super::offers::marks(ctx, &drawn, &slots, &rows, code_rows.start, at);
     }
 }
@@ -173,6 +175,8 @@ struct Held<'a> {
     notes: bool,
     /// The blame of the line the caret rests on.
     said: Option<&'a super::blame::Said>,
+    /// Whether this side draws the heads; split leaves them to one row across both sides.
+    heads: bool,
 }
 
 /// Every row of the window as the code widget takes it.
@@ -185,6 +189,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 Line::new("")
             }
             Slot::Code(at) => match held.rows.get(at - held.first) {
+                Some(row) if row.head && (!held.heads || row.part.0 > 0 && on > 0) => {
+                    Line::covered()
+                }
                 Some(row) => lined(ctx, row, &held.gutters[at - held.first])
                     .noted(held.noted[on])
                     .blame(super::blame::on(row, held.said)),
@@ -236,7 +243,11 @@ fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
 /// One row as the code widget takes it: a head, a gap, or a line of text.
 fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> {
     if row.head {
-        return Line::head(&row.text).folded(row.folded).read(row.read);
+        return Line::head(&row.text)
+            .folded(row.folded)
+            .read(row.read)
+            .part(row.part)
+            .counts(row.counts);
     }
     if let RowKind::Gap(_) = row.kind {
         return Line::banner(&row.text);
