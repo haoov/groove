@@ -20,6 +20,10 @@ pub(crate) fn skill(
         hint: field(front, "groove-hint").unwrap_or_default(),
         label: field(front, "groove-label").unwrap_or_else(|| name.replace('-', " ")),
         kinds: kinds(field(front, "groove-kinds").as_deref()),
+        resources: listed(field(front, "groove-resources").as_deref())
+            .into_iter()
+            .map(|one| one.to_ascii_lowercase())
+            .collect(),
         editable,
         enabled: true,
         changed_at,

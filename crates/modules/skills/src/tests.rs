@@ -23,7 +23,12 @@ fn the_core_plugin_is_written_from_the_ones_compiled_in() {
     assert!(ids.contains(&"groove:save-task"), "{ids:?}");
     assert!(ids.contains(&"groove:co-review"), "{ids:?}");
     assert!(ids.contains(&"groove:promote-fact"), "{ids:?}");
-    assert_eq!(ids.len(), 10, "every core skill, and no user one yet");
+    assert_eq!(ids.len(), 11, "every core skill, and no user one yet");
+    let investigate = skills.iter().find(|one| one.id == "groove:investigate");
+    let investigate = investigate.expect("the resource skill");
+    assert_eq!(investigate.resources, ["*"]);
+    assert!(investigate.acts_on("Pod") && investigate.acts_on("Application"));
+    assert!(!investigate.offered_to(&groove_types::SessionKind::Explorer));
 
     let one = skills
         .iter()

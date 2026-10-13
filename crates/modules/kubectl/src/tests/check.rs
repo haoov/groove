@@ -223,3 +223,38 @@ fn a_template_is_never_read_from_a_file() {
         .is_ok()
     );
 }
+
+#[test]
+fn a_secret_s_metadata_is_read_by_named_field_and_nothing_else() {
+    let whole = [held("prod", None)];
+    for line in [
+        "get secret db -o jsonpath={.metadata.managedFields}",
+        "get secret db -o jsonpath={.metadata.name}{\"\\n\"}{.metadata.creationTimestamp}",
+        "get secret db -o jsonpath={.metadata.annotations.reconcile\\.external-secrets\\.io/data-hash}",
+        "get secret db -o jsonpath={.metadata.annotations['external-secrets.io/force-sync']}",
+        "get secrets --sort-by=.metadata.creationTimestamp",
+    ] {
+        assert!(asked("prod", line, &whole).is_ok(), "{line}");
+    }
+    let listed = [
+        "get",
+        "secrets",
+        "-o",
+        "jsonpath={range .items[*]}{.metadata.name}{\" \"}{.type}{\"\\n\"}{end}",
+    ];
+    let listed: Vec<String> = listed.iter().map(|one| one.to_string()).collect();
+    assert!(check("prod", &listed, &whole).is_ok());
+    for line in [
+        "get secret db -o jsonpath={.metadata}",
+        "get secret db -o jsonpath={.metadata.annotations}",
+        "get secret db -o jsonpath={.metadata.annotations.kubectl\\.kubernetes\\.io/last-applied-configuration}",
+        "get secret db -o jsonpath={..data}",
+        "get secret db -o jsonpath={.metadata.name}{.data.password}",
+        "get secrets -o jsonpath={.items[?(@.data)]}",
+        "get secrets --sort-by=.data.password",
+        "get secret db -o custom-columns=N:.metadata.name",
+    ] {
+        let why = asked("prod", line, &whole).unwrap_err();
+        assert!(why.contains("secret's data"), "{line}: {why}");
+    }
+}

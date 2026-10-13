@@ -8,7 +8,7 @@ use groove_types::{Error, ErrorKind};
 use crate::Checked;
 
 /// How much of an answer the agent reads.
-pub const LIMIT: usize = 64 * 1024;
+pub const LIMIT: usize = 32 * 1024;
 
 /// How long a read may take.
 const TIMEOUT: Duration = Duration::from_secs(30);

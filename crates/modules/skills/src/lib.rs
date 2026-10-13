@@ -25,6 +25,7 @@ const BUILT_IN: &[(&str, &str)] = &[
     ("create-task", include_str!("core/create-task.md")),
     ("fix-ci", include_str!("core/fix-ci.md")),
     ("fix-notes", include_str!("core/fix-notes.md")),
+    ("investigate", include_str!("core/investigate.md")),
     ("new-skill", include_str!("core/new-skill.md")),
     ("promote-fact", include_str!("core/promote-fact.md")),
     ("save-task", include_str!("core/save-task.md")),
