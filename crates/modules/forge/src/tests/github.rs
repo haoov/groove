@@ -5,6 +5,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Github;
 
+mod forks;
+mod pages;
 mod queue;
 
 pub(super) fn repo() -> Repo {

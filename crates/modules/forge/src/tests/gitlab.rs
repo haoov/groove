@@ -7,6 +7,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Gitlab;
 
+mod forks;
+mod pages;
 mod queue;
 mod review;
 

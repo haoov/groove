@@ -11,7 +11,7 @@ use groove_http::Graphql;
 use groove_token::Token;
 use groove_types::{Forge, Repo};
 
-use crate::{Error, Result, Snapshot};
+use crate::{Error, Result, Snapshot, pages};
 
 pub struct Github {
     host: String,
@@ -41,7 +41,13 @@ impl Github {
         });
         let reply = self.api.ask(&query::by_branch(), at).await?;
         let nodes = &reply["data"]["repository"]["pullRequests"]["nodes"];
-        Ok(read::snapshot(&nodes[0], &viewer(&reply)))
+        let nodes = nodes.as_array().map(Vec::as_slice).unwrap_or_default();
+        let Some(own) = nodes.iter().find(|one| one["isCrossRepository"] != true) else {
+            return Ok(None);
+        };
+        let mut pr = own.clone();
+        self.whole(&mut pr).await?;
+        Ok(read::snapshot(&pr, &viewer(&reply)))
     }
 
     /// One MR by number, with its CI and its threads.
@@ -52,8 +58,9 @@ impl Github {
             "number": self.numbered(number)?,
         });
         let reply = self.api.ask(&query::by_number(), at).await?;
-        let pr = &reply["data"]["repository"]["pullRequest"];
-        read::snapshot(pr, &viewer(&reply)).ok_or_else(|| {
+        let mut pr = reply["data"]["repository"]["pullRequest"].clone();
+        self.whole(&mut pr).await?;
+        read::snapshot(&pr, &viewer(&reply)).ok_or_else(|| {
             Error::Invalid(format!(
                 "{} has no merge request {number} on {}",
                 self.host,
@@ -67,6 +74,22 @@ impl Github {
         let at = serde_json::json!({ "first": QUEUE_MAX });
         let reply = self.api.ask(&query::review_queue(), at).await?;
         Ok(read::queue::queue(&reply))
+    }
+
+    /// The MR's threads and comments read to their last page.
+    async fn whole(&self, pr: &mut serde_json::Value) -> Result<()> {
+        let id = read::text(&pr["id"]);
+        for list in ["reviewThreads", "comments"] {
+            for _ in 0..pages::PAGES_MAX {
+                let Some(after) = pages::after(&pr[list]) else {
+                    break;
+                };
+                let at = serde_json::json!({ "id": id, "after": after });
+                let reply = self.api.ask(&query::more(list), at).await?;
+                pages::extend(&mut pr[list], &reply["data"]["node"][list]);
+            }
+        }
+        Ok(())
     }
 
     fn numbered(&self, number: &str) -> Result<i64> {

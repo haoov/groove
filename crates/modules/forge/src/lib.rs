@@ -3,6 +3,7 @@
 mod error;
 mod github;
 mod gitlab;
+mod pages;
 
 #[cfg(test)]
 mod tests;

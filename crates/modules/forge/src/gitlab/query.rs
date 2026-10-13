@@ -1,27 +1,50 @@
 //! The GraphQL Groove sends GitLab: one field set, and the calls that carry it.
 
+/// One discussion's node, on the first page and on the ones after it.
+macro_rules! discussion {
+    () => {
+        r"
+  id resolved
+  notes {
+    nodes {
+      body createdAt resolvable resolved
+      author { username }
+      position { newPath newLine oldPath oldLine }
+    }
+  }
+"
+    };
+}
+
 /// Everything one read of an MR brings back, down to the discussions.
-const FIELDS: &str = r"
+const FIELDS: &str = concat!(
+    r"
   id iid title description state draft webUrl createdAt updatedAt
   diffHeadSha sourceBranch targetBranch
+  sourceProject { fullPath }
   author { username }
   approved
   approvedBy { nodes { username } }
   reviewers { nodes { username mergeRequestInteraction { reviewState } } }
   headPipeline { status finishedAt path }
-  discussions(first: 50) {
-    nodes {
-      id resolved
-      notes {
-        nodes {
-          body createdAt resolvable resolved
-          author { username }
-          position { newPath newLine oldPath oldLine }
-        }
-      }
-    }
-  }
-";
+  discussions(first: 100) { pageInfo { hasNextPage endCursor } nodes {",
+    discussion!(),
+    "} }"
+);
+
+const DISCUSSION: &str = discussion!();
+
+/// The page of the MR's discussions after `$after`.
+pub fn more() -> String {
+    let info = crate::pages::PAGE_INFO;
+    format!(
+        r"query($path: ID!, $iid: String!, $after: String!) {{
+  project(fullPath: $path) {{ mergeRequest(iid: $iid) {{
+    discussions(first: 100, after: $after) {{ {info} nodes {{ {DISCUSSION} }} }}
+  }} }}
+}}"
+    )
+}
 
 /// The open MR this branch is the source of, the one most lately touched.
 pub fn by_branch() -> String {
@@ -30,7 +53,7 @@ pub fn by_branch() -> String {
   currentUser {{ username }}
   project(fullPath: $path) {{
     mergeRequests(
-      sourceBranches: [$branch], state: opened, first: 1, sort: UPDATED_DESC
+      sourceBranches: [$branch], state: opened, first: 10, sort: UPDATED_DESC
     ) {{ nodes {{ {FIELDS} }} }}
   }}
 }}"
