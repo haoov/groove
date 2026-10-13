@@ -3,11 +3,12 @@
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_types::{Anchor, Note};
+use groove_types::{Anchor, Note, NoteOrigin};
 
 use super::wrap::{Worded, cols_of, wrapped};
 use crate::Ui;
-use crate::views::session::Face;
+use crate::components::Room;
+use crate::views::session::{Face, Noting, Writing};
 
 /// One note's rows, standing after the row its last line sits on.
 struct Block {
@@ -19,6 +20,8 @@ struct Block {
     at: Option<usize>,
     /// The note's own row of buttons, under what it says.
     acts: bool,
+    /// The rows of a reply being typed, in place of the buttons.
+    typing: usize,
     /// What each row of the note says, wrapped once for the frame.
     said: Vec<Worded>,
 }
@@ -34,17 +37,21 @@ pub(crate) enum Slot {
     Acts {
         at: usize,
     },
+    /// A row of the words being typed; `reply` when they answer the note they stand in.
     Typed {
         row: usize,
+        reply: bool,
     },
-    /// The half row of room above a note's card, or below it.
+    /// A half row of room around a note's card, or across it.
     Pad {
-        top: bool,
+        room: Room,
     },
 }
 
-/// The rows of room a note keeps, one above its card and one below.
+/// The rows of room every note keeps, one above its card and one below.
 const PADS: usize = 2;
+/// The row that rules off what a note says from what it offers.
+const BETWEEN: usize = 1;
 
 /// Where the notes stand among the rows of one view.
 #[derive(Default)]
@@ -60,7 +67,8 @@ impl Inline {
         if app.workspace.commit.is_some() || unfiled {
             return Self::default();
         }
-        let over = ui.session.noting.as_ref().and_then(|one| one.over_id());
+        let noting = ui.session.noting.as_ref();
+        let over = noting.and_then(|one| one.over_id());
         let mut blocks: Vec<Block> = app
             .delivery
             .shown
@@ -69,7 +77,8 @@ impl Inline {
             .filter(|(_, note)| !written(note, over))
             .filter_map(|(at, note)| block(app, view, note, at, cols_of(cols)))
             .collect();
-        if let Some(noting) = ui.session.noting.as_ref()
+        let answered = noting.and_then(|one| answering(app, one, &mut blocks));
+        if let Some(noting) = noting.filter(|_| answered.is_none())
             && let Some(after) = anchored(app, view, &noting.anchor)
         {
             blocks.push(Block {
@@ -78,6 +87,7 @@ impl Inline {
                 rows: noting.buffer.text().split('\n').count() + PADS,
                 at: None,
                 acts: false,
+                typing: 0,
                 said: Vec::new(),
             });
         }
@@ -171,17 +181,42 @@ impl Block {
     /// What one row of the block holds, counted from its first.
     fn slot(&self, row: usize) -> Slot {
         if row == 0 || row + 1 == self.rows {
-            return Slot::Pad { top: row == 0 };
+            let room = if row == 0 { Room::Above } else { Room::Below };
+            return Slot::Pad { room };
         }
         let row = row - 1;
         let Some(at) = self.at else {
-            return Slot::Typed { row };
+            return Slot::Typed { row, reply: false };
         };
-        match self.acts && row + 1 == self.rows - PADS {
-            true => Slot::Acts { at },
-            false => Slot::Note { at, row },
+        let said = self.said.len().max(1);
+        match row.checked_sub(said + BETWEEN) {
+            None if row < said => Slot::Note { at, row },
+            None => Slot::Pad {
+                room: Room::Between,
+            },
+            Some(row) if self.typing > 0 => Slot::Typed { row, reply: true },
+            Some(_) => Slot::Acts { at },
         }
     }
+}
+
+/// The thread a reply answers takes the reply's rows in place of its buttons; returns that note.
+fn answering(app: &AppState, noting: &Noting, blocks: &mut [Block]) -> Option<usize> {
+    let Writing::Reply(thread) = &noting.writing else {
+        return None;
+    };
+    let shown = &app.delivery.shown;
+    let block = blocks.iter_mut().find(|block| {
+        block
+            .at
+            .and_then(|at| shown.get(at))
+            .is_some_and(|note| note.origin == NoteOrigin::Thread(thread.clone()))
+    })?;
+    let typing = noting.buffer.text().split('\n').count();
+    block.rows += typing - 1;
+    block.typing = typing;
+    block.acts = false;
+    block.at
 }
 
 /// Whether this note is the one being written again.
@@ -197,9 +232,10 @@ fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Opt
     Some(Block {
         after,
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: said.len().max(1) + 1 + PADS,
+        rows: said.len().max(1) + BETWEEN + 1 + PADS,
         at: Some(at),
         acts: true,
+        typing: 0,
         said,
     })
 }

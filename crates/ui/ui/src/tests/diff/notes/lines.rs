@@ -60,7 +60,9 @@ fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
         );
     }
     assert!(
-        !drawn.iter().any(|one| one.ends_with('\u{2026}')),
+        !drawn
+            .iter()
+            .any(|one| one.ends_with('\u{2026}') && one != "Reply\u{2026}"),
         "nothing is cut: {drawn:?}"
     );
     let rows = drawn

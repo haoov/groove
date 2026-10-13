@@ -2,7 +2,7 @@
 
 use groove_gfx::Rect;
 
-use super::super::{Acting, Header, Line, Noted};
+use super::super::{Acting, Header, Line, Noted, Room};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
 use groove_ui_kit::base::ground::Ground;
@@ -90,12 +90,20 @@ fn label_role(label: &str) -> Role {
     }
 }
 
-/// The half of a pad row the card reaches into: its lower half above the card, its upper below.
-pub(super) fn padded(ctx: &mut Ctx, line: Rect, top: bool, gutter: Block) {
+/// A row of room, the card's edge or a rule across it half way down.
+pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, gutter: Block) {
     let card = slotted(ctx, line, gutter);
     let half = card.h / 2.0;
-    let y = if top { card.y + half } else { card.y };
-    card_row(ctx, Rect::new(card.x, y, card.w, half), (top, !top));
+    let lower = Rect::new(card.x, card.y + half, card.w, half);
+    match room {
+        Room::Above => card_row(ctx, lower, (true, false)),
+        Room::Below => card_row(ctx, Rect::new(card.x, card.y, card.w, half), (false, true)),
+        Room::Between => {
+            card_row(ctx, card, (false, false));
+            let rule = ctx.styles.line();
+            top_rule(ctx, lower, rule);
+        }
+    }
 }
 
 /// A note's row on the deepest ground, and where its card stands on it.
@@ -138,32 +146,44 @@ fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, role: Role) {
 pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
     let card = slotted(ctx, line, gutter);
     card_row(ctx, card, (false, false));
-    let offered = offered(acting);
-    let mut at = gutter.content(ctx, line);
-    for button in offered {
-        at = acted(ctx, line, at, *button, acting) + ctx.tokens.sm;
+    let at = gutter.content(ctx, line);
+    let mut room = Rect::new(
+        at,
+        line.y,
+        (card.right() - ctx.tokens.sm - at).max(0.0),
+        line.h,
+    );
+    let gap = ctx.tokens.sm;
+    if acting.thread {
+        acted(ctx, acting, NoteButton::Resolve).right(ctx, &mut room, gap);
+        return reply_field(ctx, room, acting);
+    }
+    acted(ctx, acting, NoteButton::Delete).right(ctx, &mut room, gap);
+    let first = acting.post.then_some(NoteButton::Post);
+    for button in first
+        .into_iter()
+        .chain([NoteButton::Edit, NoteButton::Resolve])
+    {
+        acted(ctx, acting, button).left(ctx, &mut room, gap);
     }
 }
 
-/// What this note lets a hand do: a thread is answered, its own is written.
-fn offered(acting: &Acting) -> &'static [NoteButton] {
-    match (acting.thread, acting.post) {
-        (true, _) => &[NoteButton::Reply, NoteButton::Resolve],
-        (false, true) => &[
-            NoteButton::Edit,
-            NoteButton::Resolve,
-            NoteButton::Delete,
-            NoteButton::Post,
-        ],
-        (false, false) => &[NoteButton::Edit, NoteButton::Resolve, NoteButton::Delete],
-    }
+/// Where a thread is answered: a field that starts the reply on a click.
+fn reply_field(ctx: &mut Ctx, room: Rect, acting: &Acting) {
+    groove_ui_kit::shape::ground(ctx, room, Ground::Deep);
+    let pad = ctx.tokens.sm;
+    let words = Rect::new(room.x + pad, room.y, (room.w - pad).max(0.0), room.h);
+    Label::new("Reply…", ctx.styles.body(Role::Faint)).draw(ctx, words);
+    ctx.hit(room, Target::Note(acting.origin.clone(), NoteButton::Reply));
 }
 
-/// One button of a note's row, from `at`. Returns where it ends.
-fn acted(ctx: &mut Ctx, line: Rect, at: f32, button: NoteButton, acting: &Acting) -> f32 {
+/// One button of a note's row; delete reads in red on a dimmed red ground.
+fn acted(ctx: &Ctx, acting: &Acting, button: NoteButton) -> Button<'static, Target> {
     let label = button.label(acting.resolved);
     let target = Target::Note(acting.origin.clone(), button);
-    let (raised, action) = (ctx.styles.raised(), ctx.styles.action());
-    let pressed = Button::new(label, target, Role::Muted, raised).hover(action);
-    pressed.at(ctx, line, at).right()
+    let (role, ground) = match button {
+        NoteButton::Delete => (Role::Bad, ctx.styles.tint(Role::Bad)),
+        _ => (Role::Muted, ctx.styles.raised()),
+    };
+    Button::new(label, target, role, ground).hover(ctx.styles.action())
 }

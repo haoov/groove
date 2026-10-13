@@ -7,7 +7,7 @@ mod row;
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
-pub use self::header::Header;
+pub use self::header::{Header, Room};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark, head_of};
 
@@ -66,7 +66,7 @@ pub struct Line<'a> {
     /// A side of a split row with no line on it.
     pub empty: bool,
     /// The room above a note's card, or below it, where its edge runs.
-    pub pad: Option<bool>,
+    pub pad: Option<Room>,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -99,10 +99,9 @@ impl<'a> Line<'a> {
             && self.acting.is_none()
     }
 
-    /// The room above a note's card, `top`, or below it.
-    pub fn pad(top: bool) -> Self {
+    pub fn pad(room: Room) -> Self {
         Self {
-            pad: Some(top),
+            pad: Some(room),
             ..Self::new("")
         }
     }

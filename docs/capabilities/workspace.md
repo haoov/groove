@@ -78,7 +78,9 @@ caret, a selection, an undo and the clipboard work there too.
 
 **What a note offers depends on what holds it.** A note of the session is written again,
 resolved, deleted, or posted where the worktree has an MR; posting resolves the local
-copy. A forge thread is replied to and resolved.
+copy. A forge thread is replied to, in a field across its last row where the reply is typed,
+and resolved. Delete
+stands alone at the row's end, in red.
 
 **A verdict carries every open note of the repo**: in one atomic call on GitHub, and a
 note at a time on GitLab, each resolved as it lands.

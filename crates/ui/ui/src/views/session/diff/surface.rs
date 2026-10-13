@@ -201,14 +201,14 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
             },
             Slot::Note { at, row } => {
                 let resolved = app.delivery.shown.get(*at).is_some_and(|one| one.resolved);
-                said(&held.words[on], *row == 0, resolved)
+                said(&held.words[on], (*row == 0, false), resolved)
             }
-            Slot::Pad { top } => Line::pad(*top),
+            Slot::Pad { room } => Line::pad(*room),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
                 Some(note) => Line::acting(acting_of(app, note)),
                 None => Line::new(""),
             },
-            Slot::Typed { row } => said(&held.words[on], *row == 0, false)
+            Slot::Typed { row, reply } => said(&held.words[on], (*row == 0, *reply), false)
                 .caret(held.words[on].caret)
                 .held(held.words[on].held),
         })
@@ -216,11 +216,12 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
 }
 
 /// A row of a note, from what it says.
-fn said(words: &Words, opens: bool, resolved: bool) -> Line<'_> {
+/// `first` is the row a note or a reply opens on; a reply opens with no mark of its own.
+fn said(words: &Words, (first, reply): (bool, bool), resolved: bool) -> Line<'_> {
     let noted = Noted {
         author: &words.author,
         lines: &words.lines,
-        opens,
+        opens: first && !reply,
         resolved,
         prose: words.prose.as_ref(),
         head: words.head.as_ref(),

@@ -161,6 +161,33 @@ fn a_reply_is_typed_under_the_thread_it_answers() {
 }
 
 #[test]
+fn a_reply_is_typed_inside_the_thread_s_card_in_place_of_its_buttons() {
+    let app = delivered(vec![thread()]);
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    let before = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
+    let origin = groove_types::NoteOrigin::Thread("t1".into());
+    on(&app, &mut ui, origin, crate::hit::NoteButton::Reply);
+    typed("fixed", &mut ui, &app);
+    assert_eq!(
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
+        before,
+        "one line of reply takes the row the buttons stood on, and no card of its own"
+    );
+    let drawn = row_texts(&app, &ui);
+    let at = |text: &str| drawn.iter().position(|one| one == text);
+    let (words, reply) = (at("this leaks"), at("fixed"));
+    assert!(
+        words.is_some() && reply > words,
+        "under the thread's words: {drawn:?}"
+    );
+    assert!(
+        at("Reply\u{2026}").is_none() && at("resolve").is_none(),
+        "{drawn:?}"
+    );
+}
+
+#[test]
 fn a_line_someone_else_commented_on_still_takes_a_note() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();

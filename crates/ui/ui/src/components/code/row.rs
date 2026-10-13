@@ -15,8 +15,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, ac
     if code.covered {
         return;
     }
-    if let Some(top) = code.pad {
-        return padded(ctx, line, top, gutter);
+    if let Some(room) = code.pad {
+        return padded(ctx, line, room, gutter);
     }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);

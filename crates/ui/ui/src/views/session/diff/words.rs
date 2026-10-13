@@ -35,8 +35,8 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> 
             },
             (None, _) => Words::default(),
         },
-        Slot::Typed { row } => match ui.session.noting.as_ref() {
-            Some(noting) => typed(noting, row),
+        Slot::Typed { row, reply } => match ui.session.noting.as_ref() {
+            Some(noting) => typed(noting, row, reply),
             None => Words::default(),
         },
         Slot::Acts { .. } | Slot::Pad { .. } | Slot::Code(_) => Words::default(),
@@ -44,13 +44,13 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> 
 }
 
 /// One row of the note being typed: its line of the buffer, the caret and what is held on it.
-fn typed(noting: &Noting, row: usize) -> Words {
+fn typed(noting: &Noting, row: usize, reply: bool) -> Words {
     let buffer = &noting.buffer;
     let body = buffer.line(row).unwrap_or_default().to_string();
     let caret = buffer.caret();
     let chars = body.chars().count();
     let (author, lines) = match row {
-        0 => (BY_USER.to_string(), lines(&noting.anchor)),
+        0 if !reply => (BY_USER.to_string(), lines(&noting.anchor)),
         _ => (String::new(), String::new()),
     };
     Words {

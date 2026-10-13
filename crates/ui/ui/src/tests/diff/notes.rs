@@ -67,7 +67,7 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
     let heights: Vec<f32> = card.iter().map(|rect| rect.h).collect();
     assert_eq!(
         heights,
-        [line / 2.0, line, line, line, line / 2.0],
+        [line / 2.0, line, line, line, line, line / 2.0],
         "{card:?}"
     );
     assert!(card[0].x > code.x && card[0].right() < code.right());
@@ -78,7 +78,11 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
     };
     assert!(edge(card[0].y), "closed half a row under the code above");
     assert!(
-        edge(card[4].bottom() - thin),
+        edge(card[3].y + line / 2.0),
+        "the buttons ruled off from what the note says, half a row from each"
+    );
+    assert!(
+        edge(card[5].bottom() - thin),
         "and half a row over the code below"
     );
     let deep: Vec<groove_gfx::Rect> = quads
@@ -86,14 +90,10 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
         .filter(|quad| quad.color == styles.deep() && code.contains(quad.rect.x, quad.rect.y))
         .map(|quad| quad.rect)
         .collect();
+    let rows = deep.iter().filter(|rect| rect.w > card[0].w).count();
     assert_eq!(
-        deep.len(),
-        5,
-        "every row of the note stands on the deepest ground"
-    );
-    assert!(
-        deep.iter().all(|rect| rect.w > card[0].w),
-        "wider than its card"
+        rows, 6,
+        "every row of the note stands on the deepest ground: {deep:?}"
     );
 }
 
@@ -129,8 +129,8 @@ fn a_note_takes_a_row_of_the_surface() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 5,
-        "room above, its header, its words, the row of buttons, room below"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
+        "room above, its header, its words, a rule, the row of buttons, room below"
     );
 }
 
@@ -144,7 +144,7 @@ fn a_thread_takes_a_header_and_a_row_for_every_comment_of_it() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 7,
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 8,
         "a header and a row for each comment of it, the buttons, room above and below"
     );
     let drawn = in_editor(&app);
@@ -207,11 +207,11 @@ fn a_click_on_a_note_moves_no_caret() {
             row,
         )
     };
-    for row in 1..=5 {
+    for row in 1..=6 {
         assert_eq!(line_at(row), None, "row {row} is the note left on row 0");
     }
     assert_eq!(
-        line_at(6),
+        line_at(7),
         Some(("src/lib.rs".to_string(), 1)),
         "the line after it is the file's second"
     );
@@ -372,10 +372,22 @@ fn a_note_of_this_session_offers_what_to_do_with_it() {
         );
     }
     assert!(
-        hits.rect_of(&Target::Note(id, crate::hit::NoteButton::Post))
+        hits.rect_of(&Target::Note(id.clone(), crate::hit::NoteButton::Post))
             .is_none(),
         "posting waits for the forge"
     );
+    let at = |button| {
+        hits.rect_of(&Target::Note(id.clone(), button))
+            .expect("drawn")
+    };
+    let (edit, resolve, delete) = (
+        at(crate::hit::NoteButton::Edit),
+        at(crate::hit::NoteButton::Resolve),
+        at(crate::hit::NoteButton::Delete),
+    );
+    assert!(edit.x < resolve.x, "edit, then resolve");
+    let gap = delete.x - resolve.right();
+    assert!(gap > edit.w, "delete stands apart, at the end: {gap}");
 }
 
 #[test]
@@ -384,11 +396,20 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let origin = NoteOrigin::Thread("t1".into());
+    let field = hits
+        .rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
+        .expect("a thread takes a reply");
+    let resolve = hits
+        .rect_of(&Target::Note(
+            origin.clone(),
+            crate::hit::NoteButton::Resolve,
+        ))
+        .expect("and is resolved");
     assert!(
-        hits.rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
-            .is_some(),
-        "a thread takes a reply"
+        field.w > resolve.w * 4.0,
+        "the reply is a field across the row"
     );
+    assert!(resolve.x > field.right(), "resolve stands at its end");
     assert!(
         hits.rect_of(&Target::Note(origin, crate::hit::NoteButton::Delete))
             .is_none(),

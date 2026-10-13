@@ -18,7 +18,7 @@ impl NoteButton {
             (NoteButton::Resolve, false) => "resolve",
             (NoteButton::Resolve, true) => "reopen",
             (NoteButton::Delete, _) => "delete",
-            (NoteButton::Post, _) => "post",
+            (NoteButton::Post, _) => "post to MR",
             (NoteButton::Reply, _) => "reply",
         }
     }

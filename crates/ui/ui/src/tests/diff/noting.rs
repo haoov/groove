@@ -368,7 +368,7 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        with_note - 2,
+        with_note - 3,
         "the typed row stands in place of the note's header, words and buttons"
     );
 }
