@@ -41,7 +41,7 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> 
             Some(noting) => typed(noting, row),
             None => Words::default(),
         },
-        Slot::Acts { .. } | Slot::Code(_) => Words::default(),
+        Slot::Acts { .. } | Slot::Pad { .. } | Slot::Code(_) => Words::default(),
     }
 }
 

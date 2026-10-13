@@ -49,6 +49,43 @@ fn a_note_draws_under_the_line_it_was_left_on() {
 }
 
 #[test]
+fn a_note_stands_in_a_card_with_room_above_and_below() {
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    let (frame, hits) = view_of(&app, &ui);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let (line, thin) = (Tokens::new(1.0).line, Tokens::new(1.0).hairline);
+    let code = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
+    let quads = &frame.layers()[0].quads;
+    let mut card: Vec<groove_gfx::Rect> = quads
+        .iter()
+        .filter(|quad| quad.color == styles.band() && code.contains(quad.rect.x, quad.rect.y))
+        .map(|quad| quad.rect)
+        .collect();
+    card.sort_by(|a, b| a.y.total_cmp(&b.y));
+    let heights: Vec<f32> = card.iter().map(|rect| rect.h).collect();
+    assert_eq!(heights, [line / 2.0, line, line, line / 2.0], "{card:?}");
+    assert!(card[0].x > code.x && card[0].right() < code.right());
+    let edge = |y: f32| {
+        quads
+            .iter()
+            .any(|quad| quad.color == styles.line() && quad.rect.h == thin && quad.rect.y == y)
+    };
+    assert!(edge(card[0].y), "closed half a row under the code above");
+    assert!(
+        edge(card[3].bottom() - thin),
+        "and half a row over the code below"
+    );
+    assert!(
+        !quads
+            .iter()
+            .any(|quad| quad.color == styles.deep() && code.contains(quad.rect.x, quad.rect.y)),
+        "no deep ground under the note"
+    );
+}
+
+#[test]
 fn a_note_takes_a_row_of_the_surface() {
     let bare = opened();
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
@@ -56,8 +93,8 @@ fn a_note_takes_a_row_of_the_surface() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 2,
-        "the note and the row of buttons under it"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 4,
+        "room above, the note, the row of buttons under it, room below"
     );
 }
 
@@ -71,8 +108,8 @@ fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 4,
-        "a row for each note of it, a blank above the reply, and the buttons under them"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
+        "a row for each note of it, a blank above the reply, the buttons, room above and below"
     );
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|one| one == "fixed"), "{drawn:?}");
@@ -126,42 +163,22 @@ fn a_note_draws_in_the_diff_views_too() {
 #[test]
 fn a_click_on_a_note_moves_no_caret() {
     let app = noted(vec![note(0, "reviewer", "issue: this leaks")]);
-    assert_eq!(
+    let line_at = |row| {
         crate::views::session::diff::line_at(
             &app,
             &on_diff(),
             (
                 crate::views::session::Face::File,
-                drawn_cols(&app, &on_diff())
+                drawn_cols(&app, &on_diff()),
             ),
-            1
-        ),
-        None,
-        "row 1 is the note left on row 0"
-    );
+            row,
+        )
+    };
+    for row in 1..=4 {
+        assert_eq!(line_at(row), None, "row {row} is the note left on row 0");
+    }
     assert_eq!(
-        crate::views::session::diff::line_at(
-            &app,
-            &on_diff(),
-            (
-                crate::views::session::Face::File,
-                drawn_cols(&app, &on_diff())
-            ),
-            2
-        ),
-        None,
-        "row 2 is what the note offers"
-    );
-    assert_eq!(
-        crate::views::session::diff::line_at(
-            &app,
-            &on_diff(),
-            (
-                crate::views::session::Face::File,
-                drawn_cols(&app, &on_diff())
-            ),
-            3
-        ),
+        line_at(5),
         Some(("src/lib.rs".to_string(), 1)),
         "the line after it is the file's second"
     );

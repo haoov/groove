@@ -2,7 +2,7 @@
 
 mod note;
 
-use self::note::{acts, note};
+use self::note::{acts, note, padded};
 
 use groove_gfx::Rect;
 use groove_ui_kit::widgets::code::{self, Block, Code};
@@ -14,6 +14,9 @@ use crate::hit::Target;
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if code.covered {
         return;
+    }
+    if let Some(top) = code.pad {
+        return padded(ctx, line, top, gutter);
     }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);

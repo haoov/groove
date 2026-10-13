@@ -27,10 +27,24 @@ struct Block {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Slot {
     Code(usize),
-    Note { at: usize, row: usize },
-    Acts { at: usize },
-    Typed { row: usize },
+    Note {
+        at: usize,
+        row: usize,
+    },
+    Acts {
+        at: usize,
+    },
+    Typed {
+        row: usize,
+    },
+    /// The half row of room above a note's card, or below it.
+    Pad {
+        top: bool,
+    },
 }
+
+/// The rows of room a note keeps, one above its card and one below.
+const PADS: usize = 2;
 
 /// Where the notes stand among the rows of one view.
 #[derive(Default)]
@@ -61,7 +75,7 @@ impl Inline {
             blocks.push(Block {
                 after,
                 from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: noting.buffer.text().split('\n').count(),
+                rows: noting.buffer.text().split('\n').count() + PADS,
                 at: None,
                 acts: false,
                 said: Vec::new(),
@@ -156,10 +170,14 @@ impl Inline {
 impl Block {
     /// What one row of the block holds, counted from its first.
     fn slot(&self, row: usize) -> Slot {
+        if row == 0 || row + 1 == self.rows {
+            return Slot::Pad { top: row == 0 };
+        }
+        let row = row - 1;
         let Some(at) = self.at else {
             return Slot::Typed { row };
         };
-        match self.acts && row + 1 == self.rows {
+        match self.acts && row + 1 == self.rows - PADS {
             true => Slot::Acts { at },
             false => Slot::Note { at, row },
         }
@@ -179,7 +197,7 @@ fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Opt
     Some(Block {
         after,
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: said.len().max(1) + 1,
+        rows: said.len().max(1) + 1 + PADS,
         at: Some(at),
         acts: true,
         said,

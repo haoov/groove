@@ -162,3 +162,23 @@ pub fn shadow_under<A: App>(ctx: &mut Ctx<'_, A>, band: Rect) {
     let color = ctx.styles.shadow();
     ctx.shadow(rect, color, blur);
 }
+
+/// One row of a card: its ground and its sides, and its top or bottom edge where it has one.
+pub fn card_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, (top, bottom): (bool, bool)) {
+    let (ground, line, thickness) = (ctx.styles.band(), ctx.styles.line(), ctx.tokens.hairline);
+    ctx.quad(rect, ground);
+    ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), line);
+    ctx.quad(
+        Rect::new(rect.right() - thickness, rect.y, thickness, rect.h),
+        line,
+    );
+    if top {
+        ctx.quad(Rect::new(rect.x, rect.y, rect.w, thickness), line);
+    }
+    if bottom {
+        ctx.quad(
+            Rect::new(rect.x, rect.bottom() - thickness, rect.w, thickness),
+            line,
+        );
+    }
+}

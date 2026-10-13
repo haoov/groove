@@ -185,7 +185,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .iter()
         .enumerate()
         .map(|(on, slot)| match slot {
-            Slot::Note { .. } | Slot::Acts { .. } | Slot::Typed { .. } if !held.notes => {
+            Slot::Note { .. } | Slot::Acts { .. } | Slot::Typed { .. } | Slot::Pad { .. }
+                if !held.notes =>
+            {
                 Line::new("")
             }
             Slot::Code(at) => match held.rows.get(at - held.first) {
@@ -207,6 +209,7 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     prose: held.words[on].prose.as_ref(),
                 },
             ),
+            Slot::Pad { top } => Line::pad(*top),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
                 Some(note) => Line::acting(acting_of(app, note)),
                 None => Line::new(""),

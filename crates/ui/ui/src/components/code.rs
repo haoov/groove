@@ -62,6 +62,8 @@ pub struct Line<'a> {
     pub covered: bool,
     /// A side of a split row with no line on it.
     pub empty: bool,
+    /// The room above a note's card, or below it, where its edge runs.
+    pub pad: Option<bool>,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -86,7 +88,20 @@ pub struct Line<'a> {
 impl<'a> Line<'a> {
     /// Whether the row carries gutters; a row that names a file has none.
     pub fn numbered(&self) -> bool {
-        !self.head && !self.banner && !self.covered && self.said.is_none() && self.acting.is_none()
+        !self.head
+            && !self.banner
+            && !self.covered
+            && self.pad.is_none()
+            && self.said.is_none()
+            && self.acting.is_none()
+    }
+
+    /// The room above a note's card, `top`, or below it.
+    pub fn pad(top: bool) -> Self {
+        Self {
+            pad: Some(top),
+            ..Self::new("")
+        }
     }
 
     /// A row the one above it already draws over.
@@ -113,6 +128,7 @@ impl<'a> Line<'a> {
             counts: None,
             covered: false,
             empty: false,
+            pad: None,
             caret: None,
             held: None,
             found: &[],

@@ -133,8 +133,8 @@ fn a_note_being_typed_takes_a_row_of_its_own() {
     ui.focus = crate::Focus::Workspace;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        rows + 1,
-        "the note being typed takes its room"
+        rows + 3,
+        "the note being typed takes its row, and room above and below"
     );
 }
 
