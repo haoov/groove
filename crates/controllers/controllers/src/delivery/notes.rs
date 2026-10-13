@@ -158,10 +158,13 @@ async fn apply(
             };
             service.create_note(new, Timestamp::now()).await.map(drop)
         }
-        NoteAct::Update { id, content } => service.update_note(&id, &content).await.map(drop),
-        NoteAct::Resolve { id } => service.resolve_note(&id).await.map(drop),
-        NoteAct::Reopen { id } => service.reopen_note(&id).await.map(drop),
-        NoteAct::Delete { id } => service.delete_note(&id).await,
+        NoteAct::Update { id, content } => {
+            let updated = service.update_note(&session, &id, &content).await;
+            updated.map(drop)
+        }
+        NoteAct::Resolve { id } => service.resolve_note(&session, &id).await.map(drop),
+        NoteAct::Reopen { id } => service.reopen_note(&session, &id).await.map(drop),
+        NoteAct::Delete { id } => service.delete_note(&session, &id).await,
     }
 }
 

@@ -66,7 +66,16 @@ pub(crate) async fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> R
     let mut beside = path.as_os_str().to_owned();
     beside.push(".tmp");
     let beside = PathBuf::from(beside);
-    let mut file = tokio::fs::File::create(&beside).await.map_err(failed)?;
+    let mut file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&beside)
+        .await
+        .map_err(failed)?;
+    let private = std::os::unix::fs::PermissionsExt::from_mode(0o600);
+    file.set_permissions(private).await.map_err(failed)?;
     tokio::io::AsyncWriteExt::write_all(&mut file, text.as_bytes())
         .await
         .map_err(failed)?;

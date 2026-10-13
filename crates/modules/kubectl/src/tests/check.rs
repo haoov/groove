@@ -258,3 +258,13 @@ fn a_secret_s_metadata_is_read_by_named_field_and_nothing_else() {
         assert!(why.contains("secret's data"), "{line}: {why}");
     }
 }
+
+#[test]
+fn a_flag_of_letters_past_ascii_is_refused_not_a_crash() {
+    let whole = [held("prod", None)];
+    for line in ["get pods -é", "get pods -oé", "get pods -é=x"] {
+        let _ = asked("prod", line, &whole);
+    }
+    let why = asked("prod", "get pods -éa", &whole).unwrap_err();
+    assert!(why.contains("-éa"), "{why}");
+}

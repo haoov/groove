@@ -63,3 +63,16 @@ async fn a_write_that_cannot_finish_leaves_the_old_file_whole() {
     assert!(crate::write(&file, &config).await.is_err());
     assert_eq!(std::fs::read_to_string(&file).unwrap(), FILE);
 }
+
+#[tokio::test]
+async fn the_config_holds_tokens_and_only_its_owner_reads_it() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let file = path(dir.path());
+    std::fs::write(&file, FILE).unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+    let config = load(&file).unwrap().unwrap();
+    crate::write(&file, &config).await.unwrap();
+    let mode = std::fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+}

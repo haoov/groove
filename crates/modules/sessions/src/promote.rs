@@ -5,8 +5,9 @@ use groove_types::{Session, SessionId, SessionKind, Task, WorktreeId};
 use crate::{Error, Result, Store};
 
 /// What every table that names a session is told: the task's row holds it now.
-const MOVES: [&str; 9] = [
+pub(crate) const MOVES: [&str; 10] = [
     "UPDATE session_repos SET session_id = ? WHERE session_id = ?",
+    "UPDATE session_clusters SET session_id = ? WHERE session_id = ?",
     "UPDATE worktrees SET session_id = ? WHERE session_id = ?",
     "UPDATE annotations SET session_id = ? WHERE session_id = ?",
     "UPDATE time_entries SET session_id = ? WHERE session_id = ?",

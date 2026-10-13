@@ -15,6 +15,8 @@ use crate::{Error, Result};
 /// The API version this client speaks.
 const VERSION: &str = "2022-06-28";
 const HOST: &str = "https://api.notion.com";
+/// The most pages of 100 blocks one block's children are read in.
+const BLOCK_PAGES: usize = 100;
 
 pub struct Notion {
     config: NotionConfig,
@@ -110,9 +112,7 @@ impl Notion {
 
     /// A block's children, and theirs down to `body::DEEP`; a child that fails to read has none.
     async fn tree(&self, id: &str, depth: usize) -> Result<Vec<body::Node>> {
-        let url = format!("{}/v1/blocks/{id}/children?page_size=100", self.host);
-        let reply = self.ask(Method::GET, url, None).await?;
-        let blocks = reply["results"].as_array().cloned().unwrap_or_default();
+        let blocks = self.children(id).await?;
         let mut out = Vec::with_capacity(blocks.len());
         for block in blocks {
             let children = match (body::opens(&block, depth), block["id"].as_str()) {
@@ -123,6 +123,32 @@ impl Notion {
             out.push(body::Node { block, children });
         }
         Ok(out)
+    }
+
+    /// Every child block of `id`, one page of the list after the other.
+    async fn children(&self, id: &str) -> Result<Vec<serde_json::Value>> {
+        let mut out = Vec::new();
+        let mut cursor: Option<String> = None;
+        for _ in 0..BLOCK_PAGES {
+            let mut url = format!("{}/v1/blocks/{id}/children?page_size=100", self.host);
+            if let Some(at) = &cursor {
+                url.push_str(&format!("&start_cursor={at}"));
+            }
+            let reply = self.ask(Method::GET, url, None).await?;
+            out.extend(reply["results"].as_array().cloned().unwrap_or_default());
+            let more = reply["has_more"].as_bool() == Some(true);
+            cursor = reply["next_cursor"]
+                .as_str()
+                .filter(|_| more)
+                .map(String::from);
+            if cursor.is_none() {
+                return Ok(out);
+            }
+        }
+        let past = BLOCK_PAGES * 100;
+        Err(Error::Invalid(format!(
+            "{id} holds more than {past} blocks"
+        )))
     }
 
     /// The pages of the running sprint behind the `name` relation; a failed read is not kept.

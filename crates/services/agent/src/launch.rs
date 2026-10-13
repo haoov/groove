@@ -69,10 +69,10 @@ pub(crate) fn loopback(paths: &LaunchPaths, session: &Session) -> Option<Loopbac
     Some(Loopback {
         tools: paths.tools.as_ref().map(|tools| Tools {
             sse_url: tools.sse_url(session.id.as_str()),
-            token: tools.token.clone(),
+            token: tools.token(session.id.as_str()),
         }),
         hook_url: hooks.hook_url(session.id.as_str()),
-        token: hooks.token.clone(),
+        token: hooks.token(session.id.as_str()),
     })
 }
 

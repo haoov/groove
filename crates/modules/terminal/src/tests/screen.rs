@@ -236,6 +236,18 @@ fn what_the_program_repaints_does_not_take_the_selection_away() {
 }
 
 #[test]
+fn a_selection_stays_on_its_text_when_output_scrolls_it_up() {
+    let script = "printf 'hello world\\n'; read -r a; printf 'one\\ntwo\\nthree\\n'; read -r b";
+    let (term, _rx) = run(script, 20, 3);
+    shown(&term, "hello world");
+    term.select_from((0, 0), crate::Select::Cells);
+    term.select_to((4, 0));
+    term.write(b"\n").unwrap();
+    shown(&term, "three");
+    assert_eq!(term.selected().as_deref(), Some("hello"));
+}
+
+#[test]
 fn a_program_that_asks_for_motion_is_sent_the_drag() {
     let ask = "printf '\\033[?1003h\\033[?1006hready'";
     let (term, rx) = run(&format!("{ask}; read -r one"), 20, 4);

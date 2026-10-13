@@ -165,3 +165,31 @@ async fn reading_the_worktree_leaves_git_s_own_state_alone() {
         "a read that writes the index is a watcher that wakes itself"
     );
 }
+
+#[test]
+fn many_changed_files_are_counted_in_one_pass() {
+    use groove_git::{Change, Counts};
+    let many = 40_000;
+    let path = |at: usize| format!("src/file_{at}.rs");
+    let changes: Vec<Change> = (0..many)
+        .map(|at| Change {
+            x: ' ',
+            y: 'M',
+            path: path(at),
+        })
+        .collect();
+    let counts: Vec<Counts> = (0..many)
+        .rev()
+        .map(|at| Counts {
+            added: Some(1),
+            deleted: Some(0),
+            path: path(at),
+        })
+        .collect();
+    let started = std::time::Instant::now();
+    let files = crate::summary::listed(&changes, &counts, Path::new("/nowhere"));
+    let took = started.elapsed();
+    assert_eq!(files.len(), many);
+    assert!(files.iter().all(|one| one.added == 1));
+    assert!(took < std::time::Duration::from_secs(1), "{took:?}");
+}

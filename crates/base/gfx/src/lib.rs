@@ -10,6 +10,7 @@ mod geom;
 mod gpu;
 mod grid;
 mod icons;
+mod kept;
 mod quads;
 mod renderer;
 mod text;

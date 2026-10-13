@@ -34,7 +34,7 @@ fn a_hook_with_the_token_reaches_the_app() {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
     let (receiver, posts) = listening(runtime.handle());
     let body = r#"{"hook_event_name":"UserPromptSubmit"}"#;
-    let status = runtime.block_on(post(&receiver, &receiver.token, body));
+    let status = runtime.block_on(post(&receiver, &receiver.token("gh-groove-50"), body));
     assert_eq!(status, 204);
     let post = posts.recv().expect("the post arrived");
     assert_eq!(post.session.as_str(), "gh-groove-50");
@@ -55,6 +55,16 @@ fn a_hook_without_the_token_is_refused_and_never_arrives() {
 fn a_body_that_is_not_a_hook_is_refused() {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
     let (receiver, _posts) = listening(runtime.handle());
-    let status = runtime.block_on(post(&receiver, &receiver.token, "{}"));
+    let status = runtime.block_on(post(&receiver, &receiver.token("gh-groove-50"), "{}"));
     assert_eq!(status, 400);
+}
+
+#[test]
+fn a_hook_with_another_session_s_token_is_refused() {
+    let runtime = tokio::runtime::Runtime::new().expect("a runtime");
+    let (receiver, posts) = listening(runtime.handle());
+    let body = r#"{"hook_event_name":"Stop"}"#;
+    let status = runtime.block_on(post(&receiver, &receiver.token("gh-other-1"), body));
+    assert_eq!(status, 403);
+    assert!(posts.try_recv().is_err(), "nothing reached the app");
 }

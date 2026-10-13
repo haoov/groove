@@ -1,6 +1,7 @@
 //! What changed in a worktree, as counts per file.
 
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use groove_git::parse::unquote_path;
 use groove_git::{Change, Counts, Git};
@@ -14,15 +15,33 @@ pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
         true => git.numstat("HEAD").await?,
         false => Vec::new(),
     };
-    let mut files: Vec<FileDiff> = changes
-        .iter()
-        .map(|change| file(change, &counts, dir))
-        .collect();
-    files.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(files)
+    off(dir, move |dir| listed(&changes, &counts, dir)).await
 }
 
-fn file(change: &Change, counts: &[Counts], dir: &Path) -> FileDiff {
+/// Each change with its counts, by path; an untracked file is read for its own.
+pub(crate) fn listed(changes: &[Change], counts: &[Counts], dir: &Path) -> Vec<FileDiff> {
+    let by_path: HashMap<&str, &Counts> =
+        counts.iter().map(|one| (one.path.as_str(), one)).collect();
+    let mut files: Vec<FileDiff> = changes
+        .iter()
+        .map(|change| file(change, &by_path, dir))
+        .collect();
+    files.sort_by(|a, b| a.path.cmp(&b.path));
+    files
+}
+
+/// `work` on `dir`, on a thread that may block on the disk.
+async fn off<T: Send + 'static>(
+    dir: &Path,
+    work: impl FnOnce(&Path) -> T + Send + 'static,
+) -> Result<T> {
+    let dir: PathBuf = dir.to_path_buf();
+    tokio::task::spawn_blocking(move || work(&dir))
+        .await
+        .map_err(|e| groove_types::Error::internal(format!("the summary failed: {e}")))
+}
+
+fn file(change: &Change, counts: &HashMap<&str, &Counts>, dir: &Path) -> FileDiff {
     let path = unquote_path(&change.path);
     let (added, deleted) = match change.is_untracked() {
         true => whole_file(dir, &path),
@@ -52,8 +71,8 @@ fn status_of(change: &Change) -> FileStatus {
     }
 }
 
-fn counted(counts: &[Counts], path: &str) -> (Option<u32>, Option<u32>) {
-    match counts.iter().find(|row| row.path == path) {
+fn counted(counts: &HashMap<&str, &Counts>, path: &str) -> (Option<u32>, Option<u32>) {
+    match counts.get(path) {
         Some(row) => (row.added, row.deleted),
         None => (None, None),
     }
@@ -86,7 +105,7 @@ pub async fn summary_against(dir: &Path, rev: &str) -> Result<Vec<FileDiff>> {
         .iter()
         .map(|one| against(one, dir, &before, &staged))
         .collect();
-    files.extend(untracked(&now, dir));
+    files.extend(off(dir, move |dir| untracked(&now, dir)).await?);
     files.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(files)
 }
@@ -122,6 +141,6 @@ fn untracked(changes: &[Change], dir: &Path) -> Vec<FileDiff> {
     changes
         .iter()
         .filter(|change| change.is_untracked())
-        .map(|change| file(change, &[], dir))
+        .map(|change| file(change, &HashMap::new(), dir))
         .collect()
 }

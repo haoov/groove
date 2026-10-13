@@ -55,10 +55,13 @@ impl Connections {
 }
 
 /// The stream itself: the first event says where to post, the rest are answers.
-pub fn open(live: &Connections, query: Option<&str>) -> Response<Body> {
+pub fn open(live: &Connections, query: Option<&str>, holder: &str) -> Response<Body> {
     let Some(session) = param(query, "task") else {
         return reply(StatusCode::BAD_REQUEST);
     };
+    if session != holder {
+        return reply(StatusCode::FORBIDDEN);
+    }
     let id = uuid::Uuid::new_v4().simple().to_string();
     let (tx, rx) = mpsc::channel(DEPTH);
     let _ = tx.try_send(event("endpoint", &format!("/message?sessionId={id}")));
