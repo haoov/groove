@@ -25,6 +25,10 @@ impl Call {
     pub fn flag(&self, name: &str) -> Option<bool> {
         self.arguments.flag(name)
     }
+
+    pub fn texts(&self, name: &str) -> Option<Vec<String>> {
+        self.arguments.texts(name)
+    }
 }
 
 /// What a tool answers: the text the agent reads, and whether it failed.

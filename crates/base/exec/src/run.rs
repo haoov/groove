@@ -15,6 +15,16 @@ pub struct Run {
     env: Vec<(String, String)>,
     timeout: Duration,
     input: Option<Vec<u8>>,
+    bare: bool,
+}
+
+/// A run's output read up to a limit, and whether the limit cut it.
+#[derive(Debug)]
+pub struct Capped {
+    pub stdout: Vec<u8>,
+    pub stderr: String,
+    pub success: bool,
+    pub cut: bool,
 }
 
 impl Run {
@@ -26,6 +36,7 @@ impl Run {
             env: Vec::new(),
             timeout: DEFAULT_TIMEOUT,
             input: None,
+            bare: false,
         }
     }
 
@@ -51,6 +62,12 @@ impl Run {
     /// What the child reads on its standard input, which then closes.
     pub fn input(mut self, input: impl Into<Vec<u8>>) -> Self {
         self.input = Some(input.into());
+        self
+    }
+
+    /// The child starts with no environment but the one given.
+    pub fn bare(mut self) -> Self {
+        self.bare = true;
         self
     }
 
@@ -89,6 +106,67 @@ impl Run {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     }
 
+    /// Runs and reads at most `limit` bytes of stdout; a child that writes more is killed.
+    pub async fn capped(self, limit: usize) -> Result<Capped> {
+        let program = self.describe();
+        match tokio::time::timeout(self.timeout, self.read_capped(&program, limit)).await {
+            Ok(ran) => ran,
+            Err(_) => Err(Error::TimedOut {
+                program,
+                after: self.timeout,
+            }),
+        }
+    }
+
+    async fn read_capped(&self, program: &str, limit: usize) -> Result<Capped> {
+        use tokio::io::AsyncReadExt;
+        let mut command = self.command();
+        command
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        let mut child = command.spawn().map_err(|source| Error::Spawn {
+            program: program.to_string(),
+            source,
+        })?;
+        let (stdin, input) = (child.stdin.take(), self.input.clone().unwrap_or_default());
+        let fed = async move {
+            if let Some(mut stdin) = stdin {
+                let _ = tokio::io::AsyncWriteExt::write_all(&mut stdin, &input).await;
+            }
+        };
+        let (out, err) = (child.stdout.take(), child.stderr.take());
+        let read_out = async move {
+            let mut read = Vec::new();
+            if let Some(out) = out {
+                out.take(limit as u64 + 1).read_to_end(&mut read).await?;
+            }
+            Ok::<_, std::io::Error>(read)
+        };
+        let read_err = async move {
+            let mut read = Vec::new();
+            if let Some(err) = err {
+                err.take(limit as u64).read_to_end(&mut read).await?;
+            }
+            Ok::<_, std::io::Error>(read)
+        };
+        let ((), stdout, stderr) = tokio::join!(fed, read_out, read_err);
+        let (mut stdout, stderr) = (stdout?, stderr?);
+        let cut = stdout.len() > limit;
+        if cut {
+            stdout.truncate(limit);
+            let _ = child.kill().await;
+        }
+        let success = child.wait().await?.success();
+        let stderr = redact(String::from_utf8_lossy(&stderr).trim());
+        Ok(Capped {
+            stdout,
+            stderr,
+            success: success && !cut,
+            cut,
+        })
+    }
+
     /// The child run to its end; a failure to start it is `Spawn`, one after is `Io`.
     async fn spawned(&self, program: &str) -> Result<Output> {
         let started = |source| Error::Spawn {
@@ -120,6 +198,9 @@ impl Run {
 
     fn command(&self) -> tokio::process::Command {
         let mut command = tokio::process::Command::new(&self.program);
+        if self.bare {
+            command.env_clear();
+        }
         if let Some(path) = crate::login::adopted() {
             command.env("PATH", path);
         }

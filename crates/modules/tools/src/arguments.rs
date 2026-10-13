@@ -7,6 +7,8 @@ pub trait Arguments {
     fn text(&self, name: &str) -> Option<&str>;
     fn number(&self, name: &str) -> Option<i64>;
     fn flag(&self, name: &str) -> Option<bool>;
+    /// A list argument whose items are all strings.
+    fn texts(&self, name: &str) -> Option<Vec<String>>;
 }
 
 impl Arguments for Value {
@@ -20,5 +22,10 @@ impl Arguments for Value {
 
     fn flag(&self, name: &str) -> Option<bool> {
         self[name].as_bool()
+    }
+
+    fn texts(&self, name: &str) -> Option<Vec<String>> {
+        let items = self[name].as_array()?.iter();
+        items.map(|one| one.as_str().map(String::from)).collect()
     }
 }

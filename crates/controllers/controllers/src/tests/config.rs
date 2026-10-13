@@ -27,7 +27,10 @@ fn the_environment_check_lists_every_program_and_one_runs_at_a_time() {
     assert!(!state.config.checking);
     let tools = state.config.tools.as_ref().expect("the check ended");
     let names: Vec<_> = tools.iter().map(|one| one.name).collect();
-    assert_eq!(names, ["git", "claude", "curl", "glab", "gh"]);
+    assert_eq!(
+        names,
+        ["git", "claude", "curl", "glab", "gh", "kubectl", "jq"]
+    );
     assert!(tools[0].found.is_some(), "git runs where the tests run");
 }
 
