@@ -40,6 +40,19 @@ pub struct Checked {
 pub fn check(context: &str, args: &[String], attached: &[Attached]) -> Result<Checked, Error> {
     let read = read(args).map_err(Error::invalid)?;
     let verb = verb(&read.words)?;
+    if let Some(why) = read.refused.clone() {
+        return Err(Error::invalid(why));
+    }
+    if read.value("--output").is_some_and(|output| {
+        output
+            .split('=')
+            .next()
+            .is_some_and(|format| format.ends_with("-file"))
+    }) {
+        return Err(Error::invalid(
+            "a read names no file: give the template inline, as -o jsonpath=…",
+        ));
+    }
     let mut argv = vec!["--context".to_string(), context.to_string()];
     argv.extend(args.iter().cloned());
     if !UNSCOPED.contains(&verb.as_str()) {
@@ -67,10 +80,25 @@ fn verb(words: &[String]) -> Result<String, Error> {
         Some(one) => Ok(one.join(" ")),
         None => {
             let listed: Vec<String> = VERBS.iter().map(|one| one.join(" ")).collect();
-            let asked = words.first().map_or("nothing", String::as_str);
-            let why = format!("{asked} is not a read; the reads are {}", listed.join(", "));
+            let why = format!(
+                "{} is not a read; the reads are {}",
+                asked(words),
+                listed.join(", ")
+            );
             Err(Error::invalid(why))
         }
+    }
+}
+
+/// The words the read was asked by: two for a verb that takes two, as `rollout restart`.
+fn asked(words: &[String]) -> String {
+    let Some(first) = words.first() else {
+        return "nothing".to_string();
+    };
+    let paired = VERBS.iter().any(|one| one.len() == 2 && one[0] == first);
+    match (paired, words.get(1)) {
+        (true, Some(second)) => format!("{first} {second}"),
+        _ => first.clone(),
     }
 }
 

@@ -38,6 +38,10 @@ async fn filtered(filter: &str, json: Vec<u8>) -> Result<Answer, Error> {
     if filter.starts_with('-') {
         return Err(Error::invalid("a jq filter starts with no dash"));
     }
+    let mut words = filter.split(|c: char| !c.is_alphanumeric() && c != '_');
+    if words.any(|word| word == "import" || word == "include") {
+        return Err(Error::invalid("a jq filter loads no module"));
+    }
     let ran = Run::new("jq")
         .args([filter])
         .bare()

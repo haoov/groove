@@ -54,6 +54,8 @@ pub(crate) struct Flag {
 pub(crate) struct Read {
     pub words: Vec<String>,
     pub flags: Vec<Flag>,
+    /// Why the first argument no read takes is refused, said once the verb is known.
+    pub refused: Option<String>,
 }
 
 impl Read {
@@ -69,15 +71,15 @@ impl Read {
     }
 }
 
-/// The arguments split into words and known flags; the first flag no read takes is refused.
+/// The arguments split into words and known flags, the first argument no read takes kept aside.
 pub(crate) fn read(args: &[String]) -> Result<Read, String> {
     let mut read = Read::default();
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         if arg == "--" || arg == "-" {
-            return Err(format!(
-                "{arg} is not taken: a read names no file and no command"
-            ));
+            let why = format!("{arg} is not taken: a read names no file and no command");
+            read.refused.get_or_insert(why);
+            continue;
         }
         if !arg.starts_with('-') {
             read.words.push(arg.clone());
@@ -102,7 +104,8 @@ pub(crate) fn read(args: &[String]) -> Result<Read, String> {
                 value: attached,
             });
         } else {
-            return Err(format!("{written} is not a flag a read takes"));
+            let why = format!("{written} is not a flag a read takes");
+            read.refused.get_or_insert(why);
         }
     }
     Ok(read)

@@ -64,3 +64,14 @@ async fn a_jq_filter_that_looks_like_a_flag_is_refused() {
     let json = checked(&["-c", "echo '{}'"]);
     assert!(run("sh", &json, Some("--rawfile")).await.is_err());
 }
+
+#[tokio::test]
+async fn a_jq_filter_loads_no_module() {
+    let json = checked(&["-c", "echo '{}'"]);
+    for filter in [r#"import "x" as $x; ."#, r#"include "x"; ."#] {
+        assert!(run("sh", &json, Some(filter)).await.is_err(), "{filter}");
+    }
+    let named = checked(&["-c", r#"echo '{"importance":1}'"#]);
+    let answer = run("sh", &named, Some(".importance")).await.unwrap();
+    assert_eq!(answer.text, "1\n");
+}

@@ -187,3 +187,39 @@ fn a_rollout_status_never_waits() {
     let argv = asked("prod", "rollout status deploy/api", &whole).unwrap();
     assert_eq!(argv.last().map(String::as_str), Some("--watch=false"));
 }
+
+#[test]
+fn a_write_is_refused_for_its_verb_before_its_flags() {
+    let whole = [held("prod", None)];
+    let why = asked("prod", "scale deployment/api --replicas=1 -n api", &whole).unwrap_err();
+    assert!(why.starts_with("scale is not a read"), "{why}");
+    let why = asked("prod", "rollout restart deployment/api", &whole).unwrap_err();
+    assert!(why.starts_with("rollout restart is not a read"), "{why}");
+    let why = asked("prod", "get pods --replicas=1", &whole).unwrap_err();
+    assert!(
+        why.contains("--replicas is not a flag a read takes"),
+        "{why}"
+    );
+}
+
+#[test]
+fn a_template_is_never_read_from_a_file() {
+    let whole = [held("prod", None)];
+    for line in [
+        "get pods -o jsonpath-file=/etc/passwd",
+        "get pods --output=go-template-file=/x",
+        "get pods -ocustom-columns-file=/x",
+        "get pods -o template-file=/x",
+    ] {
+        let why = asked("prod", line, &whole).unwrap_err();
+        assert!(why.contains("names no file"), "{line}: {why}");
+    }
+    assert!(
+        asked(
+            "prod",
+            "get pods -o jsonpath={.items[*].metadata.name}",
+            &whole
+        )
+        .is_ok()
+    );
+}
