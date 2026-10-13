@@ -1,9 +1,11 @@
 //! What a text means and what it looks like. The only place a colour or a style is built.
 
 use groove_gfx::{Color, Font, Palette, TextStyle, Weight};
-use groove_types::{Capture, LineMark, RowKind, ThemeName};
+use groove_types::{Capture, ThemeName};
 
-use crate::base::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens, WORD_ALPHA};
+mod diff;
+
+use crate::base::tokens::{SCRIM_ALPHA, Tokens};
 
 /// What a text or a mark means. Colour follows the role, never the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -183,35 +185,6 @@ impl Styles {
     /// The bar where the caret sits.
     pub fn caret(&self) -> Color {
         self.palette.text
-    }
-
-    /// What a marked line did: came, went, or changed in place.
-    pub fn mark(&self, mark: LineMark) -> Color {
-        match mark {
-            LineMark::Added => self.palette.green,
-            LineMark::Removed => self.palette.red,
-            LineMark::Changed => self.palette.yellow,
-        }
-    }
-
-    /// The ground a diff row stands on, and the one under the caret.
-    pub fn row_ground(&self, kind: RowKind) -> Option<Color> {
-        let tint = |color: Color| Some(color.with_alpha(GROUND_ALPHA));
-        match kind {
-            RowKind::Added => tint(self.palette.green),
-            RowKind::Removed => tint(self.palette.red),
-            _ => None,
-        }
-    }
-
-    /// Over the ground, where a row and the one it pairs with differ.
-    pub fn word(&self, kind: RowKind, mark: Option<LineMark>) -> Option<Color> {
-        let tint = |color: Color| Some(color.with_alpha(WORD_ALPHA));
-        match kind {
-            RowKind::Added => tint(self.palette.green),
-            RowKind::Removed => tint(self.palette.red),
-            _ => mark.map(|mark| self.mark(mark).with_alpha(WORD_ALPHA)),
-        }
     }
 
     /// The work's own ground: the window, the workspace, the agent's pane.

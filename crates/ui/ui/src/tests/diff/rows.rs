@@ -46,6 +46,56 @@ fn a_row_says_what_it_is_with_its_ground_and_no_sign() {
 }
 
 #[test]
+fn a_changed_row_tints_its_gutter_and_its_numbers() {
+    let app = opened();
+    let ui = on_diff();
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    for kind in [groove_types::RowKind::Added, groove_types::RowKind::Removed] {
+        let (ground, numbers) = styles.gutter(kind).expect("a gutter");
+        let row = styles.row_ground(kind).expect("a ground");
+        let width = |color| {
+            frame.layers()[0]
+                .quads
+                .iter()
+                .find(|quad| quad.color == color)
+                .map(|quad| quad.rect.w)
+                .expect("drawn")
+        };
+        assert!(
+            width(ground) < width(row) / 4.0,
+            "the gutter only: {kind:?}"
+        );
+        assert!(
+            frame.layers()[0]
+                .texts
+                .iter()
+                .any(|text| text.style.color == numbers && text.text.parse::<u32>().is_ok()),
+            "its numbers lean to its colour: {kind:?}"
+        );
+    }
+}
+
+#[test]
+fn a_comment_on_a_changed_row_stands_off_its_tint() {
+    let mut app = with_files();
+    crate::tests::shows(&mut app, "src/lib.rs", "// old words\n", "// new words\n");
+    let ui = on_diff();
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let lifted = styles.changed_syntax(groove_types::Capture::Comment);
+    assert_ne!(lifted, styles.syntax(groove_types::Capture::Comment));
+    let drawn: Vec<&str> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|text| text.style.color == lifted)
+        .map(|text| text.text.as_str())
+        .collect();
+    assert!(drawn.iter().any(|t| t.contains("old")), "{drawn:?}");
+    assert!(drawn.iter().any(|t| t.contains("new")), "{drawn:?}");
+}
+
+#[test]
 fn a_gap_reads_as_a_band_across_the_rows() {
     let old: String = (1..=40).map(|n| format!("line {n}\n")).collect();
     let new = old

@@ -177,6 +177,9 @@ which the gutter holds together.
 | inline | the change as one column | the old and the new line number |
 | split | the old beside the new | one number per side |
 
+An added or a removed row tints its gutter and its numbers in its own colour, a step
+stronger than its ground.
+
 The new side is editable in every mode. A caret lives in the document, never in a row, so
 it stays where the user left it while the rows move under it. A removed line belongs to the
 old document and takes no caret. **Where the caret is** is two rules, above its row and

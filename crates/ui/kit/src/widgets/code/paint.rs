@@ -25,6 +25,16 @@ pub(super) fn coded<A: App>(
     if let Some(ground) = code.ground {
         ctx.quad(line, ground);
     }
+    if let Some((ground, _)) = code.gutter {
+        let end = gutter.content(ctx, line) - ctx.tokens.md;
+        ctx.quad(
+            Rect {
+                w: end - line.x,
+                ..line
+            },
+            ground,
+        );
+    }
     if let Some(mark) = code.mark {
         let edge = Rect {
             w: ctx.tokens.hairline * 2.0,
@@ -104,7 +114,10 @@ fn blamed<A: App>(
 
 /// The row's own line numbers, one to a gutter cell.
 fn numbers<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>, gutter: Block) {
-    let (sm, style) = (ctx.tokens.sm, ctx.styles.code(Role::Ghost));
+    let (sm, mut style) = (ctx.tokens.sm, ctx.styles.code(Role::Ghost));
+    if let Some((_, color)) = code.gutter {
+        style.color = color;
+    }
     let mut room = line.pad(Edges::across(sm, 0.0));
     for text in code.gutters {
         let cell = room.take_left(gutter.width);
@@ -229,7 +242,10 @@ fn text<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, code: &Code<'_, A::Target>) {
             break;
         };
         let mut style = plain;
-        style.color = ctx.styles.syntax(span.capture);
+        style.color = match code.gutter {
+            Some(_) => ctx.styles.changed_syntax(span.capture),
+            None => ctx.styles.syntax(span.capture),
+        };
         at = piece(ctx, rect, at, inside, style);
         cut = span.range.end;
     }

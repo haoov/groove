@@ -31,6 +31,7 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         text: line.text,
         spans: line.spans,
         ground: line.ground,
+        gutter: line.gutter,
         mark: line.mark,
         banner: line.banner,
         head: line.head,
