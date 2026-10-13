@@ -335,6 +335,7 @@ fn skill(id: &str, enabled: bool) -> groove_types::Skill {
         hint: String::new(),
         label: name.into(),
         kinds: Vec::new(),
+        resources: Vec::new(),
         editable: plugin == "user",
         enabled,
         changed_at: groove_types::Timestamp::new(0),

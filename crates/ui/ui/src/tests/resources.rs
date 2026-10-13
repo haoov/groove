@@ -20,6 +20,7 @@ mod list;
 mod load;
 mod logs;
 mod sessions;
+mod skilled;
 mod tab;
 mod yaml;
 

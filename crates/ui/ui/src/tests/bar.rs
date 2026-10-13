@@ -70,6 +70,7 @@ fn skill(name: &str, label: &str, kinds: &[&str]) -> groove_types::Skill {
         hint: String::new(),
         label: label.into(),
         kinds: kinds.iter().map(|one| one.to_string()).collect(),
+        resources: Vec::new(),
         editable: false,
         enabled: true,
         changed_at: Timestamp::new(0),

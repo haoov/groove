@@ -39,6 +39,9 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of,
         }),
+        Some(target @ (Target::ResourceRow(_) | Target::ResourceTab(_))) => {
+            super::skilled::menu(ui, app, &target, (x, y))
+        }
         _ => None,
     };
     ui.overlay = menu.map(Overlay::Menu);

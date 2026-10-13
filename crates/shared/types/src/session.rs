@@ -84,6 +84,9 @@ pub struct Skill {
     pub label: String,
     /// The kinds of session that offer it, by name; empty offers it to every kind.
     pub kinds: Vec<String>,
+    /// The Kubernetes kinds it acts on, lower case, `*` for every one; empty for none.
+    #[serde(default)]
+    pub resources: Vec<String>,
     /// A skill of the user's own, which they may write again or delete.
     pub editable: bool,
     /// Given to sessions and offered in the menu; a shared skill is off until the user enables it.
@@ -93,8 +96,15 @@ pub struct Skill {
 }
 
 impl Skill {
-    /// Whether a session of this kind offers it.
+    /// Whether a session of this kind offers it; a skill of resources is offered on them only.
     pub fn offered_to(&self, kind: &SessionKind) -> bool {
-        self.kinds.is_empty() || self.kinds.iter().any(|one| one == kind.name())
+        let session = self.kinds.is_empty() || self.kinds.iter().any(|one| one == kind.name());
+        session && self.resources.is_empty()
+    }
+
+    /// Whether it acts on a resource of this Kubernetes kind.
+    pub fn acts_on(&self, kind: &str) -> bool {
+        let kind = kind.to_ascii_lowercase();
+        self.resources.iter().any(|one| one == "*" || *one == kind)
     }
 }
