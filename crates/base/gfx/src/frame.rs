@@ -41,6 +41,8 @@ pub struct Shape {
     pub stroke: f32,
     /// How far the quad fades out inside its edge; none keeps it sharp.
     pub blur: f32,
+    /// The gap between diagonal stripes, drawn instead of a fill; none fills it.
+    pub hatch: f32,
 }
 
 /// One icon, drawn in its own box.
@@ -142,6 +144,15 @@ impl Frame {
         let shape = Shape {
             radius,
             stroke,
+            ..Shape::default()
+        };
+        self.shaped(rect, color, shape);
+    }
+
+    /// Diagonal stripes across `rect`, `gap` pixels apart, lined up across quads.
+    pub fn hatched(&mut self, rect: Rect, color: Color, gap: f32) {
+        let shape = Shape {
+            hatch: gap,
             ..Shape::default()
         };
         self.shaped(rect, color, shape);

@@ -17,6 +17,8 @@ pub const GUTTER_ALPHA: (u8, u8) = (8, 16);
 pub const NUMBER_TINT: f32 = 0.4;
 /// The shade under what stands over the rows.
 pub const SHADOW_ALPHA: (u8, u8) = (110, 36);
+/// The stripes of a side with no line.
+pub const HATCH_ALPHA: (u8, u8) = (90, 130);
 
 /// How much of the note's own colour a line carrying one takes.
 pub const NOTED: f32 = 0.18;
@@ -105,6 +107,8 @@ pub struct Tokens {
     pub grab: f32,
     /// The column that holds the whole change.
     pub map: f32,
+    /// The gap between a hatch's stripes.
+    pub hatch: f32,
     /// The type scale. Mono is only for code: the agent, the terminal, the diff.
     pub text: f32,
     pub small: f32,
@@ -166,6 +170,7 @@ const LOGICAL: Tokens = Tokens {
     edge: 0.5,
     grab: 8.0,
     map: 14.0,
+    hatch: 6.0,
     text: 13.0,
     small: 11.5,
     title: 16.0,
@@ -216,6 +221,7 @@ impl Tokens {
             edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),
             map: s(LOGICAL.map),
+            hatch: s(LOGICAL.hatch),
             text: s(text),
             small: of_text(SMALL),
             title: of_text(TITLE),

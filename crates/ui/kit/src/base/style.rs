@@ -5,7 +5,7 @@ use groove_types::{Capture, ThemeName};
 
 mod diff;
 
-use crate::base::tokens::{SCRIM_ALPHA, SHADOW_ALPHA, Tokens};
+use crate::base::tokens::{HATCH_ALPHA, SCRIM_ALPHA, SHADOW_ALPHA, Tokens};
 
 /// What a text or a mark means. Colour follows the role, never the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,6 +197,11 @@ impl Styles {
         let base = self.palette.base;
         let lightness = u16::from(base.r) + u16::from(base.g) + u16::from(base.b);
         if lightness > 384 { light } else { dark }
+    }
+
+    /// The stripes of a side with no line.
+    pub fn hatch(&self) -> Color {
+        self.palette.surface1.with_alpha(self.alpha(HATCH_ALPHA))
     }
 
     /// The shade under what stands over the rows.

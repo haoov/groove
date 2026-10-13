@@ -128,7 +128,8 @@ fn one(
         Side::New => row.new,
     };
     let here = open(app).filter(|open| open.path == file.path);
-    let text = match blank(row, view, side) {
+    let empty = blank(row, view, side);
+    let text = match empty {
         true => String::new(),
         false => live(here, side, line).unwrap_or_else(|| file.text(at)),
     };
@@ -144,6 +145,7 @@ fn one(
         kind: kind(row, view, side),
         caret: here.and_then(|open| on_row(caret(ui, &open.new), row, open, file.indent)),
         held: here.and_then(|open| row.new.and_then(|line| held(&open.new, ui, line as usize))),
+        empty,
         ..Drawn::default()
     }
 }

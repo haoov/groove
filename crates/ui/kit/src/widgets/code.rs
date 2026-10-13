@@ -26,6 +26,8 @@ pub struct Code<'a, T> {
     pub part: (usize, usize),
     /// What a head's file added and removed.
     pub counts: Option<(u32, u32)>,
+    /// A side of a split row with no line on it.
+    pub empty: bool,
     pub folded: bool,
     pub read: bool,
     /// In characters.

@@ -42,6 +42,7 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         read: line.read,
         part: line.part,
         counts: line.counts,
+        empty: line.empty,
         caret: line.caret,
         held: line.held,
         found: line.found,

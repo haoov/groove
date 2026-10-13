@@ -44,6 +44,8 @@ pub(super) struct Drawn {
     pub(super) part: (usize, usize),
     /// What a head row's file added and removed.
     pub(super) counts: Option<(u32, u32)>,
+    /// A side of a split row with no line on it.
+    pub(super) empty: bool,
     /// The file a head row names.
     pub(super) file: Option<String>,
     /// What a search found on this row, in the columns the row draws.

@@ -60,6 +60,8 @@ pub struct Line<'a> {
     pub counts: Option<(u32, u32)>,
     /// A row the one above it already draws over: a head's later rows.
     pub covered: bool,
+    /// A side of a split row with no line on it.
+    pub empty: bool,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -110,6 +112,7 @@ impl<'a> Line<'a> {
             part: (0, 1),
             counts: None,
             covered: false,
+            empty: false,
             caret: None,
             held: None,
             found: &[],
@@ -173,6 +176,11 @@ impl<'a> Line<'a> {
 
     pub fn part(mut self, part: (usize, usize)) -> Self {
         self.part = part;
+        self
+    }
+
+    pub fn empty(mut self, empty: bool) -> Self {
+        self.empty = empty;
         self
     }
 

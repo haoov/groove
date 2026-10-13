@@ -95,6 +95,33 @@ fn split_draws_one_head_across_both_sides() {
 }
 
 #[test]
+fn split_hatches_the_side_with_no_line() {
+    let mut app = with_files();
+    crate::tests::shows(&mut app, "src/lib.rs", "one\nthree\n", "one\ntwo\nthree\n");
+    let mut ui = on_diff();
+    let hatched = |ui: &Ui| {
+        let (frame, _) = view_of(&app, ui);
+        frame.layers()[0]
+            .quads
+            .iter()
+            .filter(|quad| quad.shape.hatch > 0.0)
+            .map(|quad| quad.rect)
+            .collect::<Vec<groove_gfx::Rect>>()
+    };
+    assert!(hatched(&ui).is_empty(), "inline has no empty side");
+    ui.session.view = DiffView::Split;
+    let (_, hits) = view_of(&app, &ui);
+    let new = hits.rect_of(&Target::Code).expect("the new side");
+    let stripes = hatched(&ui);
+    assert_eq!(
+        stripes.len(),
+        1,
+        "the old side of the added line: {stripes:?}"
+    );
+    assert!(stripes[0].right() <= new.x, "on the old side only");
+}
+
+#[test]
 fn the_file_view_draws_the_whole_file_not_the_alignment() {
     let inline = in_view(
         &long(),
