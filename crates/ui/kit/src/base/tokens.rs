@@ -10,13 +10,16 @@ pub const NOTE_COLS_FEWEST: usize = 20;
 pub const REPLY_STEP: usize = 2;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
-/// A diff row's ground, under its text.
-pub const GROUND_ALPHA: u8 = 20;
+/// A diff row's ground, under its text: on a dark theme, then on a light one.
+pub const GROUND_ALPHA: (u8, u8) = (12, 28);
+/// More of that colour under the row's numbers, and how far they lean to it.
+pub const GUTTER_ALPHA: (u8, u8) = (8, 16);
+pub const NUMBER_TINT: f32 = 0.4;
 
 /// How much of the note's own colour a line carrying one takes.
 pub const NOTED: f32 = 0.18;
 /// The words of a row its pair does not have, over that ground.
-pub const WORD_ALPHA: u8 = 96;
+pub const WORD_ALPHA: (u8, u8) = (44, 80);
 /// A badge's ground and edge, both of its word's own colour.
 pub const BADGE_GROUND: u8 = 25;
 pub const BADGE_EDGE: u8 = 90;

@@ -248,6 +248,7 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
         .found(&row.found)
         .standing(row.standing)
         .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
+        .gutter(ctx.styles.gutter(row.kind))
         .caret(row.caret)
         .held(row.held);
     match ctx.styles.row_ground(row.kind) {

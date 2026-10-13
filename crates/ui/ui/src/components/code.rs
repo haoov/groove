@@ -42,6 +42,8 @@ pub struct Line<'a> {
     pub text: &'a str,
     pub spans: &'a [Highlight],
     pub ground: Option<Color>,
+    /// The gutter's own ground and its numbers' colour.
+    pub gutter: Option<(Color, Color)>,
     /// A bar at the row's left edge, for what a gutter number cannot say.
     pub mark: Option<Color>,
     /// A row across the whole width with no gutters: a gap, a note.
@@ -85,6 +87,7 @@ impl<'a> Line<'a> {
             text,
             spans: &[],
             ground: None,
+            gutter: None,
             mark: None,
             banner: false,
             head: false,
@@ -163,6 +166,11 @@ impl<'a> Line<'a> {
 
     pub fn ground(mut self, ground: Color) -> Self {
         self.ground = ground.into();
+        self
+    }
+
+    pub fn gutter(mut self, gutter: Option<(Color, Color)>) -> Self {
+        self.gutter = gutter;
         self
     }
 
