@@ -1,6 +1,6 @@
 [package]
 name = "groove-agent-service"
-description = "The agent capability: each session's agent and asks, the skills, the shared repo, the routines"
+description = "The agent capability: each session's agent, its terminal and its asks"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,19 +9,17 @@ publish.workspace = true
 [dependencies]
 groove-approvals = { path = "../../modules/approvals" }
 groove-mcp = { path = "../../modules/mcp" }
-groove-git = { path = "../../modules/git" }
-groove-routines = { path = "../../modules/routines" }
-groove-skills = { path = "../../modules/skills" }
 groove-tools = { path = "../../modules/tools" }
 groove-types = { path = "../../shared/types" }
 groove-terminal = { path = "../../modules/terminal" }
 groove-agent-launch = { path = "../../modules/agent-launch" }
 groove-hooks = { path = "../../modules/hooks" }
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints]
 workspace = true

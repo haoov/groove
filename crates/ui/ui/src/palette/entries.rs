@@ -57,7 +57,7 @@ fn clusters(app: &AppState, open: &Open) -> Vec<Entry> {
             Action::AttachCluster,
         ));
     }
-    if !open.clusters.is_empty() {
+    if open.holds_clusters() {
         out.push(Entry::flow(
             "Session",
             "Detach cluster",

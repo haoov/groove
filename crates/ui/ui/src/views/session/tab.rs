@@ -27,10 +27,10 @@ impl Tab {
 
     pub fn label(self) -> &'static str {
         match self {
-            Tab::Overview => "overview",
-            Tab::Diff => "diff",
-            Tab::Files => "files",
-            Tab::Resources => "k8s",
+            Tab::Overview => "OVERVIEW",
+            Tab::Diff => "DIFF",
+            Tab::Files => "FILES",
+            Tab::Resources => "KUBERNETES",
         }
     }
 

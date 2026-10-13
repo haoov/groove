@@ -17,7 +17,8 @@ mod order;
 pub use order::Kept;
 pub(super) mod plan;
 
-use self::plan::{Plan, Reads, colour, plan};
+use self::plan::{Plan, Reads, plan};
+use super::health::colour;
 use super::scope::{self, ResourcesUi};
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -212,7 +213,7 @@ fn listed(
             let width = match (dragged.and_then(|one| one.get(label)), at == named) {
                 (Some(wide), _) => Width::Fixed(*wide),
                 (None, true) => Width::Fill,
-                (None, false) => Width::Fit(sample),
+                (None, false) => Width::FitBody(sample),
             };
             column(label, width)
         })
@@ -231,8 +232,8 @@ fn listed(
         selected: None,
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
-    let extent = table.draw(ctx, body, |at| one(app, rows[at], &plan));
-    ctx.app.hits.scrolls(Scroller::Resources, extent);
+    let laid = table.draw(ctx, body, |at| one(app, rows[at], &plan));
+    ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
 
 fn one<'a>(
@@ -264,22 +265,19 @@ fn one<'a>(
             Reads::Status => groove_types::status_health(text),
             Reads::Ready if ended => Some(Health::Done),
             Reads::Ready => groove_types::ready_health(text),
-            Reads::Plain => None,
+            Reads::Plain | Reads::Time => None,
         };
         let role = match (place, health) {
             (0, _) => Role::Text,
             (_, Some(health)) => colour(health),
             _ => Role::Muted,
         };
-        cells.push(Cell::small(text, role));
+        cells.push(match reads {
+            Reads::Time => Cell::small(text, role),
+            _ => Cell::body(text, role),
+        });
     }
-    Shown {
-        cells,
-        under: Vec::new(),
-        target: Some(Target::ResourceRow(row.uid.clone())),
-        acts: Vec::new(),
-        band: false,
-    }
+    Shown::row(cells).target(Target::ResourceRow(row.uid.clone()))
 }
 
 fn column<'a>(label: &'a str, width: Width<'a>) -> Column<'a, Target> {

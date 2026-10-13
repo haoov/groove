@@ -113,3 +113,13 @@ fn every_worktree_of_the_open_session_is_asked_about_once() {
     state.poll.answered(&one);
     assert_eq!(state.wanted(true, &shown, &shown, (now(), EVERY)), [two]);
 }
+
+#[test]
+fn an_answer_for_another_worktree_overtakes_no_read_of_this_one() {
+    let mut state = State::default();
+    let taken = state.taken(&id());
+    state.gone(&WorktreeId::new("w2"));
+    assert!(!state.overtaken(&id(), taken), "w2's answer is its own");
+    state.gone(&id());
+    assert!(state.overtaken(&id(), taken), "w1's answer moves it on");
+}

@@ -41,7 +41,7 @@ pub(super) fn draw(
     ctx: &mut Ctx,
     body: Rect,
     (app, tab, part): (&AppState, &Opened, &AppPart),
-    dragged: Option<&BTreeMap<String, f32>>,
+    dragged: &BTreeMap<String, f32>,
 ) {
     let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm * 2.0);
     let [strip, rest] = column_in(body, [tall, Spec::fill()]);
@@ -64,10 +64,8 @@ pub(super) fn draw(
         (tab, dragged),
         (&COLUMNS, count),
         |at| match &lines[at] {
-            Line::Row(one) => Shown {
-                target: link(one).map(|link| Target::ResourceOpen(Box::new(link))),
-                ..resource(part, one)
-            },
+            Line::Row(one) => resource(part, one)
+                .target(link(one).map(|link| Target::ResourceOpen(Box::new(link)))),
             line => shown(part, line),
         },
     );
@@ -149,17 +147,15 @@ fn shown<'a>(part: &'a AppPart, line: &Line<'a>) -> Shown<'a, Target> {
     }
 }
 
-/// `▾ Deployments 4 1 out of sync · 1 failed`.
+/// `Deployments 4 1 out of sync · 1 failed`, after the fold caret.
 fn heading<'a>(part: &AppPart, group: &Group<'a>, shut: bool) -> Shown<'a, Target> {
-    let mark = if shut { "▸" } else { "▾" };
     let (said, role) = note(part, &group.rows);
     let cells = vec![
-        Cell::small(mark, Role::Ghost),
         Cell::small(group.kind, Role::Text),
         Cell::small(group.rows.len().to_string(), Role::Ghost),
         Cell::small(said, role),
     ];
-    grouped::heading(group.kind, cells)
+    grouped::heading((group.kind, shut), cells)
 }
 
 /// How many are out of sync, wait to be pruned, and failed in the last sync.
@@ -198,12 +194,12 @@ fn status<'a>(part: &'a AppPart, one: &AppResource) -> (&'a str, Role) {
 fn resource<'a>(part: &'a AppPart, one: &'a AppResource) -> Shown<'a, Target> {
     let (sync, synced_role) = synced(one);
     let (message, role) = status(part, one);
-    grouped::row(vec![
+    Shown::row(vec![
         Cell::small(sync, synced_role),
-        Cell::small(one.name.as_str(), Role::Text),
+        Cell::body(one.name.as_str(), Role::Text),
         Cell::small(one.namespace.as_deref().unwrap_or_default(), Role::Faint),
         Cell::small(one.wave.to_string(), Role::Ghost),
-        Cell::small(message, role),
+        Cell::body(message, role),
     ])
 }
 
@@ -222,8 +218,10 @@ fn synced(one: &AppResource) -> (&'static str, Role) {
     if one.hook {
         return ("hook", Role::Ghost);
     }
+    if !one.out_of_sync() {
+        return ("✓", Role::Ok);
+    }
     match one.sync.as_str() {
-        "Synced" => ("✓", Role::Ok),
         "OutOfSync" => ("◐", Role::Warn),
         _ => ("?", Role::Ghost),
     }

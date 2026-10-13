@@ -4,10 +4,15 @@ use groove_agent_service::Select;
 use groove_types::SessionId;
 
 use super::Command;
-use crate::{AppState, Services};
+use crate::{AppState, Services, Spawner};
 
 /// The commands the pointer sends. Anything else is not the pointer's.
-pub(super) fn acted(state: &mut AppState, services: &Services, command: Command) {
+pub(super) fn acted(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    command: Command,
+) {
     match command {
         Command::Select {
             session,
@@ -24,7 +29,7 @@ pub(super) fn acted(state: &mut AppState, services: &Services, command: Command)
         } => click(state, &session, (col, row), down),
         Command::Drag { session, col, row } => drag(state, &session, (col, row)),
         Command::Paste { session, text } => paste(state, &session, &text),
-        Command::Copy { session } => copy(state, services, &session),
+        Command::Copy { session } => copy(state, services, spawner, &session),
         Command::Scroll {
             session,
             lines,
@@ -43,12 +48,8 @@ fn select(
     kind: Select,
     from: bool,
 ) {
-    let Some(terminal) = state.agent.terminal(session) else {
-        return;
-    };
-    match from {
-        true => terminal.select_from(cell, kind),
-        false => terminal.select_to(cell),
+    if let Some(terminal) = state.agent.terminal(session) {
+        crate::grid::select(terminal, cell, kind, from);
     }
 }
 
@@ -74,12 +75,9 @@ fn paste(state: &mut AppState, session: &SessionId, text: &str) {
 }
 
 /// What is selected on the agent's screen, onto the clipboard.
-fn copy(state: &mut AppState, services: &Services, session: &SessionId) {
-    let Some(terminal) = state.agent.terminal(session) else {
-        return;
-    };
-    if let Some(said) = terminal.selected() {
-        let _ = services.clipboard.write(&said);
+fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spawner, session: &SessionId) {
+    if let Some(terminal) = state.agent.terminal(session) {
+        crate::grid::copy(terminal, services, spawner);
     }
 }
 

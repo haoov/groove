@@ -4,9 +4,10 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::Described;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::widgets::{Cell, Width};
+use groove_ui_kit::widgets::{Cell, Shown, Width};
 
-use super::super::opened::{Link, Opened, lineage, selecting, served};
+use super::super::around::lineage;
+use super::super::opened::{Link, Opened};
 use super::{copy, grouped};
 use crate::ctx::Ctx;
 
@@ -47,7 +48,9 @@ pub(super) fn lines(app: &AppState, tab: &Opened, object: &Described) -> Vec<Lin
             let how = (one.how.join(" · "), Role::Muted);
             uses.push(entry(&one.tag, &one.name, Some(how), open));
         }
-        for name in selecting(app, &tab.link, object) {
+        let namespace = tab.link.namespace.as_deref();
+        let store = &app.cluster.store;
+        for name in store.selecting(&tab.link.context, namespace, object) {
             let link = link_to(app, &tab.link, "Service", &name, true);
             used.push(entry("svc", &name, None, link));
         }
@@ -92,11 +95,7 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
             .as_ref()
             .and_then(|one| one.replicas)
             .map(|(ready, desired)| {
-                let role = if ready >= desired {
-                    Role::Ok
-                } else {
-                    Role::Warn
-                };
+                let role = super::super::health::colour(groove_types::count_health(ready, desired));
                 (format!("{ready}/{desired} ready"), role)
             });
         let tag = short(&link.kind.kind);
@@ -113,25 +112,21 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
 
 /// One line, under the table's header when `header`.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), last: Option<&str>) {
+    let caret = Cell::fold(true, Role::Ghost);
     let columns = [
-        grouped::plain("", Width::Fit("▾")),
+        grouped::plain("", Width::FitCell(&caret)),
         grouped::plain("KIND", Width::Fit("secret")),
-        grouped::plain("NAME", Width::Fit("paxone-worker-5d6b9c7f4")),
+        grouped::plain("NAME", Width::FitBody("paxone-worker-5d6b9c7f4")),
         grouped::plain("STATUS", Width::Fill),
     ];
     let one = match line {
         Line::Heading { title, count, shut } => {
             let cells = vec![
-                Cell::small(if *shut { "▸" } else { "▾" }, Role::Ghost),
                 Cell::small(*title, Role::Text),
                 Cell::small(count.to_string(), Role::Ghost),
             ];
-            grouped::one(
-                ctx,
-                rect,
-                (&columns, header),
-                grouped::heading(&key(title), cells),
-            );
+            let heading = grouped::heading((&key(title), *shut), cells);
+            grouped::single(ctx, &columns, header).one(ctx, rect, heading);
             return;
         }
         Line::Entry(one) => one,
@@ -141,11 +136,12 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
         Cell::small("", Role::Ghost),
         Cell::small(one.tag.as_str(), Role::Ghost),
         Cell::small("", Role::Text),
-        Cell::small(said, role),
+        Cell::body(said, role),
     ];
-    let (line, spans) = grouped::one(ctx, rect, (&columns, header), grouped::row(cells));
-    let (x, w) = spans[2];
-    let name = Rect { x, w, ..line }.pad(Edges::across(ctx.tokens.md * one.depth as f32, 0.0));
+    let laid = grouped::single(ctx, &columns, header).one(ctx, rect, Shown::row(cells));
+    let name = laid
+        .cell(0, 2)
+        .pad(Edges::across(ctx.tokens.md * one.depth as f32, 0.0));
     let role = if one.open.is_some() {
         Role::Accent
     } else {
@@ -184,7 +180,7 @@ fn uses_link(app: &AppState, from: &Link, tag: &str, name: &str) -> Option<Link>
 fn link_to(app: &AppState, from: &Link, kind: &str, name: &str, namespaced: bool) -> Option<Link> {
     Some(Link {
         context: from.context.clone(),
-        kind: served(app, &from.context, "", kind)?,
+        kind: app.cluster.store.served(&from.context, "", kind)?,
         namespace: from.namespace.clone().filter(|_| namespaced),
         name: name.to_string(),
     })

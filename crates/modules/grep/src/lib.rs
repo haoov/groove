@@ -4,6 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
+use groove_types::{Error, Result};
 use ignore::{WalkBuilder, WalkState};
 
 #[cfg(test)]
@@ -55,7 +56,30 @@ pub fn walker(dir: &Path) -> WalkBuilder {
 }
 
 /// Every file under `dir` the ignore rules leave, at most `cap`, from the root.
-pub fn paths(dir: &Path, cap: usize) -> Vec<String> {
+pub async fn paths(dir: &Path, cap: usize) -> Result<Vec<String>> {
+    let dir = dir.to_path_buf();
+    off(move || listed(&dir, cap)).await
+}
+
+/// Every line under `dir` holding `query`, in batches, until the walk ends or stops.
+pub async fn walk(
+    dir: &Path,
+    (query, under): (&str, &str),
+    cap: usize,
+    search: Arc<Search>,
+    found: impl FnMut(Vec<Found>) + Send + 'static,
+) -> Result<()> {
+    let (dir, query, under) = (dir.to_path_buf(), query.to_string(), under.to_string());
+    off(move || walked(&dir, &query, &under, cap, search, found)).await
+}
+
+async fn off<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Result<T> {
+    tokio::task::spawn_blocking(work)
+        .await
+        .map_err(|e| Error::internal(format!("the walk failed: {e}")))
+}
+
+pub(crate) fn listed(dir: &Path, cap: usize) -> Vec<String> {
     let mut out = Vec::new();
     let walk = walker(dir).build();
     for entry in walk.flatten() {
@@ -73,8 +97,7 @@ pub fn paths(dir: &Path, cap: usize) -> Vec<String> {
     out
 }
 
-/// Every line under `dir` holding `query`, in batches; blocks until the walk ends or stops.
-pub fn walk(
+pub(crate) fn walked(
     dir: &Path,
     query: &str,
     under: &str,

@@ -33,7 +33,7 @@ impl Change {
 type Step = Vec<Change>;
 
 /// A typing run undone in one step; a motion or a newline closes it.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct History {
     done: Vec<Step>,
     undone: Vec<Step>,

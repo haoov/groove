@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use groove_controllers::{Command, Event, dispatch, session, task};
+use groove_controllers::{AppState, Command, Event, dispatch, session, task};
 use groove_gfx::{Fonts, Renderer};
 use groove_ui::input::Input;
 use winit::application::ApplicationHandler;
@@ -89,6 +89,10 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Continue(continuation) => {
                 continuation(&mut self.state, &self.services, &self.spawner);
+                let aim = groove_ui::input::aim(&self.ui, &self.state);
+                if let Some(input) = landed(&mut self.state, &mut self.unpasted, aim) {
+                    self.input(input);
+                }
                 self.watch();
                 self.redraw();
             }
@@ -110,10 +114,9 @@ impl ApplicationHandler<Message> for App {
                 is_synthetic: true, ..
             } => {}
             WindowEvent::KeyboardInput { event, .. } => {
-                if let Some(input) = self
-                    .pasting(&event)
-                    .or_else(|| input_of(&event, self.modifiers))
-                {
+                if self.pasting(&event) {
+                    self.paste(input_of(&event, self.modifiers));
+                } else if let Some(input) = input_of(&event, self.modifiers) {
                     self.input(input);
                 }
             }
@@ -137,10 +140,10 @@ impl ApplicationHandler<Message> for App {
 }
 
 impl App {
-    /// A chord the keymap binds to a paste, with what the clipboard holds in it.
-    fn pasting(&self, event: &winit::event::KeyEvent) -> Option<Input> {
+    /// A chord the keymap binds to a paste.
+    fn pasting(&self, event: &winit::event::KeyEvent) -> bool {
         if self.ui.settings.binding.is_some() {
-            return None;
+            return false;
         }
         let bound = match input_of(event, self.modifiers) {
             Some(Input::Key { key, mods }) => {
@@ -150,10 +153,15 @@ impl App {
         };
         let inserted = self.modifiers.shift_key()
             && event.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Insert);
-        if event.state != ElementState::Pressed || !(bound || inserted) {
-            return None;
-        }
-        Some(Input::Paste(self.services.clipboard.read()?))
+        event.state == ElementState::Pressed && (bound || inserted)
+    }
+
+    /// The clipboard read off the main thread; what it holds comes back as a paste.
+    fn paste(&mut self, key: Option<Input>) {
+        let aim = groove_ui::input::aim(&self.ui, &self.state);
+        self.unpasted = Some(Unpasted { key, aim });
+        let read = Command::Workspace(groove_controllers::workspace::Command::ReadClipboard);
+        dispatch(read, &mut self.state, &self.services, &self.spawner);
     }
 
     /// The pointer moved: what is under it, and the drag or the selection it carries.
@@ -188,6 +196,28 @@ impl App {
             }
             _ => {}
         }
+    }
+}
+
+/// A clipboard read in flight: the key that asked, and where its text would land then.
+pub(crate) struct Unpasted {
+    pub(crate) key: Option<Input>,
+    pub(crate) aim: groove_ui::input::Aim,
+}
+
+/// A finished clipboard read as input: its text as a paste where it was aimed, else the key that asked.
+pub(crate) fn landed(
+    state: &mut AppState,
+    unpasted: &mut Option<Unpasted>,
+    now: groove_ui::input::Aim,
+) -> Option<Input> {
+    let text = state.pasted.take()?;
+    let asked = unpasted.take();
+    let moved = asked.as_ref().is_some_and(|one| one.aim != now);
+    match text {
+        Some(_) | None if moved => None,
+        Some(text) => Some(Input::Paste(text)),
+        None => asked.and_then(|one| one.key),
     }
 }
 

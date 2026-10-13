@@ -2,16 +2,18 @@
 
 use groove_controllers::{AppState, Command, shell};
 
-use crate::hit::Target;
+use crate::hit::{Hits, Target};
+use crate::input::selection::{pressed as pressed_on, shell_cell};
 use crate::layout::{Layout, grid_in};
-use crate::{Focus, Ui};
+use crate::{Focus, Grid, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
 pub(super) fn acted(
     target: &Target,
+    point: (f32, f32),
     ui: &mut Ui,
     app: &AppState,
-    metrics: Metrics,
+    (hits, metrics): (&Hits, Metrics),
 ) -> Option<Vec<Command>> {
     let session = app.session.selected.clone()?;
     let command = match target {
@@ -44,13 +46,29 @@ pub(super) fn acted(
         Target::ShellTab(tab) => shell::Command::SelectTab { session, tab: *tab },
         Target::ShellCloseTab(tab) => shell::Command::CloseTab { session, tab: *tab },
         Target::ShellClose(id) => shell::Command::Close { session, id: *id },
-        Target::Shell(id) => {
-            ui.focus = Focus::Terminal;
-            shell::Command::Focus { session, id: *id }
-        }
+        Target::Shell(id) => return Some(pressed(ui, app, *id, point, (hits, metrics))),
         _ => return None,
     };
     Some(vec![Command::Shell(command)])
+}
+
+/// A press on a terminal: the keys go to it, and a selection begins where it landed.
+fn pressed(
+    ui: &mut Ui,
+    app: &AppState,
+    id: u64,
+    point: (f32, f32),
+    (hits, metrics): (&Hits, Metrics),
+) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    ui.focus = Focus::Terminal;
+    let mut out = vec![Command::Shell(shell::Command::Focus { session, id })];
+    if let Some(cell) = shell_cell(id, point, hits, metrics) {
+        out.extend(pressed_on(ui, app, Grid::Shell(id), cell));
+    }
+    out
 }
 
 /// The grid each of `panes` terminals side by side holds in the open section.

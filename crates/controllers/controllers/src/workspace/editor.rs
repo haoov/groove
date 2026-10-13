@@ -47,23 +47,26 @@ pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner, path: String) 
     }));
 }
 
-/// Writes the active buffer out.
+/// Writes the active buffer out, after the worktree's file operations asked before.
 pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(open) = state.workspace.active() else {
+    let Some(open) = state.workspace.active().filter(|one| !one.unshown) else {
         return;
     };
     let Some(worktree) = state.session.selected_worktree() else {
         return;
     };
     let (id, dir) = (worktree.id.clone(), worktree.dir());
-    let (path, text) = (open.path.clone(), open.new.text());
+    let (path, text, revision) = (open.path.clone(), open.new.text(), open.new.revision());
     let job = state.begin(format!("saving {path}"));
+    let mut turn = state.workspace.filing(&id);
     spawner.spawn(Box::pin(async move {
-        let written = groove_workspace_service::save(&dir, &path, &text);
+        turn.wait().await;
+        let written = groove_workspace_service::save(&dir, &path, &text).await;
+        drop(turn);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match written {
-                Ok(()) => state.workspace.saved(&id, &path),
+                Ok(()) => state.workspace.saved(&id, &path, revision),
                 Err(e) => state.failed(e),
             }
         }) as Continuation
@@ -99,11 +102,22 @@ pub(crate) fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
     }
     let clipboard = services.clipboard.clone();
     spawner.spawn(Box::pin(async move {
-        let written = clipboard.write(&held);
+        let written = clipboard.write(&held).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = written {
                 state.failed(Error::new(ErrorKind::Io, e.to_string()));
             }
+        }) as Continuation
+    }));
+}
+
+/// The clipboard read in a job, held for the surface to take.
+pub(super) fn read_clipboard(services: &Services, spawner: &dyn Spawner) {
+    let clipboard = services.clipboard.clone();
+    spawner.spawn(Box::pin(async move {
+        let text = clipboard.read().await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.pasted = Some(text.filter(|one| !one.is_empty()));
         }) as Continuation
     }));
 }
@@ -115,7 +129,7 @@ pub(super) fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spa
     }
     let clipboard = services.clipboard.clone();
     spawner.spawn(Box::pin(async move {
-        let text = clipboard.read();
+        let text = clipboard.read().await;
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 if let Some(text) = text.filter(|text| !text.is_empty()) {
@@ -209,7 +223,7 @@ pub(super) fn close_file(state: &mut AppState, path: &str) {
 /// The file's two sides, reading the old one only when it is not in hand.
 async fn sides(dir: &Path, path: &str, old: Option<Document>, rev: &str) -> Result<Opened> {
     match old {
-        Some(old) => Ok(reopened(dir, path, old)),
+        Some(old) => Ok(reopened(dir, path, old).await),
         None => opened(dir, path, rev).await,
     }
 }

@@ -4,10 +4,10 @@ use groove_controllers::session::Command as Session;
 use groove_controllers::{AppState, Command};
 use groove_types::{Attached, SessionId};
 
+use crate::Ui;
 use crate::input::Key;
 use crate::palette::Palette;
-use crate::tests::{full_app, metrics};
-use crate::{Ui, view};
+use crate::tests::{full_app, metrics, render, typed_into};
 
 fn on(context: &str, namespace: Option<&str>) -> Attached {
     Attached {
@@ -31,18 +31,12 @@ fn attaching() -> AppState {
     app
 }
 
-fn typed(palette: &mut Palette, text: &str, app: &AppState) {
-    for c in text.chars() {
-        palette.key(Key::Char(c), app);
-    }
-}
-
 fn asked(app: &AppState, flow: &str, answers: &[&str]) -> Command {
     let mut palette = Palette::default();
-    typed(&mut palette, flow, app);
+    typed_into(&mut palette, flow, app);
     palette.key(Key::Enter, app);
     for answer in answers {
-        typed(&mut palette, answer, app);
+        typed_into(&mut palette, answer, app);
         let done = palette.key(Key::Enter, app);
         let session = done
             .commands
@@ -90,17 +84,7 @@ fn detach_picks_one_context_and_namespace_the_session_holds() {
 #[test]
 fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
     let app = attaching();
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
+    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
     for shown in ["CLUSTERS", "staging", "paxone", "hub", "whole cluster"] {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
@@ -111,9 +95,9 @@ fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
 fn picking_a_context_lists_its_namespaces_behind_the_whole_cluster() {
     let mut app = attaching();
     let mut palette = Palette::default();
-    typed(&mut palette, "attach cluster", &app);
+    typed_into(&mut palette, "attach cluster", &app);
     palette.key(Key::Enter, &app);
-    typed(&mut palette, "hub", &app);
+    typed_into(&mut palette, "hub", &app);
     palette.key(Key::Enter, &app);
     let flow = palette.flow.clone().expect("the flow");
     let list = groove_controllers::cluster::Command::ListNamespaces {
@@ -130,6 +114,10 @@ fn picking_a_context_lists_its_namespaces_behind_the_whole_cluster() {
         .map(|(_, value)| value.as_str())
         .collect();
     assert_eq!(values, ["", "argocd", "kube-system"]);
+    assert_eq!(
+        prompt.options[0].0, "* whole cluster",
+        "as the scope panel says it"
+    );
 }
 
 #[test]
@@ -139,9 +127,9 @@ fn opening_the_namespace_step_again_lists_the_namespaces_again() {
         .store
         .set_namespaces("hub", vec!["argocd".into()]);
     let mut palette = Palette::default();
-    typed(&mut palette, "attach cluster", &app);
+    typed_into(&mut palette, "attach cluster", &app);
     palette.key(Key::Enter, &app);
-    typed(&mut palette, "hub", &app);
+    typed_into(&mut palette, "hub", &app);
     let outcome = palette.key(Key::Enter, &app);
     let list = groove_controllers::cluster::Command::ListNamespaces {
         context: "hub".into(),

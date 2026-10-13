@@ -108,4 +108,16 @@ impl Git {
             tried,
         })
     }
+
+    /// The branch on origin that `base_ref` names, `origin/HEAD` read as the one it points at.
+    pub async fn base_branch(&self, pinned: Option<&str>) -> Result<String> {
+        let base = self.base_ref(pinned).await?;
+        if base != "origin/HEAD" {
+            return Ok(base.strip_prefix("origin/").unwrap_or(&base).to_string());
+        }
+        self.default_branch().await?.ok_or_else(|| Error::NoBase {
+            dir: self.dir.clone(),
+            tried: vec![base],
+        })
+    }
 }

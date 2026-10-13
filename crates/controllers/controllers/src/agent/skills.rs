@@ -1,7 +1,7 @@
 //! The skills an agent is sent: listed, written, deleted, and typed into its prompt.
 
-use groove_agent_service::listing;
-use groove_agent_service::skills::{self, Dirs};
+use groove_skill_service::listing;
+use groove_skill_service::skills::{self, Dirs};
 use groove_types::{SessionId, Skill};
 
 use crate::asker::Asker;
@@ -12,7 +12,7 @@ pub(crate) fn dirs(state: &AppState) -> Dirs {
     let at = (state.env.data_dir.as_path(), state.env.config_dir.as_path());
     let off = state.config.skills_off().to_vec();
     let plugins = state
-        .agent
+        .skill
         .shared
         .as_ref()
         .map(|one| one.marketplace.plugins.clone());
@@ -21,22 +21,68 @@ pub(crate) fn dirs(state: &AppState) -> Dirs {
 
 /// The shared copy followed and every plugin written, then every skill and routine onto the slice.
 pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
+    if state.skill.listing {
+        state.skill.again = true;
+        return;
+    }
+    if let Some(wanted) = state.skill.queued.take() {
+        state.skill.again = true;
+        return crate::config::shared::copy(state, spawner, wanted);
+    }
+    if state.skill.joining {
+        state.skill.again = true;
+        return;
+    }
+    state.skill.listing = true;
+    let generation = state.skill.generation;
     let dirs = dirs(state);
     let at = (state.env.data_dir.clone(), state.env.config_dir.clone());
     let shared = state.config.shared().cloned();
-    let held = state.agent.shared.as_ref().map(|one| one.path.clone());
+    let held = state.skill.shared.as_ref().map(|one| one.path.clone());
     spawner.spawn(Box::pin(async move {
         let found = listing::listing(dirs, at, shared, held).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                listed(state, (services, spawner), generation, found)
+            },
+        ) as Continuation
+    }));
+}
+
+/// A listing landed: taken unless the shared repo changed meanwhile; then what waited on it.
+fn listed(
+    state: &mut AppState,
+    (services, spawner): (&Services, &dyn Spawner),
+    generation: u64,
+    found: listing::Listing,
+) {
+    state.skill.listing = false;
+    match state.skill.generation == generation {
+        true => {
             crate::config::shared::followed(state, found.followed);
             if let Err(e) = found.made {
                 state.failed(e);
             }
-            state.agent.skills = found.skills;
-            state.agent.routines = found.routines;
-            state.agent.listed = true;
-        }) as Continuation
-    }));
+            relisted(state, found.skills);
+            state.routine.routines = found.routines;
+            state.skill.listed = true;
+        }
+        false => state.skill.again = true,
+    }
+    if std::mem::take(&mut state.skill.unsharing) {
+        return crate::config::shared::forget(state, services, spawner);
+    }
+    if std::mem::take(&mut state.skill.again) || state.skill.queued.is_some() {
+        list(state, spawner);
+    }
+}
+
+/// The skills read again, or the last list kept and why said.
+pub(crate) fn relisted(state: &mut AppState, read: groove_types::Result<Vec<Skill>>) {
+    match read {
+        Ok(skills) => state.skill.skills = skills,
+        Err(e) => state.failed(e),
+    }
 }
 
 /// One skill typed into the agent's prompt, then the return a beat later, once its menu settles.
@@ -82,14 +128,15 @@ pub fn save(
     instead_of: Option<String>,
     asker: Asker,
 ) {
+    state.skill.generation += 1;
     let dirs = dirs(state);
     let job = state.begin(format!("writing the skill {name}"));
     spawner.spawn(Box::pin(async move {
-        let made = skills::save(&dirs, &name, &body, instead_of.as_deref());
-        let read = skills::list(&dirs);
+        let made = skills::save(&dirs, &name, &body, instead_of.as_deref()).await;
+        let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            state.agent.skills = read;
+            relisted(state, read);
             let said = made.as_ref().ok().map(said);
             asker.answer(state, made.map(drop), || said.unwrap_or_default());
         }) as Continuation
@@ -103,7 +150,7 @@ fn said(one: &Skill) -> String {
 /// One skill of the user's own deleted, and the list read again.
 pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
     let own = state
-        .agent
+        .skill
         .skills
         .iter()
         .find(|one| one.id == id && one.editable);
@@ -111,14 +158,15 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
         let why = format!("`{id}` is no skill of your own to delete");
         return state.failed(groove_types::Error::invalid(why));
     };
+    state.skill.generation += 1;
     let dirs = dirs(state);
     let job = state.begin(format!("deleting the skill {name}"));
     spawner.spawn(Box::pin(async move {
-        let done = skills::delete(&dirs, &name);
-        let read = skills::list(&dirs);
+        let done = skills::delete(&dirs, &name).await;
+        let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            state.agent.skills = read;
+            relisted(state, read);
             if let Err(e) = done {
                 state.failed(e);
             }
@@ -127,27 +175,28 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
 }
 
 /// One skill switched on or off, the plugins built again, and running agents marked stale.
-pub fn switch(state: &mut AppState, spawner: &dyn Spawner, id: String, on: bool) {
-    if id.starts_with("groove:") {
-        return state.failed(groove_types::Error::invalid("a core skill is always on"));
-    }
-    let Some(config) = state.config.switch_skill(&id, on).cloned() else {
-        let why = format!("`{id}` is no skill Groove can switch: no shared repo holds it");
-        return state.failed(groove_types::Error::invalid(why));
+pub fn switch(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (id, on): (String, bool),
+) {
+    let config = match state.config.switch_skill(&id, on) {
+        Ok(config) => config.clone(),
+        Err(e) => return state.failed(e),
     };
-    if !crate::config::written(state, Some(config)) {
-        return;
-    }
-    state.agent.switched = groove_types::Timestamp::now();
+    crate::config::write(state, services, spawner, config, None);
+    state.skill.switched = groove_types::Timestamp::now();
+    state.skill.generation += 1;
     let dirs = dirs(state);
     spawner.spawn(Box::pin(async move {
-        let made = skills::sync(&dirs);
-        let read = skills::list(&dirs);
+        let made = skills::sync(&dirs).await;
+        let read = skills::list(&dirs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = made {
                 state.failed(e);
             }
-            state.agent.skills = read;
+            relisted(state, read);
         }) as Continuation
     }));
 }

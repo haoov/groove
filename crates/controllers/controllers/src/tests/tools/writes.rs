@@ -175,7 +175,7 @@ fn every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_
         created_at: groove_types::Timestamp::now(),
     };
     state.session.open(session, groove_types::Timestamp::now());
-    let launch = state.agent.launch();
+    let launch = state.agent.launch(&nothing);
     let none = Err(groove_types::Error::invalid("no terminal in this test"));
     state.agent.started(
         (nothing.clone(), launch),
@@ -338,6 +338,32 @@ fn the_agent_cuts_a_second_worktree_and_gets_its_id() {
     let open = state.session.get(&id).expect("the session");
     assert_eq!(open.repos.len(), 1, "the repo it already had");
     assert_eq!(open.worktrees.len(), 2, "and a second worktree on it");
+}
+
+#[test]
+fn a_repo_name_two_repos_answer_to_asks_for_the_slug() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    fixture::pooled_clone(home.path());
+    fixture::worktree(&mut state, &services, &spawner);
+    let id = state.session.selected.clone().expect("a session");
+    crate::tests::fixture::auto_approve(&mut state, &id);
+    let open = state.session.get_mut(&id).expect("the session");
+    let mut twin = open.repos[0].clone();
+    twin.id = groove_types::RepoId::new("twin");
+    let project = twin.project.clone();
+    open.repos.push(twin);
+
+    let asks = json!({ "repo": project, "branch": "explorer/second" });
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "add_task_worktree",
+        asks,
+    );
+    assert!(answer.failed);
+    assert!(answer.text.contains("slug"), "{}", answer.text);
 }
 
 #[test]

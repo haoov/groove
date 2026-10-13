@@ -17,10 +17,12 @@ pub enum Target {
     Mode(groove_types::DiffMode),
     /// A tab of the workspace.
     Tab(Tab),
-    /// One of the header's two pickers.
+    /// One of the header's pickers.
     Picker(Picks),
     /// An overview row.
     Worktree(WorktreeId),
+    /// The overview's ground, under its rows.
+    Overview,
     /// A palette row, by its place in the list.
     PaletteRow(usize),
     /// The palette's box; a click on it does nothing.
@@ -94,8 +96,8 @@ pub enum Target {
     ResourceView(crate::views::session::resources::View),
     /// An Application's resources view: a filter picked.
     ArgoFilter(crate::views::session::resources::Filter),
-    /// A group or a row of an object's tab, folded or unfolded.
-    ResourceFold(String),
+    /// A group or a row of an object's tab, folded or unfolded, and whether it was drawn shut.
+    ResourceFold(String, bool),
     /// The logs view's controls: the containers read, the run, the range picker, following.
     LogSource(groove_types::LogSource),
     LogPrevious(bool),
@@ -243,7 +245,11 @@ impl Target {
             Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
                 Cursor::Text
             }
-            Target::Agent | Target::Shell(_) | Target::Pinned | Target::Palette => Cursor::Default,
+            Target::Agent
+            | Target::Shell(_)
+            | Target::Pinned
+            | Target::Palette
+            | Target::Overview => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
             Target::ResourceEdge(_) => Cursor::ColResize,
             Target::Split(edge) => match edge.upright() {

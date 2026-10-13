@@ -44,6 +44,8 @@ pub enum Error {
     Unpushed { branch: String, ahead: u32 },
     #[error("git cannot tell whether {branch} holds work origin lacks; force to delete it anyway")]
     Unknown { branch: String },
+    #[error("the walk of the pool stopped: {0}")]
+    Walk(String),
 }
 
 impl From<Error> for groove_types::Error {
@@ -54,7 +56,7 @@ impl From<Error> for groove_types::Error {
                 return g.into();
             }
             Error::Sqlx(_) => ErrorKind::Db,
-            Error::Io { .. } => ErrorKind::Io,
+            Error::Io { .. } | Error::Walk(_) => ErrorKind::Io,
             Error::NotFound { .. } | Error::UnknownRepo(_) => ErrorKind::NotFound,
             Error::InvalidBranch { .. }
             | Error::BadSlug(_)

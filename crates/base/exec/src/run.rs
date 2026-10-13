@@ -67,9 +67,8 @@ impl Run {
     /// Runs and returns the raw output, whatever the exit status.
     pub async fn output(self) -> Result<Output> {
         let program = self.describe();
-        match tokio::time::timeout(self.timeout, self.spawned()).await {
-            Ok(Ok(output)) => Ok(output),
-            Ok(Err(source)) => Err(Error::Spawn { program, source }),
+        match tokio::time::timeout(self.timeout, self.spawned(&program)).await {
+            Ok(ran) => ran,
             Err(_) => Err(Error::TimedOut {
                 program,
                 after: self.timeout,
@@ -90,16 +89,21 @@ impl Run {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     }
 
-    async fn spawned(&self) -> std::io::Result<Output> {
+    /// The child run to its end; a failure to start it is `Spawn`, one after is `Io`.
+    async fn spawned(&self, program: &str) -> Result<Output> {
+        let started = |source| Error::Spawn {
+            program: program.to_string(),
+            source,
+        };
         let mut command = self.command();
         let Some(input) = &self.input else {
-            return command.output().await;
+            return command.output().await.map_err(started);
         };
         command
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
-        let mut child = command.spawn()?;
+        let mut child = command.spawn().map_err(started)?;
         let stdin = child.stdin.take();
         let fed = async move {
             if let Some(mut stdin) = stdin {
@@ -108,8 +112,10 @@ impl Run {
             Ok::<(), std::io::Error>(())
         };
         let (fed, output) = tokio::join!(fed, child.wait_with_output());
-        fed?;
-        output
+        match fed {
+            Err(e) if e.kind() != std::io::ErrorKind::BrokenPipe => Err(e.into()),
+            _ => Ok(output?),
+        }
     }
 
     fn command(&self) -> tokio::process::Command {

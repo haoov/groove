@@ -17,6 +17,7 @@ pub struct Touched {
     pub came: u32,
 }
 
+#[derive(Clone)]
 pub struct Buffer {
     doc: Document,
     /// One per caret.
@@ -59,6 +60,14 @@ impl Buffer {
             parsed: 0,
             touched: Vec::new(),
         }
+    }
+
+    /// A buffer of no language holding `text`, its caret at the end, nothing to undo.
+    pub fn plain(text: &str) -> Self {
+        let mut buffer = Self::new(Document::new("", text));
+        let end = buffer.doc.caret_of(buffer.doc.chars());
+        buffer.follow(end);
+        buffer
     }
 
     pub fn document(&self) -> &Document {

@@ -7,6 +7,7 @@ mod hunked;
 mod layout;
 mod moved;
 mod opened;
+mod sides;
 mod summary;
 mod words;
 
@@ -33,4 +34,5 @@ pub fn shown(
 }
 
 pub use opened::{Derived, Opened, derived, from_documents, from_text, opened, reopened};
+pub use sides::{READ_MAX_BYTES, UNSHOWN, committed, paired, working};
 pub use summary::{summary, summary_against};

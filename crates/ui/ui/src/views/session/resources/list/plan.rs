@@ -2,7 +2,6 @@
 
 use groove_controllers::AppState;
 use groove_types::{ObjectRow, WatchKey};
-use groove_ui_kit::base::style::Role;
 
 /// How many rows a column's width is fitted over.
 const FITTED: usize = 200;
@@ -56,7 +55,7 @@ pub(super) fn plan(app: &AppState, keys: &[WatchKey], rows: &[(&WatchKey, &Objec
     let mut reads = Vec::new();
     for at in &shown {
         let label = columns[*at].name.to_uppercase();
-        reads.push(Reads::of(&label.to_lowercase()));
+        reads.push(Reads::of(&columns[*at]));
         labels.push(label);
         samples.push(cell(*at));
     }
@@ -84,23 +83,16 @@ pub(super) enum Reads {
     Plain,
     Status,
     Ready,
-}
-
-pub(crate) fn colour(health: groove_types::Health) -> Role {
-    match health {
-        groove_types::Health::Good => Role::Ok,
-        groove_types::Health::Waiting => Role::Warn,
-        groove_types::Health::Failing => Role::Bad,
-        groove_types::Health::Done => Role::Ghost,
-    }
+    Time,
 }
 
 impl Reads {
     /// What a column says, by its name.
-    fn of(label: &str) -> Self {
-        match label {
+    fn of(column: &groove_types::TableColumn) -> Self {
+        match column.name.to_lowercase().as_str() {
             "status" | "phase" | "sync status" | "health status" => Reads::Status,
             "ready" => Reads::Ready,
+            _ if groove_types::tells_time(column) => Reads::Time,
             _ => Reads::Plain,
         }
     }

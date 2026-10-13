@@ -115,3 +115,13 @@ pub enum Edit {
     Undo,
     Redo,
 }
+
+impl Edit {
+    /// Whether it moves the caret or what it holds and leaves the text as it is.
+    pub fn moves(&self) -> bool {
+        matches!(
+            self,
+            Edit::Move(_) | Edit::Extend(_) | Edit::SelectAll | Edit::SelectWord | Edit::SelectLine
+        )
+    }
+}

@@ -53,11 +53,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = config_state.config;
     let panes =
         groove_config::panes::load(&groove_config::panes::path(&env.data_dir)).unwrap_or_default();
-    let mut app = app::App::new(spawner, services, env, config, panes, explore);
-    event_loop.run_app(&mut app)?;
+    let keeper = services.config.clone();
+    let mut app = app::App::new(spawner, services, env, (config, panes), explore);
+    let ran = event_loop.run_app(&mut app);
     let result = app.into_result();
+    let flushed = runtime.block_on(keeper.quit());
     runtime.shutdown_timeout(std::time::Duration::from_secs(2));
-    result
+    ran?;
+    result.and(flushed.map_err(Into::into))
 }
 
 /// Every child gets the login shell's `PATH`, which a desktop launch lacks.
@@ -91,7 +94,8 @@ async fn services(
         session: groove_controllers::session_service::Service::new(store, pool),
         task: groove_controllers::task_service::Service::new(plan, ledger),
         delivery: groove_controllers::delivery_service::Service::new(mrs, notes),
-        clipboard: groove_controllers::workspace_service::clipboard(),
+        config: groove_controllers::config_service::Keeper::default(),
+        clipboard: groove_controllers::workspace_service::Clipboard::system(),
     })
 }
 

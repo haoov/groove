@@ -27,7 +27,7 @@ pub(super) fn heights(
     lines
         .iter()
         .map(|line| match under(app, line) {
-            true => item(tokens) + tokens.line + tokens.xs,
+            true => card(tokens),
             false => item(tokens),
         })
         .collect()
@@ -44,6 +44,11 @@ fn under(app: &AppState, line: &Line<'_>) -> bool {
 /// How tall one plain line of a column is.
 pub(super) fn item(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
+}
+
+/// How tall a line stands with a second line under its title.
+pub fn card(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
+    item(tokens) + tokens.line + tokens.xs
 }
 
 /// One task waiting: its source and title, then its worth and why it needs the user.

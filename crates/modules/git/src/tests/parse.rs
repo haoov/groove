@@ -126,3 +126,12 @@ fn a_batch_takes_each_blob_by_its_size() {
     assert_eq!(found.get("gone.txt"), None);
     assert_eq!(found.get("four.txt").map(String::as_str), Some("four"));
 }
+
+#[test]
+fn a_batch_cut_short_keeps_what_came_and_does_not_panic() {
+    let out = b"aa blob 3\none" as &[u8];
+    let found = crate::parse::batch(out, &["one.txt", "two.txt"]);
+    assert_eq!(found.get("one.txt").map(String::as_str), Some("one"));
+    let huge = b"aa blob 18446744073709551615\nx" as &[u8];
+    assert_eq!(crate::parse::batch(huge, &["one.txt"]).len(), 1);
+}

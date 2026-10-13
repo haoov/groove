@@ -213,7 +213,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     resolved: false,
                     prose: None,
                 },
-            ),
+            )
+            .caret(held.words[on].caret)
+            .held(held.words[on].held),
         })
         .collect()
 }

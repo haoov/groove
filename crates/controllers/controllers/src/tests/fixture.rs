@@ -6,7 +6,10 @@ use std::time::{Duration, Instant};
 
 use groove_types::WorktreeSpec;
 
-use crate::{AppState, Command as Cmd, Env, Services, SyncSpawner, dispatch, session};
+use crate::{
+    AppState, Command as Cmd, Env, Services, SyncSpawner, config, delivery, dispatch, session,
+    workspace,
+};
 
 /// Prints its first flag; echoes one line, or its cwd when the line is `pwd`; exits 7.
 const FAKE_CLAUDE: &str = "#!/bin/sh
@@ -55,6 +58,23 @@ pub fn services(spawner: &SyncSpawner, home: &Path) -> Services {
     spawner
         .block_on(Services::in_memory(&home.join("code")))
         .unwrap()
+}
+
+/// `<home>/.kube/config` with one context, `kind`, on `server`.
+pub fn kubeconfig(home: &Path, server: &str) {
+    let yaml = format!(
+        "apiVersion: v1
+kind: Config
+clusters:
+- {{name: kind, cluster: {{server: '{server}'}}}}
+users:
+- {{name: kind, user: {{token: not-a-real-token}}}}
+contexts:
+- {{name: kind, context: {{cluster: kind, user: kind}}}}
+"
+    );
+    std::fs::create_dir_all(home.join(".kube")).unwrap();
+    std::fs::write(home.join(".kube/config"), yaml).unwrap();
 }
 
 /// A bare origin and a pooled clone of it at `<home>/code/main/gitlab.example.com/g/mayo`.
@@ -113,8 +133,12 @@ pub fn sh(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
-/// An explorer with the fixture's repo and one worktree; returns the worktree's path.
-pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> String {
+/// An explorer open, its agent started; returns its id.
+pub fn explorer(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+) -> groove_types::SessionId {
     dispatch(
         Cmd::Session(session::Command::OpenExplorer {
             title: Some("try mayo".into()),
@@ -125,6 +149,12 @@ pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner
     );
     let id = state.session.selected.clone().expect("a session");
     until(spawner, services, state, |s| s.agent.agent(&id).is_some());
+    id
+}
+
+/// An explorer with the fixture's repo and one worktree; returns the worktree's path.
+pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> String {
+    let id = explorer(state, services, spawner);
     dispatch(
         Cmd::Session(session::Command::AddRepo {
             session: id.clone(),
@@ -145,6 +175,49 @@ pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner
         .and_then(|o| o.selected_worktree())
         .map(|w| w.path.clone())
         .expect("a worktree")
+}
+
+/// A command `send` takes: the app's own, or one controller's.
+pub trait Routed {
+    fn routed(self) -> Cmd;
+}
+
+impl Routed for Cmd {
+    fn routed(self) -> Cmd {
+        self
+    }
+}
+
+impl Routed for workspace::Command {
+    fn routed(self) -> Cmd {
+        Cmd::Workspace(self)
+    }
+}
+
+impl Routed for delivery::Command {
+    fn routed(self) -> Cmd {
+        Cmd::Delivery(self)
+    }
+}
+
+impl Routed for config::Command {
+    fn routed(self) -> Cmd {
+        Cmd::Config(self)
+    }
+}
+
+/// One command, run to the end of everything it starts.
+#[track_caller]
+pub fn send(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    command: impl Routed,
+) {
+    dispatch(command.routed(), state, services, spawner);
+    until(spawner, services, state, |s| {
+        s.pending.is_empty() && spawner.idle()
+    });
 }
 
 #[track_caller]
@@ -173,5 +246,58 @@ pub fn until(
 pub fn auto_approve(state: &mut AppState, session: &groove_types::SessionId) {
     if let Some(open) = state.session.get_mut(session) {
         open.state.auto_approve = true;
+    }
+}
+
+/// Holds every job, to run them in any order; a thread reports through `sink` when given one.
+#[derive(Default)]
+pub struct Held {
+    jobs: std::sync::Mutex<Vec<crate::spawn::Job>>,
+    sink: Option<std::sync::Arc<dyn crate::Deliver>>,
+}
+
+impl Held {
+    /// Jobs held, and what a thread reports delivered to `spawner` for its `drain`.
+    pub fn over(spawner: &SyncSpawner) -> Self {
+        let sink = Some(crate::Spawner::sink(spawner));
+        Self {
+            jobs: Default::default(),
+            sink,
+        }
+    }
+
+    /// The jobs held so far, in the order they were spawned.
+    pub fn take(&self) -> Vec<crate::spawn::Job> {
+        std::mem::take(&mut *self.jobs.lock().expect("the jobs"))
+    }
+
+    /// The held jobs started newest first on a pool, a beat apart; their continuations applied after.
+    pub fn backwards(&self, state: &mut AppState, services: &Services) {
+        let pool = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let mut out = Vec::new();
+        for job in self.take().into_iter().rev() {
+            out.push(pool.spawn(job));
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        let spawner = SyncSpawner::new().unwrap();
+        for one in out {
+            pool.block_on(one).expect("the job")(state, services, &spawner);
+        }
+    }
+}
+
+impl crate::Spawner for Held {
+    fn spawn(&self, job: crate::spawn::Job) {
+        self.jobs.lock().expect("the jobs").push(job);
+    }
+
+    fn detach(&self, _: crate::Detached) {}
+
+    fn sink(&self) -> std::sync::Arc<dyn crate::Deliver> {
+        self.sink.clone().expect("a held spawner made `over` one")
     }
 }

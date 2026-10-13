@@ -33,7 +33,7 @@ impl From<Delivered> for crate::Held {
 }
 
 /// How the forge that serves a repo is reached.
-pub type Connect = Arc<dyn Fn(&Repo) -> Result<Remote> + Send + Sync>;
+pub type Connect = Arc<dyn Fn(&Repo) -> Result<Arc<Remote>> + Send + Sync>;
 
 /// The capability's module handles, cheap to clone into a job.
 #[derive(Clone)]
@@ -49,7 +49,7 @@ impl Service {
         Self {
             mrs,
             notes,
-            connect: Arc::new(|repo| Ok(Remote::of(repo)?)),
+            connect: Arc::new(|repo| Ok(Remote::shared(&repo.host)?)),
         }
     }
 
@@ -59,7 +59,7 @@ impl Service {
         connect: impl Fn(&Repo) -> Result<Remote> + Send + Sync + 'static,
     ) -> Self {
         Self {
-            connect: Arc::new(connect),
+            connect: Arc::new(move |repo| connect(repo).map(Arc::new)),
             ..self
         }
     }
@@ -80,7 +80,7 @@ impl Service {
         Self::new(Store::new(db.clone()), Notes::new(db))
     }
 
-    fn remote(&self, repo: &Repo) -> Result<Remote> {
+    fn remote(&self, repo: &Repo) -> Result<Arc<Remote>> {
         (self.connect)(repo)
     }
 
@@ -121,9 +121,11 @@ impl Service {
         text: &crate::Text,
     ) -> Result<Delivered> {
         let remote = self.remote(repo)?;
+        let git = groove_git::Git::at(worktree.dir());
+        let base = git.base_branch(worktree.base_ref.as_deref()).await.ok();
         let proposed = Proposed {
             head: &worktree.branch,
-            base: worktree.base_ref.as_deref(),
+            base: base.as_deref(),
             title: &text.title,
             body: &text.body,
         };

@@ -4,8 +4,17 @@ use std::collections::BTreeSet;
 
 use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command, cluster};
-use groove_types::{Attached, KubeKind, WatchKey};
+use groove_types::{Attached, KubeKind, Timestamp, WatchKey};
 use groove_ui_kit::widgets::Field;
+
+/// The whole cluster, where a namespace would stand in a short label.
+pub const WHOLE_MARK: &str = "*";
+
+/// The whole cluster, as a line of the scope panel.
+pub const WHOLE_LINE: &str = "* whole cluster";
+
+/// The whole cluster, as a name under its context.
+pub const WHOLE_NAME: &str = "whole cluster";
 
 /// The one reader the tab holds its watchers under.
 pub const READER: &str = "resources";
@@ -31,20 +40,26 @@ pub struct ResourcesUi {
     pub folded: BTreeSet<groove_types::KindHeading>,
     /// The column the rows are ordered by, and whether downwards.
     pub sort: Option<(String, bool)>,
-    /// The widths dragged, by kind, then by column.
+    /// The widths dragged in the list, by kind, then by column.
     pub widths: std::collections::BTreeMap<String, std::collections::BTreeMap<String, f32>>,
+    /// The widths dragged in an object's tab, by column.
+    pub tab_widths: std::collections::BTreeMap<String, f32>,
     /// The list's order as the last frame built it.
     pub kept: super::list::Kept,
     /// The objects open in tabs beside the list, and the one shown; none is the list.
     pub opened: Vec<super::opened::Opened>,
     pub showing: Option<usize>,
     pub scroll: f32,
+    /// How far the list is scrolled sideways.
+    pub across: f32,
+    /// How far the kinds sidebar is scrolled.
+    pub kinds: f32,
 }
 
-/// A column's edge held: its kind, its label, where the press was, and its width then.
+/// A column's edge held: its kind, none in an object's tab; its label, where the press was, and its width then.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dragged {
-    pub kind: String,
+    pub kind: Option<String>,
     pub label: String,
     pub from: f32,
     pub width: f32,
@@ -58,16 +73,6 @@ pub enum Pick {
 }
 
 impl Pick {
-    pub fn label(&self) -> String {
-        match self {
-            Pick::Context(context) => context.clone(),
-            Pick::Pair(pair) => {
-                let namespace = pair.namespace.as_deref().unwrap_or("*");
-                format!("{} · {namespace}", pair.context)
-            }
-        }
-    }
-
     pub fn shown(&self, ui: &ResourcesUi) -> bool {
         match self {
             Pick::Context(context) => !ui.hidden_contexts.contains(context),
@@ -77,20 +82,22 @@ impl Pick {
 
     pub fn toggle(&self, ui: &mut ResourcesUi) {
         match self {
-            Pick::Context(context) => flip(&mut ui.hidden_contexts, context.clone()),
-            Pick::Pair(pair) => flip(&mut ui.hidden, pair.clone()),
+            Pick::Context(context) => {
+                groove_types::toggle(&mut ui.hidden_contexts, context.clone())
+            }
+            Pick::Pair(pair) => groove_types::toggle(&mut ui.hidden, pair.clone()),
         }
         ui.scroll = 0.0;
     }
 }
 
-/// The scope narrowed to one pair by its label, or opened to every pair the session holds by `*`.
-pub fn focus(held: &mut ResourcesUi, open: &Open, scope: &str) {
+/// The scope narrowed to one pair.
+pub fn focus(held: &mut ResourcesUi, open: &Open, pair: &Attached) {
     held.hidden_contexts.clear();
     held.hidden = open
         .clusters
         .iter()
-        .filter(|one| scope != "*" && Pick::Pair((*one).clone()).label() != scope)
+        .filter(|one| *one != pair)
         .cloned()
         .collect();
     held.scroll = 0.0;
@@ -104,6 +111,13 @@ pub fn contexts(open: &Open) -> Vec<&str> {
             out.push(&one.context);
         }
     }
+    out
+}
+
+/// The contexts the session holds that the picker leaves in.
+pub fn shown_contexts<'a>(open: &'a Open, ui: &ResourcesUi) -> Vec<&'a str> {
+    let mut out = contexts(open);
+    out.retain(|one| !ui.hidden_contexts.contains(*one));
     out
 }
 
@@ -125,11 +139,11 @@ pub fn kind(app: &AppState, open: &Open, ui: &ResourcesUi) -> Option<KubeKind> {
     if let Some(kind) = &ui.kind {
         return Some(kind.clone());
     }
+    let store = &app.cluster.store;
     let known = contexts(open)
         .into_iter()
-        .find_map(|one| app.cluster.store.kinds(one))?;
-    let pods = |one: &&KubeKind| one.group.is_empty() && one.kind == "Pod";
-    known.iter().find(pods).cloned()
+        .find(|one| store.kinds(one).is_some())?;
+    store.served(known, "", "Pod")
 }
 
 /// The search's label selector, its `=` words joined; and its name words.
@@ -159,11 +173,11 @@ pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
     };
     let mut out: Vec<WatchKey> = Vec::new();
     for pair in held(open, ui).filter(|one| app.config.cluster(&one.context).is_some()) {
-        let Some(kinds) = app.cluster.store.kinds(&pair.context) else {
-            continue;
-        };
-        let same = |one: &&KubeKind| one.group == picked.group && one.kind == picked.kind;
-        let Some(kind) = kinds.iter().find(same).filter(|one| one.watchable) else {
+        let served = app
+            .cluster
+            .store
+            .served(&pair.context, &picked.group, &picked.kind);
+        let Some(kind) = served.filter(|one| one.watchable) else {
             continue;
         };
         let key = WatchKey {
@@ -180,12 +194,12 @@ pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
 }
 
 /// What the tab needs each frame, `up` while it shows: its contexts' kinds; a watcher a key while the list shows.
-pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi) -> Vec<Command> {
+pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi, now: Timestamp) -> Vec<Command> {
     let open = app.session.selected().filter(|_| up);
     let mut out = Vec::new();
     let wanted = match open {
         Some(open) => {
-            out.extend(discoveries(app, open));
+            out.extend(discoveries(app, open, now));
             match ui.tab() {
                 Some(_) => Vec::new(),
                 None => keys(app, open, ui),
@@ -197,46 +211,38 @@ pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi) -> Vec<Command> {
     out
 }
 
-/// A discovery for each context in scope, still added to Groove, whose kinds are neither known nor asked for.
-fn discoveries(app: &AppState, open: &Open) -> Vec<Command> {
+/// A discovery for each context in scope, still added to Groove, whose kinds are unknown or older than `FRESH`.
+fn discoveries(app: &AppState, open: &Open, now: Timestamp) -> Vec<Command> {
     let store = &app.cluster.store;
-    let unknown = |one: &&str| {
+    let fresh = groove_controllers::cluster_service::FRESH.as_secs() as i64;
+    let asked = |one: &str| {
         let added = app.config.cluster(one).is_some();
-        added && store.kinds(one).is_none() && !store.discovering(one)
+        if !added || store.discovering(one) {
+            return None;
+        }
+        let again = match store.discovered(one) {
+            None => false,
+            Some(at) if now.seconds() - at.seconds() >= fresh => true,
+            Some(_) => return None,
+        };
+        let context = one.to_string();
+        Some(Command::Cluster(cluster::Command::Discover {
+            context,
+            again,
+        }))
     };
-    let discover = |one: &str| cluster::Command::Discover {
-        context: one.to_string(),
-        again: false,
-    };
-    contexts(open)
-        .into_iter()
-        .filter(unknown)
-        .map(|one| Command::Cluster(discover(one)))
-        .collect()
+    contexts(open).into_iter().filter_map(asked).collect()
 }
 
-/// Nothing while the keys held are the keys wanted; else let go of them all and read the new.
+/// The watchers held while they are the ones wanted; else the new ones.
 fn leases(app: &AppState, wanted: Vec<WatchKey>) -> Vec<Command> {
     let held: BTreeSet<&WatchKey> = app.cluster.store.read_by(READER).collect();
-    if held == wanted.iter().collect() {
-        return Vec::new();
-    }
-    let release = cluster::Command::Release {
-        reader: READER.into(),
-    };
+    let same = held == wanted.iter().collect();
     let watch = |key| {
         Command::Cluster(cluster::Command::Watch {
             reader: READER.into(),
             key,
         })
     };
-    std::iter::once(Command::Cluster(release))
-        .chain(wanted.into_iter().map(watch))
-        .collect()
-}
-
-fn flip<T: Ord>(set: &mut BTreeSet<T>, one: T) {
-    if !set.remove(&one) {
-        set.insert(one);
-    }
+    super::leases(READER, same, wanted.into_iter().map(watch))
 }

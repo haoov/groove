@@ -33,14 +33,14 @@ pub fn logs(
     stop: &Stop,
     send: impl Fn(Logged) + Send + Sync + 'static,
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
-    let mut stopped = stop.subscribe();
+    let mut heard = stop.subscribe();
     async move {
         let mut last: BTreeMap<String, Seen> = BTreeMap::new();
         let mut backoff = Backoff::new();
         loop {
             let before = last.clone();
             let ended = tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
+                _ = heard.stopped() => return,
                 ended = cycle(&paths, &key, &mut last, &send) => ended,
             };
             if last != before {
@@ -58,12 +58,11 @@ pub fn logs(
                 }
                 Err(e) => {
                     send(Logged::Failed(e.to_string()));
-                    backoff.after(&e)
+                    backoff.after_logs(&e, key.previous)
                 }
             };
-            tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
-                _ = tokio::time::sleep(pause) => {}
+            if !heard.rest(pause).await {
+                return;
             }
         }
     }

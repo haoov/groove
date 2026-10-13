@@ -1,6 +1,7 @@
 use groove_types::{ExternalId, SessionKind};
 
-use crate::{Dirs, delete, is_name, list, plugin_dirs, read, save, sync};
+use crate::disk::{delete, list, plugin_dirs, read, save, sync};
+use crate::{Dirs, is_name};
 
 /// Both plugin directories under a temporary home.
 fn dirs(home: &std::path::Path) -> Dirs {
@@ -215,7 +216,7 @@ fn a_shared_repo_reads_as_the_plugins_its_marketplace_lists() {
             ("review", "./plugins/review", "review"),
         ],
     );
-    let read = crate::marketplace(&repo).unwrap();
+    let read = crate::shared::marketplace(&repo).unwrap();
     assert_eq!(read.name, "groove-agent");
     let names: Vec<&str> = read.plugins.iter().map(|one| one.name.as_str()).collect();
     assert_eq!(names, ["platform", "review"]);
@@ -226,7 +227,7 @@ fn a_shared_repo_reads_as_the_plugins_its_marketplace_lists() {
 fn a_plugin_groove_cannot_read_or_name_is_refused() {
     let refused = |entry: (&str, &str, &str)| {
         let home = tempfile::tempdir().unwrap();
-        crate::marketplace(&listing(home.path(), &[entry])).is_err()
+        crate::shared::marketplace(&listing(home.path(), &[entry])).is_err()
     };
     assert!(
         refused(("groove", "./plugins/groove", "groove")),
@@ -250,7 +251,7 @@ fn a_plugin_groove_cannot_read_or_name_is_refused() {
     );
     let home = tempfile::tempdir().unwrap();
     assert!(
-        crate::marketplace(home.path()).is_err(),
+        crate::shared::marketplace(home.path()).is_err(),
         "no marketplace at all"
     );
 }
@@ -264,7 +265,7 @@ fn sharing(home: &std::path::Path, skills: &[&str], enabled: &[&str]) -> Dirs {
         let body = format!("---\ndescription: {name} things\n---\nDo {name}.\n");
         std::fs::write(at.join("SKILL.md"), body).unwrap();
     }
-    let plugins = crate::marketplace(&repo).unwrap().plugins;
+    let plugins = crate::shared::marketplace(&repo).unwrap().plugins;
     let enabled = enabled.iter().map(|one| one.to_string()).collect();
     dirs(home).sharing(plugins, enabled)
 }
@@ -311,6 +312,27 @@ fn a_launch_is_given_the_enabled_shared_skills_alone() {
         manifest.contains("\"platform\""),
         "named as the shared plugin: {manifest}"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn builds_at_the_same_time_each_finish_whole() {
+    let home = tempfile::tempdir().unwrap();
+    let skills: Vec<String> = (0..40).map(|at| format!("skill-{at}")).collect();
+    let named: Vec<&str> = skills.iter().map(String::as_str).collect();
+    let enabled: Vec<String> = skills.iter().map(|one| format!("platform:{one}")).collect();
+    let on: Vec<&str> = enabled.iter().map(String::as_str).collect();
+    let dirs = sharing(home.path(), &named, &on);
+    let builds: Vec<_> = (0..8)
+        .map(|_| {
+            let dirs = dirs.clone();
+            tokio::spawn(async move { crate::sync(&dirs).await })
+        })
+        .collect();
+    for build in builds {
+        build.await.unwrap().expect("a whole build");
+    }
+    let built = std::fs::read_dir(dirs.built.join("platform/skills")).unwrap();
+    assert_eq!(built.count(), 40);
 }
 
 #[test]

@@ -1,15 +1,15 @@
 //! What a run leaves on the feed: when it started and why, how it ended and the commits it made.
 
-use groove_agent_service::runs::{Ending, Run};
+use groove_routine_service::runs::{Ending, Run};
 use groove_types::{Action, TimelineKind};
 
-use crate::{AppState, Services, Spawner, Told};
+use crate::{AppState, Services, Spawner};
 
 /// `fix-mr · CI failed on main`, on the session it runs on.
 pub(super) fn started(state: &AppState, services: &Services, spawner: &dyn Spawner, run: &Run) {
     let by = match (run.about.is_empty(), run.trigger) {
         (false, _) => run.about.clone(),
-        (true, by) => groove_agent_service::routines::started_by(by).to_string(),
+        (true, by) => groove_routine_service::routines::started_by(by).to_string(),
     };
     let subject = format!("{} · {by}", name(state, run));
     crate::timeline::said(
@@ -28,16 +28,10 @@ pub(super) fn ended(
     spawner: &dyn Spawner,
     (run, ending): &(Run, Ending),
 ) {
-    let how = match ending {
-        Ending::Done => match commits(state, run) {
-            0 => "done".to_string(),
-            1 => "done · 1 commit".to_string(),
-            n => format!("done · {n} commits"),
-        },
-        Ending::Gone => "its agent stopped".to_string(),
-        Ending::Stalled => "its agent never started".to_string(),
-    };
-    let subject = format!("{} · {how}", name(state, run));
+    let commits = run
+        .sent_at
+        .map_or(0, |sent| state.session.commits_since(&run.session, sent));
+    let subject = format!("{} · {}", name(state, run), ending.said(commits));
     crate::timeline::said(
         services,
         spawner,
@@ -53,22 +47,10 @@ pub(super) fn acted(state: &mut AppState, action: Action, opened: &[String]) {
         return;
     }
     let said = format!("{} opened {}", action.name(), opened.join(", "));
-    state.notes.push(Told::now(said));
-}
-
-/// The commits its session logged since its words reached the agent.
-fn commits(state: &AppState, run: &Run) -> usize {
-    let Some(sent) = run.sent_at else {
-        return 0;
-    };
-    let feed = state.session.feed.iter();
-    let made = |one: &&groove_types::TimelineEvent| {
-        one.session == run.session && one.kind == TimelineKind::Commit && one.at >= sent
-    };
-    feed.filter(made).count()
+    state.say(said);
 }
 
 fn name(state: &AppState, run: &Run) -> String {
-    let routine = state.agent.routine(&run.routine);
+    let routine = state.routine.routine(&run.routine);
     routine.map_or_else(|| run.routine.clone(), |one| one.name.clone())
 }

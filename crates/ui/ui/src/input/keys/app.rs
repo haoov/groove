@@ -1,13 +1,13 @@
 //! The app's own ring: what an action does from any pane.
 
-use groove_controllers::{AppState, Command, agent, session, shell, workspace};
+use groove_controllers::{AppState, Command, session, shell, workspace};
 
 use super::super::Key;
 use super::panes::in_rail;
 use crate::keymap::Action;
 use crate::palette::Palette;
 use crate::views::session::Tab;
-use crate::{Focus, Overlay, Surface, Ui};
+use crate::{Focus, Grid, Overlay, Surface, Ui};
 
 pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let selected = app.session.selected.clone();
@@ -87,18 +87,22 @@ fn new_terminal(ui: &mut Ui, selected: Option<groove_types::SessionId>) -> Vec<C
     })]
 }
 
-/// The agent's selection to the clipboard, from its own terminal.
-pub(super) fn copied(app: &AppState) -> Vec<Command> {
-    let copy = app
-        .session
-        .selected
-        .clone()
-        .map(|session| agent::Command::Copy { session });
-    copy.map(Command::Agent).into_iter().collect()
+/// The selection of the terminal that has the keys, to the clipboard.
+pub(super) fn copied(focus: Focus, app: &AppState) -> Vec<Command> {
+    let grid = match focus {
+        Focus::Terminal => app
+            .session
+            .selected
+            .as_ref()
+            .and_then(|session| app.shell.shells(session)?.focused())
+            .map(Grid::Shell),
+        _ => Some(Grid::Agent),
+    };
+    grid.map_or_else(Vec::new, |grid| crate::input::selection::copied(app, grid))
 }
 
 fn holds_clusters(app: &AppState) -> bool {
     app.session
         .selected()
-        .is_some_and(|open| !open.clusters.is_empty())
+        .is_some_and(|open| open.holds_clusters())
 }

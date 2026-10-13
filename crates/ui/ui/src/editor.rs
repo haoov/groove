@@ -36,7 +36,11 @@ pub struct Editor<'a> {
 
 impl Editing {
     /// The buffer the keyboard edits: an object's YAML while its tab shows it, else the open file.
+    /// None on the overview, which draws no buffer.
     pub fn keyed(app: &AppState, ui: &Ui) -> Option<Editing> {
+        if ui.session.tab == Tab::Overview {
+            return None;
+        }
         if ui.session.tab == Tab::Resources {
             let tab = ui.session.resources.tab()?;
             return match tab.view {
@@ -60,11 +64,7 @@ impl Editing {
             Editing::Object(key) => {
                 let buffer = app.cluster.store.follows.yamls.get(key)?;
                 let namespace = key.namespace.as_deref().unwrap_or("-");
-                let name = key
-                    .fields
-                    .as_deref()
-                    .unwrap_or_default()
-                    .trim_start_matches("metadata.name=");
+                let name = key.named_one().unwrap_or_default();
                 let path = format!(
                     "{}/{namespace}/{}/{name}.yaml",
                     key.context, key.kind.plural
@@ -128,6 +128,14 @@ impl Editing {
     pub fn paste(&self) -> Option<Command> {
         match self {
             Editing::File => Some(Command::Workspace(workspace::Command::Paste)),
+            Editing::Object(_) | Editing::Log(_) => None,
+        }
+    }
+
+    /// Text the shell already read from the clipboard, put in where the carets are.
+    pub fn pasted(&self, text: &str) -> Option<Command> {
+        match self {
+            Editing::File => Some(self.edit(Edit::Insert(text.to_string()))),
             Editing::Object(_) | Editing::Log(_) => None,
         }
     }

@@ -25,28 +25,21 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: Lis
         List::Review => {
             let asked = super::review::sorted(app, ui);
             heading(ctx, head, list, asked.len());
-            return super::review::draw(ctx, body, ui, &asked);
+            super::review::draw(ctx, body, ui, &asked);
         }
         List::Live => {
             let living = super::live::living(app, ui);
             heading(ctx, head, list, living.len());
-            if living.is_empty() {
-                return nothing(ctx, body, super::live::empty(ui));
+            match living.is_empty() {
+                true => nothing(ctx, body, super::live::empty(ui)),
+                false => super::live::draw(ctx, body, app, ui, &living),
             }
-            return super::live::draw(ctx, body, app, ui, &living);
         }
-        List::Next => {}
-    }
-    let lines = lines(app, ui, list);
-    heading(ctx, head, list, counted(&lines));
-    rows(ctx, body, app, ui, list, &lines);
-}
-
-/// What a column holds, top to bottom.
-fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
-    match list {
-        List::Next => super::plan::lines(app, ui),
-        List::Live | List::Review => Vec::new(),
+        List::Next => {
+            let lines = super::plan::lines(app, ui);
+            heading(ctx, head, list, counted(&lines));
+            rows(ctx, body, app, ui, &lines);
+        }
     }
 }
 
@@ -72,10 +65,10 @@ fn edge(ctx: &mut Ctx, area: Rect) {
 }
 
 /// The lines a column has room for, scrolled and clipped to it.
-fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &[Line<'_>]) {
+fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, lines: &[Line<'_>]) {
     let heights = row::heights(&ctx.tokens, app, lines);
     let rows: Vec<(usize, f32)> = heights.into_iter().enumerate().collect();
-    let which = Scroller::Column(list as u8);
+    let which = Scroller::Column(List::Next as u8);
     listed(
         ctx,
         body,
@@ -84,7 +77,7 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &
         |(_, tall)| *tall,
         |ctx, rect, (at, _)| one(ctx, rect, app, &lines[*at]),
     );
-    if list == List::Next && ui.carried().is_some() {
+    if ui.carried().is_some() {
         ctx.clipped(body, |ctx| super::plan::dragging(ctx, body, app, ui));
     }
 }

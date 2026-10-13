@@ -45,13 +45,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     crate::offsets::listed(
         ctx,
         body,
-        (Scroller::Files, ui.session.files),
+        (Scroller::Kinds, ui.session.resources.kinds),
         &lines,
         |_| row,
         |ctx, line, one| match one {
             Line::Heading(group, open) => {
                 if stood.as_ref() == Some(one) {
-                    groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+                    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
                 }
                 let heading = Heading::new(group.label()).fold(*open);
                 heading
@@ -77,10 +77,10 @@ fn searched(ctx: &mut Ctx, line: Rect, ui: &Ui) {
         .draw(ctx, line);
 }
 
-/// One kind at a file's depth: listed, on the held ground between the rules; stood on, hovered.
+/// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.
 fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (bool, bool)) {
     if highlighted {
-        groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+        groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
     }
     hoverable(ctx, line, Target::ResourceKind(kind.clone()));
     if picked {
@@ -99,10 +99,7 @@ fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (boo
 fn lines(app: &AppState, open: &Open, ui: &Ui) -> Vec<Line> {
     let held = &ui.session.resources;
     let mut kinds: Vec<&KubeKind> = Vec::new();
-    for context in scope::contexts(open)
-        .into_iter()
-        .filter(|one| !held.hidden_contexts.contains(*one))
-    {
+    for context in scope::shown_contexts(open, held) {
         let served = app.cluster.store.kinds(context).unwrap_or_default();
         for kind in served.iter().filter(|one| one.watchable) {
             if !kinds

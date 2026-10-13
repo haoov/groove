@@ -102,6 +102,12 @@ impl SyncSpawner {
         }
     }
 
+    /// Whether no continuation waits to be applied.
+    pub fn idle(&self) -> bool {
+        let held = self.pending.0.lock();
+        held.unwrap_or_else(PoisonError::into_inner).is_empty()
+    }
+
     /// Lets detached work run for `long`, then applies what it delivered.
     pub fn settle(&self, long: std::time::Duration, state: &mut AppState, services: &Services) {
         self.runtime

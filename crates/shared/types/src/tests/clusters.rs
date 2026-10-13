@@ -78,8 +78,23 @@ fn a_status_word_and_a_ready_count_say_how_an_object_stands() {
     assert_eq!(ready_health("2/2"), Some(Health::Good));
     assert_eq!(ready_health("1/3"), Some(Health::Waiting));
     assert_eq!(ready_health("0/1"), Some(Health::Failing));
+    assert_eq!(
+        crate::count_health(1, 3),
+        Health::Waiting,
+        "as the text reads"
+    );
     assert_eq!(ready_health("0/0"), Some(Health::Done));
     assert_eq!(ready_health("ready"), None);
+}
+
+#[test]
+fn a_count_of_ready_against_wanted_says_how_it_stands() {
+    use crate::{Health, count_health};
+    assert_eq!(count_health(0, 0), Health::Done, "nothing wanted");
+    assert_eq!(count_health(3, 3), Health::Good);
+    assert_eq!(count_health(4, 3), Health::Good, "more than wanted");
+    assert_eq!(count_health(0, 3), Health::Failing);
+    assert_eq!(count_health(1, 3), Health::Waiting);
 }
 
 #[test]

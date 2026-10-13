@@ -4,8 +4,8 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{Container, Pressure, State, Usage, bytes, cores, gauge, quantity};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
-use groove_ui_kit::shape::Panel;
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::shape::{Panel, hung_under};
+use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Column, Shown, Width};
 
 use super::super::opened::Opened;
@@ -42,19 +42,27 @@ pub(super) fn details(one: &Container) -> Vec<(&'static str, String)> {
     out
 }
 
-fn columns(ctx: &mut Ctx) -> Vec<Column<'static, Target>> {
-    let style = ctx.styles.small(Role::Text);
-    let meter = ctx.tokens.aside_near / 2.0 + ctx.tokens.sm + ctx.measure("999Mi / 999Gi", &style);
-    let fit = Width::Fit;
+/// The widest usage cell, which the CPU and memory columns fit.
+fn meter() -> Cell<'static> {
+    Cell::body("9999Mi / 999Gi", Role::Text).bar(None, None, Role::Text)
+}
+
+/// The fold caret's column, as wide as the caret.
+fn caret() -> Cell<'static> {
+    Cell::fold(true, Role::Ghost)
+}
+
+fn columns<'a>((caret, meter): (&'a Cell<'a>, &'a Cell<'a>)) -> Vec<Column<'a, Target>> {
+    let fit = Width::FitBody;
     vec![
-        grouped::plain("", fit("▾")),
+        grouped::plain("", Width::FitCell(caret)),
         grouped::plain("NAME", fit("init · statsd-exporter")),
         grouped::plain("STATE", fit("waiting · CrashLoopBackOff")),
-        grouped::plain("READY", fit("✓")),
+        grouped::plain("READY", Width::Fit("✓")),
         grouped::plain("RESTARTS", fit("14")),
         grouped::plain("LAST ENDED", fit("Error · exit 137 · 59m")),
-        grouped::plain("CPU", Width::Fixed(meter)),
-        grouped::plain("MEMORY", Width::Fixed(meter)),
+        grouped::plain("CPU", Width::FitCell(meter)),
+        grouped::plain("MEMORY", Width::FitCell(meter)),
         grouped::plain("", Width::Fill),
     ]
 }
@@ -75,25 +83,20 @@ pub(super) fn row(
         false => one.name.clone(),
     };
     let cells = vec![
-        Cell::small(if folded(tab, one) { "▸" } else { "▾" }, Role::Ghost),
-        Cell::small(name, if one.init { Role::Faint } else { Role::Text }),
-        Cell::small(said, role),
+        Cell::fold(!folded(tab, one), Role::Ghost),
+        Cell::body(name, if one.init { Role::Faint } else { Role::Text }),
+        Cell::body(said, role),
         ready(one),
         restarts(one),
         ended(ctx, one),
         cpu,
         memory,
     ];
-    let shown = Shown {
-        target: Some(Target::ResourceFold(key(one))),
-        ..grouped::row(cells)
-    };
-    let columns = columns(ctx);
-    let (line, spans) = grouped::one(ctx, rect, (&columns, header), shown);
-    let cell = |at: usize| {
-        let (x, w) = spans[at];
-        Rect { x, w, ..line }
-    };
+    let shown = Shown::row(cells).target(Target::ResourceFold(key(one), folded(tab, one)));
+    let (caret, meter) = (caret(), meter());
+    let columns = columns((&caret, &meter));
+    let laid = grouped::single(ctx, &columns, header).one(ctx, rect, shown);
+    let cell = |at: usize| laid.cell(0, at);
     let mut tip = None;
     for (at, memory, lines) in [(6, false, cpu_tip), (7, true, memory_tip)] {
         let target = Target::ContainerUsage(one.name.clone(), memory);
@@ -114,9 +117,10 @@ pub(super) fn detail(
     (key, value): &(&'static str, String),
     last: Option<&str>,
 ) {
-    let columns = columns(ctx);
-    let from = grouped::spans(ctx, rect, &columns)[1].0;
-    let rect = rect.pad(Edges::across(from - rect.x, 0.0));
+    let (caret, meter) = (caret(), meter());
+    let columns = columns((&caret, &meter));
+    let laid = grouped::single(ctx, &columns, false).laid(ctx, rect);
+    let rect = laid.from(0, 1);
     let keyed = Spec::default().width(ctx.tokens.aside_near);
     let [k, v] = row_in(rect, [keyed, Spec::fill()]);
     Label::new(key, ctx.styles.small(Role::Ghost)).draw(ctx, k);
@@ -127,12 +131,11 @@ pub(super) fn detail(
 pub(super) fn tip(ctx: &mut Ctx, tip: &Tip) {
     ctx.layer();
     let (sm, row) = (ctx.tokens.sm, ctx.tokens.row);
-    let box_ = Rect {
-        y: tip.under.bottom(),
-        w: ctx.tokens.aside_mid,
-        h: row * tip.lines.len() as f32 + sm * 2.0,
-        ..tip.under
-    };
+    let size = (
+        ctx.tokens.aside_mid,
+        row * tip.lines.len() as f32 + sm * 2.0,
+    );
+    let box_ = hung_under(tip.under, size);
     Panel::default()
         .ground(ctx.styles.deep())
         .border(ctx.styles.line())
@@ -176,7 +179,7 @@ fn metered(
         (None, None) => "–".into(),
     };
     let part = |one: Option<f64>| one.map(|part| part as f32);
-    let cell = Cell::small(text, role).bar(part(gauge.used), part(gauge.request), role);
+    let cell = Cell::body(text, role).bar(part(gauge.used), part(gauge.request), role);
     (cell, lines)
 }
 
@@ -206,7 +209,7 @@ fn restarts(one: &Container) -> Cell<'static> {
     } else {
         Role::Muted
     };
-    Cell::small(one.restarts.to_string(), role)
+    Cell::body(one.restarts.to_string(), role)
 }
 
 /// `Error · exit 1 · 2m`.
@@ -216,12 +219,17 @@ fn ended(ctx: &Ctx, one: &Container) -> Cell<'static> {
     };
     let when = last
         .at
-        .map(|at| format!(" · {}", ago(at.age_at(ctx.now))))
+        .map(|at| {
+            format!(
+                " · {}",
+                groove_types::human_age(at.age_at(ctx.now).as_secs())
+            )
+        })
         .unwrap_or_default();
     let role = if last.exit == 0 {
         Role::Muted
     } else {
         Role::Bad
     };
-    Cell::small(format!("{} · exit {}{when}", last.reason, last.exit), role)
+    Cell::body(format!("{} · exit {}{when}", last.reason, last.exit), role)
 }

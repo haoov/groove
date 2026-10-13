@@ -67,9 +67,7 @@ impl Changes {
     /// Hides a file's rows under its own head, or shows them again.
     pub fn fold(&mut self, path: &str) {
         let mut shut = std::mem::take(&mut self.shut);
-        if !shut.remove(path) {
-            shut.insert(path.to_string());
-        }
+        groove_types::toggle(&mut shut, path.to_string());
         *self = Self::indexed(std::mem::take(&mut self.files), shut);
     }
 
@@ -215,13 +213,12 @@ fn widest(file: &Aligned) -> usize {
 pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> groove_types::Result<Changes> {
     let paths: Vec<String> = files.iter().map(|file| file.path.clone()).collect();
     let heads = Git::at(dir).blobs(rev, &paths).await?;
-    let aligned = paths
-        .iter()
-        .map(|path| {
-            let before = heads.get(path).map(String::as_str).unwrap_or_default();
-            let after = std::fs::read_to_string(dir.join(path)).unwrap_or_default();
-            aligned(path, before, &after)
-        })
-        .collect();
-    Ok(Changes::new(aligned))
+    let mut out = Vec::with_capacity(paths.len());
+    for path in &paths {
+        let before = crate::committed(heads.get(path).map(String::as_str).unwrap_or_default());
+        let after = crate::working(dir, path).await;
+        let (before, after) = crate::paired(before, &after);
+        out.push(aligned(path, before, after));
+    }
+    Ok(Changes::new(out))
 }

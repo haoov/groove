@@ -13,11 +13,7 @@ use crate::views::session::resources::{self, ResourcesUi};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held: &ResourcesUi) {
     let contexts = resources::contexts(open);
-    let shown: Vec<&str> = contexts
-        .iter()
-        .copied()
-        .filter(|one| !held.hidden_contexts.contains(*one))
-        .collect();
+    let shown = resources::shown_contexts(open, held);
     let none = contexts.is_empty();
     let contexts = match none {
         true => "no cluster".to_string(),
@@ -58,7 +54,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
 
 /// `paxone`, `*` for the whole cluster, after its context when several are held.
 fn pair(one: &groove_types::Attached) -> String {
-    one.namespace.as_deref().unwrap_or("*").to_string()
+    let whole = resources::WHOLE_MARK;
+    one.namespace.as_deref().unwrap_or(whole).to_string()
 }
 
 /// Every one picked reads as `all`; none as `none`; else the picked ones.

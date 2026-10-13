@@ -245,12 +245,7 @@ fn worktree_choices(open: &Open) -> Vec<(String, String)> {
     open.worktrees
         .iter()
         .map(|w| {
-            let project = open
-                .repos
-                .iter()
-                .find(|r| r.id == w.repo)
-                .map(|r| r.project.as_str())
-                .unwrap_or("?");
+            let project = open.repo_of(w).map_or("?", |r| r.project.as_str());
             (format!("{project} · {}", w.branch), w.id.to_string())
         })
         .collect()

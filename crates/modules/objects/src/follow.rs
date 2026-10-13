@@ -36,12 +36,12 @@ pub fn follow(
     stop: &Stop,
     send: impl Fn(Followed) + Send + Sync + 'static,
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
-    let mut stopped = stop.subscribe();
+    let mut heard = stop.subscribe();
     async move {
         let mut backoff = Backoff::new();
         loop {
             let ended = tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
+                _ = heard.stopped() => return,
                 ended = cycle(&paths, &key, &send, &mut backoff) => ended,
             };
             let wait = match ended {
@@ -51,9 +51,8 @@ pub fn follow(
                     backoff.after(&e)
                 }
             };
-            tokio::select! {
-                _ = stopped.wait_for(|on| *on) => return,
-                _ = tokio::time::sleep(wait) => {}
+            if !heard.rest(wait).await {
+                return;
             }
         }
     }
@@ -75,10 +74,7 @@ async fn cycle(
         labels: None,
     };
     let listed = client.list_objects(narrowed).await?;
-    let whole = key
-        .fields
-        .as_deref()
-        .is_some_and(|one| one.starts_with("metadata.name="));
+    let whole = key.named_one().is_some();
     let read = |object: &serde_json::Value| crate::describe(&key.kind.kind, object, whole);
     send(Followed::Reset(listed.objects.iter().map(read).collect()));
     let mut version = listed.version;
@@ -121,9 +117,13 @@ async fn watched(
         };
         let Some(seen) = next else { break };
         match seen? {
-            Seen::Mark(at) => *version = at,
+            Seen::Mark(at) if !at.is_empty() => *version = at,
+            Seen::Mark(_) => {}
             Seen::Put(object) => {
-                version.clone_from(&crate::describe::text(&object, "/metadata/resourceVersion"));
+                let at = crate::describe::text(&object, "/metadata/resourceVersion");
+                if !at.is_empty() {
+                    *version = at;
+                }
                 held.push(Change::Put(Box::new(read(&object))));
             }
             Seen::Gone(object) => held.push(Change::Gone(crate::describe::text(

@@ -95,12 +95,13 @@ pub(super) fn sh(dir: &std::path::Path, args: &[&str]) {
             "-c",
             "user.email=t@t",
             "-c",
-            "user.name=t",
+            "user.name=T",
             "-c",
             "commit.gpgsign=false",
         ])
         .args(args)
         .current_dir(dir)
+        .env("LC_ALL", "C")
         .output()
         .expect("git runs");
     assert!(out.status.success(), "git {args:?}");

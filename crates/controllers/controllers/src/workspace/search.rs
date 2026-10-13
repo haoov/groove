@@ -15,18 +15,19 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
     }
     state.workspace.walking = true;
     spawner.spawn(Box::pin(async move {
-        let read = tokio::task::spawn_blocking(move || groove_workspace_service::paths(&dir)).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.workspace.walking = false;
-            let selected = state.session.selected_worktree().map(|one| &one.id);
-            match read {
-                Ok(_) if selected != Some(&id) => {}
-                Ok(paths) => state.workspace.set_paths(paths),
-                Err(e) => state.failed(groove_types::Error::internal(format!(
-                    "the walk failed: {e}"
-                ))),
-            }
-        }) as Continuation
+        let read = groove_workspace_service::paths(&dir).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.workspace.walking = false;
+                let selected = state.session.selected_worktree().map(|one| &one.id);
+                match read {
+                    Ok(_) if selected.is_none() => {}
+                    Ok(_) if selected != Some(&id) => list_paths(state, spawner),
+                    Ok(paths) => state.workspace.set_paths(paths),
+                    Err(e) => state.failed(e),
+                }
+            },
+        ) as Continuation
     }));
 }
 
@@ -46,20 +47,28 @@ pub(super) fn grep(state: &mut AppState, spawner: &dyn Spawner, query: String, u
     }
     let search = std::sync::Arc::new(Search::default());
     state.workspace.searching = Some(search.clone());
-    let sink = spawner.sink();
+    let (sink, mine) = (spawner.sink(), search.clone());
+    let current = move |state: &AppState, one: &std::sync::Arc<Search>| {
+        let held = state.workspace.searching.as_ref();
+        held.is_some_and(|held| std::sync::Arc::ptr_eq(held, one))
+    };
+    let walked = search.clone();
+    let found = move |batch: Vec<groove_workspace_service::Found>| {
+        let walked = walked.clone();
+        sink.deliver(Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                if current(state, &walked) {
+                    state.workspace.found.extend(batch);
+                }
+            },
+        ));
+    };
     spawner.spawn(Box::pin(async move {
-        let reading = tokio::task::spawn_blocking(move || {
-            groove_workspace_service::grep(&dir, &query, &under, search, |batch| {
-                sink.deliver(Box::new(
-                    move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                        state.workspace.found.extend(batch);
-                    },
-                ));
-            });
-        });
-        let _ = reading.await;
+        let _ = groove_workspace_service::grep(&dir, &query, &under, search, found).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.workspace.searching = None;
+            if current(state, &mine) {
+                state.workspace.searching = None;
+            }
         }) as Continuation
     }));
 }

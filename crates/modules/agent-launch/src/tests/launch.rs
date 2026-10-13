@@ -56,11 +56,13 @@ fn the_session_file_encodes_the_cwd_like_claude_code() {
     );
 }
 
-#[test]
-fn a_first_launch_names_the_session_and_a_second_resumes_it() {
+#[tokio::test]
+async fn a_first_launch_names_the_session_and_a_second_resumes_it() {
     let root = tempfile::tempdir().unwrap();
     let session = explorer();
-    let first = Launch::plan(&session, &paths(root.path()), &[], None).unwrap();
+    let first = Launch::plan(&session, &paths(root.path()), &[], None)
+        .await
+        .unwrap();
     let uuid = session_uuid(session.id.as_str());
     assert_eq!(
         &first.args[..2],
@@ -70,12 +72,14 @@ fn a_first_launch_names_the_session_and_a_second_resumes_it() {
     let file = session_file(root.path(), root.path(), &uuid);
     std::fs::create_dir_all(file.parent().unwrap()).unwrap();
     std::fs::write(&file, "").unwrap();
-    let second = Launch::plan(&session, &paths(root.path()), &[], None).unwrap();
+    let second = Launch::plan(&session, &paths(root.path()), &[], None)
+        .await
+        .unwrap();
     assert_eq!(&second.args[..2], &["--resume".to_string(), uuid]);
 }
 
-#[test]
-fn a_session_handed_an_explorer_s_conversation_resumes_it() {
+#[tokio::test]
+async fn a_session_handed_an_explorer_s_conversation_resumes_it() {
     let root = tempfile::tempdir().unwrap();
     let explorer = explorer();
     let uuid = session_uuid(explorer.id.as_str());
@@ -91,8 +95,12 @@ fn a_session_handed_an_explorer_s_conversation_resumes_it() {
         },
         created_at: Timestamp::new(0),
     };
-    crate::hand_over(root.path(), explorer.id.as_str(), task.id.as_str()).unwrap();
-    let launch = Launch::plan(&task, &paths(root.path()), &[], None).unwrap();
+    crate::hand_over(root.path(), explorer.id.as_str(), task.id.as_str())
+        .await
+        .unwrap();
+    let launch = Launch::plan(&task, &paths(root.path()), &[], None)
+        .await
+        .unwrap();
     assert_eq!(
         &launch.args[..2],
         &["--resume".to_string(), uuid],
@@ -100,14 +108,18 @@ fn a_session_handed_an_explorer_s_conversation_resumes_it() {
     );
 }
 
-#[test]
-fn forgetting_a_session_takes_its_launch_files_and_no_other() {
+#[tokio::test]
+async fn forgetting_a_session_takes_its_launch_files_and_no_other() {
     let root = tempfile::tempdir().unwrap();
-    Launch::plan(&explorer(), &paths(root.path()), &[], None).unwrap();
+    Launch::plan(&explorer(), &paths(root.path()), &[], None)
+        .await
+        .unwrap();
     let explorer = explorer().id;
-    crate::hand_over(root.path(), explorer.as_str(), "gh-haoov-groove-50").unwrap();
-    crate::forget(root.path(), explorer.as_str()).unwrap();
-    crate::forget(root.path(), explorer.as_str()).unwrap();
+    crate::hand_over(root.path(), explorer.as_str(), "gh-haoov-groove-50")
+        .await
+        .unwrap();
+    crate::forget(root.path(), explorer.as_str()).await.unwrap();
+    crate::forget(root.path(), explorer.as_str()).await.unwrap();
     let left: Vec<String> = std::fs::read_dir(root.path())
         .unwrap()
         .map(|one| one.unwrap().file_name().to_string_lossy().into_owned())
@@ -116,8 +128,8 @@ fn forgetting_a_session_takes_its_launch_files_and_no_other() {
     assert_eq!(left, ["gh-haoov-groove-50.thread"]);
 }
 
-#[test]
-fn the_prompt_file_is_private_and_names_the_session() {
+#[tokio::test]
+async fn the_prompt_file_is_private_and_names_the_session() {
     let root = tempfile::tempdir().unwrap();
     let launch = Launch::plan(
         &explorer(),
@@ -125,6 +137,7 @@ fn the_prompt_file_is_private_and_names_the_session() {
         &[PathBuf::from("/p/groove")],
         None,
     )
+    .await
     .unwrap();
     let prompt = flag_value(&launch.args, "--append-system-prompt-file").unwrap();
     assert!(prompt.ends_with("explorer-ab12cd34.prompt.md"));
@@ -145,8 +158,8 @@ fn the_prompt_file_is_private_and_names_the_session() {
     );
 }
 
-#[test]
-fn the_token_reaches_the_files_and_never_the_command_line() {
+#[tokio::test]
+async fn the_token_reaches_the_files_and_never_the_command_line() {
     let root = tempfile::tempdir().unwrap();
     let loopback = Loopback {
         tools: Some(crate::Tools {
@@ -156,7 +169,9 @@ fn the_token_reaches_the_files_and_never_the_command_line() {
         hook_url: "http://127.0.0.1:27413/hook/explorer-ab12cd34".into(),
         token: "s3cr3t-token".into(),
     };
-    let launch = Launch::plan(&explorer(), &paths(root.path()), &[], Some(&loopback)).unwrap();
+    let launch = Launch::plan(&explorer(), &paths(root.path()), &[], Some(&loopback))
+        .await
+        .unwrap();
     assert!(
         launch
             .args
@@ -204,15 +219,17 @@ fn the_core_prompt_names_where_the_team_s_facts_stand() {
     assert!(!text.contains("{{"));
 }
 
-#[test]
-fn hooks_run_without_the_tool_server() {
+#[tokio::test]
+async fn hooks_run_without_the_tool_server() {
     let root = tempfile::tempdir().unwrap();
     let loopback = Loopback {
         tools: None,
         hook_url: "http://127.0.0.1:27413/hook/explorer-ab12cd34".into(),
         token: "s3cr3t-token".into(),
     };
-    let launch = Launch::plan(&explorer(), &paths(root.path()), &[], Some(&loopback)).unwrap();
+    let launch = Launch::plan(&explorer(), &paths(root.path()), &[], Some(&loopback))
+        .await
+        .unwrap();
     assert!(launch.args.iter().all(|a| a != "--mcp-config"));
     let settings =
         std::fs::read_to_string(flag_value(&launch.args, "--settings").unwrap()).unwrap();

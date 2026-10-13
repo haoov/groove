@@ -150,7 +150,7 @@ pub const TABLE: [Spec; 33] = [
     ),
     spec(
         A::Resources,
-        ("tab.resources", "resources tab", "Panes"),
+        ("tab.resources", "kubernetes tab", "Panes"),
         App,
         &["alt+shift+4"],
     ),

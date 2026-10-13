@@ -125,3 +125,24 @@ fn the_worktrees_own_files_are_listed_and_one_that_never_changed_opens() {
     let open = state.workspace.active().expect("the file is open");
     assert_eq!(open.new.text(), "one\n", "its own content, with no change");
 }
+
+#[test]
+fn a_search_asked_again_shows_only_what_the_last_one_found() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let root = std::path::Path::new(&dir);
+    std::fs::write(root.join("a.txt"), "one needle here\nplain\n").unwrap();
+    for query in ["needle", "plain"] {
+        let grep = workspace::Command::Grep {
+            query: query.into(),
+            under: String::new(),
+        };
+        dispatch(Cmd::Workspace(grep), &mut state, &services, &spawner);
+    }
+    until(&spawner, &services, &mut state, |s| {
+        s.pending.is_empty() && s.workspace.searching.is_none()
+    });
+    let lines: Vec<usize> = state.workspace.found.iter().map(|one| one.line).collect();
+    assert_eq!(lines, [1], "the plain line alone");
+}

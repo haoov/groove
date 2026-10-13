@@ -91,7 +91,7 @@ fn an_application_without_a_sync_policy_is_manual_and_a_tag_reads_whole() {
     );
     let partial = serde_json::json!({ "syncPolicy": { "automated": { "prune": false } } });
     assert_eq!(crate::argo::automated(Some(&partial)), "auto");
-    assert_eq!(crate::argo::short("v0.24.1"), "v0.24.1");
+    assert_eq!(groove_types::short_sha("v0.24.1"), "v0.24.1");
 }
 
 #[test]
@@ -202,4 +202,18 @@ fn a_source_keeps_its_whole_synced_commit_for_the_link_to_show() {
         .app
         .expect("an application's part");
     assert_eq!(part.sources[0].synced.as_deref(), Some(sha));
+}
+
+#[test]
+fn an_empty_sources_list_leaves_the_one_source_read() {
+    let app = serde_json::json!({
+        "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
+        "metadata": { "name": "pythie-cayzn-acc", "namespace": "argocd", "uid": "u1" },
+        "spec": { "sources": [], "source": { "repoURL": "https://gitlab.wiremind.io/deploy.git", "targetRevision": "main" } },
+        "status": { "sync": { "status": "Synced" } }
+    });
+    let part = crate::describe("Application", &app, false)
+        .app
+        .expect("an application's part");
+    assert_eq!(part.sources.len(), 1);
 }

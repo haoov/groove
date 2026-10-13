@@ -36,7 +36,7 @@ The commit box offers one action at a time. `acting` in
 returns `Command::Workspace(workspace::Command::Push)` while the branch is ahead.
 
 The same command comes from the palette, through `worktree` in
-`crates/ui/ui/src/views/overlays/actions.rs`. One action, one command, wherever it starts.
+`crates/ui/ui/src/views/overlays/actions/picked.rs`. One action, one command, wherever it starts.
 
 ## 2. Dispatch — `controllers`
 

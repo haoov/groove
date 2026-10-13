@@ -15,17 +15,11 @@ use groove_types::{
 pub use groove_worktree::Keep;
 pub use made::{explorer, review_session, routine_session, task_session};
 pub use open::Open;
-pub use service::{Added, Service};
+pub use service::{Added, ClusterWrite, Service, unsourced};
 
 /// The pool's name for a repo given as a git URL, or the name itself.
 pub fn slug(name: &str) -> String {
     groove_git::RemoteUrl::parse(name).map_or_else(|_| name.to_string(), |remote| remote.slug())
-}
-
-/// Whether the repo `id` is the one `slug` names, whole segments only.
-pub fn names(id: &groove_types::RepoId, slug: &str) -> bool {
-    let id = id.as_str();
-    id == slug || slug.ends_with(&format!("/{id}")) || id.ends_with(&format!("/{slug}"))
 }
 
 /// The `session` slice of `AppState`: the open sessions in the order opened.
@@ -43,6 +37,8 @@ pub struct State {
     pub feed: Vec<groove_types::TimelineEvent>,
     /// The rail is back as the last run left it.
     pub restored: bool,
+    /// Each explorer made a task's session, with that session, oldest first.
+    pub promoted: Vec<(SessionId, SessionId)>,
 }
 
 /// How many lines the feed holds, over every session it reads.
@@ -57,6 +53,16 @@ pub struct Living {
 }
 
 impl State {
+    /// The commits `session` logged on the feed since `since`.
+    pub fn commits_since(&self, session: &SessionId, since: groove_types::Timestamp) -> usize {
+        let made = |one: &&groove_types::TimelineEvent| {
+            one.session == *session
+                && one.kind == groove_types::TimelineKind::Commit
+                && one.at >= since
+        };
+        self.feed.iter().filter(made).count()
+    }
+
     pub fn get(&self, id: &SessionId) -> Option<&Open> {
         self.open.iter().find(|o| &o.session.id == id)
     }
@@ -159,8 +165,9 @@ impl State {
             open.worktrees = worktrees;
         }
         if self.selected.as_ref() == Some(explorer) {
-            self.selected = Some(id);
+            self.selected = Some(id.clone());
         }
+        self.promoted.push((explorer.clone(), id));
     }
 
     /// On the rail, the selection left where it was.

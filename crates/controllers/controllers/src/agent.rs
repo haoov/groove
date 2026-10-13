@@ -10,7 +10,7 @@ use groove_types::{ApprovalId, SessionId};
 use crate::{AppState, Services, Spawner};
 
 pub use start::start;
-pub(crate) use start::{asking, launch_dir};
+pub(crate) use start::{asking, launch_dir, rewrite};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -150,9 +150,9 @@ pub fn dispatch(
             skills::send(state, spawner, &session, &id, args.as_deref())
         }
         Command::DeleteSkill { id } => skills::delete(state, spawner, &id),
-        Command::SwitchSkill { id, on } => skills::switch(state, spawner, id, on),
+        Command::SwitchSkill { id, on } => skills::switch(state, services, spawner, (id, on)),
         Command::RunRoutine { id } => crate::routine::button(state, services, spawner, &id),
-        pointing => pointer::acted(state, services, pointing),
+        pointing => pointer::acted(state, services, spawner, pointing),
     }
 }
 
@@ -176,10 +176,22 @@ fn auto_approve(
     crate::session::set_auto_approve(services, spawner, session, on);
 }
 
-pub(crate) fn forget(state: &mut AppState, session: &SessionId) {
-    if let Err(e) = groove_agent_service::forget(&launch_dir(state), session.as_str()) {
-        state.failed(e);
-    }
+/// The session's launch files taken away; a start asked meanwhile runs after.
+pub(crate) fn forget(state: &mut AppState, spawner: &dyn Spawner, session: &SessionId) {
+    let (dir, id) = (launch_dir(state), session.clone());
+    let write = async move { groove_agent_service::forget(&dir, id.as_str()).await };
+    let id = session.clone();
+    rewrite(
+        state,
+        spawner,
+        session.clone(),
+        write,
+        move |state, spawner, held| {
+            if let Some((size, prompt)) = held {
+                asking(state, spawner, id, size, prompt);
+            }
+        },
+    );
 }
 
 pub fn end(state: &mut AppState, session: &SessionId) {

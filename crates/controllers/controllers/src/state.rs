@@ -52,9 +52,15 @@ pub struct AppState {
     pub workspace: groove_workspace_service::State,
     pub delivery: groove_delivery_service::State,
     pub agent: groove_agent_service::State,
+    pub routine: groove_routine_service::State,
+    pub skill: groove_skill_service::State,
     pub shell: groove_shell_service::State,
     pub config: groove_config_service::State,
     pub cluster: groove_cluster_service::State,
+    /// What the clipboard held when the surface asked; `Some(None)` when it held no text.
+    pub pasted: Option<Option<String>>,
+    /// What waits for a config revision to reach the disk.
+    pub(crate) waiting: crate::config::Waiting,
 }
 
 /// One job in flight, as the feed names it.

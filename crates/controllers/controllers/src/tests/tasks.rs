@@ -95,6 +95,27 @@ fn the_tasks_a_source_answers_with_land_in_the_slice() {
 }
 
 #[test]
+fn a_source_connected_while_a_read_is_out_is_read_once_it_lands() {
+    let (_runtime, server) = answering();
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let github = |host: &str| Some(serde_json::from_value(source(host)).expect("the source"));
+    let config = state.config.config.as_mut().expect("a config");
+    config.github = github("http://127.0.0.1:9");
+    let load = || Cmd::Task(task::Command::Load);
+    dispatch(load(), &mut state, &services, &spawner);
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github = github(&host);
+    dispatch(load(), &mut state, &services, &spawner);
+    for _ in 0..4 {
+        spawner.drain(&mut state, &services);
+    }
+    assert!(
+        state.task.get("gh-haoov-groove-50").is_some(),
+        "the new source is read"
+    );
+}
+
+#[test]
 fn nothing_is_read_while_no_source_is_configured() {
     let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
 

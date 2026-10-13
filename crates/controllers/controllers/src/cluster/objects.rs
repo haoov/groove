@@ -10,10 +10,6 @@ use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 /// How long a watcher left unread keeps running.
 pub(super) const IDLE: Duration = Duration::from_secs(30);
 
-/// The wait after a first failed discovery, doubled with each failure after it up to `LONGEST`.
-const RETRY: Duration = Duration::from_secs(1);
-const LONGEST: Duration = Duration::from_secs(60);
-
 pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: String, again: bool) {
     if !known(state, &context) || !state.cluster.store.begin_discovery(&context) {
         return;
@@ -36,13 +32,10 @@ pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: Str
 
 /// A failed discovery: said the first time, tried again after a wait that doubles.
 fn refused(state: &mut AppState, spawner: &dyn Spawner, context: String, error: Error) {
-    let failures = state.cluster.store.refuse_discovery(&context);
+    let (failures, wait) = state.cluster.store.refuse_discovery(&context);
     if failures == 1 {
         state.failed(error);
     }
-    let wait = RETRY
-        .saturating_mul(1 << failures.saturating_sub(1).min(16))
-        .min(LONGEST);
     let sink = spawner.sink();
     spawner.detach(Box::pin(async move {
         tokio::time::sleep(wait).await;
@@ -91,28 +84,12 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, reader: &str, k
     spawner.detach(Box::pin(watcher));
 }
 
-/// Each watcher `reader` leaves unread is dropped after `IDLE`, unless read again by then.
-pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
-    for key in state.cluster.store.release(reader) {
-        let sink = spawner.sink();
-        spawner.detach(Box::pin(async move {
-            tokio::time::sleep(IDLE).await;
-            sink.deliver(Box::new(
-                move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                    state.cluster.store.drop_unread(&key)
-                },
-            ));
-        }));
-    }
-}
-
 pub(super) fn known(state: &mut AppState, context: &str) -> bool {
-    if state.config.cluster(context).is_some() {
-        return true;
+    match state.config.known_cluster(context) {
+        Ok(_) => true,
+        Err(e) => {
+            state.failed(e);
+            false
+        }
     }
-    let why = format!(
-        "Groove does not know the context `{context}`: add it in Settings › Clusters first"
-    );
-    state.failed(Error::invalid(why));
-    false
 }

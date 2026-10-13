@@ -1,8 +1,8 @@
 //! The Agent section's routines: pause them all, how many run at once, each one and its triggers.
 
 use groove_controllers::AppState;
-use groove_controllers::agent_service::routines::Listed;
 use groove_controllers::config_service::Preference;
+use groove_controllers::routine_service::routines::Listed;
 use groove_types::{Routine, RoutinesConfig};
 use groove_ui_kit::base::style::Role;
 
@@ -30,7 +30,7 @@ pub(super) fn routines(app: &AppState) -> Vec<Row> {
         },
     ];
     let config = app.config.routines();
-    for one in &app.agent.routines {
+    for one in &app.routine.routines {
         out.extend(listed(one, &config));
     }
     grouped("Routines", out)

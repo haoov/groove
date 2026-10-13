@@ -4,7 +4,7 @@ use groove_controllers::{AppState, Command, cluster, workspace};
 use groove_types::{KubeAuth, KubeContext};
 
 use super::argo::failing;
-use super::argo_sync::{hit, managed, opened};
+use super::argo_sync::{hit, managed, opened_application};
 use super::kind;
 use crate::Ui;
 use crate::hit::Target;
@@ -25,7 +25,7 @@ fn a_resource_opens_on_the_context_whose_server_the_destination_names() {
     let mut api = managed("Deployment", "pythie-api", "OutOfSync", 0);
     api.group = "apps".into();
     part.resources = vec![api];
-    let (mut app, mut ui) = opened(object);
+    let (mut app, mut ui) = opened_application(object);
     let read = Command::Cluster(cluster::Command::ReadContexts);
     assert!(asked(&app, &ui).contains(&read), "the servers read first");
 
@@ -58,6 +58,27 @@ fn a_resource_opens_on_the_context_whose_server_the_destination_names() {
     assert_eq!(shown, Some(&link));
 }
 
+#[test]
+fn a_destination_matches_its_server_written_another_way() {
+    let mut object = failing();
+    let part = object.app.as_mut().expect("its part");
+    part.destination.server = Some("https://Kube.Example.com:443".into());
+    let (mut app, ui) = opened_application(object);
+    app.config.add_cluster("prod");
+    app.cluster.found = Some(vec![KubeContext {
+        name: "prod".into(),
+        cluster: "prod".into(),
+        server: Some("https://kube.example.com/".into()),
+        namespace: None,
+        auth: KubeAuth::None,
+    }]);
+    let discover = Command::Cluster(cluster::Command::Discover {
+        context: "prod".into(),
+        again: false,
+    });
+    assert!(asked(&app, &ui).contains(&discover));
+}
+
 /// A ctrl+click on the source's value `text` that opens `opens`.
 fn followed(app: &AppState, ui: &mut Ui, text: &str, opens: Opens) -> Vec<Command> {
     let metrics = crate::tests::metrics(1920, 1080, 1.0);
@@ -83,7 +104,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     part.sources[0].synced = Some(SHA.into());
-    let (mut app, mut ui) = opened(object);
+    let (mut app, mut ui) = opened_application(object);
     hit(&app, &mut ui, Target::ResourceView(View::Describe));
     ui.settle(&app);
 
@@ -106,11 +127,16 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     };
     assert_eq!(sent, [show(None)]);
     let (diff, files, resources) = (Tab::Diff, Tab::Files, Tab::Resources);
-    app.workspace.revision = Some(("gitlab.wiremind.io/pythie-cayzn-deploy".into(), None));
+    app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
+        session: app.session.selected.clone().expect("a session"),
+        slug: "gitlab.wiremind.io/pythie-cayzn-deploy".into(),
+        sha: None,
+        reading: false,
+    });
     ui.settle(&app);
     assert_eq!(
         ui.session.tab, resources,
-        "the k8s tab until the repo is selected"
+        "the Kubernetes tab until the repo is selected"
     );
     app.workspace.revision = None;
     ui.settle(&app);
@@ -124,10 +150,16 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     };
     let sent = followed(&app, &mut ui, SHA, revision);
     assert_eq!(sent, [show(Some(SHA))]);
+    app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
+        session: app.session.selected.clone().expect("a session"),
+        slug: "gitlab.wiremind.io/pythie-cayzn-deploy".into(),
+        sha: Some(SHA.into()),
+        reading: true,
+    });
     ui.settle(&app);
     assert_eq!(
         ui.session.tab, resources,
-        "the k8s tab until the commit shows"
+        "the Kubernetes tab until the commit shows"
     );
     app.workspace.commit = Some(groove_types::CommitEntry {
         sha: SHA.into(),
@@ -137,6 +169,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
         at: groove_types::Timestamp::new(0),
         is_base: true,
     });
+    app.workspace.revision = None;
     ui.settle(&app);
     assert_eq!(ui.session.tab, diff, "then its diff");
 }
@@ -147,7 +180,7 @@ fn the_in_cluster_address_is_the_application_s_own_context_with_no_kubeconfig_re
     let part = object.app.as_mut().expect("its part");
     part.destination.server = Some("https://kubernetes.default.svc".into());
     part.resources = vec![managed("ConfigMap", "pythie-config", "OutOfSync", 0)];
-    let (mut app, mut ui) = opened(object);
+    let (mut app, mut ui) = opened_application(object);
     let read = Command::Cluster(cluster::Command::ReadContexts);
     assert!(!asked(&app, &ui).contains(&read));
     let maps = kind("", "ConfigMap", "configmaps", true);

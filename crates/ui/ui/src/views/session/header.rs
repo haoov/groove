@@ -12,7 +12,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::{Label, elide, row};
 use groove_ui_kit::widgets::{Button, Text, lead, picker};
@@ -31,20 +31,20 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
         Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);
         return;
     };
-    let until = actions(ctx, top, app, open);
+    let rest = actions(ctx, top, app, open);
     let page = app
         .task
         .worked(&open.session)
         .and_then(|one| one.url.as_deref());
-    titled(ctx, top.until(until), open, page);
+    titled(ctx, rest, open, page);
     pickers(ctx, under, app, open);
     scope::draw(ctx, third, app, open, &ui.session.resources);
 }
 
-/// The session's own actions. Returns where they start, which the title stops at.
-fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
+/// The session's own actions. Returns the room left of them, which the title takes.
+fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> Rect {
     if matches!(open.session.kind, SessionKind::Explorer) {
-        return line.right();
+        return line;
     }
     let more = menu_caret(ctx, line, open);
     if !finishable(app, open) {
@@ -55,19 +55,21 @@ fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
     let finish = Button::new("finish", target, Role::Ok, band)
         .text(Text::Label)
         .hover(hover);
-    let mut room = line.until(more).pad(Edges::across(0.0, ctx.tokens.sm));
-    finish.right(ctx, &mut room, 0.0).x
+    let mut room = more.pad(Edges::across(0.0, ctx.tokens.sm));
+    finish.right(ctx, &mut room, 0.0);
+    room
 }
 
-/// What opens the rest of them, at the line's right end.
-fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> f32 {
+/// What opens the rest of them, at the line's right end; returns the room left of it.
+fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> Rect {
     let target = Target::TaskActions(open.session.id.clone());
     let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
     let more = Button::icon(Mark::Down, 0, target, Role::Muted)
         .ground(band)
         .hover(hover);
     let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
-    more.right(ctx, &mut room, 0.0).x
+    more.right(ctx, &mut room, 0.0);
+    room
 }
 
 /// Whether the session works a task with no worktree still carrying an open MR.
@@ -92,19 +94,21 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
         None => 0.0,
     };
     let title = elide(ctx, &open.session.title, &style, (room.w - wide).max(0.0));
-    let end = room.x + ctx.measure(&title, &style);
+    let fixed = |width: f32| Spec::default().width(width);
+    let drawn = fixed(ctx.measure(&title, &style));
+    let [_, _, after] = row_in(room, [drawn, fixed(ctx.tokens.sm), Spec::fill()]);
     row(ctx, room, 0.0, &title, style);
     if let Some(url) = page {
         let target = Target::TaskPage(url.to_string());
         let outward = Button::icon(Mark::Outward, 0, target, Role::Faint).hover(ctx.styles.hover());
-        outward.at(ctx, line, end + ctx.tokens.sm);
+        outward.at(ctx, line, after.x);
     }
 }
 
 /// The pickers every tab follows, each label cut to the room the line has, the MR after them.
 fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let worktree = open.selected_worktree();
-    let held = worktree.and_then(|w| open.repos.iter().find(|r| r.id == w.repo));
+    let held = open.selected_repo();
     let (repo, branch) = named(open);
     let style = ctx.styles.body(Role::Text);
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
@@ -174,11 +178,8 @@ fn around(ctx: &mut Ctx) -> f32 {
 
 /// The repo and the branch the pickers name, each as it stands or as what it lacks.
 fn named(open: &Open) -> (&str, &str) {
-    let worktree = open.selected_worktree();
-    let repo = worktree
-        .and_then(|w| open.repos.iter().find(|r| r.id == w.repo))
-        .map(|r| r.project.as_str());
-    let branch = worktree.map(|w| w.branch.as_str());
+    let repo = open.selected_repo().map(|r| r.project.as_str());
+    let branch = open.selected_worktree().map(|w| w.branch.as_str());
     (repo.unwrap_or("no repo"), branch.unwrap_or("no worktree"))
 }
 

@@ -19,6 +19,11 @@ pub struct Open {
 }
 
 impl Open {
+    /// Whether it holds a cluster, which is what the Kubernetes tab stands on.
+    pub fn holds_clusters(&self) -> bool {
+        !self.clusters.is_empty()
+    }
+
     /// Whether this file of the worktree has been marked read.
     pub fn is_read(&self, worktree: &WorktreeId, path: &str) -> bool {
         self.read
@@ -74,6 +79,15 @@ impl Open {
     pub fn selected_worktree(&self) -> Option<&Worktree> {
         let id = self.state.selected_worktree.as_ref()?;
         self.worktrees.iter().find(|w| &w.id == id)
+    }
+
+    /// The repo the worktree is cut from.
+    pub fn repo_of(&self, worktree: &Worktree) -> Option<&Repo> {
+        self.repos.iter().find(|r| r.id == worktree.repo)
+    }
+
+    pub fn selected_repo(&self) -> Option<&Repo> {
+        self.repo_of(self.selected_worktree()?)
     }
 
     /// The worktree, its repo if new, selected when nothing was.

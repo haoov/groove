@@ -26,8 +26,15 @@ fn listening(handle: &tokio::runtime::Handle) -> (groove_hooks::Receiver, Receiv
 }
 
 /// The command a hook runs, out of the settings file the launch wrote.
-fn hook_command(root: &std::path::Path, loopback: &Loopback, event: &str) -> String {
-    let launch = Launch::plan(&explorer(), &paths(root), &[], Some(loopback)).expect("a plan");
+fn hook_command(
+    runtime: &tokio::runtime::Runtime,
+    root: &std::path::Path,
+    loopback: &Loopback,
+    event: &str,
+) -> String {
+    let (session, paths) = (explorer(), paths(root));
+    let planned = Launch::plan(&session, &paths, &[], Some(loopback));
+    let launch = runtime.block_on(planned).expect("a plan");
     let path = flag_value(&launch.args, "--settings").expect("the settings flag");
     let text = std::fs::read_to_string(path).expect("the settings file");
     let settings: serde_json::Value = serde_json::from_str(&text).expect("json");
@@ -50,7 +57,7 @@ fn the_hook_command_posts_the_payload_to_the_receiver() {
         hook_url: receiver.hook_url("gh-groove-50"),
         token: receiver.token.clone(),
     };
-    let command = hook_command(root.path(), &loopback, "Stop");
+    let command = hook_command(&runtime, root.path(), &loopback, "Stop");
 
     let mut child = Command::new("sh")
         .arg("-c")

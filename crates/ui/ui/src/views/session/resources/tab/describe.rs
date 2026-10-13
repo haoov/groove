@@ -10,7 +10,7 @@ use groove_types::{
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::scrolled;
 
-use super::super::opened::{Opened, Section, events_key};
+use super::super::opened::{Opened, Section};
 use super::argo;
 use super::containers;
 use super::destined;
@@ -21,7 +21,7 @@ use crate::hit::Scroller;
 
 /// One block of the column, stacked from the top.
 pub(super) enum Block<'a> {
-    Heading(Section, String),
+    Heading(Section, Tally),
     Operation(&'a Operation),
     Said(&'a str),
     Broke(&'a SyncedResource),
@@ -39,6 +39,12 @@ pub(super) enum Block<'a> {
     Gap,
     /// The hairline over a section that follows another.
     Rule,
+}
+
+/// What a section's heading says after its name.
+pub(super) enum Tally {
+    Count(usize),
+    Note(String),
 }
 
 pub(super) fn draw(
@@ -62,11 +68,11 @@ pub(super) fn draw(
         tab.scroll,
         &indexed,
         |(at, _)| heights[*at],
-        |ctx, rect, (at, block)| {
-            let rect = rect.pad(Edges::across(md, md));
+        |ctx, line, (at, block)| {
             if let Some((role, _)) = tint.filter(|(_, until)| at < until) {
-                argo::ground(ctx, rect, role);
+                argo::ground(ctx, line, role);
             }
+            let rect = line.pad(Edges::across(md, md));
             let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()));
             tip = drawn.or(tip.take());
         },
@@ -86,8 +92,8 @@ fn one(
 ) -> Option<containers::Tip> {
     let last = tab.copied.as_deref();
     match block {
-        Block::Heading(section, count) => {
-            sections::heading(ctx, rect, (*section, tab.shut.contains(section)), count)
+        Block::Heading(section, tally) => {
+            sections::heading(ctx, rect, (*section, tab.shut.contains(section)), tally)
         }
         Block::Operation(_) | Block::Said(_) | Block::Broke(_) => operated(ctx, rect, block),
         Block::AppCondition(one) => argo::condition(ctx, rect, one, ctx.now),
@@ -164,15 +170,15 @@ fn parts<'a>(
     (tab, object): (&Opened, &'a Described),
     events: &'a [Arc<Described>],
     now: groove_types::Timestamp,
-) -> Vec<(Section, String, Vec<Block<'a>>)> {
+) -> Vec<(Section, Tally, Vec<Block<'a>>)> {
     let pod = object.pod.as_deref();
     let app = object.app.as_deref();
-    let mut parts: Vec<(Section, String, Vec<Block<'a>>)> = Vec::new();
+    let mut parts: Vec<(Section, Tally, Vec<Block<'a>>)> = Vec::new();
     parts.extend(app.map(argo::parts).unwrap_or_default());
     if let Some(pod) = pod {
         parts.push((
             Section::Conditions,
-            String::new(),
+            Tally::Count(0),
             vec![Block::Conditions(pod)],
         ));
     }
@@ -183,17 +189,21 @@ fn parts<'a>(
         }
         None => sections::facts(state, tab, object, now),
     };
-    parts.push((Section::Summary, String::new(), vec![Block::Summary(facts)]));
+    parts.push((
+        Section::Summary,
+        Tally::Count(0),
+        vec![Block::Summary(facts)],
+    ));
     parts.extend(app.map(argo::sourced));
     if let Some(pod) = pod {
-        let count = pod.containers.len().to_string();
+        let count = Tally::Count(pod.containers.len());
         parts.push((Section::Containers, count, contained(tab, pod)));
     }
     let [labels, annotations, events] = around(object, events);
     parts.extend([labels, annotations]);
     if app.is_none() {
         let lines = relations::lines(state, tab, object);
-        let count = relations::total(&lines).to_string();
+        let count = Tally::Count(relations::total(&lines));
         let blocks = lines.into_iter().enumerate();
         let blocks = blocks.map(|(at, line)| Block::Relation(line, at == 0));
         parts.push((Section::Relations, count, blocks.collect()));
@@ -218,20 +228,20 @@ fn contained<'a>(tab: &Opened, pod: &'a PodPart) -> Vec<Block<'a>> {
 fn around<'a>(
     object: &'a Described,
     events: &'a [Arc<Described>],
-) -> [(Section, String, Vec<Block<'a>>); 3] {
+) -> [(Section, Tally, Vec<Block<'a>>); 3] {
     let rows = events.iter().filter_map(|one| one.event.as_ref());
     let warned = rows.clone().filter(|one| one.warning).count();
     let pairs = |all: &'a [(String, String)]| all.iter().map(Block::Pair).collect::<Vec<_>>();
-    let said = format!("{} · {warned} warning", events.len());
+    let said = Tally::Note(format!("{} · {warned} warning", events.len()));
     [
         (
             Section::Labels,
-            object.labels.len().to_string(),
+            Tally::Count(object.labels.len()),
             pairs(&object.labels),
         ),
         (
             Section::Annotations,
-            object.annotations.len().to_string(),
+            Tally::Count(object.annotations.len()),
             pairs(&object.annotations),
         ),
         (Section::Events, said, rows.map(Block::Event).collect()),
@@ -252,8 +262,10 @@ fn key_width(ctx: &mut Ctx, object: &Described, room: f32) -> f32 {
 
 /// The events about the object, warnings first, then the latest.
 fn events(app: &AppState, tab: &Opened, object: &Described) -> Vec<Arc<Described>> {
-    let key = events_key(app, &tab.link, &object.uid);
-    let held = key.and_then(|key| app.cluster.store.follows.get(&key));
+    let store = &app.cluster.store;
+    let namespace = tab.link.namespace.as_deref();
+    let key = store.events_key(&tab.link.context, namespace, &object.uid);
+    let held = key.and_then(|key| store.follows.get(&key));
     let mut events: Vec<Arc<Described>> = held.map(|one| one.objects.clone()).unwrap_or_default();
     let rank = |one: &Arc<Described>| {
         let row = one.event.as_ref();
@@ -266,11 +278,5 @@ fn events(app: &AppState, tab: &Opened, object: &Described) -> Vec<Arc<Described
 
 /// The pod's usage as last read, when the cluster runs a metrics-server.
 fn usage(app: &AppState, tab: &Opened) -> Option<Usage> {
-    let link = &tab.link;
-    let pod = (
-        link.context.clone(),
-        link.namespace.clone().unwrap_or_default(),
-        link.name.clone(),
-    );
-    app.cluster.store.follows.usage(&pod)?.0.clone()
+    app.cluster.store.follows.usage(&tab.link.pod())?.0.clone()
 }

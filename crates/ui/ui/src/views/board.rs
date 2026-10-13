@@ -11,6 +11,7 @@ pub mod review;
 mod row;
 mod state;
 
+pub use row::card;
 pub use state::BoardUi;
 
 use groove_controllers::AppState;
@@ -45,7 +46,11 @@ impl List {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.app.layout.board;
     groove_ui_kit::shape::ground(ctx, area, Ground::Work);
-    let field = header::draw(ctx, area.until_y(area.y + ctx.tokens.header), app, ui);
+    let [line, _] = column_in(
+        area,
+        [Spec::default().height(ctx.tokens.header), Spec::fill()],
+    );
+    let field = header::draw(ctx, line, app, ui);
     for list in List::ALL {
         column::draw(ctx, column_of(&ctx.tokens, area, list), app, ui, list);
     }
@@ -61,10 +66,12 @@ pub fn column_of(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, list:
 }
 
 /// The list whose column stands at `x`.
-pub fn list_at(area: Rect, x: f32) -> Option<List> {
-    let width = (area.w / List::ALL.len() as f32).floor().max(1.0);
-    let at = ((x - area.x) / width).floor().max(0.0) as usize;
-    List::ALL.get(at).copied()
+pub fn list_at(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, x: f32) -> Option<List> {
+    let within = |list: &List| {
+        let column = column_of(tokens, area, *list);
+        x >= column.x && x < column.right()
+    };
+    List::ALL.into_iter().find(within)
 }
 
 /// The room the three columns share under the header.

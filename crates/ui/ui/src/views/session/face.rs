@@ -14,6 +14,15 @@ impl SessionUi {
         }
     }
 
+    /// Whether the surface draws the find bar: over a diff's rows or the editor's.
+    pub fn finds(&self) -> bool {
+        match self.tab {
+            Tab::Diff | Tab::Files => true,
+            Tab::Resources => self.resources.tab().is_some_and(|one| one.view.edits()),
+            Tab::Overview => false,
+        }
+    }
+
     /// How far the surface the tab shows is scrolled.
     pub fn scroll(&self) -> f32 {
         match self.face() {

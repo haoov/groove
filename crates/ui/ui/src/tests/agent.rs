@@ -18,7 +18,8 @@ fn session_ui() -> Ui {
     }
 }
 
-fn reading_mouse(app: &mut groove_controllers::AppState) {
+/// A terminal whose program has asked for the mouse.
+pub(super) fn mouse_reader() -> groove_controllers::agent_service::Terminal {
     use groove_controllers::agent_service::{Hooks, PtySpec, Terminal};
     let spec = PtySpec {
         program: "sh".into(),
@@ -35,8 +36,14 @@ fn reading_mouse(app: &mut groove_controllers::AppState) {
         on_damage: Box::new(|| {}),
         on_exit: Box::new(|_| {}),
     };
-    let terminal =
-        Terminal::spawn(spec, groove_types::AnsiPalette::MOCHA, hooks).expect("a terminal");
+    let runtime = groove_controllers::SyncSpawner::new().expect("a runtime");
+    let terminal = runtime
+        .block_on(Terminal::spawn(
+            spec,
+            groove_types::AnsiPalette::MOCHA,
+            hooks,
+        ))
+        .expect("a terminal");
     for _ in 0..100 {
         if terminal.reads_mouse() {
             break;
@@ -44,7 +51,11 @@ fn reading_mouse(app: &mut groove_controllers::AppState) {
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
     assert!(terminal.reads_mouse(), "the program asked for the mouse");
-    app.agent.agents[0].1.terminal = Some(terminal);
+    terminal
+}
+
+fn reading_mouse(app: &mut groove_controllers::AppState) {
+    app.agent.agents[0].1.terminal = Some(mouse_reader());
 }
 
 #[test]
@@ -75,7 +86,7 @@ fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.click"], "the program's own selection stands");
     assert!(
-        !matches!(ui.held, Some(crate::Held::AgentText)),
+        !matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
         "and we take none of our own"
     );
 
@@ -87,7 +98,10 @@ fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
     let acted = press(&mut ui, true);
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.select"], "shift takes the pointer back");
-    assert!(matches!(ui.held, Some(crate::Held::AgentText)));
+    assert!(matches!(
+        ui.held,
+        Some(crate::Held::Selecting(crate::Grid::Agent))
+    ));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! Action routines: Groove does the work itself, with no agent of the routine's own.
 
-use groove_agent_service::routines::{Listed, parse};
+use groove_routine_service::routines::{Listed, parse};
 use groove_types::{Day, Timestamp};
 
 use crate::tests::fixture::{fresh, until};
@@ -41,7 +41,7 @@ fn opened(state: &AppState, short_id: &str) -> bool {
 #[test]
 fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the_selection() {
     let (_home, spawner, services, mut state) = fresh();
-    state.agent.routines = vec![Listed {
+    state.routine.routines = vec![Listed {
         id: "user:start-due".into(),
         read: parse("user:start-due", "start-due", START_DUE),
     }];
@@ -91,7 +91,7 @@ fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the
 #[test]
 fn start_due_opens_no_more_tasks_than_the_cap() {
     let (_home, spawner, services, mut state) = fresh();
-    state.agent.routines = vec![Listed {
+    state.routine.routines = vec![Listed {
         id: "user:start-due".into(),
         read: parse("user:start-due", "start-due", START_DUE),
     }];
@@ -111,4 +111,26 @@ fn start_due_opens_no_more_tasks_than_the_cap() {
         .filter(|one| opened(&state, one))
         .count();
     assert_eq!(opened, 2);
+}
+
+#[test]
+fn what_start_due_opened_joins_the_notes_within_their_cap() {
+    let (_home, spawner, services, mut state) = fresh();
+    state.routine.routines = vec![Listed {
+        id: "user:start-due".into(),
+        read: parse("user:start-due", "start-due", START_DUE),
+    }];
+    for _ in 0..1000 {
+        state.say("older");
+    }
+    let kept = state.notes.len();
+    state.task.tasks = vec![task("LATE", Some(-1), 0.0, None)];
+    let run = agent::Command::RunRoutine {
+        id: "user:start-due".into(),
+    };
+    dispatch(Command::Agent(run), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.notes.len(), kept, "the oldest let go");
+    let last = state.notes.last().map(|one| one.what.as_str());
+    assert_eq!(last, Some("start-due opened LATE"));
 }

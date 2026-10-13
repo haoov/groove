@@ -2,7 +2,7 @@ use groove_session_service::Open;
 use groove_types::{AgentStatus, Session, SessionId, SessionKind, SessionState, Timestamp};
 
 use crate::agent::Command;
-use crate::tests::fixture::{self, services, until};
+use crate::tests::fixture::{self, until};
 use crate::{AppState, SyncSpawner, dispatch};
 
 fn explorer() -> Session {
@@ -14,9 +14,9 @@ fn explorer() -> Session {
     }
 }
 
-/// The fixture state with one open explorer.
-fn state(home: &std::path::Path) -> AppState {
-    let mut state = fixture::state(home);
+/// The fixture with one open explorer.
+fn opened() -> (tempfile::TempDir, SyncSpawner, crate::Services, AppState) {
+    let (home, spawner, services, mut state) = fixture::fresh();
     state.session.open.push(Open {
         session: explorer(),
         state: SessionState::default(),
@@ -26,7 +26,7 @@ fn state(home: &std::path::Path) -> AppState {
         read: Default::default(),
         clusters: vec![],
     });
-    state
+    (home, spawner, services, state)
 }
 
 fn agent_cmd(command: Command) -> crate::Command {
@@ -35,10 +35,7 @@ fn agent_cmd(command: Command) -> crate::Command {
 
 #[test]
 fn start_send_and_exit_travel_through_the_loop() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (home, spawner, services, mut state) = opened();
     let id = SessionId::new("explorer-1");
 
     dispatch(
@@ -99,10 +96,7 @@ fn start_send_and_exit_travel_through_the_loop() {
 
 #[test]
 fn resize_reaches_the_terminal_and_end_forgets_it() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = opened();
     let id = SessionId::new("explorer-1");
     dispatch(
         agent_cmd(Command::Start {
@@ -151,10 +145,7 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
 
 #[test]
 fn a_start_for_an_unknown_session_does_nothing() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = opened();
     let id = SessionId::new("nope");
     dispatch(
         agent_cmd(Command::Start {

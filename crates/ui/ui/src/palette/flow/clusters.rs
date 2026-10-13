@@ -20,7 +20,8 @@ pub(super) fn known(app: &AppState) -> Vec<(String, String)> {
 /// The context's namespaces as last listed, behind `*` for the whole cluster; any name typed too.
 pub(super) fn namespaces(app: &AppState, context: &str) -> Prompt {
     let listed = app.cluster.store.namespaces(context).unwrap_or_default();
-    let whole = std::iter::once(("* the whole cluster".to_string(), String::new()));
+    let whole = crate::views::session::resources::WHOLE_LINE.to_string();
+    let whole = std::iter::once((whole, String::new()));
     let named = listed.iter().map(|one| (one.clone(), one.clone()));
     Prompt {
         label: "namespace, empty for the whole cluster",
@@ -44,7 +45,10 @@ pub(super) fn held(open: &Open) -> Vec<(String, String)> {
         .iter()
         .map(|one| {
             let namespace = one.namespace.as_deref().unwrap_or_default();
-            let shown = one.namespace.as_deref().unwrap_or("whole cluster");
+            let shown = one
+                .namespace
+                .as_deref()
+                .unwrap_or(crate::views::session::resources::WHOLE_NAME);
             let value = format!("{}{BETWEEN}{namespace}", one.context);
             (format!("{} · {shown}", one.context), value)
         })

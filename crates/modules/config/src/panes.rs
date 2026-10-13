@@ -18,6 +18,6 @@ pub fn load(path: &Path) -> Result<Option<Panes>> {
     crate::load_json(path)
 }
 
-pub fn save(path: &Path, panes: &Panes) -> Result<()> {
-    crate::save_json(path, panes)
+pub async fn write(path: &Path, panes: &Panes) -> Result<()> {
+    crate::write_json(path, panes).await
 }

@@ -6,7 +6,7 @@ use groove_types::{Task, TimeSummary};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::markdown::prose;
 use groove_ui_kit::widgets::Button;
 
@@ -46,8 +46,10 @@ fn logging(ctx: &mut Ctx, line: Rect, (task, logged): (&Task, &str), time: Optio
     let label = format!("log {}", hours(left));
     let log = Button::new(&label, target, Role::Working, band).hover(hover);
     let value = ctx.measure(logged, &ctx.styles.body(Role::Text));
-    let x = line.x + ctx.tokens.aside_near + ctx.tokens.md + value + ctx.tokens.sm;
-    log.at(ctx, line, x);
+    let (aside, md, sm) = (ctx.tokens.aside_near, ctx.tokens.md, ctx.tokens.sm);
+    let before = Spec::default().width(aside + md + value + sm);
+    let [_, after] = row_in(line, [before, Spec::fill()]);
+    log.at(ctx, line, after.x);
 }
 
 /// The body as Markdown, to the area's width, from the top of `rect`. Returns its height.

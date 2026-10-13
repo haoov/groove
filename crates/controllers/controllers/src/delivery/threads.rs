@@ -111,7 +111,7 @@ pub(crate) fn thread(
     asker: Asker,
 ) {
     let Some(call) = call_of(state, &whose, act.clone()) else {
-        return asker.refused("this session left no note by that id");
+        return asker.refused(state, "this session left no note by that id");
     };
     let (service, job) = (services.delivery.clone(), state.begin(act.label()));
     let told = act;
@@ -172,17 +172,18 @@ pub(crate) fn say_as(
     whose: Whose,
     asker: Asker,
 ) {
-    if say == Say::Comment && body.is_empty() {
-        return asker.refused("a comment needs a body");
-    }
     let notes = state.delivery.unposted(&whose.session, &whose.repo.id);
-    let commenting = say == Say::Review(ReviewVerdict::Comment);
-    if commenting && body.is_empty() && notes.is_empty() {
-        let why = "a review needs words in the box or a note to post";
-        return asker.failed(state, groove_types::Error::invalid(why));
+    let verdict = match &say {
+        Say::Comment => None,
+        Say::Review(verdict) => Some(*verdict),
+    };
+    if let Err(e) = Said::empty(verdict, &body, &notes) {
+        return asker.failed(state, e);
     }
     let (service, job) = (services.delivery.clone(), state.begin(say.label()));
-    let clears = asker.carries_a_box();
+    let typed = asker
+        .carries_a_box()
+        .then(|| state.workspace.message.text());
     spawner.spawn(Box::pin(async move {
         let (repo, at) = (&whose.repo, &whose.worktree.id);
         let done = match say {
@@ -200,7 +201,7 @@ pub(crate) fn say_as(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if done.is_ok() {
-                    if clears {
+                    if typed.is_some_and(|typed| state.workspace.message.text() == typed) {
                         state.workspace.message = groove_workspace_service::Buffer::default();
                     }
                     let (kind, at) = (TimelineKind::Review, &whose.worktree.id);

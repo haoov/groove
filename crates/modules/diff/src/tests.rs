@@ -5,5 +5,6 @@ mod moved;
 mod opened;
 mod perf;
 mod reference;
+mod sides;
 mod summary;
 mod words;

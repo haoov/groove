@@ -16,7 +16,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{elide, row};
-use groove_ui_kit::widgets::folder;
+use groove_ui_kit::widgets::{caret_after, folder};
 
 /// One row of the tree: a directory to open, or a file to read.
 pub(crate) struct Row<'a> {
@@ -174,8 +174,8 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let held = Rect::new(line.x, line.y, room + at, line.h);
-    let text = naming.field.shown();
-    row(ctx, held, at, &text, style);
+    row(ctx, held, at, naming.field.text(), style);
+    caret_after(ctx, held, at, naming.field.before(), style);
 }
 
 /// A directory: its folder, then its own name.

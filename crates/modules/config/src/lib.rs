@@ -25,9 +25,9 @@ pub fn load(path: &Path) -> Result<Option<Config>> {
     load_json(path)
 }
 
-/// The whole file written again, pretty, its directory made when missing.
-pub fn save(path: &Path, config: &Config) -> Result<()> {
-    save_json(path, config)
+/// The whole file written again off the calling thread; the old one stays until the new is on disk.
+pub async fn write(path: &Path, config: &Config) -> Result<()> {
+    write_json(path, config).await
 }
 
 /// A JSON file read back, or `None` when there is none yet.
@@ -50,18 +50,26 @@ pub(crate) fn load_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<O
         })
 }
 
-/// A JSON file written whole, pretty, its directory made when missing.
-pub(crate) fn save_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
+/// A JSON file written whole, pretty, its directory made when missing; the old one stays until the new is on disk.
+pub(crate) async fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
     let text = serde_json::to_string_pretty(value).map_err(|source| Error::Parse {
         path: path.to_path_buf(),
         source,
     })?;
-    let written = path
-        .parent()
-        .map_or(Ok(()), std::fs::create_dir_all)
-        .and_then(|()| std::fs::write(path, text));
-    written.map_err(|source| Error::Write {
+    let failed = |source| Error::Write {
         path: path.to_path_buf(),
         source,
-    })
+    };
+    if let Some(dir) = path.parent() {
+        tokio::fs::create_dir_all(dir).await.map_err(failed)?;
+    }
+    let mut beside = path.as_os_str().to_owned();
+    beside.push(".tmp");
+    let beside = PathBuf::from(beside);
+    let mut file = tokio::fs::File::create(&beside).await.map_err(failed)?;
+    tokio::io::AsyncWriteExt::write_all(&mut file, text.as_bytes())
+        .await
+        .map_err(failed)?;
+    file.sync_all().await.map_err(failed)?;
+    tokio::fs::rename(&beside, path).await.map_err(failed)
 }

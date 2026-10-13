@@ -3,7 +3,7 @@
 use groove_types::SessionId;
 
 use super::working_a_task;
-use crate::tests::{full_app, metrics};
+use crate::tests::{full_app, metrics, texts_of};
 use crate::{Ui, view};
 
 #[test]
@@ -16,11 +16,7 @@ fn the_header_names_the_session_and_what_it_points_at() {
         metrics,
         &mut groove_gfx::Fonts::embedded(),
     );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
+    let texts: Vec<String> = texts_of(&frame);
     assert!(texts.iter().any(|t| t == "Alpha"), "the title");
     assert!(texts.iter().any(|t| t == "mayo"), "the repo picker");
     assert_eq!(

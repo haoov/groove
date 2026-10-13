@@ -11,17 +11,12 @@ use groove_ui_kit::widgets::{Row, list};
 
 use super::Part;
 use crate::ctx::Ctx;
+use crate::views::session::resources::WHOLE_NAME;
 
 /// A context once, in the order first attached, then each of its namespaces.
 pub(super) fn parts<'a>(app: &AppState, open: &'a Open) -> Vec<Part<'a>> {
-    let mut contexts: Vec<&str> = Vec::new();
-    for one in &open.clusters {
-        if !contexts.contains(&one.context.as_str()) {
-            contexts.push(&one.context);
-        }
-    }
     let mut out = Vec::new();
-    for context in contexts {
+    for context in crate::views::session::resources::contexts(open) {
         let hue = app.config.cluster(context).map(|one| one.hue);
         out.push(Part::Cluster(context, hue));
         let held = open.clusters.iter().filter(|one| one.context == context);
@@ -42,7 +37,7 @@ pub(super) fn namespace(ctx: &mut Ctx, line: Rect, namespace: Option<&str>) {
     let indent = after_mark(ctx, ctx.tokens.md);
     let row = match namespace {
         Some(one) => Row::new(indent, one, ctx.styles.code(Role::Muted)),
-        None => Row::new(indent, "whole cluster", ctx.styles.body(Role::Faint)),
+        None => Row::new(indent, WHOLE_NAME, ctx.styles.body(Role::Faint)),
     };
     list(ctx, line, &[row], None);
 }

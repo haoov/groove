@@ -10,8 +10,9 @@ mod paths;
 mod revision;
 mod search;
 mod switching;
+mod unshown;
 
-use crate::tests::fixture::{pooled_clone, services, sh, state, until, worktree};
+use crate::tests::fixture::{pooled_clone, send, sh, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, session, workspace};
 use groove_types::{Caret, Edit, FileStatus, Motion};
 

@@ -5,13 +5,7 @@ use groove_workspace_service::PathOp;
 use super::*;
 
 fn act(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, op: PathOp) {
-    dispatch(
-        Cmd::Workspace(workspace::Command::Path(op)),
-        state,
-        services,
-        spawner,
-    );
-    until(spawner, services, state, |s| s.pending.is_empty());
+    send(state, services, spawner, workspace::Command::Path(op));
 }
 
 #[test]
@@ -128,4 +122,47 @@ fn a_directory_and_what_it_holds_go_together() {
     assert!(!at.join("deep").exists());
     assert!(at.join("copied/down/one.rs").exists(), "the copy stays");
     assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn a_rename_then_a_delete_of_its_new_name_run_in_that_order() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    let held = crate::tests::fixture::Held::over(&spawner);
+    let rename = PathOp::Rename {
+        from: "a.txt".into(),
+        to: "b.txt".into(),
+    };
+    let delete = PathOp::Delete {
+        path: "b.txt".into(),
+    };
+    for op in [rename, delete] {
+        let path = Cmd::Workspace(workspace::Command::Path(op));
+        dispatch(path, &mut state, &services, &held);
+    }
+    held.backwards(&mut state, &services);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(!at.join("a.txt").exists() && !at.join("b.txt").exists());
+}
+
+#[test]
+fn two_saves_reach_the_disk_in_the_order_asked() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let file = editing(&mut state, &services, &spawner);
+    let held = crate::tests::fixture::Held::over(&spawner);
+    for mark in ["!", "?"] {
+        let typed = [Edit::Move(Motion::LineEnd), Edit::Insert(mark.into())];
+        edit(&mut state, &services, &spawner, &typed);
+        let save = Cmd::Workspace(workspace::Command::SaveFile);
+        dispatch(save, &mut state, &services, &held);
+    }
+    held.backwards(&mut state, &services);
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), "one!?\ntwo\n");
+    assert!(
+        state.workspace.dirty().is_empty(),
+        "and the buffer owes nothing"
+    );
 }

@@ -8,7 +8,9 @@ use crate::layout::Layout;
 use crate::views::session::Tab;
 use crate::views::session::resources::View;
 use crate::{Surface, Ui};
+use groove_gfx::Rect;
 use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::tokens::Tokens;
 
 /// The column under the pointer scrolls; wheel down is rows up.
 pub(super) fn scroll(
@@ -27,6 +29,9 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Settings, pixels(tokens.row), hits);
         return Vec::new();
     }
+    if ui.overlay.is_some() {
+        return Vec::new();
+    }
     if x <= layout.rail.right() {
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
         return Vec::new();
@@ -38,11 +43,11 @@ pub(super) fn scroll(
         return shelled(ui, app, delta, point, hits, metrics);
     }
     if ui.showing(app) == Surface::Board {
-        column(x, pixels(tokens.row), ui, hits, layout);
+        column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));
         return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
-        ui.wheeled(Scroller::Files, pixels(tokens.row), hits);
+        ui.wheeled(beside(ui), pixels(tokens.row), hits);
         return Vec::new();
     }
     match ui.session.tab {
@@ -55,6 +60,14 @@ pub(super) fn scroll(
         }
     }
     Vec::new()
+}
+
+/// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
+fn beside(ui: &Ui) -> Scroller {
+    match ui.session.tab {
+        Tab::Resources => Scroller::Kinds,
+        _ => Scroller::Files,
+    }
 }
 
 /// The wheel over the code surface, both ways; logs pause above their end and follow at it.
@@ -129,16 +142,13 @@ fn shelled(
     else {
         return Vec::new();
     };
-    let Some(pane) = hits.rect_of(&Target::Shell(id)) else {
+    let Some((col, row)) = super::selection::shell_cell(id, point, hits, metrics) else {
         return Vec::new();
     };
-    let tokens = metrics.tokens();
-    let lines = turned(ui, delta, tokens.line);
+    let lines = turned(ui, delta, metrics.tokens().line);
     if lines == 0 {
         return Vec::new();
     }
-    let origin = (pane.x + tokens.sm, pane.y + tokens.sm);
-    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
     let scroll = groove_controllers::shell::Command::Scroll {
         session,
         id,
@@ -172,8 +182,8 @@ fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
     }
 }
 
-fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, layout: Layout) {
-    if let Some(list) = crate::views::board::list_at(layout.board, x) {
+fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, (board, tokens): (Rect, &Tokens)) {
+    if let Some(list) = crate::views::board::list_at(tokens, board, x) {
         ui.wheeled(Scroller::Column(list as u8), pixels, hits);
     }
 }

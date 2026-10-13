@@ -91,5 +91,6 @@ pub async fn namespaces(paths: &[PathBuf], context: &str) -> Result<Vec<String>>
         names.extend(page.rows.drain(..).map(|row| row.name));
     }
     names.sort();
+    names.dedup();
     Ok(names)
 }

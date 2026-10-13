@@ -105,3 +105,74 @@ fn a_new_session_takes_the_auto_approve_default() {
     let open = state.session.selected().expect("the explorer is open");
     assert!(open.state.auto_approve);
 }
+
+#[test]
+fn the_window_s_boundaries_are_kept_for_the_next_run() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let panes: groove_types::Panes = serde_json::from_value(serde_json::json!({
+        "rail": 220.0, "agent": 480.0, "sidebar": 300.0, "commit": 140.0
+    }))
+    .unwrap();
+    let keep = crate::config::Command::KeepPanes(panes);
+    crate::dispatch(
+        crate::Command::Config(keep),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    let kept = std::fs::read_to_string(state.env.data_dir.join("panes.json")).unwrap();
+    assert!(kept.contains("480"), "{kept}");
+}
+
+#[test]
+fn the_clipboard_is_read_off_the_loop_and_held_for_the_surface() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    spawner
+        .block_on(services.clipboard.write("pasted words"))
+        .unwrap();
+    let read = crate::workspace::Command::ReadClipboard;
+    crate::dispatch(
+        crate::Command::Workspace(read),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.pasted, Some(Some("pasted words".into())));
+}
+
+#[test]
+fn a_sign_in_ended_and_asked_again_keeps_only_the_last_terminal() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let held = crate::tests::fixture::Held::over(&spawner);
+    let login = || Cmd::Config(Command::Login { cols: 80, rows: 24 });
+    dispatch(login(), &mut state, &services, &held);
+    assert!(state.config.signing_in, "the spawn is out");
+    dispatch(
+        Cmd::Config(Command::EndLogin),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    dispatch(login(), &mut state, &services, &held);
+    for job in held.take() {
+        spawner.block_on(job)(&mut state, &services, &spawner);
+    }
+    assert!(!state.config.signing_in);
+    assert!(state.config.login.is_some(), "the last sign-in's terminal");
+    state.config.checking = true;
+    spawner.settle(std::time::Duration::from_millis(300), &mut state, &services);
+    assert!(
+        state.config.login.is_some(),
+        "the other one's exit leaves it"
+    );
+    dispatch(
+        Cmd::Config(Command::EndLogin),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert!(state.config.login.is_none(), "and the user can end it");
+}

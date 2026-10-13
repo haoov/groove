@@ -31,12 +31,14 @@ pub fn started_by(by: Option<Trigger>) -> &'static str {
 }
 
 /// Whether `today` is a new day for `<dir>/day`, which then holds it.
-pub fn new_day(dir: &Path, today: &str) -> Result<bool, Error> {
+pub async fn new_day(dir: &Path, today: &str) -> Result<bool, Error> {
     let path = dir.join("day");
-    if std::fs::read_to_string(&path).is_ok_and(|day| day.trim() == today) {
+    let held = tokio::fs::read_to_string(&path).await;
+    if held.is_ok_and(|day| day.trim() == today) {
         return Ok(false);
     }
-    let written = std::fs::create_dir_all(dir).and_then(|()| std::fs::write(&path, today));
-    written.map_err(|e| Error::new(ErrorKind::Io, e.to_string()))?;
+    let io = |e: std::io::Error| Error::new(ErrorKind::Io, e.to_string());
+    tokio::fs::create_dir_all(dir).await.map_err(io)?;
+    tokio::fs::write(&path, today).await.map_err(io)?;
     Ok(true)
 }

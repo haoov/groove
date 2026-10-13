@@ -1,6 +1,7 @@
 //! What the forge answers for: a note posted, a thread replied to or resolved.
 
 use super::*;
+use crate::tests::typed;
 use groove_controllers::delivery;
 
 /// A thread of the merge request, on line 1.

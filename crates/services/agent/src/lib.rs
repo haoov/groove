@@ -1,10 +1,8 @@
-//! The agent capability: each session's agent, the skills, the shared repo, the routines and their runs.
+//! The agent capability: each session's agent and its asks.
 
+mod files;
 pub(crate) mod launch;
 mod listed;
-pub mod listing;
-pub mod runs;
-pub mod shared;
 
 #[cfg(test)]
 mod tests;
@@ -18,16 +16,14 @@ pub use groove_agent_launch::{forget, fresh, hand_over};
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
-pub use groove_routines as routines;
-pub use groove_skills as skills;
 pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
 pub use groove_types::Screen;
 
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
-pub use launch::{LaunchPaths, claude_bin, launch, login, palette};
-pub use listed::SkillOffer;
+pub use files::{Held, Turn};
+pub use launch::{LaunchPaths, launch, palette};
 
 /// One session's agent. `terminal` is `None` when the launch failed.
 #[derive(Debug)]
@@ -44,43 +40,16 @@ pub struct Agent {
 #[derive(Debug, Default)]
 pub struct State {
     pub agents: Vec<(SessionId, Agent)>,
-    /// Every skill both plugins offer, as the last read found them.
-    pub skills: Vec<groove_types::Skill>,
-    /// The copy of the team's shared repo, once it reads as a marketplace.
-    pub shared: Option<shared::Shared>,
-    /// When a skill was last switched on or off.
-    pub switched: Timestamp,
-    /// Every routine file, the team's and the user's, as the last read found them.
-    pub routines: Vec<groove_routines::Listed>,
-    /// The skills and routines have been read once.
-    pub listed: bool,
-    pub runs: runs::Runs,
     /// The launches numbered so far.
     launches: u64,
+    /// The launch each session waits on.
+    pending: Vec<(SessionId, u64)>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
-    /// The sign-in Setup runs, while it runs.
-    pub login: Option<Terminal>,
+    writes: Vec<files::Line>,
 }
 
 impl State {
-    /// The skills a session of this kind offers, in the order they are listed.
-    pub fn skills_for(&self, kind: &groove_types::SessionKind) -> Vec<&groove_types::Skill> {
-        self.skills
-            .iter()
-            .filter(|one| one.enabled && one.offered_to(kind))
-            .collect()
-    }
-
-    /// Whether a skill changed after this session's agent started.
-    pub fn stale(&self, session: &SessionId) -> bool {
-        let Some(agent) = self.agent(session) else {
-            return false;
-        };
-        let changed = |one: &groove_types::Skill| one.enabled && one.changed_at > agent.started_at;
-        self.switched > agent.started_at || self.skills.iter().any(changed)
-    }
-
     pub fn agent(&self, session: &SessionId) -> Option<&Agent> {
         self.agents
             .iter()
@@ -95,28 +64,36 @@ impl State {
     /// Every running agent in these colours.
     pub fn recolor(&self, palette: groove_types::AnsiPalette) {
         let running = self.agents.iter().filter_map(|(_, a)| a.terminal.as_ref());
-        running
-            .chain(&self.login)
-            .for_each(|one| one.recolor(palette));
+        running.for_each(|one| one.recolor(palette));
     }
 
     pub fn activity(&self, session: &SessionId) -> Option<&SessionActivity> {
         self.agent(session).map(|a| &a.activity)
     }
 
-    /// The number the next launch goes by, which its exit carries.
-    pub fn launch(&mut self) -> u64 {
+    /// The number the next launch of `session` goes by, which its exit carries; the one it waits on.
+    pub fn launch(&mut self, session: &SessionId) -> u64 {
         self.launches += 1;
+        self.pending.retain(|(id, _)| id != session);
+        self.pending.push((session.clone(), self.launches));
         self.launches
     }
 
-    /// The launch's result: a running terminal, or an error on the row.
+    /// The launch's result, on the row; a terminal no row takes, or one it displaces, comes back to end.
     pub fn started(
         &mut self,
         (session, launch): (SessionId, u64),
         result: Result<Terminal, Error>,
         now: Timestamp,
-    ) {
+    ) -> Option<Terminal> {
+        let awaited = self
+            .pending
+            .iter()
+            .any(|one| *one == (session.clone(), launch));
+        if !awaited {
+            return result.ok();
+        }
+        self.pending.retain(|(id, _)| id != &session);
         let (terminal, status) = match result {
             Ok(terminal) => (Some(terminal), AgentStatus::Idle),
             Err(e) => (None, AgentStatus::Error { message: e.message }),
@@ -127,12 +104,14 @@ impl State {
             started_at: now,
             launch,
         };
-        self.agents.retain(|(id, _)| id != &session);
+        let displaced = self.end(&session).and_then(|one| one.terminal);
         self.agents.push((session, agent));
+        displaced
     }
 
-    /// Removes the agent; the caller ends its terminal.
+    /// Removes the agent and any launch it waits on; the caller ends its terminal.
     pub fn end(&mut self, session: &SessionId) -> Option<Agent> {
+        self.pending.retain(|(id, _)| id != session);
         let at = self.agents.iter().position(|(id, _)| id == session)?;
         Some(self.agents.remove(at).1)
     }

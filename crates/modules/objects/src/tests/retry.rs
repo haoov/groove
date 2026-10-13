@@ -33,3 +33,19 @@ fn an_error_a_retry_does_not_fix_parks_the_stream() {
     assert_eq!(backoff.after(&gone), Duration::from_secs(300));
     assert_eq!(backoff.after(&unreachable()), Duration::from_secs(1));
 }
+
+#[test]
+fn a_followed_log_of_a_container_still_starting_waits_as_a_transient_error() {
+    let starting = Error::Api {
+        context: "kind".into(),
+        status: 400,
+        message: "container \"app\" in pod \"web\" is waiting to start: ContainerCreating".into(),
+    };
+    let mut backoff = Backoff::new();
+    assert_eq!(backoff.after_logs(&starting, false), Duration::from_secs(1));
+    assert_eq!(backoff.after_logs(&starting, false), Duration::from_secs(2));
+    assert_eq!(
+        backoff.after_logs(&starting, true),
+        Duration::from_secs(300)
+    );
+}

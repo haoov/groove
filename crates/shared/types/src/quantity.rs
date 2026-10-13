@@ -40,12 +40,13 @@ pub fn cores(value: f64) -> String {
     }
 }
 
-/// Bytes in the largest binary unit that keeps a whole number: `700Mi`, `2Gi`.
+/// Bytes in the largest binary unit that keeps them whole, or that counts ten or more: `700Mi`, `2Gi`, `1638Mi`.
 pub fn bytes(value: f64) -> String {
     let units = [("Gi", 1_073_741_824.0), ("Mi", 1_048_576.0), ("Ki", 1024.0)];
     for (unit, size) in units {
-        if value >= size {
-            return format!("{}{unit}", (value / size).round());
+        let many = value / size;
+        if many >= 1.0 && (many.fract() == 0.0 || many >= 10.0) {
+            return format!("{}{unit}", many.round());
         }
     }
     format!("{}", value.round())

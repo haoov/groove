@@ -18,10 +18,7 @@ impl Service {
         tag: Option<&str>,
     ) -> Result<Added, Error> {
         let repo = self.find_or_clone(name).await?;
-        self.store
-            .attach_repo(&session.id, &repo.id, Timestamp::now())
-            .await?;
-        self.provision(session, repo, spec, tag).await
+        self.attached(session, repo, spec, tag).await
     }
 
     /// A repo attached cut from `revision` when origin has a branch of that name, else from its default.
@@ -42,10 +39,33 @@ impl Service {
             target: target.map(String::from),
             ..WorktreeSpec::default()
         };
+        self.attached(session, repo, &spec, None).await
+    }
+
+    /// `repo` attached with a first worktree, or not attached at all when that worktree fails.
+    async fn attached(
+        &self,
+        session: &Session,
+        repo: Repo,
+        spec: &WorktreeSpec,
+        tag: Option<&str>,
+    ) -> Result<Added, Error> {
+        let id = repo.id.clone();
         self.store
-            .attach_repo(&session.id, &repo.id, Timestamp::now())
+            .attach_repo(&session.id, &id, Timestamp::now())
             .await?;
-        self.provision(session, repo, &spec, None).await
+        let added = self.provision(session, repo, spec, tag).await;
+        if added.is_err() {
+            let left = self
+                .pool
+                .worktrees_of(&session.id)
+                .await
+                .unwrap_or_default();
+            if !left.iter().any(|one| one.repo == id) {
+                let _ = self.store.detach_repo(&session.id, &id).await;
+            }
+        }
+        added
     }
 
     async fn provision(
@@ -73,7 +93,7 @@ impl Service {
 
     /// A pool clone by name, or a fresh clone when the name is a git URL.
     async fn find_or_clone(&self, name: &str) -> Result<Repo, Error> {
-        let entries = self.pool.list();
+        let entries = self.pool.list().await?;
         let slug = groove_git::RemoteUrl::parse(name).map(|remote| remote.slug());
         let wanted = slug.as_deref().unwrap_or(name);
         match Pool::resolve(wanted, &entries) {
@@ -128,8 +148,8 @@ impl Service {
         Ok(self.store.detach_repo(session, repo).await?)
     }
 
-    pub fn list_pool(&self) -> Vec<PoolEntry> {
-        self.pool.list()
+    pub async fn list_pool(&self) -> Result<Vec<PoolEntry>, Error> {
+        Ok(self.pool.list().await?)
     }
 
     /// Origin's heads for the pickers.

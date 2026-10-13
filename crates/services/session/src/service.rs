@@ -1,5 +1,6 @@
 //! What the session capability asks of the store and the pool.
 
+mod clusters;
 mod log;
 mod promote;
 mod repos;
@@ -15,6 +16,8 @@ use groove_types::{
 use groove_worktree::Pool;
 
 use crate::Living;
+
+pub use clusters::ClusterWrite;
 
 /// What a session holds, as recorded and as git reports it.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -41,6 +44,7 @@ pub struct Service {
     store: Store,
     pool: Pool,
     timeline: Timeline,
+    clusters: clusters::Held,
 }
 
 impl Service {
@@ -50,6 +54,7 @@ impl Service {
             store,
             pool,
             timeline,
+            clusters: clusters::Held::default(),
         }
     }
 
@@ -82,13 +87,16 @@ impl Service {
     pub async fn open_review(
         &self,
         session: &Session,
-        name: &str,
+        at: &groove_types::ReviewMr,
         spec: &WorktreeSpec,
         now: Timestamp,
     ) -> Result<Added, Error> {
+        let name = at
+            .repo_in(&self.pool.list().await?)
+            .ok_or_else(|| unsourced(at))?;
         self.store.create_review(session).await?;
         self.on_rail(&session.id, now).await?;
-        self.add_repo(session, name, spec, None).await
+        self.add_repo(session, &name, spec, None).await
     }
 
     /// Inserts the explorer and puts it on the rail.
@@ -124,14 +132,14 @@ impl Service {
     }
 
     /// The session's own directory, made when it is missing.
-    pub fn session_dir(&self, id: &SessionId) -> Result<std::path::PathBuf, Error> {
-        Ok(self.pool.session_dir(id)?)
+    pub async fn session_dir(&self, id: &SessionId) -> Result<std::path::PathBuf, Error> {
+        Ok(self.pool.made_session_dir(id).await?)
     }
 
     /// On the rail with its directory made, or off it.
     pub async fn set_opened(&self, id: &SessionId, at: Option<Timestamp>) -> Result<(), Error> {
         if at.is_some() {
-            self.pool.session_dir(id)?;
+            self.pool.made_session_dir(id).await?;
         }
         Ok(self.store.set_opened(id, at).await?)
     }
@@ -183,23 +191,6 @@ impl Service {
         Ok(self.store.set_read(id, worktree, path, read).await?)
     }
 
-    pub async fn attach_cluster(
-        &self,
-        id: &SessionId,
-        attached: &groove_types::Attached,
-        now: Timestamp,
-    ) -> Result<(), Error> {
-        Ok(self.store.attach_cluster(id, attached, now).await?)
-    }
-
-    pub async fn detach_cluster(
-        &self,
-        id: &SessionId,
-        attached: &groove_types::Attached,
-    ) -> Result<(), Error> {
-        Ok(self.store.detach_cluster(id, attached).await?)
-    }
-
     pub async fn contents(&self, id: &SessionId) -> Result<Contents, Error> {
         let mut repos = Vec::new();
         for repo_id in self.store.repos_of(id).await? {
@@ -219,4 +210,12 @@ impl Service {
             status,
         })
     }
+}
+
+/// A review whose page says nothing of where its repo is cloned from.
+pub fn unsourced(at: &groove_types::ReviewMr) -> Error {
+    Error::invalid(format!(
+        "{} says nothing of where {} is cloned from",
+        at.web_url, at.project
+    ))
 }

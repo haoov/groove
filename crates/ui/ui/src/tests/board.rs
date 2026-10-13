@@ -11,7 +11,7 @@ use groove_types::{ExternalId, SessionKind};
 
 use crate::hit::{Hits, Target};
 use crate::input::Key;
-use crate::tests::{ALT, click, full_app, press, task, window};
+use crate::tests::{ALT, click, full_app, press, render, task, window};
 use crate::{Surface, Ui, view};
 
 fn on_board(app: &AppState) -> (Ui, Hits) {
@@ -25,12 +25,7 @@ fn on_board(app: &AppState) -> (Ui, Hits) {
 
 /// Every text the board drew.
 fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
-    let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
-    frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect()
+    render(app, ui, window()).0
 }
 
 #[test]

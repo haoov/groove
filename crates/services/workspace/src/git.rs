@@ -21,8 +21,20 @@ pub async fn discard(dir: &Path, paths: &[String]) -> Result<()> {
 }
 
 pub async fn commit(dir: &Path, message: &str) -> Result<()> {
-    groove_git::Git::at(dir).commit(message).await?;
+    if !staged(dir).await? {
+        return Err(groove_types::Error::invalid(NOTHING_STAGED));
+    }
+    groove_git::Git::at(dir).commit(message.trim()).await?;
     Ok(())
+}
+
+const NOTHING_STAGED: &str =
+    "nothing is staged: stage what this commit holds with git add, then call again";
+
+/// Whether the index holds anything at all.
+async fn staged(dir: &Path) -> Result<bool> {
+    let files = groove_diff::summary(dir).await?;
+    Ok(files.iter().any(|file| file.staged == Some(true)))
 }
 
 /// What the branch does against its remote and its base.

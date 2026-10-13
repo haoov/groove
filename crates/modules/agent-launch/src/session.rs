@@ -15,29 +15,34 @@ pub fn session_uuid(session_id: &str) -> String {
 }
 
 /// The conversation a session carries on: the one an earlier session handed it, or its own.
-pub fn thread_of(launch_dir: &Path, session_id: &str) -> String {
+pub async fn thread_of(launch_dir: &Path, session_id: &str) -> String {
     let handed = launch_dir.join(format!("{session_id}.thread"));
-    match std::fs::read_to_string(handed) {
+    match tokio::fs::read_to_string(handed).await {
         Ok(uuid) if !uuid.trim().is_empty() => uuid.trim().to_string(),
         _ => session_uuid(session_id),
     }
 }
 
 /// Hands `from`'s conversation to `to`, for `to`'s next launch to resume.
-pub fn hand_over(launch_dir: &Path, from: &str, to: &str) -> groove_types::Result<()> {
-    threaded(launch_dir, to, &thread_of(launch_dir, from))
+pub async fn hand_over(launch_dir: &Path, from: &str, to: &str) -> groove_types::Result<()> {
+    let uuid = thread_of(launch_dir, from).await;
+    threaded(launch_dir, to, &uuid).await
 }
 
 /// A new conversation for the session's next launch, in place of the one it carried.
-pub fn fresh(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
-    threaded(launch_dir, session_id, &uuid::Uuid::new_v4().to_string())
+pub async fn fresh(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
+    threaded(launch_dir, session_id, &uuid::Uuid::new_v4().to_string()).await
 }
 
 /// The conversation `uuid` written as the one the session's next launch carries on.
-fn threaded(launch_dir: &Path, session_id: &str, uuid: &str) -> groove_types::Result<()> {
+async fn threaded(launch_dir: &Path, session_id: &str, uuid: &str) -> groove_types::Result<()> {
     let at = launch_dir.join(format!("{session_id}.thread"));
-    let written = std::fs::create_dir_all(launch_dir).and_then(|()| std::fs::write(at, uuid));
-    written.map_err(|e| groove_types::Error::new(groove_types::ErrorKind::Io, e.to_string()))
+    tokio::fs::create_dir_all(launch_dir).await.map_err(io)?;
+    tokio::fs::write(at, uuid).await.map_err(io)
+}
+
+fn io(e: std::io::Error) -> groove_types::Error {
+    groove_types::Error::new(groove_types::ErrorKind::Io, e.to_string())
 }
 
 const NAMES: [&str; 5] = [
@@ -49,15 +54,10 @@ const NAMES: [&str; 5] = [
 ];
 
 /// The session's launch files taken away; one already gone is no error.
-pub fn forget(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
+pub async fn forget(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
     for name in NAMES {
-        match std::fs::remove_file(launch_dir.join(format!("{session_id}.{name}"))) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                return Err(groove_types::Error::new(
-                    groove_types::ErrorKind::Io,
-                    e.to_string(),
-                ));
-            }
+        match tokio::fs::remove_file(launch_dir.join(format!("{session_id}.{name}"))).await {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(io(e)),
             _ => {}
         }
     }
@@ -65,9 +65,9 @@ pub fn forget(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
 }
 
 /// `--session-id` on the first launch, `--resume` once Claude has a file for it.
-pub(crate) fn identity_args(session: &Session, paths: &Paths<'_>) -> Vec<String> {
-    let uuid = thread_of(paths.launch_dir, session.id.as_str());
-    let flag = if session_file(paths.home, paths.cwd, &uuid).is_file() {
+pub(crate) async fn identity_args(session: &Session, paths: &Paths<'_>) -> Vec<String> {
+    let uuid = thread_of(paths.launch_dir, session.id.as_str()).await;
+    let flag = if crate::is_file(&session_file(paths.home, paths.cwd, &uuid)).await {
         "--resume"
     } else {
         "--session-id"

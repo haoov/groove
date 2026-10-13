@@ -2,6 +2,9 @@
 
 mod clusters;
 mod families;
+mod keeper;
+mod login;
+mod plugins;
 mod sources;
 #[cfg(test)]
 mod tests;
@@ -9,6 +12,8 @@ mod tests;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+pub use keeper::Keeper;
+pub use login::{claude_bin, login};
 pub use sources::Source;
 
 use groove_types::{Config, Error, FontFamily, Preferences, ThemeName, Tool, UiConfig};
@@ -59,12 +64,17 @@ pub struct State {
     /// The source a connect is reading, and why the last one was refused.
     pub connecting: Option<groove_types::ProviderId>,
     pub refused: Option<String>,
-    /// A shared repo is being copied, and why the last one was refused.
-    pub joining: bool,
-    pub unshared: Option<String>,
     /// What each source was last read to hold, and the sources being read.
     pub schemas: Vec<(groove_types::ProviderId, Vec<groove_types::Property>)>,
     pub reading: Vec<groove_types::ProviderId>,
+    /// The sign-in Setup runs, while it runs.
+    pub login: Option<groove_terminal::Terminal>,
+    /// A sign-in asked for whose terminal is still being spawned.
+    pub signing_in: bool,
+    /// Moves on with each sign-in asked or ended: an older one's terminal is not kept.
+    pub sign_in: u64,
+    /// The last revision handed to a write.
+    pub revision: u64,
 }
 
 /// Every program the app runs, checked; `claude` is the path the agent launches.
@@ -82,20 +92,13 @@ pub fn path(config_dir: &Path) -> std::path::PathBuf {
     groove_config::path(config_dir)
 }
 
-/// A change made to the config, written to its file; there is none to change before the first run.
-pub fn keep(config_dir: &Path, changed: Option<&Config>) -> Result<(), Error> {
-    let none = || Error::invalid("there is no config to change before the first run");
-    save(config_dir, changed.ok_or_else(none)?)
-}
-
-pub fn save(config_dir: &Path, config: &Config) -> Result<(), Error> {
-    Ok(groove_config::save(
-        &groove_config::path(config_dir),
-        config,
-    )?)
-}
-
 impl State {
+    /// The next revision a changed config is written at.
+    pub fn revised(&mut self) -> u64 {
+        self.revision += 1;
+        self.revision
+    }
+
     pub fn preferences(&self) -> Preferences {
         let held = self.config.as_ref().map(|c| c.preferences.clone());
         held.unwrap_or_default()
@@ -119,74 +122,6 @@ impl State {
     /// Whether a new session's writes run without asking.
     pub fn auto_approve_default(&self) -> bool {
         self.preferences().auto_approve_default
-    }
-
-    /// The shared repo named, or none; the config to write, or `None` before first run.
-    pub fn set_shared(&mut self, shared: Option<groove_types::SharedConfig>) -> Option<&Config> {
-        let config = self.config.as_mut()?;
-        config.shared = shared;
-        Some(config)
-    }
-
-    pub fn shared(&self) -> Option<&groove_types::SharedConfig> {
-        self.config.as_ref()?.shared.as_ref()
-    }
-
-    pub fn routines(&self) -> groove_types::RoutinesConfig {
-        self.config
-            .as_ref()
-            .map(|one| one.routines.clone())
-            .unwrap_or_default()
-    }
-
-    /// One routine switched on or off; switched off, the triggers it had turned off are forgotten.
-    pub fn switch_routine(&mut self, id: &str, on: bool) -> Option<&Config> {
-        let held = &mut self.config.as_mut()?.routines;
-        held.on.retain(|one| one != id);
-        match on {
-            true => held.on.push(id.to_string()),
-            false => drop(held.quiet.remove(id)),
-        }
-        self.config.as_ref()
-    }
-
-    /// One trigger of a routine turned on or off.
-    pub fn switch_trigger(
-        &mut self,
-        id: &str,
-        trigger: groove_types::Trigger,
-        on: bool,
-    ) -> Option<&Config> {
-        let held = &mut self.config.as_mut()?.routines;
-        let quiet = held.quiet.entry(id.to_string()).or_default();
-        quiet.retain(|one| *one != trigger);
-        if !on {
-            quiet.push(trigger);
-        }
-        if quiet.is_empty() {
-            held.quiet.remove(id);
-        }
-        self.config.as_ref()
-    }
-
-    pub fn skills_off(&self) -> &[String] {
-        self.config
-            .as_ref()
-            .map_or(&[], |one| one.skills_off.as_slice())
-    }
-
-    /// One skill switched on or off: a user's skill in `skills_off`, a shared one in `enabled`.
-    pub fn switch_skill(&mut self, id: &str, on: bool) -> Option<&Config> {
-        let config = self.config.as_mut()?;
-        let (held, wanted) = match id.starts_with("user:") {
-            true => (&mut config.skills_off, !on),
-            false => (&mut config.shared.as_mut()?.enabled, on),
-        };
-        held.retain(|one| one != id);
-        if wanted {
-            held.push(id.to_string());
-        }
-        Some(config)
     }
 
     /// The chords rebound, whole; the config to write, or `None` before first run.

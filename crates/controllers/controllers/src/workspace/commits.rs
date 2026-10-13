@@ -1,8 +1,9 @@
 //! The branch's history: the commits it holds, and one of them shown as a change.
 
-use groove_session_service::names;
 use groove_types::CommitEntry;
-use groove_workspace_service::{COMMITS_MAX, at_commit, commits, revision as revision_at};
+use groove_workspace_service::{
+    COMMITS_MAX, Revision, Step, at_commit, commits, revision as revision_at,
+};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -34,7 +35,7 @@ pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
     let Some(entry) = known(state, &sha) else {
         return;
     };
-    read(state, spawner, Some(entry), sha);
+    read(state, spawner, Some(entry), (sha, false));
 }
 
 fn known(state: &AppState, sha: &str) -> Option<CommitEntry> {
@@ -44,12 +45,20 @@ fn known(state: &AppState, sha: &str) -> Option<CommitEntry> {
         .or_else(|| state.workspace.blames.entry(sha))
 }
 
-/// `sha` read from git when the list does not hold it.
-fn read(state: &mut AppState, spawner: &dyn Spawner, entry: Option<CommitEntry>, sha: String) {
+/// `sha` read from git when the list does not hold it; the last one asked wins, and a revision's read ends it.
+fn read(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    entry: Option<CommitEntry>,
+    (sha, revision): (String, bool),
+) {
     let Some(asked) = super::Asked::now(state) else {
         return;
     };
-    let short: String = sha.chars().take(7).collect();
+    let began = revision.then(|| reading(state)).flatten();
+    state.workspace.opening += 1;
+    let nth = state.workspace.opening;
+    let short = groove_types::short_sha(&sha);
     let job = state.begin(format!("reading {short}"));
     spawner.spawn(Box::pin(async move {
         let entry = match entry {
@@ -62,7 +71,10 @@ fn read(state: &mut AppState, spawner: &dyn Spawner, entry: Option<CommitEntry>,
         };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
-            if !asked.holds(state) {
+            if let Some(began) = &began {
+                ended(state, began);
+            }
+            if state.workspace.opening != nth || !asked.holds_place(state) {
                 return;
             }
             match read {
@@ -85,8 +97,14 @@ pub(super) fn revision(
         return;
     };
     let (session, slug) = (open.session.id.clone(), groove_session_service::slug(&repo));
-    let held = open.repos.iter().any(|one| names(&one.id, &slug));
-    state.workspace.revision = Some((slug, sha));
+    let pending = Revision {
+        session: session.clone(),
+        slug,
+        sha,
+        reading: false,
+    };
+    let held = open.repos.iter().any(|one| pending.names(&one.id));
+    state.workspace.revision = Some(pending);
     if !held {
         let source = (repo.as_str(), target.as_deref());
         return crate::session::add_repo_at(state, services, spawner, &session, source);
@@ -96,32 +114,41 @@ pub(super) fn revision(
 
 /// The repo asked for: a worktree of it selected, then, once read, its commit shown.
 pub(crate) fn due(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
-    let Some((slug, sha)) = state.workspace.revision.clone() else {
+    let Some(pending) = state.workspace.revision.clone().filter(|one| !one.reading) else {
         return;
     };
     let Some(open) = state.session.selected() else {
         return;
     };
-    let ours = |one: &groove_types::Worktree| names(&one.repo, &slug);
-    if state.session.selected_worktree().is_some_and(ours) {
-        if !super::stale(state) {
-            state.workspace.revision = None;
-            if let Some(sha) = sha {
-                read(state, spawner, known(state, &sha), sha);
-            }
-        }
-        return;
-    }
     let session = open.session.id.clone();
-    let Some(worktree) = open
-        .worktrees
-        .iter()
-        .find(|one| ours(one))
-        .map(|one| one.id.clone())
-    else {
-        return;
-    };
-    crate::session::select_worktree(state, services, spawner, &session, &worktree);
+    let selected = state.session.selected_worktree();
+    match pending.step(&session, selected, &open.worktrees, super::stale(state)) {
+        Step::Wait => {}
+        Step::Drop => state.workspace.revision = None,
+        Step::Select(worktree) => {
+            crate::session::select_worktree(state, services, spawner, &session, &worktree)
+        }
+        Step::Read(sha) => read(state, spawner, known(state, &sha), (sha, true)),
+    }
+}
+
+/// The held revision marked as read, as it stands.
+fn reading(state: &mut AppState) -> Option<Revision> {
+    let held = state.workspace.revision.as_mut()?;
+    held.reading = true;
+    Some(held.clone())
+}
+
+/// The revision `began` over, unless a newer one was asked since.
+pub(crate) fn ended(state: &mut AppState, began: &Revision) {
+    if state
+        .workspace
+        .revision
+        .as_ref()
+        .is_some_and(|held| held.same(began))
+    {
+        state.workspace.revision = None;
+    }
 }
 
 /// What the commit changed, in place of the working tree.

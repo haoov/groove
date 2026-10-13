@@ -14,6 +14,7 @@ groove-text = { path = "../../modules/text" }
 groove-editor = { path = "../../modules/editor" }
 groove-types = { path = "../../shared/types" }
 groove-watch = { path = "../../modules/watch" }
+tokio = { workspace = true, features = ["sync"] }
 
 [lints]
 workspace = true

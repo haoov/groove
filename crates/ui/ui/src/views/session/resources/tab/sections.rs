@@ -6,11 +6,14 @@ use groove_gfx::Rect;
 use groove_types::{Described, EventRow, PodPart, Timestamp};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::Heading;
 
-use super::super::list::plan::colour;
-use super::super::opened::{Link, Opened, Section, helm_release, lineage, served};
+use super::super::around::{helm_release, lineage};
+use super::super::health::{colour, status_colour};
+use super::super::opened::{Link, Opened, Section};
 use super::copy;
+use super::describe::Tally;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
@@ -36,24 +39,24 @@ impl Fact {
     fn copied(&self) -> Option<&str> {
         let head = self.value.split(" · ").next();
         match self.key {
-            "node" | "pod ip" | "qos" | "repo" | "path" | "target" | "values" | "synced" => {
-                Some(&self.value)
-            }
+            "node" | "pod ip" | "qos" => Some(&self.value),
             "helm" | "priority" | "destination" => head,
             _ => None,
         }
     }
 }
 
-/// The fold mark, the section's name and what it holds; a click folds it.
-pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool), count: &str) {
-    let mut room = rect;
-    let mark = if shut { "▸" } else { "▾" };
-    Label::new(mark, ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.sm);
-    let title = format!("{section:?}").to_uppercase();
-    Label::new(&title, ctx.styles.small(Role::Faint)).left(ctx, &mut room, ctx.tokens.sm);
-    Label::new(count, ctx.styles.small(Role::Ghost)).draw(ctx, room);
-    ctx.hit(rect, Target::ResourceSection(section));
+/// The fold caret, the section's name and what it holds; a click folds it.
+pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool), tally: &Tally) {
+    let title = format!("{section:?}");
+    let heading = Heading::new(&title)
+        .fold(!shut)
+        .target(Target::ResourceSection(section));
+    let heading = match tally {
+        Tally::Count(count) => heading.count(*count),
+        Tally::Note(note) => heading.note(note),
+    };
+    heading.within(ctx, rect, rect);
 }
 
 /// Every condition on one line: a mark, its name, and why and since when where it is not met.
@@ -65,8 +68,10 @@ pub(super) fn conditions(ctx: &mut Ctx, rect: Rect, pod: &PodPart) {
             false => ("✗", Role::Bad, Role::Text),
         };
         Label::new(mark, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.xs);
-        Label::new(&one.kind, ctx.styles.small(name)).left(ctx, &mut room, ctx.tokens.xs);
-        let since = one.since.map(|at| ago(at.age_at(ctx.now)));
+        Label::new(&one.kind, ctx.styles.body(name)).left(ctx, &mut room, ctx.tokens.xs);
+        let since = one
+            .since
+            .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()));
         let why = [one.reason.clone().filter(|_| !one.met), since];
         let why: Vec<String> = why.into_iter().flatten().collect();
         let why = why.join(" · ");
@@ -88,17 +93,16 @@ pub(super) fn facts(app: &AppState, tab: &Opened, object: &Described, now: Times
     if let Some(pod) = &object.pod {
         pod_facts(app, tab, pod, now, &mut add);
     } else if let Some((ready, desired)) = object.replicas {
-        let role = if ready >= desired {
-            Role::Ok
-        } else {
-            Role::Warn
-        };
+        let role = colour(groove_types::count_health(ready, desired));
         add("ready", format!("{ready}/{desired}"), role, None);
     }
     if let Some(created) = object.created {
         add(
             "created",
-            format!("{} ago", ago(created.age_at(now))),
+            format!(
+                "{} ago",
+                groove_types::human_age(created.age_at(now).as_secs())
+            ),
             Role::Text,
             None,
         );
@@ -119,18 +123,18 @@ fn pod_facts(
     now: Timestamp,
     add: &mut dyn FnMut(&'static str, String, Role, Option<Link>),
 ) {
-    let health = groove_types::status_health(&pod.status).unwrap_or(groove_types::Health::Waiting);
-    add("status", pod.status.clone(), colour(health), None);
-    let running = pod.containers.iter().filter(|one| !one.init);
-    let (ready, all) = running.fold((0, 0), |(ready, all), one| {
-        (ready + usize::from(one.ready), all + 1)
-    });
     add(
-        "ready",
-        format!("{ready}/{all}"),
-        if ready == all { Role::Ok } else { Role::Bad },
+        "status",
+        pod.status.clone(),
+        status_colour(&pod.status),
         None,
     );
+    let running = pod.containers.iter().filter(|one| !one.init);
+    let (ready, all) = running.fold((0, 0), |(ready, all), one| {
+        (ready + i64::from(one.ready), all + 1)
+    });
+    let role = colour(groove_types::count_health(ready, all));
+    add("ready", format!("{ready}/{all}"), role, None);
     let restarts: u32 = pod.containers.iter().map(|one| one.restarts).sum();
     let last = pod
         .containers
@@ -138,7 +142,12 @@ fn pod_facts(
         .filter_map(|one| one.last.as_ref()?.at)
         .max();
     let when = last
-        .map(|at| format!(" · last {} ago", ago(at.age_at(now))))
+        .map(|at| {
+            format!(
+                " · last {} ago",
+                groove_types::human_age(at.age_at(now).as_secs())
+            )
+        })
         .unwrap_or_default();
     add(
         "restarts",
@@ -158,12 +167,16 @@ fn placed(
     add: &mut dyn FnMut(&'static str, String, Role, Option<Link>),
 ) {
     if let Some(node) = &pod.node {
-        let open = served(app, &tab.link.context, "", "Node").map(|kind| Link {
-            context: tab.link.context.clone(),
-            kind,
-            namespace: None,
-            name: node.clone(),
-        });
+        let open = app
+            .cluster
+            .store
+            .served(&tab.link.context, "", "Node")
+            .map(|kind| Link {
+                context: tab.link.context.clone(),
+                kind,
+                namespace: None,
+                name: node.clone(),
+            });
         add("node", node.clone(), Role::Accent, open);
     }
     let facts = [("pod ip", pod.ip.clone()), ("qos", pod.qos.clone())];
@@ -176,7 +189,10 @@ fn placed(
     if let Some(started) = pod.started {
         add(
             "started",
-            format!("{} ago", ago(started.age_at(now))),
+            format!(
+                "{} ago",
+                groove_types::human_age(started.age_at(now).as_secs())
+            ),
             Role::Text,
             None,
         );
@@ -206,7 +222,7 @@ pub(super) fn grid(ctx: &mut Ctx, rect: Rect, facts: &[Fact], last: Option<&str>
                     .draw(ctx, value);
             }
             None => {
-                Label::new(&fact.value, ctx.styles.small(fact.role)).draw(ctx, value);
+                Label::new(&fact.value, ctx.styles.body(fact.role)).draw(ctx, value);
             }
         }
     }
@@ -221,14 +237,15 @@ pub(super) fn pair(
 ) {
     let [k, v] = row_in(rect, [Spec::default().width(keys), Spec::fill()]);
     let copied = |text, role| copy::Copied::new(text, role, last);
-    copied(key, Role::Ghost).draw(ctx, k);
+    copied(key, Role::Ghost).small().draw(ctx, k);
     copied(value, Role::Text).draw(ctx, v);
 }
 
 /// One event: a warning's mark, its reason, how often, how long ago, and what it says.
 pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow, last: Option<&str>) {
     let narrow = Spec::default().width(ctx.tokens.lg * 2.0);
-    let wide = Spec::default().width(ctx.tokens.aside_mid);
+    let reason = ctx.tokens.aside_mid * ctx.tokens.text / ctx.tokens.small;
+    let wide = Spec::default().width(reason);
     let mark = Spec::default().width(ctx.tokens.icon);
     let [warned, reason, count, age, message] =
         row_in(rect, [mark, wide, narrow, narrow, Spec::fill()]);
@@ -236,11 +253,11 @@ pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow, last: Option<&str
         Label::new("⚠", ctx.styles.small(Role::Warn)).draw(ctx, warned);
     }
     let role = if row.warning { Role::Text } else { Role::Muted };
-    Label::new(&row.reason, ctx.styles.small(role)).draw(ctx, reason);
+    Label::new(&row.reason, ctx.styles.body(role)).draw(ctx, reason);
     Label::new(&format!("×{}", row.count), ctx.styles.small(Role::Ghost)).draw(ctx, count);
     let when = row
         .last
-        .map(|at| ago(at.age_at(ctx.now)))
+        .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()))
         .unwrap_or_default();
     Label::new(&when, ctx.styles.small(Role::Ghost)).draw(ctx, age);
     copy::Copied::new(&row.message, role, last).draw(ctx, message);

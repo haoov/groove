@@ -34,6 +34,26 @@ impl ReviewMr {
         format!("review-{project}-{}", self.iid)
     }
 
+    /// The pool's name for its repo: the host the page stands on, then the project.
+    pub fn slug(&self) -> Option<String> {
+        let rest = self.web_url.split_once("://")?.1;
+        let host = rest.split('/').next().filter(|one| !one.is_empty())?;
+        Some(format!("{host}/{}", self.project))
+    }
+
+    /// Whether the clone `entry` is its repo: the same host and the same project.
+    pub fn held_by(&self, entry: &crate::PoolEntry) -> bool {
+        self.slug().is_some_and(|slug| entry.slug == slug)
+    }
+
+    /// The pool's own name for its repo, or the URL it must be cloned from.
+    pub fn repo_in(&self, pool: &[crate::PoolEntry]) -> Option<String> {
+        let pooled = pool.iter().find(|entry| self.held_by(entry));
+        pooled
+            .map(|entry| entry.slug.clone())
+            .or_else(|| self.clone_url())
+    }
+
     /// Where its repo is cloned from, read off the page the MR stands on.
     pub fn clone_url(&self) -> Option<String> {
         let at = self

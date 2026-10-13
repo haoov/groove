@@ -5,8 +5,10 @@ use groove_gfx::Fonts;
 use groove_types::{AgentStatus, ApprovalId, Ask, SessionActivity, SessionId, Timestamp};
 
 use crate::hit::Target;
-use crate::tests::{app, click, window};
+use crate::tests::{all_texts, app, click, render, window};
 use crate::{Surface, Ui};
+
+mod converting;
 
 /// The fixture's session, with the writes it waits on.
 pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
@@ -18,6 +20,7 @@ pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
         changed_at: Timestamp::new(0),
         seen_at: None,
     };
+
     app.agent.agents.push((
         SessionId::new("a"),
         Agent {
@@ -41,12 +44,7 @@ pub(super) fn ask(id: &str, op: &str, subject: &str) -> Ask {
 }
 
 fn drawn(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
-    let (frame, _) = crate::view(app, ui, window(), &mut Fonts::embedded());
-    frame.layers()[0]
-        .texts
-        .iter()
-        .map(|run| run.text.clone())
-        .collect()
+    render(app, ui, window()).0
 }
 
 pub(super) fn session_ui() -> Ui {
@@ -59,7 +57,7 @@ pub(super) fn session_ui() -> Ui {
 /// The fixture's session, with the skills it can be sent.
 fn offering(skills: Vec<groove_types::Skill>) -> groove_controllers::AppState {
     let mut app = asking(Vec::new());
-    app.agent.skills = skills;
+    app.skill.skills = skills;
     app
 }
 
@@ -158,7 +156,7 @@ fn a_skill_newer_than_the_agent_lights_the_reload() {
     let styles = groove_ui_kit::base::style::Styles::new(theme, crate::Tokens::new(1.0));
     let attention = styles.color(groove_ui_kit::base::style::Role::Attention);
     assert_ne!(reload(&app), attention, "no skill is newer");
-    app.agent.skills[0].changed_at = Timestamp::new(50);
+    app.skill.skills[0].changed_at = Timestamp::new(50);
     assert_eq!(reload(&app), attention);
 }
 
@@ -252,16 +250,6 @@ fn the_wheel_over_the_agent_reaches_its_own_screen() {
     assert_eq!(said, ["agent.scroll"], "the wheel is the agent's own");
 }
 
-/// Every text of the frame, the menu's own layer included.
-fn everywhere(frame: &groove_gfx::Frame) -> Vec<String> {
-    frame
-        .layers()
-        .iter()
-        .flat_map(|one| one.texts.iter())
-        .map(|run| run.text.clone())
-        .collect()
-}
-
 /// The config of a machine whose task sources are set up.
 pub(super) fn sourced(
     mut app: groove_controllers::AppState,
@@ -297,114 +285,6 @@ pub(super) fn sourced(
     app
 }
 
-#[test]
-fn a_conversion_files_in_each_source_that_is_set_up() {
-    let app = sourced(
-        offering(vec![skill("convert-explorer", "convert to task", &[])]),
-        true,
-        true,
-    );
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Skills(SessionId::new("a")))
-        .expect("the skills word");
-    click(word, &mut ui, &app, &hits);
-
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = everywhere(&frame);
-    assert!(
-        drawn.iter().any(|one| one == "convert to task in GitHub"),
-        "{drawn:?}"
-    );
-    assert!(
-        drawn.iter().any(|one| one == "convert to task in Notion"),
-        "{drawn:?}"
-    );
-    assert!(
-        !drawn.iter().any(|one| one == "convert to task"),
-        "{drawn:?}"
-    );
-
-    let row = hits
-        .rect_of(&crate::hit::Target::MenuRow(0))
-        .expect("a row of it");
-    let acted = click(row, &mut ui, &app, &hits);
-    assert_eq!(
-        acted,
-        vec![groove_controllers::Command::Agent(
-            groove_controllers::agent::Command::SendSkill {
-                session: SessionId::new("a"),
-                id: "groove:convert-explorer".into(),
-                args: Some("github".into()),
-            }
-        )]
-    );
-}
-
-#[test]
-fn filing_a_task_and_sharing_a_fact_stay_off_the_menu_and_converting_names_each_source() {
-    let app = sourced(
-        offering(vec![
-            skill("create-task", "create task", &[]),
-            skill("promote-fact", "share a fact", &[]),
-            skill("convert-explorer", "convert to task", &[]),
-        ]),
-        true,
-        true,
-    );
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Skills(SessionId::new("a")))
-        .expect("the skills word");
-    click(word, &mut ui, &app, &hits);
-
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = everywhere(&frame);
-    let rows: Vec<&String> = drawn.iter().filter(|one| one.contains(" in ")).collect();
-    let mut once = rows.clone();
-    once.sort();
-    once.dedup();
-    assert_eq!(
-        rows.len(),
-        2,
-        "two sources, one skill on the menu: {rows:?}"
-    );
-    assert!(
-        !drawn
-            .iter()
-            .any(|one| one.starts_with("create task") || one.starts_with("share a fact")),
-        "{drawn:?}"
-    );
-    assert_eq!(
-        once.len(),
-        rows.len(),
-        "no row says what another says: {rows:?}"
-    );
-}
-
-#[test]
-fn one_source_files_without_naming_it() {
-    let app = sourced(
-        offering(vec![skill("convert-explorer", "convert to task", &[])]),
-        false,
-        true,
-    );
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Skills(SessionId::new("a")))
-        .expect("the skills word");
-    click(word, &mut ui, &app, &hits);
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = everywhere(&frame);
-    assert!(
-        drawn.iter().any(|one| one == "convert to task"),
-        "{drawn:?}"
-    );
-}
-
 /// Where the pointer lands in the middle of the agent's own screen.
 fn on_screen(ui: &Ui) -> (f32, f32) {
     let pane = crate::layout::Layout::of(window(), ui).agent;
@@ -429,7 +309,7 @@ fn a_press_on_the_screen_begins_a_selection() {
         window(),
     );
     assert!(
-        matches!(ui.held, Some(crate::Held::AgentText)),
+        matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
         "the pointer is choosing what to hold"
     );
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
@@ -447,7 +327,7 @@ fn a_press_on_the_screen_begins_a_selection() {
 
     crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
     assert!(
-        !matches!(ui.held, Some(crate::Held::AgentText)),
+        !matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
         "the release ends it"
     );
 }

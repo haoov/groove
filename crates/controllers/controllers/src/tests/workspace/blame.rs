@@ -32,11 +32,8 @@ fn uncommitted(state: &crate::AppState) -> Vec<bool> {
 
 #[test]
 fn the_blame_reads_the_buffer_with_its_edits() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     blame(&mut state, &services, &spawner);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
@@ -53,11 +50,8 @@ fn the_blame_reads_the_buffer_with_its_edits() {
 
 #[test]
 fn a_commit_only_a_blame_names_opens_as_its_change() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     blame(&mut state, &services, &spawner);
     let worktree = state

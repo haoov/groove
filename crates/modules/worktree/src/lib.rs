@@ -5,6 +5,7 @@ mod layout;
 pub mod naming;
 mod pool;
 mod provision;
+mod relocate;
 mod status;
 mod store;
 mod teardown;
@@ -19,6 +20,7 @@ use groove_db::Db;
 use groove_types::SessionId;
 pub use groove_types::{PoolEntry, WorktreeSpec};
 pub use layout::Layout;
+pub use relocate::Relocated;
 pub use teardown::Keep;
 
 /// The module's handle: the database and the root, cheap to clone into a job.
@@ -44,13 +46,15 @@ impl Pool {
         &self.layout.root
     }
 
-    /// The session's own directory, made when it is missing.
-    pub fn session_dir(&self, session: &SessionId) -> Result<PathBuf> {
+    /// The session's own directory, made off the calling thread when it is missing.
+    pub async fn made_session_dir(&self, session: &SessionId) -> Result<PathBuf> {
         let dir = self.layout.session_dir(session.as_str());
-        std::fs::create_dir_all(&dir).map_err(|source| Error::Io {
-            path: dir.clone(),
-            source,
-        })?;
+        tokio::fs::create_dir_all(&dir)
+            .await
+            .map_err(|source| Error::Io {
+                path: dir.clone(),
+                source,
+            })?;
         Ok(dir)
     }
 }

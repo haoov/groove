@@ -289,3 +289,11 @@ fn the_kept_order_gives_way_to_a_row_that_lands_and_to_a_sort_picked() {
         "the order turned"
     );
 }
+
+#[test]
+fn a_sideways_offset_with_the_list_shown_leaves_its_scroll_down() {
+    let (_, mut ui) = listing();
+    ui.session.resources.scroll = 40.0;
+    *ui.session.resources.across_mut() = 120.0;
+    assert_eq!(ui.session.resources.scroll, 40.0);
+}

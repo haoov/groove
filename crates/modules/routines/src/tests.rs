@@ -57,8 +57,8 @@ fn a_routine_may_use_several_skills_or_none_when_its_words_say_what_to_do() {
     assert!(parse("user:tidy", "tidy", none).unwrap().skills.is_empty());
 }
 
-#[test]
-fn the_team_s_routines_stand_before_the_user_s_and_a_broken_file_is_listed_with_why() {
+#[tokio::test]
+async fn the_team_s_routines_stand_before_the_user_s_and_a_broken_file_is_listed_with_why() {
     let home = tempfile::tempdir().unwrap();
     let copy = home.path().join("copy");
     std::fs::create_dir_all(copy.join("routines")).unwrap();
@@ -66,7 +66,7 @@ fn the_team_s_routines_stand_before_the_user_s_and_a_broken_file_is_listed_with_
     std::fs::write(copy.join("routines/fix-red-ci.md"), FIX_CI).unwrap();
     std::fs::write(home.path().join("routines/broken.md"), "nothing").unwrap();
     std::fs::write(home.path().join("routines/notes.txt"), "not a routine").unwrap();
-    let listed = list(&Dirs::new(home.path(), Some(&copy)));
+    let listed = list(&Dirs::new(home.path(), Some(&copy))).await;
     let ids: Vec<&str> = listed.iter().map(|one| one.id.as_str()).collect();
     assert_eq!(ids, ["shared:fix-red-ci", "user:broken"]);
     assert!(listed[0].read.is_ok());
@@ -87,16 +87,16 @@ fn an_action_routine_names_what_groove_does_and_needs_no_skill() {
     assert!(refused("---\nkind: action\ndo: start-due\non: ci-failed\n---\n").contains("bound"));
 }
 
-#[test]
-fn the_day_s_first_look_is_new_once_and_the_next_day_is_new_again() {
+#[tokio::test]
+async fn the_day_s_first_look_is_new_once_and_the_next_day_is_new_again() {
     let dir = tempfile::tempdir().unwrap();
     let at = dir.path().join("routines");
-    assert!(crate::new_day(&at, "2026-10-03").unwrap());
+    assert!(crate::new_day(&at, "2026-10-03").await.unwrap());
     assert!(
-        !crate::new_day(&at, "2026-10-03").unwrap(),
+        !crate::new_day(&at, "2026-10-03").await.unwrap(),
         "a restart the same day"
     );
-    assert!(crate::new_day(&at, "2026-10-04").unwrap());
+    assert!(crate::new_day(&at, "2026-10-04").await.unwrap());
 }
 
 #[test]

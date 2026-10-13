@@ -19,15 +19,19 @@ pub struct Tools {
 
 impl Loopback {
     /// `--mcp-config` and `--settings`, both through files.
-    pub(crate) fn args(&self, files: &LaunchDir) -> Result<Vec<String>> {
-        let curl = files.write("hooks.curl", &self.curl_config())?;
+    pub(crate) async fn args(&self, files: &LaunchDir) -> Result<Vec<String>> {
+        let curl = files.write("hooks.curl", &self.curl_config()).await?;
         let mut args = Vec::new();
         if let Some(tools) = &self.tools {
             args.push("--mcp-config".into());
-            args.push(files.write("mcp.json", &tools.mcp_config())?);
+            args.push(files.write("mcp.json", &tools.mcp_config()).await?);
         }
         args.push("--settings".into());
-        args.push(files.write("settings.json", &self.hook_settings(&curl))?);
+        args.push(
+            files
+                .write("settings.json", &self.hook_settings(&curl))
+                .await?,
+        );
         Ok(args)
     }
 

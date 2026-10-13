@@ -1,14 +1,13 @@
 //! A source's mapping in Settings: its schema read once, each name and value picked from it.
 
 use groove_controllers::{AppState, Command, config};
-use groove_gfx::Fonts;
 use groove_types::{Kind, Mapped, Mapping, Property, ProviderId, StatusIntent};
 
 use super::*;
+use crate::frame_commands;
 use crate::hit::Target;
 use crate::views::settings::Section;
 use crate::views::settings::rows::Slot;
-use crate::{frame_commands, view};
 
 fn property(name: &str, kind: Kind, options: &[&str]) -> Property {
     Property {
@@ -41,13 +40,7 @@ fn mapped() -> (AppState, Ui) {
 
 fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
     let tall = metrics(1280, 1600, 1.0);
-    let (frame, hits) = view(app, ui, tall, &mut Fonts::embedded());
-    let texts = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|one| one.text.clone())
-        .collect();
-    (texts, hits)
+    render(app, ui, tall)
 }
 
 #[test]

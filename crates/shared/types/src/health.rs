@@ -62,11 +62,16 @@ pub fn status_health(text: &str) -> Option<Health> {
 /// `ready/wanted`: all of them good, none failing, some waiting; none of none ended.
 pub fn ready_health(text: &str) -> Option<Health> {
     let (ready, wanted) = text.split_once('/')?;
-    let (ready, wanted): (u32, u32) = (ready.trim().parse().ok()?, wanted.trim().parse().ok()?);
-    Some(match (ready, wanted) {
+    let (ready, wanted): (i64, i64) = (ready.trim().parse().ok()?, wanted.trim().parse().ok()?);
+    Some(count_health(ready, wanted))
+}
+
+/// The same, from the two counts.
+pub fn count_health(ready: i64, wanted: i64) -> Health {
+    match (ready, wanted) {
         (_, 0) => Health::Done,
         (ready, wanted) if ready >= wanted => Health::Good,
         (0, _) => Health::Failing,
         _ => Health::Waiting,
-    })
+    }
 }

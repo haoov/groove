@@ -38,25 +38,26 @@ pub struct Launch {
 }
 
 impl Launch {
-    pub fn plan(
+    pub async fn plan(
         session: &Session,
         paths: &Paths<'_>,
         plugin_dirs: &[PathBuf],
         loopback: Option<&Loopback>,
     ) -> Result<Self> {
         let files = files::LaunchDir::new(paths.launch_dir, session.id.as_str());
-        let mut args = session::identity_args(session, paths);
+        let mut args = session::identity_args(session, paths).await;
         if let Some(loopback) = loopback {
-            args.extend(loopback.args(&files)?);
+            args.extend(loopback.args(&files).await?);
         }
         args.push("--append-system-prompt-file".into());
-        args.push(files.write("prompt.md", &core_prompt(session, paths.knowledge))?);
+        let prompt = core_prompt(session, paths.knowledge);
+        args.push(files.write("prompt.md", &prompt).await?);
         for dir in plugin_dirs {
             args.push("--plugin-dir".into());
             args.push(dir.to_string_lossy().into_owned());
         }
         Ok(Self {
-            program: claude_bin(paths.home),
+            program: claude_bin(paths.home).await,
             args,
             env: env(),
             cwd: paths.cwd.to_path_buf(),
@@ -82,9 +83,9 @@ impl Launch {
 }
 
 /// `claude auth login` in `home`, for a terminal the user signs in on.
-pub fn login(home: &Path, cols: u16, rows: u16) -> PtySpec {
+pub async fn login(home: &Path, cols: u16, rows: u16) -> PtySpec {
     PtySpec {
-        program: claude_bin(home),
+        program: claude_bin(home).await,
         args: vec!["auth".into(), "login".into()],
         cwd: home.to_path_buf(),
         env: env(),
@@ -94,16 +95,21 @@ pub fn login(home: &Path, cols: u16, rows: u16) -> PtySpec {
 }
 
 /// `~/.local/bin/claude`, then the system paths, then whatever `PATH` finds.
-pub fn claude_bin(home: &Path) -> String {
+pub async fn claude_bin(home: &Path) -> String {
     let local = home.join(".local/bin/claude");
-    if local.is_file() {
-        return local.to_string_lossy().into_owned();
+    let system = ["/usr/local/bin/claude", "/usr/bin/claude"].map(PathBuf::from);
+    for one in std::iter::once(local).chain(system) {
+        if is_file(&one).await {
+            return one.to_string_lossy().into_owned();
+        }
     }
-    ["/usr/local/bin/claude", "/usr/bin/claude"]
-        .into_iter()
-        .find(|p| Path::new(p).is_file())
-        .unwrap_or("claude")
-        .to_string()
+    "claude".to_string()
+}
+
+pub(crate) async fn is_file(path: &Path) -> bool {
+    tokio::fs::metadata(path)
+        .await
+        .is_ok_and(|one| one.is_file())
 }
 
 /// No MCP idle timeout, and a 24h cap on a tool call.

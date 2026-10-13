@@ -165,9 +165,10 @@ fn what_is_held_is_copied_cut_and_pasted() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |_| {
-        services.clipboard.read().is_some()
+        spawner.block_on(services.clipboard.read()).is_some()
     });
-    assert_eq!(services.clipboard.read().as_deref(), Some("one"));
+    let copied = spawner.block_on(services.clipboard.read());
+    assert_eq!(copied.as_deref(), Some("one"));
     assert_eq!(buffer(&state), "one\ntwo\n", "a copy leaves the text alone");
 
     edit(&mut state, &services, &spawner, &hold);
@@ -208,7 +209,7 @@ fn a_copy_with_nothing_held_says_nothing() {
     );
     spawner.drain(&mut state, &services);
     assert_eq!(
-        services.clipboard.read(),
+        spawner.block_on(services.clipboard.read()),
         None,
         "the clipboard is untouched"
     );
@@ -321,15 +322,17 @@ fn a_file_saved_back_to_what_it_was_stays_open() {
     );
 }
 
-/// One command, run to the end of everything it starts.
-fn send(
-    state: &mut crate::AppState,
-    services: &Services,
-    spawner: &SyncSpawner,
-    command: workspace::Command,
-) {
-    dispatch(Cmd::Workspace(command), state, services, spawner);
-    until(spawner, services, state, |s| s.pending.is_empty());
+#[test]
+fn words_typed_while_a_save_is_out_still_owe_the_disk() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    editing(&mut state, &services, &spawner);
+    keyed(&mut state, &services, &spawner, Edit::Insert("a".into()));
+    let save = Cmd::Workspace(workspace::Command::SaveFile);
+    dispatch(save, &mut state, &services, &spawner);
+    keyed(&mut state, &services, &spawner, Edit::Insert("b".into()));
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.workspace.dirty(), ["a.txt"], "the b is not on disk");
 }
 
 fn keyed(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, edit: Edit) {
