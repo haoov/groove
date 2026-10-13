@@ -235,3 +235,23 @@ async fn hooks_run_without_the_tool_server() {
         std::fs::read_to_string(flag_value(&launch.args, "--settings").unwrap()).unwrap();
     assert!(settings.contains("/hook/explorer-ab12cd34"));
 }
+
+#[tokio::test]
+async fn the_agent_is_refused_the_cluster_tools_and_told_to_read_through_groove() {
+    let root = tempfile::tempdir().unwrap();
+    let launch = Launch::plan(&explorer(), &paths(root.path()), &[], None)
+        .await
+        .unwrap();
+    let at = launch
+        .args
+        .iter()
+        .position(|one| one == "--disallowedTools");
+    let denied = &launch.args[at.expect("the deny flag") + 1..];
+    assert!(denied.starts_with(&["Bash(kubectl:*)".to_string(), "Bash(helm:*)".to_string()]));
+    let ends = denied.iter().position(|one| one.starts_with("--"));
+    assert!(
+        ends.is_some(),
+        "an option ends the denied list before any other argument"
+    );
+    assert!(core_prompt(&explorer(), None).contains("`kube` tool"));
+}

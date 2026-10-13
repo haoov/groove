@@ -89,3 +89,34 @@ async fn a_child_that_exits_without_reading_still_says_why() {
     let said = out.expect_err("it exits 3").to_string();
     assert!(said.ends_with("failed: refused"), "{said}");
 }
+
+#[tokio::test]
+async fn a_capped_run_stops_reading_at_its_limit_and_says_it_cut() {
+    let started = std::time::Instant::now();
+    let ran = sh("yes groove; echo never >&2").timeout(Duration::from_secs(10));
+    let ran = ran.capped(1000).await.unwrap();
+    assert_eq!(ran.stdout.len(), 1000);
+    assert!(ran.cut && !ran.success);
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "the child ends at the cut"
+    );
+}
+
+#[tokio::test]
+async fn a_capped_run_under_its_limit_keeps_all_and_its_stderr() {
+    let ran = sh("echo out; echo err >&2; exit 1")
+        .capped(1000)
+        .await
+        .unwrap();
+    assert_eq!(ran.stdout, b"out\n");
+    assert_eq!(ran.stderr, "err");
+    assert!(!ran.cut && !ran.success);
+}
+
+#[tokio::test]
+async fn a_bare_run_sees_only_the_environment_it_is_given() {
+    let ran = sh("echo \"$HOME|$ONE\"").bare().env("ONE", "1");
+    let ran = ran.input("unread").capped(1000).await.unwrap();
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "|1\n");
+}

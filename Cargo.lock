@@ -1362,6 +1362,7 @@ name = "groove-cluster-service"
 version = "1.0.0-alpha.3"
 dependencies = [
  "groove-contexts",
+ "groove-kubectl",
  "groove-objects",
  "groove-text",
  "groove-types",
@@ -1574,6 +1575,15 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "wiremock",
+]
+
+[[package]]
+name = "groove-kubectl"
+version = "1.0.0-alpha.3"
+dependencies = [
+ "groove-exec",
+ "groove-types",
+ "tokio",
 ]
 
 [[package]]
