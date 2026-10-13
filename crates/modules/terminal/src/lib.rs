@@ -41,7 +41,7 @@ pub struct Terminal {
     pid: Option<u32>,
     size: Arc<Size>,
     palette: Arc<Mutex<AnsiPalette>>,
-    held: Mutex<Option<Held>>,
+    held: Mutex<Option<Selection>>,
 }
 
 impl Terminal {
@@ -109,34 +109,34 @@ impl Terminal {
 
     /// A selection begun at a cell: one press, one word, or one line.
     pub fn select_from(&self, cell: (usize, usize), kind: Select) {
-        *lock(&self.held) = Some(Held {
-            from: cell,
-            to: None,
-            kind,
-        });
-        self.apply();
+        let mut held = lock(&self.held);
+        let mut term = lock(&self.term);
+        let side = alacritty_terminal::index::Side::Left;
+        let one = Selection::new(kind.own(), point(&term, cell), side);
+        term.selection = Some(one.clone());
+        *held = Some(one);
     }
 
     /// The selection carried to another cell.
     pub fn select_to(&self, cell: (usize, usize)) {
-        if let Some(held) = lock(&self.held).as_mut() {
-            held.to = Some(cell);
-        }
         self.apply();
+        let mut held = lock(&self.held);
+        let mut term = lock(&self.term);
+        let to = point(&term, cell);
+        if let Some(one) = term.selection.as_mut() {
+            one.update(to, alacritty_terminal::index::Side::Right);
+        }
+        *held = term.selection.clone();
     }
 
-    /// The selection put back on the grid, whatever the program did under it.
+    /// The grid's selection, which scrolls with its text, kept; put back when a repaint drops it.
     fn apply(&self) {
-        let held = *lock(&self.held);
+        let mut held = lock(&self.held);
         let mut term = lock(&self.term);
-        term.selection = held.map(|held| {
-            let side = alacritty_terminal::index::Side::Left;
-            let mut one = Selection::new(held.kind.own(), point(&term, held.from), side);
-            if let Some(to) = held.to {
-                one.update(point(&term, to), alacritty_terminal::index::Side::Right);
-            }
-            one
-        });
+        match &term.selection {
+            Some(now) => *held = Some(now.clone()),
+            None => term.selection = held.clone(),
+        }
     }
 
     /// What is selected, or nothing at all.
@@ -225,14 +225,6 @@ impl fmt::Debug for Terminal {
         let (cols, rows) = self.size.get();
         write!(f, "Terminal({cols}x{rows})")
     }
-}
-
-/// A selection of the grid: where it began, where it stands, and what it takes.
-#[derive(Debug, Clone, Copy)]
-struct Held {
-    from: (usize, usize),
-    to: Option<(usize, usize)>,
-    kind: Select,
 }
 
 /// What one press begins: the cells it crosses, the word under it, or its lines.
