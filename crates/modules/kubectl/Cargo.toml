@@ -1,13 +1,17 @@
 [package]
 name = "groove-kubectl"
-description = "The kubectl reads the agent asks for: their arguments checked against the session's clusters"
+description = "The kubectl reads the agent asks for: their arguments checked against the session's clusters, then run bounded"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-exec = { path = "../../base/exec" }
 groove-types = { path = "../../shared/types" }
+
+[dev-dependencies]
+tokio.workspace = true
 
 [lints]
 workspace = true

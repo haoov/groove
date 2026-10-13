@@ -1580,7 +1580,9 @@ dependencies = [
 name = "groove-kubectl"
 version = "1.0.0-alpha.3"
 dependencies = [
+ "groove-exec",
  "groove-types",
+ "tokio",
 ]
 
 [[package]]
