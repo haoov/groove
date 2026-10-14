@@ -4,12 +4,14 @@ mod actions;
 mod entries;
 mod flow;
 mod grouped;
+mod marks;
 
 use groove_controllers::{AppState, Command};
 
 pub use actions::Act;
 pub use entries::entries;
 pub use flow::{Action, CLONE, Flow, Prompt};
+pub use marks::mark_of;
 
 use crate::Corner;
 use groove_ui_kit::widgets::Field;

@@ -7,6 +7,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::keymap::Keymap;
 use crate::palette::Palette;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
 use groove_ui_kit::layout::{Spec, column_in};
@@ -27,7 +28,7 @@ fn width(ctx: &mut Ctx, rows: &[(String, String)], prompted: bool) -> f32 {
         .iter()
         .map(|(group, label)| match prompted {
             true => pad + ctx.measure(group, &style),
-            false => pad + ctx.measure(label, &style),
+            false => pad + ctx.tokens.icon + ctx.tokens.sm + ctx.measure(label, &style),
         })
         .fold(0.0, f32::max);
     (widest + pad).max(ctx.tokens.menu)
@@ -59,10 +60,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         false => rect,
     };
     let body = inset(ctx, under, shown);
-    let chords = shortcuts(app, palette, &prompt);
+    let ends = (
+        shortcuts(app, palette, &prompt),
+        marks(app, palette, &prompt),
+    );
     match rows.is_empty() {
         true => nothing(ctx, body, &prompt),
-        false => items(ctx, body, (palette, &prompt), (&rows, &lines), &chords),
+        false => items(ctx, body, (palette, &prompt), (&rows, &lines), ends),
     }
 }
 
@@ -78,6 +82,19 @@ fn shortcuts(
     let keymap = Keymap::of(app.config.config.as_ref());
     let rows = palette.rows(app).into_iter();
     rows.map(|entry| keymap.label_of(entry.id())).collect()
+}
+
+fn marks(
+    app: &AppState,
+    palette: &Palette,
+    prompt: &Option<crate::palette::Prompt>,
+) -> Vec<Option<Mark>> {
+    if prompt.is_some() {
+        return Vec::new();
+    }
+    let rows = palette.rows(app).into_iter();
+    rows.map(|entry| crate::palette::mark_of(&entry, app))
+        .collect()
 }
 
 /// What the panel lists: a prompt's options, or every entry the query leaves.
@@ -176,7 +193,7 @@ fn items(
     body: Rect,
     (palette, prompt): (&Palette, &Option<crate::palette::Prompt>),
     (rows, lines): (&[(String, String)], &[Line]),
-    chords: &[Option<String>],
+    (chords, marks): (Vec<Option<String>>, Vec<Option<Mark>>),
 ) {
     let pad = ctx.tokens.md;
     let first = first_line(lines, palette.selected);
@@ -187,6 +204,9 @@ fn items(
     );
     let heads: Vec<String> = rows.iter().map(|(group, _)| group.to_uppercase()).collect();
     let shown = &lines[first..lines.len().min(first + PALETTE_ROWS)];
+    let lit = palette.anchor.is_none() || palette.keyed;
+    let selected = lit.then_some(palette.selected);
+    let (faint, plain) = (ctx.styles.color(Role::Faint), label_style.color);
     let items: Vec<Row<'_, _>> = shown
         .iter()
         .map(|line| match *line {
@@ -199,11 +219,15 @@ fn items(
                     Some(chord) => row.end(chord, chord_style),
                     None => row,
                 };
+                let tint = if selected == Some(i) { plain } else { faint };
+                let row = match marks.get(i).copied().flatten() {
+                    Some(mark) => row.mark(mark).tint(tint),
+                    None => row,
+                };
                 row.target(Target::PaletteRow(i))
             }
         })
         .collect();
-    let lit = palette.anchor.is_none() || palette.keyed;
     let at = shown
         .iter()
         .position(|line| *line == Line::Row(palette.selected));
