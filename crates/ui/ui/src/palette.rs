@@ -3,6 +3,7 @@
 mod actions;
 mod entries;
 mod flow;
+mod grouped;
 
 use groove_controllers::{AppState, Command};
 
@@ -120,11 +121,7 @@ pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Ve
 impl Palette {
     /// The rows under the query: entries, or the current prompt's options.
     pub fn rows(&self, app: &AppState) -> Vec<Entry> {
-        matching(
-            entries(app),
-            |e| format!("{} {}", e.group, e.label),
-            self.query.text(),
-        )
+        grouped::grouped(entries(app), self.query.text())
     }
 
     /// The prompt a flow is on, if any.

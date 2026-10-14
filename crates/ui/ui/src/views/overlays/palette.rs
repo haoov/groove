@@ -27,7 +27,7 @@ fn width(ctx: &mut Ctx, rows: &[(String, String)], prompted: bool) -> f32 {
         .iter()
         .map(|(group, label)| match prompted {
             true => pad + ctx.measure(group, &style),
-            false => ctx.tokens.aside_near + ctx.measure(label, &style),
+            false => pad + ctx.measure(label, &style),
         })
         .fold(0.0, f32::max);
     (widest + pad).max(ctx.tokens.menu)
@@ -37,7 +37,8 @@ fn width(ctx: &mut Ctx, rows: &[(String, String)], prompted: bool) -> f32 {
 pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let prompt = palette.prompt(app);
     let rows = listed(app, palette, &prompt);
-    let shown = rows.len().clamp(1, PALETTE_ROWS);
+    let lines = lines(&rows, prompt.is_none());
+    let shown = lines.len().clamp(1, PALETTE_ROWS);
     let typed = has_input(palette, &prompt, rows.len());
     let rows_high = ctx.tokens.row * (shown + usize::from(typed)) as f32;
     let height = match typed {
@@ -61,7 +62,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let chords = shortcuts(app, palette, &prompt);
     match rows.is_empty() {
         true => nothing(ctx, body, &prompt),
-        false => items(ctx, body, (palette, &prompt), &rows, &chords),
+        false => items(ctx, body, (palette, &prompt), (&rows, &lines), &chords),
     }
 }
 
@@ -135,36 +136,76 @@ fn nothing(ctx: &mut Ctx, body: Rect, prompt: &Option<crate::palette::Prompt>) {
     Label::new(hint, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }
 
-/// The rows around the selected one, as far as the panel shows.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Line {
+    Head(usize),
+    Row(usize),
+}
+
+fn lines(rows: &[(String, String)], headed: bool) -> Vec<Line> {
+    let mut out = Vec::with_capacity(rows.len());
+    for (i, (group, _)) in rows.iter().enumerate() {
+        let starts = i == 0 || rows[i - 1].0 != *group;
+        if headed && starts {
+            out.push(Line::Head(i));
+        }
+        out.push(Line::Row(i));
+    }
+    out
+}
+
+/// The selected row in view, with its heading when it fits.
+fn first_line(lines: &[Line], selected: usize) -> usize {
+    let at = lines
+        .iter()
+        .position(|line| *line == Line::Row(selected))
+        .unwrap_or(0);
+    let head = lines[..at]
+        .iter()
+        .rposition(|line| matches!(line, Line::Head(_)))
+        .unwrap_or(at);
+    let base = at.saturating_sub(PALETTE_ROWS - 1);
+    match base > head && at - head < PALETTE_ROWS {
+        true => head,
+        false => base,
+    }
+}
+
 fn items(
     ctx: &mut Ctx,
     body: Rect,
     (palette, prompt): (&Palette, &Option<crate::palette::Prompt>),
-    rows: &[(String, String)],
+    (rows, lines): (&[(String, String)], &[Line]),
     chords: &[Option<String>],
 ) {
     let pad = ctx.tokens.md;
-    let first = palette.selected.saturating_sub(PALETTE_ROWS - 1);
-    let (group_style, label_style) = (ctx.styles.small(Role::Faint), ctx.styles.label(Role::Text));
-    let at = ctx.tokens.aside_near;
-    let items: Vec<Row<'_, _>> = rows
+    let first = first_line(lines, palette.selected);
+    let label_style = ctx.styles.label(Role::Text);
+    let (chord_style, head_style) = (
+        ctx.styles.small(Role::Faint),
+        ctx.styles.heading(Role::Faint),
+    );
+    let heads: Vec<String> = rows.iter().map(|(group, _)| group.to_uppercase()).collect();
+    let shown = &lines[first..lines.len().min(first + PALETTE_ROWS)];
+    let items: Vec<Row<'_, _>> = shown
         .iter()
-        .enumerate()
-        .skip(first)
-        .take(PALETTE_ROWS)
-        .map(|(i, (group, label))| {
-            let row = match prompt {
-                Some(_) => Row::new(pad, group, label_style),
-                None => Row::new(pad, group, group_style).aside(at, label, label_style),
-            };
-            let row = match chords.get(i).and_then(Option::as_deref) {
-                Some(chord) => row.end(chord, group_style),
-                None => row,
-            };
-            row.target(Target::PaletteRow(i))
+        .map(|line| match *line {
+            Line::Head(i) => Row::new(pad, &heads[i], head_style),
+            Line::Row(i) => {
+                let (group, label) = &rows[i];
+                let text = if prompt.is_some() { group } else { label };
+                let row = Row::new(pad, text, label_style);
+                let row = match chords.get(i).and_then(Option::as_deref) {
+                    Some(chord) => row.end(chord, chord_style),
+                    None => row,
+                };
+                row.target(Target::PaletteRow(i))
+            }
         })
         .collect();
-    let shown = palette.anchor.is_none() || palette.keyed;
-    let selected = shown.then(|| palette.selected - first);
-    list(ctx, body, &items, selected);
+    let lit = palette.anchor.is_none() || palette.keyed;
+    let at = shown
+        .iter()
+        .position(|line| *line == Line::Row(palette.selected));
+    list(ctx, body, &items, at.filter(|_| lit));
 }

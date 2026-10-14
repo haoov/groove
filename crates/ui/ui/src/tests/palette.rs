@@ -238,7 +238,8 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .iter()
         .map(|t| t.text.clone())
         .collect();
-    assert!(texts.iter().any(|t| t == "Add worktree"));
+    assert!(texts.iter().any(|t| t == "GO"), "a heading over its group");
+    assert!(texts.iter().any(|t| t == "Board"));
     typed("close work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
@@ -374,4 +375,85 @@ fn a_paste_lands_at_the_caret_and_the_arrows_still_move_the_selection() {
     assert_eq!(ui.palette().map(|one| one.selected), Some(1));
     keyed(&mut ui, &app, &[Key::Char('e'), Key::Escape]);
     assert!(ui.palette().is_none(), "escape still closes it");
+}
+
+fn under(query: &str, app: &AppState) -> Vec<(&'static str, String)> {
+    let mut palette = Palette::default();
+    typed_into(&mut palette, query, app);
+    let rows = palette.rows(app).into_iter();
+    rows.map(|e| (e.group, e.label)).collect()
+}
+
+#[test]
+fn a_group_named_first_comes_first_and_whole() {
+    let app = with_repo(app());
+    let all = under("", &app);
+    let go = all.iter().filter(|(group, _)| *group == "Go").count();
+    let typed = under("go", &app);
+    assert!(
+        typed[..go].iter().all(|(group, _)| *group == "Go"),
+        "{typed:?}"
+    );
+    let pushed = under("git pu", &app);
+    assert_eq!(pushed[0], ("Git", "Push".to_string()));
+    assert_eq!(under("push", &app)[0], ("Git", "Push".to_string()));
+}
+
+#[test]
+fn the_query_keeps_each_group_in_one_run() {
+    let app = with_repo(app());
+    for query in ["", "e", "the", "show"] {
+        let rows = under(query, &app);
+        let mut seen: Vec<&str> = Vec::new();
+        for (group, _) in &rows {
+            if seen.last() != Some(group) {
+                assert!(!seen.contains(group), "{query:?} splits {group}: {rows:?}");
+                seen.push(group);
+            }
+        }
+    }
+}
+
+#[test]
+fn the_selected_row_shows_under_its_heading() {
+    let app = with_repo(app());
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    let rows = under("", &app);
+    let at = rows
+        .iter()
+        .position(|(group, _)| *group == "Notes")
+        .expect("notes");
+    for _ in 0..at {
+        press(Key::Down, Modifiers::default(), &mut ui, &app);
+    }
+    let (frame, _) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts: Vec<String> = frame.layers()[1]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(texts.contains(&"NOTES".to_string()), "{texts:?}");
+    assert!(texts.contains(&rows[at].1), "{texts:?}");
+    typed("pu", &mut ui, &app);
+    let (frame, _) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts: Vec<String> = frame.layers()[1]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(
+        texts.contains(&"GIT".to_string()),
+        "headings while typing too: {texts:?}"
+    );
 }

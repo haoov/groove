@@ -97,8 +97,12 @@ fn a_click_on_a_palette_row_runs_it() {
     let rect = hits
         .rect_of(&Target::PaletteRow(0))
         .expect("the palette lists its rows");
-    let commands = click(rect, &mut ui, &app, &hits);
-    assert_eq!(commands[0].id(), "session.open_explorer");
+    click(rect, &mut ui, &app, &hits);
+    assert_eq!(
+        ui.surface,
+        crate::Surface::Board,
+        "the first row is Go › Board"
+    );
     assert!(ui.palette().is_none());
 }
 
