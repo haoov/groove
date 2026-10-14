@@ -21,6 +21,39 @@ pub fn row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, indent: f32, text: &str, st
     });
 }
 
+/// A row with the characters in `lit` drawn in `lit_style`.
+pub fn lit_row<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    (rect, indent): (Rect, f32),
+    text: &str,
+    style: TextStyle,
+    (lit, lit_style): (&[std::ops::Range<usize>], TextStyle),
+) {
+    let bytes: Vec<usize> = text
+        .char_indices()
+        .map(|(at, _)| at)
+        .chain([text.len()])
+        .collect();
+    let mut pieces = Vec::new();
+    let mut from = 0;
+    for range in lit.iter().filter(|range| range.end < bytes.len()) {
+        let (start, end) = (bytes[range.start].max(from), bytes[range.end]);
+        if start >= end {
+            continue;
+        }
+        pieces.push((from..start, style));
+        pieces.push((start..end, lit_style));
+        from = end;
+    }
+    pieces.push((from..text.len(), style));
+    ctx.clipped(rect, |ctx| {
+        for (range, style) in pieces.into_iter().filter(|(range, _)| !range.is_empty()) {
+            let x = rect.x + indent + ctx.measure(&text[..range.start], &style);
+            ctx.text(&text[range], x, rect.y, rect.h, style);
+        }
+    });
+}
+
 /// The text as it fits `width`: whole, or cut at a character with an ellipsis.
 pub fn elide<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> String {
     if ctx.measure(text, style) <= width {

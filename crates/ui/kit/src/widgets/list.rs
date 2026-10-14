@@ -3,7 +3,7 @@ use groove_gfx::{Align, Color, Rect, TextStyle};
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::shape::{after_mark, hoverable, leading};
-use crate::text::{elide, row};
+use crate::text::{elide, lit_row, row};
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
 pub struct Row<'a, T> {
@@ -21,6 +21,8 @@ pub struct Row<'a, T> {
     pub mark_size: Option<f32>,
     /// What a click on the row means.
     pub target: Option<T>,
+    /// Characters of the text drawn in that style, such as what a query matched.
+    pub lit: Option<(&'a [std::ops::Range<usize>], TextStyle)>,
 }
 
 impl<'a, T> Row<'a, T> {
@@ -36,6 +38,7 @@ impl<'a, T> Row<'a, T> {
             tint: None,
             mark_size: None,
             target: None,
+            lit: None,
         }
     }
 
@@ -62,6 +65,11 @@ impl<'a, T> Row<'a, T> {
 
     pub fn aside(mut self, at: f32, text: &'a str, style: TextStyle) -> Self {
         self.aside = Some((at, text, style));
+        self
+    }
+
+    pub fn lit(mut self, ranges: &'a [std::ops::Range<usize>], style: TextStyle) -> Self {
+        self.lit = Some((ranges, style));
         self
     }
 
@@ -106,7 +114,7 @@ pub fn list<A: App>(
             None => right,
         };
         let text = elide(ctx, item.text, &item.style, (ends - start).max(0.0));
-        row(ctx, line, indent, &text, item.style);
+        texted(ctx, (line, indent), &text, item);
         if let Some((at, text, style)) = item.aside {
             let room = (right - (rect.x + at)).max(0.0);
             let aside = Rect::new(rect.x + at, y, room, height);
@@ -128,4 +136,14 @@ fn ended<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, end: Option<(&str, TextStyle)
     let at = Rect::new(edge - wide, line.y, wide, line.h);
     row(ctx, at, 0.0, text, style);
     edge - wide - ctx.tokens.md
+}
+
+/// The row's text, its lit characters kept where the cut leaves them.
+fn texted<T>(ctx: &mut Ctx<'_, impl App>, at: (Rect, f32), text: &str, item: &Row<'_, T>) {
+    let Some((ranges, lit)) = item.lit else {
+        return row(ctx, at.0, at.1, text, item.style);
+    };
+    let whole = text.chars().count() - usize::from(text != item.text);
+    let kept: Vec<_> = ranges.iter().filter(|r| r.end <= whole).cloned().collect();
+    lit_row(ctx, at, text, item.style, (&kept, lit));
 }

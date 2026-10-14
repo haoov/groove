@@ -129,3 +129,41 @@ fn the_selected_row_lights_its_icon() {
         "Overview"
     );
 }
+
+/// The texts the palette draws in the accent colour, after `query` is typed.
+fn lit_under(query: &str) -> Vec<String> {
+    let app = full_app();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    typed(query, &mut ui, &app);
+    let (frame, _) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
+    let texts = frame.layers()[1].texts.iter();
+    texts
+        .filter(|t| t.style.color == accent)
+        .map(|t| t.text.clone())
+        .collect()
+}
+
+#[test]
+fn the_letters_the_query_matched_are_lit() {
+    assert!(lit_under("").is_empty(), "nothing typed, nothing lit");
+    assert!(lit_under("pu").contains(&"Pu".to_string()));
+    let named = lit_under("git pu");
+    assert!(
+        named.contains(&"Pu".to_string()) && !named.iter().any(|t| t.to_lowercase() == "git"),
+        "{named:?}"
+    );
+    let both = lit_under("show not");
+    assert!(
+        both.contains(&"Show".to_string()) && both.contains(&"not".to_string()),
+        "{both:?}"
+    );
+}

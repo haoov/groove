@@ -1,6 +1,8 @@
 //! The panel every choice is made in: the palette, or a picker on what it belongs to.
 
 use groove_controllers::AppState;
+use std::ops::Range;
+
 use groove_gfx::{Edges, Rect};
 
 use crate::ctx::Ctx;
@@ -195,36 +197,28 @@ fn items(
     (rows, lines): (&[(String, String)], &[Line]),
     (chords, marks): (Vec<Option<String>>, Vec<Option<Mark>>),
 ) {
-    let pad = ctx.tokens.md;
     let first = first_line(lines, palette.selected);
-    let label_style = ctx.styles.label(Role::Text);
-    let (chord_style, head_style) = (
-        ctx.styles.small(Role::Faint),
-        ctx.styles.heading(Role::Faint),
-    );
+    let head_style = ctx.styles.heading(Role::Faint);
     let heads: Vec<String> = rows.iter().map(|(group, _)| group.to_uppercase()).collect();
+    let texts: Vec<&str> = rows
+        .iter()
+        .map(|(group, label)| if prompt.is_some() { group } else { label }.as_str())
+        .collect();
+    let query = palette.query.text();
+    let found: Vec<Vec<Range<usize>>> = texts.iter().map(|text| matched(text, query)).collect();
     let shown = &lines[first..lines.len().min(first + PALETTE_ROWS)];
     let lit = palette.anchor.is_none() || palette.keyed;
-    let selected = lit.then_some(palette.selected);
-    let (faint, plain) = (ctx.styles.color(Role::Faint), label_style.color);
+    let pad = ctx.tokens.md;
     let items: Vec<Row<'_, _>> = shown
         .iter()
         .map(|line| match *line {
             Line::Head(i) => Row::new(pad, &heads[i], head_style),
             Line::Row(i) => {
-                let (group, label) = &rows[i];
-                let text = if prompt.is_some() { group } else { label };
-                let row = Row::new(pad, text, label_style);
-                let row = match chords.get(i).and_then(Option::as_deref) {
-                    Some(chord) => row.end(chord, chord_style),
-                    None => row,
-                };
-                let tint = if selected == Some(i) { plain } else { faint };
-                let row = match marks.get(i).copied().flatten() {
-                    Some(mark) => row.mark(mark).tint(tint),
-                    None => row,
-                };
-                row.target(Target::PaletteRow(i))
+                let chord = chords.get(i).and_then(Option::as_deref);
+                let mark = marks.get(i).copied().flatten();
+                let selected = lit && palette.selected == i;
+                entry(ctx, texts[i], (chord, mark, &found[i]), selected)
+                    .target(Target::PaletteRow(i))
             }
         })
         .collect();
@@ -232,4 +226,41 @@ fn items(
         .iter()
         .position(|line| *line == Line::Row(palette.selected));
     list(ctx, body, &items, at.filter(|_| lit));
+}
+
+fn entry<'a>(
+    ctx: &Ctx,
+    text: &'a str,
+    (chord, mark, found): (Option<&'a str>, Option<Mark>, &'a [Range<usize>]),
+    selected: bool,
+) -> Row<'a, Target> {
+    let styles = &ctx.styles;
+    let row = Row::new(ctx.tokens.md, text, styles.label(Role::Text));
+    let row = row.lit(found, styles.label(Role::Accent));
+    let row = match chord {
+        Some(chord) => row.end(chord, styles.small(Role::Faint)),
+        None => row,
+    };
+    let tint = styles.color(if selected { Role::Text } else { Role::Faint });
+    match mark {
+        Some(mark) => row.mark(mark).tint(tint),
+        None => row,
+    }
+}
+
+/// Where each word of the query first stands in `text`, merged.
+fn matched(text: &str, query: &str) -> Vec<Range<usize>> {
+    let mut found: Vec<Range<usize>> = query
+        .split_whitespace()
+        .filter_map(|word| groove_types::occurrences(text, word).into_iter().next())
+        .collect();
+    found.sort_by_key(|range| range.start);
+    let mut out: Vec<Range<usize>> = Vec::with_capacity(found.len());
+    for range in found {
+        match out.last_mut() {
+            Some(last) if range.start <= last.end => last.end = last.end.max(range.end),
+            _ => out.push(range),
+        }
+    }
+    out
 }
