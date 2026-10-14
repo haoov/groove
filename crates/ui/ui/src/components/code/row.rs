@@ -11,7 +11,7 @@ use groove_ui_kit::widgets::code::{self, Block, Code};
 
 use super::Line;
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{NoteButton, Target};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if code.covered {
@@ -50,6 +50,12 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         read: line.read,
         part: line.part,
         counts: line.counts,
+        tile: line.tile.as_ref().map(|(tile, folds)| {
+            let opens = folds
+                .clone()
+                .map(|origin| Target::Note(origin, NoteButton::Fold));
+            (*tile, opens)
+        }),
         empty: line.empty,
         caret: line.caret,
         held: line.held,

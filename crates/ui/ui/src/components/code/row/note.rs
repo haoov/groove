@@ -6,12 +6,11 @@ use super::super::{Acting, Header, Line, Noted, Room};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
 use groove_ui_kit::base::ground::Ground;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{box_in, card_row, framed, top_rule};
+use groove_ui_kit::shape::{card_row, framed, top_rule};
 use groove_ui_kit::text::{Label, ago, elide, row};
 use groove_ui_kit::widgets::code::Block;
-use groove_ui_kit::widgets::{Badge, Button, caret, typed_line};
+use groove_ui_kit::widgets::{Badge, Button, typed_line};
 
 /// One row of a note: its part of the card, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
@@ -21,12 +20,6 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, 
         true => Role::Faint,
         false => Role::Text,
     };
-    if said.opens {
-        gutter_mark(ctx, line, gutter, Role::Muted);
-    }
-    if let Some(head) = said.head.filter(|_| said.folded) {
-        return folded(ctx, (line, card), gutter, head, code.text);
-    }
     if let Some(head) = said.head {
         return header(ctx, (line, card), gutter, head, role);
     }
@@ -60,9 +53,6 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, 
 
 /// A comment's header: initials, author, source and label from the left; lines and age at the end.
 fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Header, role: Role) {
-    if let Some(origin) = head.folds.clone() {
-        ctx.hit(card, Target::Note(origin, NoteButton::Fold));
-    }
     if head.reply {
         let rule = ctx.styles.line();
         top_rule(ctx, card, rule);
@@ -93,41 +83,6 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
             .at(ctx, line, at + ctx.tokens.xs)
             .right();
     }
-}
-
-/// A resolved note on one line, which a click opens.
-fn folded(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Header, subject: &str) {
-    if let Some(origin) = head.folds.clone() {
-        ctx.hit(card, Target::Note(origin, NoteButton::Fold));
-    }
-    let at = gutter.content(ctx, line);
-    let mut room = Rect::new(
-        at,
-        line.y,
-        (card.right() - ctx.tokens.sm - at).max(0.0),
-        line.h,
-    );
-    let (size, gap, faint) = (
-        ctx.tokens.icon,
-        ctx.tokens.sm,
-        ctx.styles.small(Role::Faint),
-    );
-    caret(ctx, &mut room, (false, size), Role::Faint);
-    let tick = room.take_left(size);
-    groove_ui_kit::widgets::icon(ctx, box_in(line, tick.x, size), Mark::Read, Role::Ok);
-    room.take_left(gap);
-    if let Some((label, _)) = head.label.as_ref() {
-        let chip = Badge::new(label, label_role(label)).at(ctx, line, room.x);
-        room.take_left(chip.w + gap);
-    }
-    let replies = match head.replies {
-        0 => String::new(),
-        1 => "1 reply".to_string(),
-        many => format!("{many} replies"),
-    };
-    Label::new(&replies, faint).right(ctx, &mut room, gap);
-    Label::new(&head.author, faint).right(ctx, &mut room, gap);
-    Label::new(subject, ctx.styles.body(Role::Faint)).draw(ctx, room);
 }
 
 /// The colour a Conventional Comments label reads in.
@@ -185,13 +140,6 @@ fn by(ctx: &mut Ctx, card: Rect, said: Noted<'_>) -> f32 {
         at -= ctx.tokens.sm;
     }
     at
-}
-
-/// The note's mark, right-aligned where the line's own number would stand.
-fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, role: Role) {
-    let size = ctx.tokens.small;
-    let at = gutter.numbers_end(ctx, line) - size;
-    groove_ui_kit::widgets::icon(ctx, box_in(line, at, size), Mark::Note, role);
 }
 
 /// What a note offers, as buttons from the column its words start on.

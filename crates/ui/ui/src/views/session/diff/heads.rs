@@ -45,6 +45,7 @@ pub(super) fn across(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline:
     let gutters = Gutters {
         cells: 0,
         digits: 1,
+        marks: false,
     };
     let rows = Rows {
         lines: &lines,

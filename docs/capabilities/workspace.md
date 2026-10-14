@@ -71,7 +71,9 @@ author and its status, kept in Groove's database. The notes list shows the sessi
 notes and the MR's threads as one list.
 
 **One open note a line.** A note stands in the surface under the line it was left on,
-in a card from the code's column, with its buttons under it. Each comment opens on a
+in a card from the code's column, with its buttons under it. The line it opens on carries a tile
+before its numbers: a yellow count of its open notes, or a tick when they are all
+resolved. Each comment opens on a
 header: the author's initials and name, where the note lives, its Conventional Comments
 label and decoration, its lines and its age. Its words are typed on the same kind of buffer a file is, so a
 caret, a selection, an undo and the clipboard work there too. Around it, a composer: the
@@ -83,8 +85,8 @@ agent writes carries the `agent` decoration.
 **What a note offers depends on what holds it.** A note of the session is written again,
 resolved, deleted, or posted where the worktree has an MR; posting resolves the local
 copy. A forge thread is replied to, in a field across its last row where the reply is typed,
-and resolved. A resolved note folds to one line — its label, its subject, who wrote it and
-how many replies — that a click opens, and its header folds back. Delete
+and resolved. A resolved note takes no row: its tick opens it, and closes
+it again. Delete
 stands alone at the row's end, in red.
 
 **A verdict carries every open note of the repo**: in one atomic call on GitHub, and a

@@ -7,22 +7,22 @@ use super::{BETWEEN, Block, PADS, anchored, starts};
 use crate::views::session::Face;
 use crate::views::session::diff::wrap::wrapped;
 
-/// One note's block, on the rows of the file it is about.
+/// One note's block, on the rows of the file it is about; a hidden one takes none.
 pub(super) fn block(
     app: &AppState,
     view: Face,
-    (note, at, folded): (&Note, usize, bool),
+    (note, at, hidden): (&Note, usize, bool),
     cols: usize,
 ) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, view, anchor)?;
-    let said = if folded {
+    let said = if hidden {
         Vec::new()
     } else {
         wrapped(note, cols)
     };
-    let rows = match folded {
-        true => 1 + PADS,
+    let rows = match hidden {
+        true => 0,
         false => said.len().max(1) + BETWEEN + 1 + PADS,
     };
     Some(Block {
@@ -30,9 +30,8 @@ pub(super) fn block(
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
         rows,
         at: Some(at),
-        acts: !folded,
+        acts: !hidden,
         typing: 0,
-        folded,
         said,
     })
 }

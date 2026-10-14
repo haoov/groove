@@ -7,6 +7,7 @@ use super::*;
 mod folds;
 mod labels;
 mod lines;
+mod tiles;
 
 /// One note on `line` of the open file, said by `author`.
 fn note(line: u32, author: &str, body: &str) -> Note {
@@ -250,49 +251,6 @@ fn own(line: u32, body: &str) -> Note {
         resolved: false,
         said: vec![said("you", body)],
     }
-}
-
-/// Where the note's own marks stand in the surface.
-fn gutter_marks(app: &AppState) -> Vec<f32> {
-    let ui = on_diff();
-    let (frame, hits) = view(app, &ui, window(), &mut Fonts::embedded());
-    let code = hits.rect_of(&Target::Code).expect("the rows");
-    let shape = groove_ui_kit::base::mark::Mark::Note.shape();
-    frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.icons.iter())
-        .filter(|icon| icon.icon == shape && code.contains(icon.rect.x, icon.rect.y))
-        .map(|icon| icon.rect.x)
-        .collect()
-}
-
-#[test]
-fn the_notes_mark_ends_where_a_line_number_ends() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
-    let ui = on_diff();
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let code = hits.rect_of(&Target::Code).expect("the rows");
-    let numbers: Vec<f32> = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|run| code.contains(run.x, run.y) && super::numeral(&run.text))
-        .map(|run| run.x + width_of(&run.text, run.style))
-        .collect();
-    let ends = numbers.first().copied().expect("a line number");
-    let mark = gutter_marks(&app).first().copied().expect("the mark");
-    let size = Tokens::new(1.0).small;
-    assert!(
-        (mark + size - ends).abs() < 1.0,
-        "the mark ends where the numbers do: {} against {ends}",
-        mark + size
-    );
-}
-
-/// How wide a text run stands, measured as the frame measured it.
-fn width_of(text: &str, style: groove_gfx::TextStyle) -> f32 {
-    let mut fonts = Fonts::embedded();
-    fonts.measure(text, style.font, style.weight, style.size)
 }
 
 #[test]

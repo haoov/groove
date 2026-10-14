@@ -10,6 +10,15 @@ pub use self::gutter::{Block, Gutters, rule};
 
 use crate::base::ctx::{App, Ctx};
 
+/// What a line's notes say in its marks' column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tile {
+    /// How many open notes stand on it.
+    Open(usize),
+    /// Only resolved ones.
+    Resolved,
+}
+
 /// One row of code; `T` is what a click on its blame opens.
 pub struct Code<'a, T> {
     pub gutters: &'a [&'a str],
@@ -26,6 +35,8 @@ pub struct Code<'a, T> {
     pub part: (usize, usize),
     /// What a head's file added and removed.
     pub counts: Option<(u32, u32)>,
+    /// The notes a line carries, in its marks' column, and what a click on them opens.
+    pub tile: Option<(Tile, Option<T>)>,
     /// A side of a split row with no line on it.
     pub empty: bool,
     pub folded: bool,

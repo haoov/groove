@@ -13,9 +13,6 @@ pub struct Header {
     pub at: groove_types::Timestamp,
     /// A reply's header, ruled off from what stands above it.
     pub reply: bool,
-    pub replies: usize,
-    /// The note a click on a resolved one's header or fold acts on.
-    pub folds: Option<groove_types::NoteOrigin>,
 }
 
 /// A row of room a note keeps: above its card, below it, or ruled across it.
@@ -56,13 +53,10 @@ pub struct Noted<'a> {
     pub author: &'a str,
     /// The lines the note is about, on the row that opens it.
     pub lines: &'a str,
-    pub opens: bool,
     pub resolved: bool,
     /// The words as Markdown; the plain text is drawn when there is none.
     pub prose: Option<&'a groove_ui_kit::markdown::Row>,
     pub head: Option<&'a Header>,
-    /// A resolved note shown as one line.
-    pub folded: bool,
     /// A row of the field the words are typed in.
     pub field: Option<Field>,
 }

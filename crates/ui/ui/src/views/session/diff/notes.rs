@@ -7,12 +7,15 @@ use groove_types::{Anchor, Note};
 
 mod answer;
 mod block;
+mod tiles;
 
 use self::answer::answering;
 use self::block::block;
 use super::wrap::{Worded, cols_of};
 use crate::Ui;
 use crate::components::Room;
+
+pub(crate) use self::tiles::Tiled;
 use crate::views::session::Face;
 
 /// One note's rows, standing after the row its last line sits on.
@@ -27,8 +30,6 @@ struct Block {
     acts: bool,
     /// The rows of a reply being typed, in place of the buttons.
     typing: usize,
-    /// A resolved note shown as one line.
-    folded: bool,
     /// What each row of the note says, wrapped once for the frame.
     said: Vec<Worded>,
 }
@@ -54,10 +55,6 @@ pub(crate) enum Slot {
     /// What the note being typed offers: save and cancel.
     Footer {
         reply: bool,
-    },
-    /// A resolved note, folded to one line.
-    Folded {
-        at: usize,
     },
     /// A half row of room around a note's card, or across it.
     Pad {
@@ -93,8 +90,8 @@ impl Inline {
             .enumerate()
             .filter(|(_, note)| !written(note, over))
             .filter_map(|(at, note)| {
-                let folded = note.resolved && !ui.session.unfolded.contains(&note.origin);
-                block(app, view, (note, at, folded), cols_of(cols))
+                let hidden = note.resolved && !ui.session.unfolded.contains(&note.origin);
+                block(app, view, (note, at, hidden), cols_of(cols))
             })
             .collect();
         let answered = noting.and_then(|one| answering(app, one, &mut blocks));
@@ -109,7 +106,6 @@ impl Inline {
                 at: None,
                 acts: false,
                 typing,
-                folded: false,
                 said: Vec::new(),
             });
         }
@@ -172,7 +168,8 @@ impl Inline {
     pub(crate) fn notes(&self, code: usize) -> bool {
         self.blocks
             .iter()
-            .any(|block| block.at.is_some() && (block.from..=block.after).contains(&code))
+            .filter(|block| block.at.is_some() && block.rows > 0)
+            .any(|block| (block.from..=block.after).contains(&code))
     }
 
     /// Which of `slots` a note stands on.
@@ -220,9 +217,6 @@ impl Block {
                 _ => Slot::Footer { reply: false },
             };
         };
-        if self.folded {
-            return Slot::Folded { at };
-        }
         let said = self.said.len().max(1);
         match row.checked_sub(said + BETWEEN) {
             None if row < said => Slot::Note { at, row },

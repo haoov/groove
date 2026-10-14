@@ -9,7 +9,7 @@ use groove_types::Highlight;
 
 pub use self::header::{Composed, Field, Header, Noted, Room};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
-pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark, head_of};
+pub use groove_ui_kit::widgets::code::{Block, Gutters, Tile, head_mark, head_of};
 
 use self::row::draw;
 use crate::ctx::Ctx;
@@ -55,6 +55,8 @@ pub struct Line<'a> {
     /// The room above a note's card, or below it, where its edge runs.
     pub pad: Option<Room>,
     pub composed: Option<Composed>,
+    /// The notes this line carries, and the resolved one a click on them opens.
+    pub tile: Option<(Tile, Option<groove_types::NoteOrigin>)>,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -128,6 +130,7 @@ impl<'a> Line<'a> {
             empty: false,
             pad: None,
             composed: None,
+            tile: None,
             caret: None,
             held: None,
             found: &[],
@@ -158,6 +161,11 @@ impl<'a> Line<'a> {
     }
 
     /// A row of code a note stands on.
+    pub fn tile(mut self, tile: Option<(Tile, Option<groove_types::NoteOrigin>)>) -> Self {
+        self.tile = tile;
+        self
+    }
+
     pub fn noted(mut self, noted: bool) -> Self {
         self.noted = noted;
         self
