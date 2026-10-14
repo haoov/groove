@@ -145,11 +145,20 @@ fn lit_under(query: &str) -> Vec<String> {
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
-    let texts = frame.layers()[1].texts.iter();
-    texts
+    let layer = &frame.layers()[1];
+    let lit: Vec<_> = layer
+        .texts
+        .iter()
         .filter(|t| t.style.color == accent)
-        .map(|t| t.text.clone())
-        .collect()
+        .collect();
+    for text in &lit {
+        let under = layer
+            .quads
+            .iter()
+            .any(|q| q.color == accent && q.rect.x == text.x);
+        assert!(under, "{} is underlined", text.text);
+    }
+    lit.iter().map(|t| t.text.clone()).collect()
 }
 
 #[test]

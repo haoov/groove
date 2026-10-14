@@ -252,6 +252,11 @@ group with the best match first. A first word that starts a group's name keeps t
 whole and on top: `go` lists every Go entry, `git pu` finds Push.
 Enforced by `a_group_named_first_comes_first_and_whole`.
 
+**A step names what it asks.** An entry that asks several questions shows the current one,
+dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an empty field
+takes the last answer back into it, and on the first question returns to the entries.
+Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
+
 **One button says what to do now.** The commit box offers a single action — commit while
 something is staged, push while ahead, pull while behind, open an MR once the branch is
 landed and has none — with a caret beside it for everything else the worktree can do,

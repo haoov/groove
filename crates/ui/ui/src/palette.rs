@@ -5,6 +5,7 @@ mod entries;
 mod flow;
 mod grouped;
 mod marks;
+mod steps;
 
 use groove_controllers::{AppState, Command};
 
@@ -161,6 +162,7 @@ impl Palette {
         }
         match key {
             Key::Char(c) => self.query.insert(c),
+            Key::Backspace if self.query.is_empty() => self.back(),
             Key::Backspace => self.query.backspace(),
             Key::Delete => self.query.delete(),
             Key::Left => self.query.left(),
@@ -212,7 +214,8 @@ impl Palette {
                     (None, Action::ForceDelete) => groove_types::SessionId::new(""),
                     (None, _) => return Outcome::default(),
                 };
-                let flow = Flow::new(action, session);
+                let mut flow = Flow::new(action, session);
+                flow.from = (entry.label, self.query.text().to_string());
                 let refresh = flow.refresh(app);
                 self.flow = Some(flow);
                 self.reset();
@@ -221,73 +224,6 @@ impl Palette {
                     ..Outcome::default()
                 }
             }
-        }
-    }
-
-    /// The typed text or the picked option becomes the answer; the flow moves on or ends.
-    fn answer(&mut self, app: &AppState) -> Outcome {
-        let Some(prompt) = self.prompt(app) else {
-            return Outcome::default();
-        };
-        let picked = self
-            .options(app)
-            .into_iter()
-            .nth(self.selected)
-            .map(|(_, value)| value);
-        let value = match picked {
-            Some(value)
-                if !prompt.options.is_empty() && !(self.query.is_empty() && prompt.allow_empty) =>
-            {
-                value
-            }
-            _ if prompt.free || (prompt.allow_empty && self.query.is_empty()) => {
-                self.query.text().to_string()
-            }
-            _ => return Outcome::default(),
-        };
-        if value.is_empty() && !prompt.allow_empty {
-            return Outcome::default();
-        }
-        let Some(flow) = self.flow.as_mut() else {
-            return Outcome::default();
-        };
-        flow.answers.push(value);
-        self.reset();
-        let Some(flow) = self.flow.as_ref() else {
-            return Outcome::default();
-        };
-        if flow.prompt(app).is_some() {
-            return Outcome {
-                commands: flow.refresh(app).into_iter().collect(),
-                ..Outcome::default()
-            };
-        }
-        let command = flow.command();
-        self.flow = None;
-        Outcome {
-            commands: command.into_iter().collect(),
-            close: true,
-            ..Outcome::default()
-        }
-    }
-
-    /// Back one prompt; out of the flow; closed.
-    fn escape(&mut self) -> Outcome {
-        match self.flow.as_mut() {
-            Some(flow) if !flow.answers.is_empty() => {
-                flow.answers.pop();
-                self.reset();
-                Outcome::default()
-            }
-            Some(_) => {
-                self.flow = None;
-                self.reset();
-                Outcome::default()
-            }
-            None => Outcome {
-                close: true,
-                ..Outcome::default()
-            },
         }
     }
 

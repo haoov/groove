@@ -134,10 +134,7 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
     );
     typed_into(&mut palette, "git@github.com:o/new.git", &app);
     palette.key(Key::Enter, &app);
-    assert_eq!(
-        palette.prompt(&app).unwrap().label,
-        "branch, empty for the default"
-    );
+    assert_eq!(palette.prompt(&app).unwrap().label, "branch");
     palette.key(Key::Enter, &app);
     assert!(palette.prompt(&app).unwrap().allow_empty);
     let done = palette.key(Key::Enter, &app);
@@ -164,7 +161,7 @@ fn add_repo_picks_from_the_pool_or_clones_from_a_url() {
     palette.key(Key::Enter, &app);
     assert_eq!(
         palette.prompt(&app).unwrap().label,
-        "branch, empty for the default",
+        "branch",
         "a picked repo skips the URL"
     );
     typed_into(&mut palette, "feat/x", &app);
@@ -248,10 +245,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .iter()
         .map(|t| t.text.clone())
         .collect();
-    assert!(
-        texts.iter().any(|t| t.starts_with("worktree: ")),
-        "{texts:?}"
-    );
+    assert_eq!(texts[0], "worktree", "the step, dimmed at the left");
     assert!(texts.iter().any(|t| t == "mayo · explorer/alpha"));
     let run = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(run[0].id(), "session.close_worktree");
@@ -375,4 +369,60 @@ fn a_paste_lands_at_the_caret_and_the_arrows_still_move_the_selection() {
     assert_eq!(ui.palette().map(|one| one.selected), Some(1));
     keyed(&mut ui, &app, &[Key::Char('e'), Key::Escape]);
     assert!(ui.palette().is_none(), "escape still closes it");
+}
+
+#[test]
+fn backspace_on_an_empty_query_takes_the_last_answer_back() {
+    let app = full_app();
+    let mut palette = Palette::default();
+    typed_into(&mut palette, "add work", &app);
+    palette.key(Key::Enter, &app);
+    let repo = palette.options(&app)[0].0.clone();
+    palette.key(Key::Enter, &app);
+    let flow = palette.flow.as_ref().expect("a flow");
+    assert_eq!(flow.from.0, "Add worktree");
+    assert_eq!(flow.said, [repo.as_str()], "the answer as its option reads");
+    palette.key(Key::Backspace, &app);
+    assert!(palette.flow.as_ref().unwrap().answers.is_empty());
+    assert_eq!(palette.query.text(), repo, "back in the field to fix");
+    typed_into(&mut palette, "x", &app);
+    assert_eq!(palette.query.text(), format!("{repo}x"), "typing goes on");
+    for _ in 0..=repo.chars().count() {
+        palette.key(Key::Backspace, &app);
+    }
+    assert!(
+        palette.query.is_empty() && palette.flow.is_some(),
+        "a plain delete first"
+    );
+    palette.key(Key::Backspace, &app);
+    assert!(palette.flow.is_none(), "out of the flow");
+    assert_eq!(
+        palette.query.text(),
+        "add work",
+        "the query that picked the entry"
+    );
+}
+
+#[test]
+fn the_input_line_names_the_step_it_answers() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    typed("add work", &mut ui, &app);
+    let first = |ui: &Ui| {
+        let (frame, _) = view(
+            &app,
+            ui,
+            metrics(1280, 800, 1.0),
+            &mut groove_gfx::Fonts::embedded(),
+        );
+        frame.layers()[1].texts[0].text.clone()
+    };
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert_eq!(first(&ui), "repo");
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert_eq!(first(&ui), "branch");
+    typed("fix/x", &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert_eq!(first(&ui), "target");
 }

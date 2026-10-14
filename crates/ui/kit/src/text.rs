@@ -21,7 +21,7 @@ pub fn row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, indent: f32, text: &str, st
     });
 }
 
-/// A row with the characters in `lit` drawn in `lit_style`.
+/// A row with the characters in `lit` drawn in `lit_style`, underlined.
 pub fn lit_row<A: App>(
     ctx: &mut Ctx<'_, A>,
     (rect, indent): (Rect, f32),
@@ -41,14 +41,20 @@ pub fn lit_row<A: App>(
         if start >= end {
             continue;
         }
-        pieces.push((from..start, style));
-        pieces.push((start..end, lit_style));
+        pieces.push((from..start, style, false));
+        pieces.push((start..end, lit_style, true));
         from = end;
     }
-    pieces.push((from..text.len(), style));
+    pieces.push((from..text.len(), style, false));
     ctx.clipped(rect, |ctx| {
-        for (range, style) in pieces.into_iter().filter(|(range, _)| !range.is_empty()) {
+        let under = rect.y + (rect.h + style.size) / 2.0;
+        for (range, style, lit) in pieces.into_iter().filter(|(range, ..)| !range.is_empty()) {
             let x = rect.x + indent + ctx.measure(&text[..range.start], &style);
+            if lit {
+                let wide = ctx.measure(&text[range.clone()], &style);
+                let line = Rect::new(x, under, wide, ctx.tokens.hairline);
+                ctx.quad(line, style.color);
+            }
             ctx.text(&text[range], x, rect.y, rect.h, style);
         }
     });

@@ -77,6 +77,10 @@ pub struct Flow {
     pub action: Action,
     pub session: SessionId,
     pub answers: Vec<String>,
+    /// Each answer as the breadcrumb shows it.
+    pub said: Vec<String>,
+    /// The entry that started it, and the palette's query then; empty from a picker.
+    pub from: (String, String),
 }
 
 impl Flow {
@@ -85,7 +89,20 @@ impl Flow {
             action,
             session,
             answers: Vec::new(),
+            said: Vec::new(),
+            from: (String::new(), String::new()),
         }
+    }
+
+    pub fn answer(&mut self, value: String, said: String) {
+        self.answers.push(value);
+        self.said.push(said);
+    }
+
+    /// The last answer taken back, as it was said.
+    pub fn unanswer(&mut self) -> Option<String> {
+        self.answers.pop()?;
+        self.said.pop()
     }
 
     /// The next question, or `None` when every answer is in.
@@ -102,7 +119,7 @@ impl Flow {
             (Action::AddRepo, 0) => Some(Prompt::choose("repo", pool_choices(app, open))),
             (Action::AddRepo, 1) if self.cloning() => Some(Prompt::text("git URL", false)),
             (Action::AddRepo, n) if n == 1 + usize::from(self.cloning()) => {
-                Some(Prompt::text("branch, empty for the default", true))
+                Some(Prompt::text("branch", true))
             }
             (Action::AddRepo, n) if n == 2 + usize::from(self.cloning()) => {
                 Some(base_prompt(app, &RepoId::new(self.repo_name())))
@@ -261,7 +278,7 @@ fn base_prompt(app: &AppState, repo: &RepoId) -> Prompt {
         .map(|(_, heads)| heads.iter().map(|h| (h.clone(), h.clone())).collect())
         .unwrap_or_default();
     Prompt {
-        label: "base, empty for the repo's default",
+        label: "target",
         options: heads,
         free: true,
         allow_empty: true,

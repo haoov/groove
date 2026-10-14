@@ -23,6 +23,26 @@ pub fn input_at<A: App>(
     hairline(ctx, rect, line);
 }
 
+/// An input line led by the step it answers, dimmed; `hint` stands in an empty field.
+pub fn stepped_input<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    step: &str,
+    (text, before, hint): (&str, &str, Option<&str>),
+) {
+    let (style, faint) = (ctx.styles.body(Role::Text), ctx.styles.body(Role::Faint));
+    let pad = ctx.tokens.md;
+    row(ctx, rect, pad, step, faint);
+    let at = pad + ctx.measure(step, &faint) + pad;
+    match (text.is_empty(), hint) {
+        (true, Some(hint)) => row(ctx, rect, at, hint, faint),
+        _ => row(ctx, rect, at, text, style),
+    }
+    caret_after(ctx, rect, at, before, style);
+    let line = ctx.styles.line();
+    hairline(ctx, rect, line);
+}
+
 /// The caret of a line typed in `style`, `indent` into `rect`, after `before`.
 pub fn caret_after<A: App>(
     ctx: &mut Ctx<'_, A>,

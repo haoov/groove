@@ -320,7 +320,7 @@ fn a_picker_asks_for_a_query_only_once_it_is_worth_one() {
             .layers()
             .iter()
             .flat_map(|layer| layer.texts.iter())
-            .any(|run| run.text.starts_with("worktree:"))
+            .any(|run| run.text == "worktree" || run.text == "a")
     };
     assert!(!shown(&ui), "two worktrees need no filter");
     if let Some(palette) = ui.palette_mut() {
