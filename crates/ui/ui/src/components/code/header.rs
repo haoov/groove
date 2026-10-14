@@ -1,5 +1,9 @@
 //! What frames a note's words: the header a comment opens on, the room around the card.
 
+use groove_controllers::delivery_service::BY_USER;
+use groove_types::Note;
+use groove_ui_kit::base::style::Role;
+
 #[derive(Debug, Clone, Default)]
 pub struct Header {
     pub initials: String,
@@ -59,4 +63,59 @@ pub struct Noted<'a> {
     pub head: Option<&'a Header>,
     /// A row of the field the words are typed in.
     pub field: Option<Field>,
+}
+
+impl Header {
+    /// The header of `note`'s comment `at`, standing on `lines`.
+    pub fn of(note: &Note, at: usize, lines: String) -> Self {
+        let Some(said) = note.said.get(at) else {
+            return Self::default();
+        };
+        let label = groove_types::labelled(&said.body).map(|one| {
+            let decorations = one.decorations.iter().map(|one| one.to_string());
+            (one.label.to_string(), decorations.collect())
+        });
+        let author = match said.author.as_str() {
+            BY_USER => "me",
+            other => other,
+        };
+        Self {
+            initials: initials(author),
+            author: author.to_string(),
+            source: if note.is_local() { "local" } else { "MR" },
+            label,
+            lines,
+            at: said.at,
+            reply: at > 0,
+        }
+    }
+}
+
+/// Two capitals for a name: its first two words' first letters, or a lone word's first two.
+fn initials(name: &str) -> String {
+    let words: Vec<&str> = name
+        .split(|one: char| !one.is_alphanumeric())
+        .filter(|one| !one.is_empty())
+        .collect();
+    let letters: String = match words.as_slice() {
+        [one] => one.chars().take(2).collect(),
+        many => many
+            .iter()
+            .take(2)
+            .filter_map(|word| word.chars().next())
+            .collect(),
+    };
+    letters.to_uppercase()
+}
+
+/// The colour a Conventional Comments label reads in.
+pub fn label_role(label: &str) -> Role {
+    match label {
+        "issue" => Role::Bad,
+        "suggestion" => Role::Working,
+        "question" => Role::Attention,
+        "todo" => Role::Warn,
+        "praise" => Role::Ok,
+        _ => Role::Faint,
+    }
 }

@@ -7,7 +7,6 @@ use super::wrap::Worded;
 use crate::Ui;
 use crate::components::{Composed, Field, Header};
 use crate::views::session::{Noting, Writing};
-use groove_controllers::delivery_service::BY_USER;
 
 #[derive(Default)]
 pub(super) struct Words {
@@ -101,48 +100,11 @@ fn composed(noting: &Noting, slot: Slot) -> Composed {
     }
 }
 
-/// The header of a note's comment `at`: who, from where, its label, its lines, when.
+/// The header of a note's comment `at`, its lines on the opening one.
 fn header(note: &groove_types::Note, at: usize) -> Header {
-    let Some(said) = note.said.get(at) else {
-        return Header::default();
+    let lines = match at {
+        0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
+        _ => String::new(),
     };
-    let label = groove_types::labelled(&said.body).map(|one| {
-        (
-            one.label.to_string(),
-            one.decorations.iter().map(|one| one.to_string()).collect(),
-        )
-    });
-    let author = match said.author.as_str() {
-        BY_USER => "me",
-        other => other,
-    };
-    Header {
-        initials: initials(author),
-        author: author.to_string(),
-        source: if note.is_local() { "local" } else { "MR" },
-        label,
-        lines: match at {
-            0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
-            _ => String::new(),
-        },
-        at: said.at,
-        reply: at > 0,
-    }
-}
-
-/// Two capitals for a name: its first two words' first letters, or a lone word's first two.
-fn initials(name: &str) -> String {
-    let words: Vec<&str> = name
-        .split(|one: char| !one.is_alphanumeric())
-        .filter(|one| !one.is_empty())
-        .collect();
-    let letters: String = match words.as_slice() {
-        [one] => one.chars().take(2).collect(),
-        many => many
-            .iter()
-            .take(2)
-            .filter_map(|word| word.chars().next())
-            .collect(),
-    };
-    letters.to_uppercase()
+    Header::of(note, at, lines)
 }

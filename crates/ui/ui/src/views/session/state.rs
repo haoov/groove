@@ -68,6 +68,8 @@ pub struct SessionUi {
     pub noting: Option<Noting>,
     /// The resolved notes opened out of their fold.
     pub unfolded: Vec<groove_types::NoteOrigin>,
+    /// Which notes the sidebar's list shows.
+    pub showing: Showing,
     pub resources: crate::views::session::resources::ResourcesUi,
     /// The Resources tab of each other session, as it was left.
     pub resources_of: std::collections::BTreeMap<
@@ -130,6 +132,36 @@ impl Pane {
             Pane::Files => "changed",
             Pane::Commits => "commits",
             Pane::Notes => "notes",
+        }
+    }
+}
+
+/// Which of the session's notes the sidebar lists.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Showing {
+    #[default]
+    Open,
+    Resolved,
+    All,
+}
+
+impl Showing {
+    pub const ALL: [Showing; 3] = [Showing::Open, Showing::Resolved, Showing::All];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Showing::Open => "open",
+            Showing::Resolved => "resolved",
+            Showing::All => "all",
+        }
+    }
+
+    /// Whether a note this resolved stands in the list.
+    pub fn lists(self, resolved: bool) -> bool {
+        match self {
+            Showing::Open => !resolved,
+            Showing::Resolved => resolved,
+            Showing::All => true,
         }
     }
 }

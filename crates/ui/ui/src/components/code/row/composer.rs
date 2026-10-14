@@ -2,8 +2,8 @@
 
 use groove_gfx::Rect;
 
-use super::super::Composed;
-use super::note::{label_role, slotted};
+use super::super::{Composed, label_role};
+use super::note::slotted;
 use crate::ctx::Ctx;
 use crate::hit::{Composing, Target};
 use groove_ui_kit::base::style::Role;

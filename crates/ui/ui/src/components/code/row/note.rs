@@ -2,7 +2,7 @@
 
 use groove_gfx::Rect;
 
-use super::super::{Acting, Header, Line, Noted, Room};
+use super::super::{Acting, Header, Line, Noted, Room, label_role};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
 use groove_ui_kit::base::ground::Ground;
@@ -82,18 +82,6 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
         at = Badge::new(decoration, Role::Faint)
             .at(ctx, line, at + ctx.tokens.xs)
             .right();
-    }
-}
-
-/// The colour a Conventional Comments label reads in.
-pub(super) fn label_role(label: &str) -> Role {
-    match label {
-        "issue" => Role::Bad,
-        "suggestion" => Role::Working,
-        "question" => Role::Attention,
-        "todo" => Role::Warn,
-        "praise" => Role::Ok,
-        _ => Role::Faint,
     }
 }
 

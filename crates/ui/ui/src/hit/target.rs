@@ -136,6 +136,8 @@ pub enum Target {
     Group(String),
     /// Which of the sidebar's lists is up.
     Pane(crate::views::session::Pane),
+    /// Which notes the sidebar's list shows.
+    Showing(crate::views::session::Showing),
     /// One note of the sidebar's list, which a click opens the line of.
     NoteAt(usize),
     /// One commit of the sidebar's list, which a click shows the change of.

@@ -7,7 +7,7 @@ mod row;
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
-pub use self::header::{Composed, Field, Header, Noted, Room};
+pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, Tile, head_mark, head_of};
 

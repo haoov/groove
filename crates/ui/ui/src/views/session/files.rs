@@ -47,27 +47,36 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         heading::showing(ctx, head, one);
         column = rest;
     }
-    if ui.session.tab == Tab::Files {
-        return changed_files(ctx, column, app, ui);
-    }
     let [strip, column] = column_in(column, [tall(ctx.tokens.row + ctx.tokens.sm), Spec::fill()]);
     panes(ctx, strip, app, ui);
-    match ui.session.pane {
-        Pane::Files => changed_files(ctx, column, app, ui),
-        Pane::Commits => commits::draw(ctx, column, app, ui),
-        Pane::Notes => notes::draw(ctx, column, app, ui),
+    match (ui.session.pane, ui.session.tab) {
+        (Pane::Notes, _) => notes::draw(ctx, column, app, ui),
+        (Pane::Commits, Tab::Diff) => commits::draw(ctx, column, app, ui),
+        _ => changed_files(ctx, column, app, ui),
     }
 }
 
-/// The three lists the sidebar offers, the one up lit and counted.
+/// The lists a tab's sidebar offers: the change's in the diff, the tree's beside the files.
+fn offered(ui: &Ui) -> &'static [Pane] {
+    match ui.session.tab {
+        Tab::Diff => &Pane::ALL,
+        _ => &[Pane::Files, Pane::Notes],
+    }
+}
+
+/// The lists the sidebar offers, the one up lit and counted.
 fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
-    let labels: Vec<String> = Pane::ALL.iter().map(|pane| labelled(app, *pane)).collect();
+    let offered = offered(ui);
+    let labels: Vec<String> = offered
+        .iter()
+        .map(|pane| labelled(app, ui, *pane))
+        .collect();
     let shown: Vec<(&str, Target)> = labels
         .iter()
-        .zip(Pane::ALL)
-        .map(|(label, pane)| (label.as_str(), Target::Pane(pane)))
+        .zip(offered)
+        .map(|(label, pane)| (label.as_str(), Target::Pane(*pane)))
         .collect();
-    let at = Pane::ALL
+    let at = offered
         .iter()
         .position(|pane| *pane == ui.session.pane)
         .unwrap_or(0);
@@ -75,7 +84,10 @@ fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
 }
 
 /// A list's own name, with what it holds when it holds anything.
-fn labelled(app: &AppState, pane: Pane) -> String {
+fn labelled(app: &AppState, ui: &Ui, pane: Pane) -> String {
+    if pane == Pane::Files && ui.session.tab != Tab::Diff {
+        return "files".to_string();
+    }
     match counted(app, pane) {
         0 => pane.label().to_string(),
         n => format!("{} · {n}", pane.label()),
@@ -91,7 +103,7 @@ fn counted(app: &AppState, pane: Pane) -> usize {
             .delivery
             .shown
             .iter()
-            .filter(|one| !one.resolved && notes::listed(one))
+            .filter(|one| !one.resolved)
             .count(),
     }
 }

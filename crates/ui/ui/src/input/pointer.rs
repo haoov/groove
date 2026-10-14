@@ -164,7 +164,7 @@ fn acted(
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
-        Some(Target::Pane(pane)) => paned(ui, pane),
+        Some(target @ (Target::Pane(_) | Target::Showing(_))) => paned(ui, target),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
         Some(Target::Blamed(sha)) => blamed(ui, sha),
