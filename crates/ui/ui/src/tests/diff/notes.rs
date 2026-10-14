@@ -5,6 +5,7 @@ use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
 use super::*;
 
 mod folds;
+mod labels;
 mod lines;
 
 /// One note on `line` of the open file, said by `author`.

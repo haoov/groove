@@ -172,8 +172,8 @@ fn a_reply_is_typed_inside_the_thread_s_card_in_place_of_its_buttons() {
     typed("fixed", &mut ui, &app);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        before,
-        "one line of reply takes the row the buttons stood on, and no card of its own"
+        before + 1,
+        "one line of reply and its buttons where the buttons stood, and no card of its own"
     );
     let drawn = row_texts(&app, &ui);
     let at = |text: &str| drawn.iter().position(|one| one == text);

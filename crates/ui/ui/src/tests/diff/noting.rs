@@ -1,6 +1,7 @@
 //! Leaving a note: the menu a right click opens, the words typed in place, the note
 //! the keyboard asks for.
 
+mod composer;
 mod forged;
 mod typing;
 
@@ -133,8 +134,8 @@ fn a_note_being_typed_takes_a_row_of_its_own() {
     ui.focus = crate::Focus::Workspace;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        rows + 3,
-        "the note being typed takes its row, and room above and below"
+        rows + 6,
+        "its chips, its row, a rule, its buttons, and room above and below"
     );
 }
 
@@ -369,8 +370,8 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        with_note - 3,
-        "the typed row stands in place of the note's header, words and buttons"
+        with_note,
+        "the composer stands in place of the note's header, words and buttons"
     );
 }
 

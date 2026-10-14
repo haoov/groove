@@ -191,7 +191,7 @@ fn window() -> Metrics {
     metrics(WINDOW.0, WINDOW.1, 1.0)
 }
 
-fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
+pub(crate) fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
     let design = crate::Tokens::new(1.0);
     Metrics {
         size: Size::new(w, h),

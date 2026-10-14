@@ -147,6 +147,7 @@ fn acted(
         Some(Target::Code) => selecting(point, ui, app, hits, metrics),
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
         Some(Target::Note(origin, button)) => surface::noted(ui, app, origin, button),
+        Some(Target::Compose(asked)) => surface::composing(ui, asked),
         Some(Target::Head(path)) => folded(ui, app, metrics, path),
         Some(Target::Gap { row, way }) => one(workspace::Command::OpenGap { row, way }),
         Some(Target::Term(term)) => narrowing(ui, term),

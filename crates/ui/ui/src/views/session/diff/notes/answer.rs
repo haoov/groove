@@ -19,7 +19,7 @@ pub(super) fn answering(app: &AppState, noting: &Noting, blocks: &mut [Block]) -
             .is_some_and(|note| note.origin == NoteOrigin::Thread(thread.clone()))
     })?;
     let typing = noting.buffer.text().split('\n').count();
-    block.rows += typing - 1;
+    block.rows += typing;
     block.typing = typing;
     block.acts = false;
     block.at

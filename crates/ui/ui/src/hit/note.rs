@@ -26,3 +26,12 @@ impl NoteButton {
         }
     }
 }
+
+/// What the composer of a note offers: a label, a decoration, save and cancel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Composing {
+    Label(&'static str),
+    Decoration(&'static str),
+    Save,
+    Cancel,
+}

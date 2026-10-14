@@ -236,6 +236,8 @@ pub enum Target {
     Agent,
     /// One button of a note's own row.
     Note(groove_types::NoteOrigin, NoteButton),
+    /// What the composer of the note being typed offers.
+    Compose(super::Composing),
 }
 
 impl Target {

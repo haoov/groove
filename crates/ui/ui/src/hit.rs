@@ -3,7 +3,7 @@
 mod note;
 mod target;
 
-pub use note::NoteButton;
+pub use note::{Composing, NoteButton};
 pub use target::Target;
 
 use groove_gfx::Rect;

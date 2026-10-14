@@ -6,9 +6,11 @@ use groove_controllers::AppState;
 use groove_types::{Anchor, Note};
 
 mod answer;
+mod block;
 
 use self::answer::answering;
-use super::wrap::{Worded, cols_of, wrapped};
+use self::block::block;
+use super::wrap::{Worded, cols_of};
 use crate::Ui;
 use crate::components::Room;
 use crate::views::session::Face;
@@ -45,6 +47,12 @@ pub(crate) enum Slot {
     /// A row of the words being typed; `reply` when they answer the note they stand in.
     Typed {
         row: usize,
+        reply: bool,
+    },
+    /// The labels and decorations a note being written picks from.
+    Chips,
+    /// What the note being typed offers: save and cancel.
+    Footer {
         reply: bool,
     },
     /// A resolved note, folded to one line.
@@ -93,13 +101,14 @@ impl Inline {
         if let Some(noting) = noting.filter(|_| answered.is_none())
             && let Some(after) = anchored(app, view, &noting.anchor)
         {
+            let typing = noting.buffer.text().split('\n').count();
             blocks.push(Block {
                 after,
                 from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: noting.buffer.text().split('\n').count() + PADS,
+                rows: 1 + typing + BETWEEN + 1 + PADS,
                 at: None,
                 acts: false,
-                typing: 0,
+                typing,
                 folded: false,
                 said: Vec::new(),
             });
@@ -199,7 +208,17 @@ impl Block {
         }
         let row = row - 1;
         let Some(at) = self.at else {
-            return Slot::Typed { row, reply: false };
+            return match row {
+                0 => Slot::Chips,
+                row if row <= self.typing => Slot::Typed {
+                    row: row - 1,
+                    reply: false,
+                },
+                row if row == self.typing + BETWEEN => Slot::Pad {
+                    room: Room::Between,
+                },
+                _ => Slot::Footer { reply: false },
+            };
         };
         if self.folded {
             return Slot::Folded { at };
@@ -210,7 +229,8 @@ impl Block {
             None => Slot::Pad {
                 room: Room::Between,
             },
-            Some(row) if self.typing > 0 => Slot::Typed { row, reply: true },
+            Some(row) if row < self.typing => Slot::Typed { row, reply: true },
+            Some(_) if self.typing > 0 => Slot::Footer { reply: true },
             Some(_) => Slot::Acts { at },
         }
     }
@@ -219,36 +239,6 @@ impl Block {
 /// Whether this note is the one being written again.
 fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
     over.is_some_and(|id| note.id() == Some(id))
-}
-
-/// One note's block, on the rows of the file it is about.
-fn block(
-    app: &AppState,
-    view: Face,
-    (note, at, folded): (&Note, usize, bool),
-    cols: usize,
-) -> Option<Block> {
-    let anchor = note.anchor.as_ref()?;
-    let after = anchored(app, view, anchor)?;
-    let said = if folded {
-        Vec::new()
-    } else {
-        wrapped(note, cols)
-    };
-    let rows = match folded {
-        true => 1 + PADS,
-        false => said.len().max(1) + BETWEEN + 1 + PADS,
-    };
-    Some(Block {
-        after,
-        from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows,
-        at: Some(at),
-        acts: !folded,
-        typing: 0,
-        folded,
-        said,
-    })
 }
 
 /// The anchor's own first line, as an anchor of its own.

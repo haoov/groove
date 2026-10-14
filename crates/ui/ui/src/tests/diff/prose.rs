@@ -22,8 +22,9 @@ fn noted(body: &str) -> AppState {
 
 #[test]
 fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
-    let app =
-        noted("**issue (blocking):** use `drop` [here](https://example.com/a)\n\n- [ ] then this");
+    let app = noted(
+        "**issue (blocking):** **always** use `drop` [here](https://example.com/a)\n\n- [ ] then this",
+    );
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -38,7 +39,9 @@ fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
                 )
             })
     };
-    assert_eq!(run("issue (blocking):").style.weight, Weight::Bold);
+    run("issue");
+    run("blocking");
+    assert_eq!(run("always").style.weight, Weight::Bold);
     assert_eq!(run("drop").style.font, Font::Mono);
     run("then this");
     assert!(

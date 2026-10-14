@@ -1,5 +1,6 @@
 //! A note being typed in the surface, and what its words become.
 
+use groove_controllers::delivery::{self, NoteAct, ThreadAct};
 use groove_controllers::workspace_service::Buffer;
 use groove_types::Anchor;
 
@@ -70,5 +71,24 @@ impl Noting {
     /// What the note says, with nothing around it.
     pub fn said(&self) -> String {
         self.buffer.text().trim().to_string()
+    }
+
+    /// What its words ask of the session's notes, or nothing while they say nothing.
+    pub fn sent(&self) -> Option<delivery::Command> {
+        let said = self.said();
+        if said.is_empty() {
+            return None;
+        }
+        let act = match self.writing.clone() {
+            Writing::Over(id) => delivery::Command::Note(NoteAct::Update { id, content: said }),
+            Writing::Reply(thread) => {
+                delivery::Command::Thread(ThreadAct::Reply { thread, body: said })
+            }
+            Writing::New => delivery::Command::Note(NoteAct::Create {
+                anchor: self.anchor.clone(),
+                content: said,
+            }),
+        };
+        Some(act)
     }
 }

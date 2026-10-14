@@ -8,7 +8,7 @@ use crate::hit::{NoteButton, Target};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{box_in, card_row, top_rule};
+use groove_ui_kit::shape::{box_in, card_row, framed, top_rule};
 use groove_ui_kit::text::{Label, ago, elide, row};
 use groove_ui_kit::widgets::code::Block;
 use groove_ui_kit::widgets::{Badge, Button, caret, typed_line};
@@ -47,6 +47,13 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, 
         line.h,
     );
     groove_ui_kit::shape::ground(ctx, field, Ground::Deep);
+    if let Some(edge) = said.field {
+        let colour = match edge.lit {
+            true => ctx.styles.color(Role::Accent),
+            false => ctx.styles.line(),
+        };
+        framed(ctx, field, (edge.first, edge.last), colour);
+    }
     let text = elide(ctx, code.text, &words, rect.w);
     typed_line(ctx, rect, (&text, words), (code.caret, code.held));
 }
@@ -75,12 +82,16 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
     Label::new(&head.initials, ctx.styles.initials(Role::Muted)).draw(ctx, initials);
     Label::new(&head.author, ctx.styles.label(role)).left(ctx, &mut room, ctx.tokens.sm);
     Label::new(head.source, faint).left(ctx, &mut room, ctx.tokens.sm);
-    let Some((label, decoration)) = head.label.as_ref() else {
+    let Some((label, decorations)) = head.label.as_ref() else {
         return;
     };
-    let chip = Badge::new(label, label_role(label)).at(ctx, line, room.x);
-    if let Some(decoration) = decoration {
-        Badge::new(decoration, Role::Faint).at(ctx, line, chip.right() + ctx.tokens.xs);
+    let mut at = Badge::new(label, label_role(label))
+        .at(ctx, line, room.x)
+        .right();
+    for decoration in decorations {
+        at = Badge::new(decoration, Role::Faint)
+            .at(ctx, line, at + ctx.tokens.xs)
+            .right();
     }
 }
 
@@ -120,7 +131,7 @@ fn folded(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
 }
 
 /// The colour a Conventional Comments label reads in.
-fn label_role(label: &str) -> Role {
+pub(super) fn label_role(label: &str) -> Role {
     match label {
         "issue" => Role::Bad,
         "suggestion" => Role::Working,
@@ -148,7 +159,7 @@ pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, gutter: Block) {
 }
 
 /// A note's row on the deepest ground, and where its card stands on it.
-fn slotted(ctx: &mut Ctx, line: Rect, gutter: Block) -> Rect {
+pub(super) fn slotted(ctx: &mut Ctx, line: Rect, gutter: Block) -> Rect {
     groove_ui_kit::shape::ground(ctx, line, Ground::Deep);
     card(ctx, line, gutter)
 }

@@ -148,7 +148,7 @@ fn a_view_draws_through_the_context() {
 
 /// The view files that keep fixed math: list rows and cell grids inside the box they get,
 /// and the grab bands that straddle a boundary.
-const KEPT_BY_HAND: [&str; 18] = [
+const KEPT_BY_HAND: [&str; 19] = [
     "views/splitter.rs",
     "views/board/plan.rs",
     "components/delivery.rs",
@@ -167,6 +167,7 @@ const KEPT_BY_HAND: [&str; 18] = [
     "views/session/manual.rs",
     "components/code.rs",
     "components/code/row/note.rs",
+    "components/code/row/composer.rs",
 ];
 
 /// What cuts a rect or places a box by hand.

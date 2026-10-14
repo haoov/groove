@@ -295,7 +295,7 @@ fn a_note_is_written_again_and_resolved_by_its_id() {
             .notes_of(&groove_types::SessionId::new(&id))
             .unwrap_or_default()
             .first()
-            .is_some_and(|one| one.content == "issue: two")
+            .is_some_and(|one| one.content == "issue (agent): two")
     });
 
     let done = asked(

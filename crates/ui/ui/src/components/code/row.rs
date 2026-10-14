@@ -1,7 +1,9 @@
 //! One row drawn: a note's own rows here, every other row through the kit.
 
+mod composer;
 mod note;
 
+use self::composer::composer;
 use self::note::{acts, note, padded};
 
 use groove_gfx::Rect;
@@ -14,6 +16,9 @@ use crate::hit::Target;
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if code.covered {
         return;
+    }
+    if let Some(composed) = code.composed.as_ref() {
+        return composer(ctx, line, composed, gutter);
     }
     if let Some(room) = code.pad {
         return padded(ctx, line, room, gutter);

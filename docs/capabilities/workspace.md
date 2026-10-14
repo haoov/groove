@@ -74,7 +74,11 @@ notes and the MR's threads as one list.
 in a card from the code's column, with its buttons under it. Each comment opens on a
 header: the author's initials and name, where the note lives, its Conventional Comments
 label and decoration, its lines and its age. Its words are typed on the same kind of buffer a file is, so a
-caret, a selection, an undo and the clipboard work there too.
+caret, a selection, an undo and the clipboard work there too. Around it, a composer: the
+Conventional Comments labels to pick from, which write the label into the words, its
+decorations once a label is chosen, and save and cancel. Its field's edge lights while it
+has the keyboard. A label reads plain or bold, and carries its decorations as a list; a note the
+agent writes carries the `agent` decoration.
 
 **What a note offers depends on what holds it.** A note of the session is written again,
 resolved, deleted, or posted where the worktree has an MR; posting resolves the local
