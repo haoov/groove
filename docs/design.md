@@ -159,7 +159,7 @@ attaches it first when the session does not hold it. A title or a label too long
 line is cut with an ellipsis; the header never wraps; a tab's status badges keep their room
 before the cut, and a badge with no room left is dropped.
 
-**Tabs.** `OVERVIEW · DIFF · FILES · KUBERNETES`, the last while the session holds a cluster.
+**Tabs.** `Overview · Diff · Files · Kubernetes`, the last while the session holds a cluster.
 
 | Tab | Shows | Sidebar |
 |---|---|---|

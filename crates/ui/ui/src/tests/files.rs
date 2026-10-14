@@ -362,7 +362,7 @@ fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
 fn the_strip_names_the_three_tabs_the_workspace_has() {
     let app = with_files(&["src/one/alpha.rs"]);
     let (texts, _) = render(&app, &on_diff(), window());
-    for tab in ["OVERVIEW", "DIFF", "FILES"] {
+    for tab in ["Overview", "Diff", "Files"] {
         assert!(texts.iter().any(|one| one == tab), "{tab}: {texts:?}");
     }
 }
