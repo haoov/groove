@@ -186,3 +186,8 @@ fn in_draft(key: Key, mods: Modifiers, draft: &mut Draft) -> Vec<Command> {
     }
     Vec::new()
 }
+
+/// What a keymap action does, as its chord does it.
+pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    app::run(action, ui, app)
+}

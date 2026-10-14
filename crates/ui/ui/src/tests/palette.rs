@@ -9,7 +9,11 @@ use crate::tests::{app, full_app, metrics, press, typed, typed_into, with_repo};
 use crate::{Ui, view};
 
 fn labels(app: &AppState) -> Vec<String> {
-    entries(app).into_iter().map(|e| e.label).collect()
+    entries(app)
+        .into_iter()
+        .filter(|e| matches!(e.group, "Session" | "Config"))
+        .map(|e| e.label)
+        .collect()
 }
 
 #[test]
@@ -39,6 +43,49 @@ fn entries_follow_what_the_session_holds() {
         "one worktree: nothing to select between"
     );
     assert!(entries(&full_app()).iter().all(|e| e.id().contains('.')));
+}
+
+#[test]
+fn the_every_day_actions_follow_the_session_too() {
+    let all =
+        |app: &AppState| -> Vec<String> { entries(app).into_iter().map(|e| e.label).collect() };
+    let none = all(&AppState::default());
+    assert!(none.contains(&"Board".to_string()), "{none:?}");
+    assert!(!none.contains(&"Diff".to_string()), "no session, no tab");
+    let held = all(&with_repo(app()));
+    for label in [
+        "Board",
+        "Overview",
+        "Diff",
+        "Files",
+        "Show or hide the sidebar",
+        "Terminals",
+        "New terminal",
+        "Reload the agent",
+        "Turn auto-approve on",
+        "Show open notes",
+    ] {
+        assert!(held.contains(&label.to_string()), "{label}: {held:?}");
+    }
+    assert!(!held.contains(&"Kubernetes".to_string()), "no cluster held");
+    let themes = held.iter().filter(|one| one.starts_with("Theme: ")).count();
+    assert_eq!(
+        themes,
+        groove_types::ThemeName::ALL.len() - 1,
+        "every theme but the one on"
+    );
+}
+
+#[test]
+fn a_tab_picked_in_the_palette_is_the_tab_its_chord_opens() {
+    let app = with_repo(app());
+    let mut ui = Ui::default();
+    let mut palette = Palette::default();
+    typed_into(&mut palette, "files", &app);
+    let outcome = palette.key(Key::Enter, &app);
+    assert!(outcome.act.is_some(), "a window act, not a service command");
+    ui.closed_palette(outcome, &app);
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
 }
 
 #[test]

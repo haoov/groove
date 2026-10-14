@@ -68,7 +68,8 @@ Not enforced by a test.
 
 **The command id is `controller.function`.** That one string is the palette entry, the
 agent's tool name and the timeline label. The keymap names its own actions, such as
-`editor.save` for `workspace.save_file`. The namespace stays flat however the code is split.
+`editor.save` for `workspace.save_file`. A palette row that only moves the window, such as
+a tab, takes its keymap id. The namespace stays flat however the code is split.
 *Example:* `workspace.push`, from `Command::id`, whether it lives in `workspace.rs` or
 `workspace/git.rs`.
 Not enforced by a test.

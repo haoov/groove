@@ -104,3 +104,11 @@ pub fn chord_of(key: Key, mods: Modifiers) -> Chord {
         key,
     }
 }
+
+/// The id the config file keys an action's chords by.
+pub fn id_of(action: Action) -> &'static str {
+    TABLE
+        .iter()
+        .find(|spec| spec.action == action)
+        .map_or("", |spec| spec.id)
+}

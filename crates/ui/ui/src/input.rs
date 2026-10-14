@@ -160,3 +160,32 @@ pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
         _ => hits.cursor_at(x, y),
     }
 }
+
+/// What a palette row asks of the window, done as its chord or its click would.
+pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    use crate::palette::Act;
+    use crate::views::session::{Noting, Pane, Tab};
+    match act {
+        Act::Key(action) => return keys::run(action, ui, app),
+        Act::View(view) => {
+            ui.session.view = view;
+            ui.session.tab = Tab::Diff;
+        }
+        Act::Note => {
+            let Some(open) = app.workspace.active() else {
+                return Vec::new();
+            };
+            let line = open.new.caret().line as u32;
+            let anchor = groove_types::Anchor::line(open.path.clone(), line);
+            ui.session.noting = Some(Noting::new(anchor));
+            ui.focus = crate::Focus::Workspace;
+        }
+        Act::Notes(showing) => {
+            ui.session.pane = Pane::Notes;
+            ui.session.showing = showing;
+            ui.session.folded = false;
+        }
+        Act::Examine(id) => ui.overlay = Some(crate::Overlay::Examining(id)),
+    }
+    Vec::new()
+}

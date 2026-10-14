@@ -1,10 +1,12 @@
 //! The command palette: every action, filtered by what is typed, arguments asked one at a time.
 
+mod actions;
 mod entries;
 mod flow;
 
 use groove_controllers::{AppState, Command};
 
+pub use actions::Act;
 pub use entries::entries;
 pub use flow::{Action, CLONE, Flow, Prompt};
 
@@ -22,6 +24,7 @@ pub enum Run {
     Settings,
     /// The namespace picker's panel, under its picker.
     Scope,
+    Act(Act),
 }
 
 /// One row of the palette. A command row's id is the command's own.
@@ -39,6 +42,7 @@ impl Entry {
             Run::Flow(a) => a.id(),
             Run::Settings => "settings.open",
             Run::Scope => "resources.select_namespace",
+            Run::Act(act) => act.id(),
         }
     }
 
@@ -67,6 +71,7 @@ pub struct Outcome {
     pub settings: bool,
     /// The namespace picker's panel opens.
     pub scoping: bool,
+    pub act: Option<Act>,
 }
 
 /// The palette's own state while it is open.
@@ -195,6 +200,11 @@ impl Palette {
             Run::Settings => Outcome {
                 close: true,
                 settings: true,
+                ..Outcome::default()
+            },
+            Run::Act(act) => Outcome {
+                close: true,
+                act: Some(act),
                 ..Outcome::default()
             },
             Run::Flow(action) => {
