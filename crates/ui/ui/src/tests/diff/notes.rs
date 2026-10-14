@@ -4,7 +4,10 @@ use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
 
 use super::*;
 
+mod folds;
+mod labels;
 mod lines;
+mod tiles;
 
 /// One note on `line` of the open file, said by `author`.
 fn note(line: u32, author: &str, body: &str) -> Note {
@@ -43,9 +46,82 @@ fn a_note_draws_under_the_line_it_was_left_on() {
     let drawn = in_editor(&app);
     let at = |text: &str| drawn.iter().position(|one| one == text);
     let line = at("fn TWO() {}").or_else(|| at("TWO")).expect("the line");
-    let words = at("issue: this leaks").expect("the note");
+    let words = at("this leaks").expect("the note");
     assert!(words > line, "the note stands under its line: {drawn:?}");
     assert_eq!(at("reviewer").map(|one| one < words), Some(true));
+}
+
+#[test]
+fn a_note_stands_in_a_card_with_room_above_and_below() {
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    let (frame, hits) = view_of(&app, &ui);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let (line, thin) = (Tokens::new(1.0).line, Tokens::new(1.0).hairline);
+    let code = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
+    let quads = &frame.layers()[0].quads;
+    let mut card: Vec<groove_gfx::Rect> = quads
+        .iter()
+        .filter(|quad| quad.color == styles.band() && code.contains(quad.rect.x, quad.rect.y))
+        .map(|quad| quad.rect)
+        .collect();
+    card.sort_by(|a, b| a.y.total_cmp(&b.y));
+    let heights: Vec<f32> = card.iter().map(|rect| rect.h).collect();
+    assert_eq!(
+        heights,
+        [line / 2.0, line, line, line, line, line / 2.0],
+        "{card:?}"
+    );
+    assert!(card[0].x > code.x && card[0].right() < code.right());
+    let edge = |y: f32| {
+        quads
+            .iter()
+            .any(|quad| quad.color == styles.line() && quad.rect.h == thin && quad.rect.y == y)
+    };
+    assert!(edge(card[0].y), "closed half a row under the code above");
+    assert!(
+        edge(card[3].y + line / 2.0),
+        "the buttons ruled off from what the note says, half a row from each"
+    );
+    assert!(
+        edge(card[5].bottom() - thin),
+        "and half a row over the code below"
+    );
+    let deep: Vec<groove_gfx::Rect> = quads
+        .iter()
+        .filter(|quad| quad.color == styles.deep() && code.contains(quad.rect.x, quad.rect.y))
+        .map(|quad| quad.rect)
+        .collect();
+    let rows = deep.iter().filter(|rect| rect.w > card[0].w).count();
+    assert_eq!(
+        rows, 6,
+        "every row of the note stands on the deepest ground: {deep:?}"
+    );
+}
+
+#[test]
+fn each_comment_opens_on_a_header_that_names_who_from_where_and_its_label() {
+    let mut one = note(1, "Marie Dupont", "issue (blocking): this leaks");
+    one.said.push(said("haoov", "fixed"));
+    let drawn = in_editor(&noted(vec![one]));
+    let at = |text: &str| drawn.iter().position(|one| one == text);
+    let header = ["MD", "Marie Dupont", "MR", "issue", "blocking"].map(&at);
+    assert!(header.iter().all(Option::is_some), "{drawn:?}");
+    let words = at("this leaks").expect("the words, their label off");
+    assert!(header.iter().all(|one| one.is_some_and(|one| one < words)));
+    let reply = at("HA").expect("the reply's own header");
+    assert!(at("haoov").is_some_and(|one| one > reply) && at("fixed") > Some(reply));
+    assert!(
+        !drawn.iter().any(|one| one.contains("issue (blocking)")),
+        "{drawn:?}"
+    );
+    let local = in_editor(&noted(vec![own(1, "thought: maybe")]));
+    assert!(local.iter().any(|one| one == "local"), "{local:?}");
+    assert!(
+        local.iter().any(|one| one == "me") && local.iter().any(|one| one == "ME"),
+        "the user's own note reads as theirs: {local:?}"
+    );
 }
 
 #[test]
@@ -56,13 +132,13 @@ fn a_note_takes_a_row_of_the_surface() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 2,
-        "the note and the row of buttons under it"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
+        "room above, its header, its words, a rule, the row of buttons, room below"
     );
 }
 
 #[test]
-fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
+fn a_thread_takes_a_header_and_a_row_for_every_comment_of_it() {
     let mut one = note(1, "reviewer", "issue: this leaks");
     one.said.push(said("haoov", "fixed"));
     let bare = opened();
@@ -71,8 +147,8 @@ fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 4,
-        "a row for each note of it, a blank above the reply, and the buttons under them"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 8,
+        "a header and a row for each comment of it, the buttons, room above and below"
     );
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|one| one == "fixed"), "{drawn:?}");
@@ -83,7 +159,7 @@ fn a_note_pushes_the_lines_under_it_down() {
     let app = noted(vec![note(0, "reviewer", "issue: this leaks")]);
     let drawn = in_editor(&app);
     let at = |text: &str| drawn.iter().position(|one| one == text);
-    let words = at("issue: this leaks").expect("the note");
+    let words = at("this leaks").expect("the note");
     let after = at("TWO").expect("the line under it");
     assert!(after > words, "the note pushes the rows down: {drawn:?}");
 }
@@ -94,10 +170,7 @@ fn a_note_on_another_file_draws_nothing_here() {
     one.anchor = Some(Anchor::line("other.rs", 1));
     let app = noted(vec![one]);
     let drawn = in_editor(&app);
-    assert!(
-        !drawn.iter().any(|one| one == "issue: this leaks"),
-        "{drawn:?}"
-    );
+    assert!(!drawn.iter().any(|one| one == "this leaks"), "{drawn:?}");
 }
 
 #[test]
@@ -117,7 +190,7 @@ fn a_note_draws_in_the_diff_views_too() {
     for view in [DiffView::Inline, DiffView::Split] {
         let drawn = in_view(&app, crate::views::session::Face::Stream(view));
         assert!(
-            drawn.iter().any(|one| one.starts_with("issue: this l")),
+            drawn.iter().any(|one| one.starts_with("this l")),
             "{view:?}: {drawn:?}"
         );
     }
@@ -126,42 +199,22 @@ fn a_note_draws_in_the_diff_views_too() {
 #[test]
 fn a_click_on_a_note_moves_no_caret() {
     let app = noted(vec![note(0, "reviewer", "issue: this leaks")]);
-    assert_eq!(
+    let line_at = |row| {
         crate::views::session::diff::line_at(
             &app,
             &on_diff(),
             (
                 crate::views::session::Face::File,
-                drawn_cols(&app, &on_diff())
+                drawn_cols(&app, &on_diff()),
             ),
-            1
-        ),
-        None,
-        "row 1 is the note left on row 0"
-    );
+            row,
+        )
+    };
+    for row in 1..=6 {
+        assert_eq!(line_at(row), None, "row {row} is the note left on row 0");
+    }
     assert_eq!(
-        crate::views::session::diff::line_at(
-            &app,
-            &on_diff(),
-            (
-                crate::views::session::Face::File,
-                drawn_cols(&app, &on_diff())
-            ),
-            2
-        ),
-        None,
-        "row 2 is what the note offers"
-    );
-    assert_eq!(
-        crate::views::session::diff::line_at(
-            &app,
-            &on_diff(),
-            (
-                crate::views::session::Face::File,
-                drawn_cols(&app, &on_diff())
-            ),
-            3
-        ),
+        line_at(7),
         Some(("src/lib.rs".to_string(), 1)),
         "the line after it is the file's second"
     );
@@ -200,51 +253,8 @@ fn own(line: u32, body: &str) -> Note {
     }
 }
 
-/// Where the note's own marks stand in the surface.
-fn gutter_marks(app: &AppState) -> Vec<f32> {
-    let ui = on_diff();
-    let (frame, hits) = view(app, &ui, window(), &mut Fonts::embedded());
-    let code = hits.rect_of(&Target::Code).expect("the rows");
-    let shape = groove_ui_kit::base::mark::Mark::Note.shape();
-    frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.icons.iter())
-        .filter(|icon| icon.icon == shape && code.contains(icon.rect.x, icon.rect.y))
-        .map(|icon| icon.rect.x)
-        .collect()
-}
-
 #[test]
-fn the_notes_mark_ends_where_a_line_number_ends() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
-    let ui = on_diff();
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let code = hits.rect_of(&Target::Code).expect("the rows");
-    let numbers: Vec<f32> = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|run| code.contains(run.x, run.y) && super::numeral(&run.text))
-        .map(|run| run.x + width_of(&run.text, run.style))
-        .collect();
-    let ends = numbers.first().copied().expect("a line number");
-    let mark = gutter_marks(&app).first().copied().expect("the mark");
-    let size = Tokens::new(1.0).small;
-    assert!(
-        (mark + size - ends).abs() < 1.0,
-        "the mark ends where the numbers do: {} against {ends}",
-        mark + size
-    );
-}
-
-/// How wide a text run stands, measured as the frame measured it.
-fn width_of(text: &str, style: groove_gfx::TextStyle) -> f32 {
-    let mut fonts = Fonts::embedded();
-    fonts.measure(text, style.font, style.weight, style.size)
-}
-
-#[test]
-fn what_a_note_says_starts_where_the_code_does() {
+fn a_note_s_header_starts_where_the_code_does_and_its_words_a_step_in() {
     let app = noted(vec![own(1, "issue: this leaks")]);
     let ui = on_diff();
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -252,10 +262,25 @@ fn what_a_note_says_starts_where_the_code_does() {
     let words = frame.layers()[0]
         .texts
         .iter()
-        .find(|run| run.text == "issue: this leaks" && code.contains(run.x, run.y))
+        .find(|run| run.text == "this leaks" && code.contains(run.x, run.y))
         .map(|run| run.x)
         .expect("the words");
-    assert_eq!(words, hits.chars().left, "on the code's own column");
+    let initials = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "ME" && code.contains(run.x, run.y))
+        .map(|run| run.x)
+        .expect("the initials");
+    assert_eq!(
+        initials,
+        hits.chars().left,
+        "the header on the code's own column"
+    );
+    assert_eq!(
+        words,
+        hits.chars().left + Tokens::new(1.0).xl,
+        "the words a step in, under the author"
+    );
 }
 
 #[test]
@@ -307,10 +332,22 @@ fn a_note_of_this_session_offers_what_to_do_with_it() {
         );
     }
     assert!(
-        hits.rect_of(&Target::Note(id, crate::hit::NoteButton::Post))
+        hits.rect_of(&Target::Note(id.clone(), crate::hit::NoteButton::Post))
             .is_none(),
         "posting waits for the forge"
     );
+    let at = |button| {
+        hits.rect_of(&Target::Note(id.clone(), button))
+            .expect("drawn")
+    };
+    let (edit, resolve, delete) = (
+        at(crate::hit::NoteButton::Edit),
+        at(crate::hit::NoteButton::Resolve),
+        at(crate::hit::NoteButton::Delete),
+    );
+    assert!(edit.x < resolve.x, "edit, then resolve");
+    let gap = delete.x - resolve.right();
+    assert!(gap > edit.w, "delete stands apart, at the end: {gap}");
 }
 
 #[test]
@@ -319,11 +356,20 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let origin = NoteOrigin::Thread("t1".into());
+    let field = hits
+        .rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
+        .expect("a thread takes a reply");
+    let resolve = hits
+        .rect_of(&Target::Note(
+            origin.clone(),
+            crate::hit::NoteButton::Resolve,
+        ))
+        .expect("and is resolved");
     assert!(
-        hits.rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
-            .is_some(),
-        "a thread takes a reply"
+        field.w > resolve.w * 4.0,
+        "the reply is a field across the row"
     );
+    assert!(resolve.x > field.right(), "resolve stands at its end");
     assert!(
         hits.rect_of(&Target::Note(origin, crate::hit::NoteButton::Delete))
             .is_none(),

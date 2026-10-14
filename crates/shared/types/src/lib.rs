@@ -84,7 +84,7 @@ pub use mr::{
 };
 pub use naming::{explorer_branch, is_explorer_branch, names_session};
 pub use narrowing::{fuzzy, narrows, occurrences, score};
-pub use note::{Anchor, Note, NoteOrigin, Said};
+pub use note::{Anchor, LABELS, Labelled, Note, NoteOrigin, Said, decorated, labelled};
 pub use panes::Panes;
 pub use quantity::{Gauge, Pressure, bytes, cores, gauge, quantity};
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};

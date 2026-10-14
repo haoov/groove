@@ -78,6 +78,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
             gutters: Gutters {
                 cells: 0,
                 digits: 0,
+                marks: false,
             },
             across: 0.0,
         };

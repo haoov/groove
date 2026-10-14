@@ -1,7 +1,9 @@
 //! Where a click in the rows lands: the caret, the file it names, the lens, a match.
 
+mod composer;
 mod noted;
 
+pub(super) use composer::composing;
 pub(super) use noted::noted;
 
 use groove_controllers::workspace_service::column_of;

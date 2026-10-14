@@ -1,19 +1,27 @@
 //! One row drawn: a note's own rows here, every other row through the kit.
 
+mod composer;
 mod note;
 
-use self::note::{acts, note};
+use self::composer::composer;
+use self::note::{acts, note, padded};
 
 use groove_gfx::Rect;
 use groove_ui_kit::widgets::code::{self, Block, Code};
 
 use super::Line;
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{NoteButton, Target};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if code.covered {
         return;
+    }
+    if let Some(composed) = code.composed.as_ref() {
+        return composer(ctx, line, composed, gutter);
+    }
+    if let Some(room) = code.pad {
+        return padded(ctx, line, room, gutter);
     }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);
@@ -42,6 +50,12 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         read: line.read,
         part: line.part,
         counts: line.counts,
+        tile: line.tile.as_ref().map(|(tile, folds)| {
+            let opens = folds
+                .clone()
+                .map(|origin| Target::Note(origin, NoteButton::Fold));
+            (*tile, opens)
+        }),
         empty: line.empty,
         caret: line.caret,
         held: line.held,

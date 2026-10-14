@@ -1,6 +1,6 @@
 //! A session's own notes: read, and written on the database alone.
 
-use groove_delivery_service::NewNote;
+use groove_delivery_service::{BY_AGENT, NewNote};
 use groove_types::{Anchor, AnnotationId, SessionId, TimelineKind, Timestamp};
 
 use super::Whose;
@@ -18,6 +18,23 @@ pub enum NoteAct {
 }
 
 impl NoteAct {
+    /// The words it writes, decorated as the agent's when the agent wrote them.
+    fn by(self, asker: &Asker) -> Self {
+        let agent = |content: String| groove_types::decorated(&content, BY_AGENT);
+        match (self, asker) {
+            (act, Asker::Ui) => act,
+            (NoteAct::Create { anchor, content }, _) => NoteAct::Create {
+                anchor,
+                content: agent(content),
+            },
+            (NoteAct::Update { id, content }, _) => NoteAct::Update {
+                id,
+                content: agent(content),
+            },
+            (act, _) => act,
+        }
+    }
+
     pub fn id(&self) -> &'static str {
         match self {
             NoteAct::Create { .. } => "delivery.create_note",
@@ -114,11 +131,12 @@ pub(crate) fn write(
             return asker.refused(state, ALREADY_NOTED);
         }
     }
+    let act = act.by(&asker);
     let (service, job) = (services.delivery.clone(), state.begin(act.label()));
     let (said, left) = (act.said(), left_by(&act));
     let author = match asker {
         Asker::Ui => groove_delivery_service::BY_USER,
-        _ => groove_delivery_service::BY_AGENT,
+        _ => BY_AGENT,
     };
     let (session, repo) = (whose.session.clone(), whose.repo.id.clone());
     spawner.spawn(Box::pin(async move {

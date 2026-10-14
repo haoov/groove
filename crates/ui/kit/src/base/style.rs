@@ -92,6 +92,11 @@ impl Styles {
         self.sans(self.tokens.text, Weight::Medium, role)
     }
 
+    /// A name cut to its initials.
+    pub fn initials(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.small, Weight::Bold, role)
+    }
+
     pub fn small(&self, role: Role) -> TextStyle {
         self.sans(self.tokens.small, Weight::Regular, role)
     }

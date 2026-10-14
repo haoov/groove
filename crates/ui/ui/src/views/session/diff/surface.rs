@@ -77,7 +77,7 @@ fn surface(
         rows: &rows,
         gutters: &gutters,
         words: &words,
-        noted: &inline.noted(&slots),
+        marks: &inline.marks(app, &slots),
         first: code_rows.start,
         notes: side != Side::Old,
         said: said.as_ref(),
@@ -167,8 +167,8 @@ struct Held<'a> {
     rows: &'a [Drawn],
     gutters: &'a [Vec<&'a str>],
     words: &'a [Words],
-    /// Which rows of the window a note stands on.
-    noted: &'a [bool],
+    /// Which rows of the window a note stands on, and the tile each carries.
+    marks: &'a [(bool, Option<super::notes::Tiled>)],
     /// The row of the view the first of `rows` is.
     first: usize,
     /// Whether this side draws the notes; the old side of a split keeps their rows blank.
@@ -185,7 +185,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .iter()
         .enumerate()
         .map(|(on, slot)| match slot {
-            Slot::Note { .. } | Slot::Acts { .. } | Slot::Typed { .. } if !held.notes => {
+            Slot::Note { .. } | Slot::Acts { .. } | Slot::Typed { .. } | Slot::Pad { .. }
+                if !held.notes =>
+            {
                 Line::new("")
             }
             Slot::Code(at) => match held.rows.get(at - held.first) {
@@ -193,38 +195,42 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     Line::covered()
                 }
                 Some(row) => lined(ctx, row, &held.gutters[at - held.first])
-                    .noted(held.noted[on])
+                    .noted(held.marks[on].0)
+                    .tile(held.marks[on].1.clone().filter(|_| held.notes))
                     .blame(super::blame::on(row, held.said)),
                 None => Line::new(""),
             },
-            Slot::Note { at, row } => Line::note(
-                &held.words[on].body,
-                Noted {
-                    author: &held.words[on].author,
-                    lines: &held.words[on].lines,
-                    opens: *row == 0,
-                    resolved: app.delivery.shown.get(*at).is_some_and(|one| one.resolved),
-                    prose: held.words[on].prose.as_ref(),
-                },
-            ),
+            Slot::Note { at, .. } => {
+                let resolved = app.delivery.shown.get(*at).is_some_and(|one| one.resolved);
+                said(&held.words[on], resolved)
+            }
+            Slot::Pad { room } => Line::pad(*room),
+            Slot::Chips | Slot::Footer { .. } => match held.words[on].composed.clone() {
+                Some(composed) => Line::composed(composed),
+                None => Line::new(""),
+            },
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
                 Some(note) => Line::acting(acting_of(app, note)),
                 None => Line::new(""),
             },
-            Slot::Typed { row } => Line::note(
-                &held.words[on].body,
-                Noted {
-                    author: &held.words[on].author,
-                    lines: &held.words[on].lines,
-                    opens: *row == 0,
-                    resolved: false,
-                    prose: None,
-                },
-            )
-            .caret(held.words[on].caret)
-            .held(held.words[on].held),
+            Slot::Typed { .. } => said(&held.words[on], false)
+                .caret(held.words[on].caret)
+                .held(held.words[on].held),
         })
         .collect()
+}
+
+/// A row of a note, from what it says.
+fn said(words: &Words, resolved: bool) -> Line<'_> {
+    let noted = Noted {
+        author: &words.author,
+        lines: &words.lines,
+        resolved,
+        prose: words.prose.as_ref(),
+        head: words.head.as_ref(),
+        field: words.field,
+    };
+    Line::note(&words.body, noted)
 }
 
 /// What a note's own row of buttons acts on.
@@ -284,5 +290,6 @@ pub(super) fn numbers(app: &AppState, ui: &Ui, view: Face) -> Gutters {
             _ => 1,
         },
         digits,
+        marks: app.workspace.commit.is_none(),
     }
 }

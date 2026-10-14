@@ -416,7 +416,10 @@ fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
             .id
             .as_str()
     );
-    assert_eq!(notes[0]["content"], "issue: one");
+    assert_eq!(
+        notes[0]["content"], "issue (agent): one",
+        "the agent's own note says so"
+    );
 }
 
 #[test]

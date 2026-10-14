@@ -4,10 +4,9 @@
 pub const PALETTE_ROWS: usize = 8;
 /// How many suggestions the board's filter shows at once.
 pub const SUGGESTED_ROWS: usize = 6;
-/// The characters a note row holds before the frame has measured, the fewest, a reply's step in.
+/// The characters a note row holds before the frame has measured, and the fewest.
 pub const NOTE_COLS: usize = 80;
 pub const NOTE_COLS_FEWEST: usize = 20;
-pub const REPLY_STEP: usize = 2;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text: on a dark theme, then on a light one.

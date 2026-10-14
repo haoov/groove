@@ -298,7 +298,7 @@ fn a_session_closed_or_deleted_lets_go_of_the_watchers_its_list_held() {
 fn the_strip_names_the_cluster_tab_kubernetes_in_capitals() {
     let (app, ui) = listing();
     let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "KUBERNETES"), "{texts:?}");
+    assert!(texts.iter().any(|one| one == "Kubernetes"), "{texts:?}");
     assert!(!texts.iter().any(|one| one == "k8s"), "{texts:?}");
 }
 

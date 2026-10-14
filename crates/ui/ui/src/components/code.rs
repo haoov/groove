@@ -1,29 +1,19 @@
 //! The code surface: a row's parts, and the gutters every row shares.
 
+mod header;
 mod place;
 mod row;
 
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
+pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
-pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark, head_of};
+pub use groove_ui_kit::widgets::code::{Block, Gutters, Tile, head_mark, head_of};
 
 use self::row::draw;
 use crate::ctx::Ctx;
 use groove_ui_kit::widgets::code::rule;
-
-/// What a note row carries: who said it, whether it opens the note, and its state.
-#[derive(Debug, Clone, Copy)]
-pub struct Noted<'a> {
-    pub author: &'a str,
-    /// The lines the note is about, on the row that opens it.
-    pub lines: &'a str,
-    pub opens: bool,
-    pub resolved: bool,
-    /// The words as Markdown; the plain text is drawn when there is none.
-    pub prose: Option<&'a groove_ui_kit::markdown::Row>,
-}
 
 /// The buttons a note's last row carries, and the note they act on.
 #[derive(Debug, Clone)]
@@ -62,6 +52,11 @@ pub struct Line<'a> {
     pub covered: bool,
     /// A side of a split row with no line on it.
     pub empty: bool,
+    /// The room above a note's card, or below it, where its edge runs.
+    pub pad: Option<Room>,
+    pub composed: Option<Composed>,
+    /// The notes this line carries, and the resolved one a click on them opens.
+    pub tile: Option<(Tile, Option<groove_types::NoteOrigin>)>,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -86,7 +81,27 @@ pub struct Line<'a> {
 impl<'a> Line<'a> {
     /// Whether the row carries gutters; a row that names a file has none.
     pub fn numbered(&self) -> bool {
-        !self.head && !self.banner && !self.covered && self.said.is_none() && self.acting.is_none()
+        !self.head
+            && !self.banner
+            && !self.covered
+            && self.pad.is_none()
+            && self.composed.is_none()
+            && self.said.is_none()
+            && self.acting.is_none()
+    }
+
+    pub fn composed(composed: Composed) -> Self {
+        Self {
+            composed: Some(composed),
+            ..Self::new("")
+        }
+    }
+
+    pub fn pad(room: Room) -> Self {
+        Self {
+            pad: Some(room),
+            ..Self::new("")
+        }
     }
 
     /// A row the one above it already draws over.
@@ -113,6 +128,9 @@ impl<'a> Line<'a> {
             counts: None,
             covered: false,
             empty: false,
+            pad: None,
+            composed: None,
+            tile: None,
             caret: None,
             held: None,
             found: &[],
@@ -143,6 +161,11 @@ impl<'a> Line<'a> {
     }
 
     /// A row of code a note stands on.
+    pub fn tile(mut self, tile: Option<(Tile, Option<groove_types::NoteOrigin>)>) -> Self {
+        self.tile = tile;
+        self
+    }
+
     pub fn noted(mut self, noted: bool) -> Self {
         self.noted = noted;
         self

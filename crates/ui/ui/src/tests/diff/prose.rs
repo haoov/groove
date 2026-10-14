@@ -22,8 +22,9 @@ fn noted(body: &str) -> AppState {
 
 #[test]
 fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
-    let app =
-        noted("**issue (blocking):** use `drop` [here](https://example.com/a)\n\n- [ ] then this");
+    let app = noted(
+        "**issue (blocking):** **always** use `drop` [here](https://example.com/a)\n\n- [ ] then this",
+    );
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -38,7 +39,9 @@ fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
                 )
             })
     };
-    assert_eq!(run("issue (blocking):").style.weight, Weight::Bold);
+    run("issue");
+    run("blocking");
+    assert_eq!(run("always").style.weight, Weight::Bold);
     assert_eq!(run("drop").style.font, Font::Mono);
     run("then this");
     assert!(
@@ -59,7 +62,7 @@ fn a_split_view_draws_a_note_once_on_its_new_side() {
     let runs: Vec<_> = frame.layers()[0]
         .texts
         .iter()
-        .filter(|one| one.text == "issue: said once")
+        .filter(|one| one.text == "said once")
         .collect();
     assert_eq!(runs.len(), 1, "one side draws it");
     let code = hits.rect_of(&Target::Code).expect("the new side's rows");

@@ -159,13 +159,13 @@ attaches it first when the session does not hold it. A title or a label too long
 line is cut with an ellipsis; the header never wraps; a tab's status badges keep their room
 before the cut, and a badge with no room left is dropped.
 
-**Tabs.** `OVERVIEW · DIFF · FILES · KUBERNETES`, the last while the session holds a cluster.
+**Tabs.** `Overview · Diff · Files · Kubernetes`, the last while the session holds a cluster.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the clusters it holds, each context in its hue with its namespaces under it; then the body as text | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
-| files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
+| files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 | kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
@@ -232,8 +232,9 @@ caret, a selection, an undo and the clipboard work there too; Enter is a line of
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the
 workspace, its header, the board's own header, the commit box, the agent pane's frame.
-The bands sit under it: the rail, the sidebar, a column's heading, a menu, a file's head. A terminal is the deepest — the agent's pty and the terminal widget, and
-nothing else.
+The bands sit under it: the rail, the sidebar, a column's heading, a menu, a file's head.
+The deepest holds the agent's pty, the terminal widget, a note's own rows under its card,
+and the field a note is typed in — nothing else.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the

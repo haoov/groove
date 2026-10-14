@@ -15,6 +15,14 @@ pub(crate) fn noted(
     origin: NoteOrigin,
     button: NoteButton,
 ) -> Vec<Command> {
+    if button == NoteButton::Fold {
+        let unfolded = &mut ui.session.unfolded;
+        match unfolded.iter().position(|one| *one == origin) {
+            Some(at) => drop(unfolded.remove(at)),
+            None => unfolded.push(origin),
+        }
+        return Vec::new();
+    }
     let act = match origin {
         NoteOrigin::Local(id) => return own(ui, app, id, button),
         NoteOrigin::Thread(thread) => thread_act(ui, app, thread, button),
@@ -29,7 +37,7 @@ fn own(ui: &mut Ui, app: &AppState, id: AnnotationId, button: NoteButton) -> Vec
         NoteButton::Resolve => Some(delivery::Command::Note(resolving(app, id))),
         NoteButton::Delete => Some(delivery::Command::Note(NoteAct::Delete { id })),
         NoteButton::Post => Some(delivery::Command::Thread(ThreadAct::Post { id })),
-        NoteButton::Reply => None,
+        NoteButton::Reply | NoteButton::Fold => None,
     };
     act.map(Command::Delivery).into_iter().collect()
 }

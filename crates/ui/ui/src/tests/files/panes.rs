@@ -2,6 +2,8 @@
 
 use groove_types::{Anchor, AnnotationId, Note, NoteOrigin, Said, Timestamp};
 
+mod listed;
+
 use super::*;
 use crate::tests::sidebar_ui;
 use crate::views::session::Pane;
@@ -59,44 +61,6 @@ fn a_resolved_note_is_not_counted() {
     let (app, ui) = noting(vec![one]);
     let drawn = in_sidebar(&app, &ui);
     assert!(drawn.iter().any(|one| one == "notes"), "{drawn:?}");
-}
-
-#[test]
-fn the_notes_list_says_the_file_the_line_and_the_words() {
-    let (app, ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "lib.rs 12"), "{drawn:?}");
-    assert!(
-        drawn.iter().any(|one| one.starts_with("issue: this l")),
-        "{drawn:?}"
-    );
-}
-
-#[test]
-fn a_thread_says_how_many_replies_it_holds() {
-    let mut one = note("src/lib.rs", 11, "issue: this leaks");
-    one.origin = NoteOrigin::Thread("t1".into());
-    one.said.push(Said {
-        author: "haoov".into(),
-        body: "fixed".into(),
-        at: Timestamp::new(1),
-    });
-    let (app, ui) = noting(vec![one]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one.contains("+1")),
-        "one reply: {drawn:?}"
-    );
-}
-
-#[test]
-fn the_notes_list_says_when_there_are_none() {
-    let (app, ui) = noting(Vec::new());
-    let drawn = in_sidebar(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one == "no notes on this session"),
-        "{drawn:?}"
-    );
 }
 
 #[test]
@@ -237,58 +201,6 @@ fn the_search_bar_stands_only_while_it_is_used() {
 }
 
 /// A thread the forge holds, on a line or on the MR itself.
-fn thread(id: &str, line: Option<u32>, resolved: bool) -> Note {
-    Note {
-        origin: NoteOrigin::Thread(id.into()),
-        anchor: line.map(|at| Anchor::line("src/lib.rs", at)),
-        resolved,
-        said: vec![Said {
-            author: "reviewer".into(),
-            body: format!("said on {id}"),
-            at: Timestamp::new(0),
-        }],
-    }
-}
-
-#[test]
-fn the_notes_list_holds_the_session_s_own_and_the_open_threads_alone() {
-    let (app, ui) = noting(vec![
-        thread("pipeline", None, false),
-        thread("closed", Some(3), true),
-        note("src/lib.rs", 11, "issue: this leaks"),
-        thread("open", Some(20), false),
-    ]);
-    let drawn = in_sidebar(&app, &ui);
-    let said = |text: &str| drawn.iter().any(|one| one.contains(text));
-    assert!(said("issue: this leaks"), "the session's own: {drawn:?}");
-    assert!(said("said on open"), "a thread still open: {drawn:?}");
-    assert!(!said("said on pipeline"), "not a comment on the MR");
-    assert!(!said("said on closed"), "not a resolved thread");
-    assert!(drawn.iter().any(|one| one == "notes · 2"), "{drawn:?}");
-}
-
-#[test]
-fn a_row_left_after_the_others_are_left_out_opens_its_own_note() {
-    let (app, mut ui) = noting(vec![
-        thread("pipeline", None, false),
-        note("src/lib.rs", 11, "issue: this leaks"),
-    ]);
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(
-        hits.rect_of(&Target::NoteAt(0)).is_none(),
-        "the comment has no row"
-    );
-    let line = hits.rect_of(&Target::NoteAt(1)).expect("the note's row");
-    let commands = click(line, &mut ui, &app, &hits);
-    let at = commands.iter().find_map(|one| match one {
-        groove_controllers::Command::Workspace(
-            groove_controllers::workspace::Command::OpenFile { at, .. },
-        ) => *at,
-        _ => None,
-    });
-    assert_eq!(at.map(|held| held.head.line), Some(11), "the note it names");
-}
-
 #[test]
 fn a_session_s_notes_are_read_whichever_list_is_up() {
     let app = with_files(&["src/lib.rs"]);

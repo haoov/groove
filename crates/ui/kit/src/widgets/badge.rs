@@ -64,6 +64,13 @@ impl<'a> Badge<'a> {
         box_
     }
 
+    /// Stands at the left of `room`, which gives up its box and `gap`.
+    pub fn left<A: App>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
+        let box_ = self.at(ctx, *room, room.x);
+        room.take_left(box_.w + gap);
+        box_
+    }
+
     /// Stands at the right of `room`, which gives up its box and `gap`.
     pub fn right<A: App>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
         let wide = self.width(ctx);

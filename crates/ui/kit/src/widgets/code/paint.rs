@@ -2,6 +2,7 @@
 
 use groove_gfx::{Align, Color, Edges, Rect, TextStyle};
 
+use super::gutter::tiled;
 use super::{Block, Code, head_mark};
 use crate::base::ctx::{App, Ctx};
 use crate::base::ground::Ground;
@@ -122,7 +123,10 @@ fn numbers<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>,
     if let Some((_, color)) = code.gutter {
         style.color = color;
     }
-    let mut room = line.pad(Edges::across(sm, 0.0));
+    if let Some((tile, opens)) = code.tile.as_ref() {
+        tiled(ctx, gutter.marked(ctx, line), *tile, opens.clone());
+    }
+    let mut room = line.pad(Edges::across(sm + gutter.mark, 0.0));
     for text in code.gutters {
         let cell = room.take_left(gutter.width);
         room.take_left(sm);

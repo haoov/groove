@@ -99,3 +99,78 @@ impl Note {
             .is_some_and(|one| one.path == path && one.rows().contains(&line))
     }
 }
+
+/// The labels Conventional Comments names.
+pub const LABELS: [&str; 12] = [
+    "praise",
+    "nitpick",
+    "suggestion",
+    "issue",
+    "todo",
+    "question",
+    "thought",
+    "chore",
+    "note",
+    "typo",
+    "polish",
+    "quibble",
+];
+
+/// A comment's Conventional Comments label and its decorations, when its first line opens on them.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Labelled<'a> {
+    pub label: &'a str,
+    pub decorations: Vec<&'a str>,
+    /// What the comment says once its label is taken off.
+    pub rest: &'a str,
+}
+
+impl Labelled<'_> {
+    /// The prefix that writes this label and these decorations again.
+    pub fn prefix(label: &str, decorations: &[&str]) -> String {
+        match decorations {
+            [] => format!("{label}: "),
+            many => format!("{label} ({}): ", many.join(", ")),
+        }
+    }
+}
+
+/// `issue (agent, blocking): it leaks`, bold or not, read as its label, decorations and words.
+pub fn labelled(body: &str) -> Option<Labelled<'_>> {
+    let (head, rest) = body.split_once(':')?;
+    let head = head.trim();
+    let head = head.strip_prefix("**").unwrap_or(head);
+    let head = head.strip_suffix("**").unwrap_or(head);
+    let rest = rest.strip_prefix("**").unwrap_or(rest);
+    let (label, decorations) = match head.split_once('(') {
+        Some((label, inside)) => (label.trim(), inside.strip_suffix(')')?),
+        None => (head.trim(), ""),
+    };
+    let label = LABELS.iter().find(|one| label.eq_ignore_ascii_case(one))?;
+    Some(Labelled {
+        label,
+        decorations: decorations
+            .split(',')
+            .map(str::trim)
+            .filter(|one| !one.is_empty())
+            .collect(),
+        rest: rest.trim_start(),
+    })
+}
+
+/// The comment with `decoration` among its label's, its label `note` when it had none.
+pub fn decorated(body: &str, decoration: &str) -> String {
+    let Some(held) = labelled(body) else {
+        return format!("{}{body}", Labelled::prefix("note", &[decoration]));
+    };
+    if held.decorations.contains(&decoration) {
+        return body.to_string();
+    }
+    let mut decorations = vec![decoration];
+    decorations.extend(held.decorations.iter().copied());
+    format!(
+        "{}{}",
+        Labelled::prefix(held.label, &decorations),
+        held.rest
+    )
+}

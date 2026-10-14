@@ -5,8 +5,17 @@ use std::ops::Range;
 use groove_controllers::AppState;
 use groove_types::{Anchor, Note};
 
-use super::wrap::{cols_of, wrapped};
+mod answer;
+mod block;
+mod tiles;
+
+use self::answer::answering;
+use self::block::block;
+use super::wrap::{Worded, cols_of};
 use crate::Ui;
+use crate::components::Room;
+
+pub(crate) use self::tiles::Tiled;
 use crate::views::session::Face;
 
 /// One note's rows, standing after the row its last line sits on.
@@ -19,18 +28,44 @@ struct Block {
     at: Option<usize>,
     /// The note's own row of buttons, under what it says.
     acts: bool,
+    /// The rows of a reply being typed, in place of the buttons.
+    typing: usize,
     /// What each row of the note says, wrapped once for the frame.
-    said: Vec<(String, groove_ui_kit::markdown::Row)>,
+    said: Vec<Worded>,
 }
 
 /// A row of the surface: a view row, a note row, a note's buttons, or the note being typed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Slot {
     Code(usize),
-    Note { at: usize, row: usize },
-    Acts { at: usize },
-    Typed { row: usize },
+    Note {
+        at: usize,
+        row: usize,
+    },
+    Acts {
+        at: usize,
+    },
+    /// A row of the words being typed; `reply` when they answer the note they stand in.
+    Typed {
+        row: usize,
+        reply: bool,
+    },
+    /// The labels and decorations a note being written picks from.
+    Chips,
+    /// What the note being typed offers: save and cancel.
+    Footer {
+        reply: bool,
+    },
+    /// A half row of room around a note's card, or across it.
+    Pad {
+        room: Room,
+    },
 }
+
+/// The rows of room every note keeps, one above its card and one below.
+const PADS: usize = 2;
+/// The row that rules off what a note says from what it offers.
+const BETWEEN: usize = 1;
 
 /// Where the notes stand among the rows of one view.
 #[derive(Default)]
@@ -46,24 +81,31 @@ impl Inline {
         if app.workspace.commit.is_some() || unfiled {
             return Self::default();
         }
-        let over = ui.session.noting.as_ref().and_then(|one| one.over_id());
+        let noting = ui.session.noting.as_ref();
+        let over = noting.and_then(|one| one.over_id());
         let mut blocks: Vec<Block> = app
             .delivery
             .shown
             .iter()
             .enumerate()
             .filter(|(_, note)| !written(note, over))
-            .filter_map(|(at, note)| block(app, view, note, at, cols_of(cols)))
+            .filter_map(|(at, note)| {
+                let hidden = note.resolved && !ui.session.unfolded.contains(&note.origin);
+                block(app, view, (note, at, hidden), cols_of(cols))
+            })
             .collect();
-        if let Some(noting) = ui.session.noting.as_ref()
+        let answered = noting.and_then(|one| answering(app, one, &mut blocks));
+        if let Some(noting) = noting.filter(|_| answered.is_none())
             && let Some(after) = anchored(app, view, &noting.anchor)
         {
+            let typing = noting.buffer.text().split('\n').count();
             blocks.push(Block {
                 after,
                 from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: noting.buffer.text().split('\n').count(),
+                rows: 1 + typing + BETWEEN + 1 + PADS,
                 at: None,
                 acts: false,
+                typing,
                 said: Vec::new(),
             });
         }
@@ -71,8 +113,8 @@ impl Inline {
         Self { blocks }
     }
 
-    /// What one row of a note says: who said it, and the words on that row.
-    pub(crate) fn said(&self, at: usize, row: usize) -> (String, groove_ui_kit::markdown::Row) {
+    /// What one row of a note holds: a comment's header, or a line of its words.
+    pub(crate) fn said(&self, at: usize, row: usize) -> Worded {
         self.blocks
             .iter()
             .find(|block| block.at == Some(at))
@@ -126,7 +168,8 @@ impl Inline {
     pub(crate) fn notes(&self, code: usize) -> bool {
         self.blocks
             .iter()
-            .any(|block| block.at.is_some() && (block.from..=block.after).contains(&code))
+            .filter(|block| block.at.is_some() && block.rows > 0)
+            .any(|block| (block.from..=block.after).contains(&code))
     }
 
     /// Which of `slots` a note stands on.
@@ -156,12 +199,33 @@ impl Inline {
 impl Block {
     /// What one row of the block holds, counted from its first.
     fn slot(&self, row: usize) -> Slot {
+        if row == 0 || row + 1 == self.rows {
+            let room = if row == 0 { Room::Above } else { Room::Below };
+            return Slot::Pad { room };
+        }
+        let row = row - 1;
         let Some(at) = self.at else {
-            return Slot::Typed { row };
+            return match row {
+                0 => Slot::Chips,
+                row if row <= self.typing => Slot::Typed {
+                    row: row - 1,
+                    reply: false,
+                },
+                row if row == self.typing + BETWEEN => Slot::Pad {
+                    room: Room::Between,
+                },
+                _ => Slot::Footer { reply: false },
+            };
         };
-        match self.acts && row + 1 == self.rows {
-            true => Slot::Acts { at },
-            false => Slot::Note { at, row },
+        let said = self.said.len().max(1);
+        match row.checked_sub(said + BETWEEN) {
+            None if row < said => Slot::Note { at, row },
+            None => Slot::Pad {
+                room: Room::Between,
+            },
+            Some(row) if row < self.typing => Slot::Typed { row, reply: true },
+            Some(_) if self.typing > 0 => Slot::Footer { reply: true },
+            Some(_) => Slot::Acts { at },
         }
     }
 }
@@ -169,21 +233,6 @@ impl Block {
 /// Whether this note is the one being written again.
 fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
     over.is_some_and(|id| note.id() == Some(id))
-}
-
-/// One note's block, on the rows of the file it is about.
-fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Option<Block> {
-    let anchor = note.anchor.as_ref()?;
-    let after = anchored(app, view, anchor)?;
-    let said = wrapped(note, cols);
-    Some(Block {
-        after,
-        from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: said.len().max(1) + 1,
-        at: Some(at),
-        acts: true,
-        said,
-    })
 }
 
 /// The anchor's own first line, as an anchor of its own.

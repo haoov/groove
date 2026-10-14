@@ -3,16 +3,20 @@
 use groove_controllers::{AppState, Command};
 
 use crate::Ui;
-use crate::views::session::{Pane, Term};
+use crate::views::session::Term;
 
-/// One of the sidebar's three lists up; the frame reads what it shows.
-pub(super) fn paned(ui: &mut Ui, pane: Pane) -> Vec<Command> {
-    ui.session.pane = pane;
+/// One of the sidebar's lists up, or which notes its list shows; the frame reads what it shows.
+pub(super) fn paned(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
+    match target {
+        crate::hit::Target::Pane(pane) => ui.session.pane = pane,
+        crate::hit::Target::Showing(showing) => ui.session.showing = showing,
+        _ => return Vec::new(),
+    }
     ui.session.files = 0.0;
     Vec::new()
 }
 
-/// One note of the list, which opens the line it stands on.
+/// One note of the list, which opens the line it stands on in the tab that shows it.
 pub(super) fn note_at(
     ui: &mut Ui,
     app: &AppState,
@@ -29,9 +33,15 @@ pub(super) fn note_at(
     };
     let line = anchor.start_line as usize;
     ui.focus = crate::Focus::Workspace;
+    if let Some(note) = app.delivery.shown.get(at).filter(|one| one.resolved)
+        && !ui.session.unfolded.contains(&note.origin)
+    {
+        ui.session.unfolded.push(note.origin.clone());
+    }
     let height = metrics.tokens().line;
     let above = |row: usize| row.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH) as f32;
-    if let Some(row) = app.workspace.changes.row_of(&anchor.path, line as u32) {
+    let row = app.workspace.changes.row_of(&anchor.path, line as u32);
+    if let Some(row) = row.filter(|_| ui.session.tab == crate::views::session::Tab::Diff) {
         ui.session.diff = above(row) * height;
         ui.session.diff_across = 0.0;
         return Vec::new();
