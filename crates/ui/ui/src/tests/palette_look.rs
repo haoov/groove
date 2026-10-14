@@ -176,3 +176,83 @@ fn the_letters_the_query_matched_are_lit() {
         "{both:?}"
     );
 }
+
+fn drawn(ui: &Ui, app: &AppState) -> groove_gfx::Frame {
+    view(
+        app,
+        ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    )
+    .0
+}
+
+#[test]
+fn the_palette_stands_on_a_shadow() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    let frame = drawn(&ui, &app);
+    assert!(frame.layers()[1].quads.iter().any(|q| q.shape.blur > 0.0));
+}
+
+#[test]
+fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    typed("zzz", &mut ui, &app);
+    let texts = |frame: &groove_gfx::Frame| -> Vec<String> {
+        frame.layers()[1]
+            .texts
+            .iter()
+            .map(|t| t.text.clone())
+            .collect()
+    };
+    let none = texts(&drawn(&ui, &app));
+    assert!(
+        none.contains(&"No match for \u{201c}zzz\u{201d}".to_string()),
+        "{none:?}"
+    );
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    typed("add work", &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    let branch = texts(&drawn(&ui, &app));
+    assert_eq!(
+        branch,
+        ["branch", "Enter to confirm"],
+        "the hint in the input line, no list"
+    );
+}
+
+#[test]
+fn the_last_row_selected_meets_the_box_edge() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    for _ in 0..under("", &app).len() {
+        press(Key::Down, Modifiers::default(), &mut ui, &app);
+    }
+    let (frame, hits) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let raised = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).raised();
+    let boxed = hits
+        .rect_of(&crate::hit::Target::Palette)
+        .expect("the palette");
+    let mut quads = frame.layers()[1].quads.iter();
+    let row = quads
+        .rfind(|q| q.color == raised)
+        .expect("the selected row");
+    assert_eq!(
+        row.rect.bottom(),
+        boxed.bottom() - tokens.hairline,
+        "no gap, the edge kept"
+    );
+}

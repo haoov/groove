@@ -19,6 +19,7 @@ pub fn panel_at<A: App>(
     };
     let rect = crate::shape::kept_in((x, y), (width, height), window);
     ctx.layer();
+    lifted(ctx, rect);
     let band = ctx.styles.band();
     ctx.rounded_box(rect, band, border, ctx.tokens.round);
     rect
@@ -38,8 +39,17 @@ pub fn modal<A: App>(
     ctx.quad(window, scrim);
     let w = width.min(window.w - ctx.tokens.xl);
     let rect = Rect::new((window.w - w) / 2.0, top, w, height);
+    lifted(ctx, rect);
     ctx.rounded_box(rect, panel, border, ctx.tokens.round);
     rect
+}
+
+/// A soft shade under the box, dropped below it.
+fn lifted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let blur = ctx.tokens.md;
+    let shade = Rect::new(rect.x, rect.y + ctx.tokens.sm, rect.w, rect.h);
+    let color = ctx.styles.shadow();
+    ctx.shadow(shade, color, blur);
 }
 
 /// Which corner of the panel sits at the point it was opened from.

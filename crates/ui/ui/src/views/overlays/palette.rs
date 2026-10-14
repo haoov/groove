@@ -49,12 +49,14 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let prompt = palette.prompt(app);
     let rows = listed(app, palette, &prompt);
     let lines = lines(&rows, prompt.is_none());
-    let shown = lines.len().clamp(1, limit(palette));
+    let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
+    let shown = lines.len().clamp(usize::from(!typing_only), limit(palette));
     let typed = has_input(palette, &prompt, rows.len());
     let rows_high = ctx.tokens.row * (shown + usize::from(typed)) as f32;
+    let hairline = ctx.tokens.hairline;
     let height = match typed {
-        true => rows_high + ctx.tokens.sm,
-        false => rows_high,
+        true => rows_high + ctx.tokens.xs * 2.0 + hairline,
+        false => rows_high + hairline * 2.0,
     };
     let edge = ctx.styles.border();
     let rect = match palette.anchor {
@@ -67,7 +69,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     ctx.hit(rect, Target::Palette);
     let under = match typed {
         true => input_line(ctx, rect, palette, &prompt),
-        false => rect,
+        false => {
+            let tall = |height: f32| Spec::default().height(height);
+            let [_, rest] = column_in(rect, [tall(hairline), Spec::fill()]);
+            rest
+        }
     };
     let body = inset(ctx, under, shown);
     let ends = (
@@ -75,7 +81,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         marks(app, palette, &prompt),
     );
     match rows.is_empty() {
-        true => nothing(ctx, body, &prompt),
+        true if typing_only => {}
+        true => nothing(ctx, body, palette, &prompt),
         false => items(ctx, body, (palette, &prompt), (&rows, &lines), ends),
     }
 }
@@ -131,14 +138,23 @@ fn input_line(
     prompt: &Option<crate::palette::Prompt>,
 ) -> Rect {
     let tall = |height: f32| Spec::default().height(height);
-    let [_, line, rest] = column_in(
+    let [_, line, _, rest] = column_in(
         rect,
-        [tall(ctx.tokens.xs), tall(ctx.tokens.row), Spec::fill()],
+        [
+            tall(ctx.tokens.xs),
+            tall(ctx.tokens.row),
+            tall(ctx.tokens.xs),
+            Spec::fill(),
+        ],
     );
     let query = &palette.query;
     match prompt {
         Some(prompt) => {
-            let hint = prompt.allow_empty.then_some("empty for the default");
+            let hint = match (prompt.allow_empty && query.is_empty(), prompt.free) {
+                (true, _) => Some("Enter for the default"),
+                (false, true) => Some("Enter to confirm"),
+                (false, false) => None,
+            };
             let typed = (query.text(), query.before(), hint);
             stepped_input(ctx, line, prompt.label, typed);
         }
@@ -156,14 +172,13 @@ fn inset(ctx: &Ctx, body: Rect, shown: usize) -> Rect {
 }
 
 /// What stands in the list's place when it is empty.
-fn nothing(ctx: &mut Ctx, body: Rect, prompt: &Option<crate::palette::Prompt>) {
+fn nothing(ctx: &mut Ctx, body: Rect, palette: &Palette, prompt: &Option<crate::palette::Prompt>) {
     let hint = match prompt {
-        Some(prompt) if prompt.free => "Enter to confirm",
-        Some(_) => "nothing to pick",
-        None => "no match",
+        Some(_) => "Nothing to pick".to_string(),
+        None => format!("No match for \u{201c}{}\u{201d}", palette.query.text()),
     };
     let room = body.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    Label::new(hint, ctx.styles.small(Role::Faint)).draw(ctx, room);
+    Label::new(&hint, ctx.styles.body(Role::Faint)).draw(ctx, room);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

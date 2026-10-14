@@ -23,7 +23,7 @@ pub fn input_at<A: App>(
     hairline(ctx, rect, line);
 }
 
-/// An input line led by the step it answers, dimmed; `hint` stands in an empty field.
+/// An input line led by the step it answers, dimmed; `hint` faint at its right end.
 pub fn stepped_input<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,
@@ -34,9 +34,10 @@ pub fn stepped_input<A: App>(
     let pad = ctx.tokens.md;
     row(ctx, rect, pad, step, faint);
     let at = pad + ctx.measure(step, &faint) + pad;
-    match (text.is_empty(), hint) {
-        (true, Some(hint)) => row(ctx, rect, at, hint, faint),
-        _ => row(ctx, rect, at, text, style),
+    row(ctx, rect, at, text, style);
+    if let Some(hint) = hint {
+        let x = rect.w - pad - ctx.measure(hint, &faint);
+        row(ctx, rect, x, hint, faint);
     }
     caret_after(ctx, rect, at, before, style);
     let line = ctx.styles.line();
