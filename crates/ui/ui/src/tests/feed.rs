@@ -423,3 +423,33 @@ fn a_turn_s_start_and_end_fold_as_one_turn() {
     );
     assert!(drawn.iter().any(|one| one == "2"), "{drawn:?}");
 }
+
+#[test]
+fn the_feed_is_monochrome_but_for_its_errors() {
+    let mut app = fed();
+    app.errors
+        .push(groove_controllers::Told::now(groove_types::Error::new(
+            groove_types::ErrorKind::Internal,
+            "the walk failed",
+        )));
+    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
+    let rail = crate::layout::Layout::of(window(), &Ui::default()).rail;
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let (accent, bad) = (
+        styles.color(groove_ui_kit::base::style::Role::Accent),
+        styles.color(groove_ui_kit::base::style::Role::Bad),
+    );
+    let layer = &frame.layers()[0];
+    let feed = layer.texts.iter().filter(|run| run.x < rail.right());
+    assert!(
+        feed.clone().all(|run| run.style.color != accent),
+        "no accent in the rail's text"
+    );
+    let error = layer
+        .texts
+        .iter()
+        .find(|run| run.text == "error")
+        .expect("the error");
+    assert_eq!(error.style.color, bad);
+}

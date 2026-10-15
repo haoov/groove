@@ -74,7 +74,7 @@ fn said<'a>(app: &AppState, item: Item<'a>, every: bool) -> Said<'a> {
             mark: Mark::Note,
             act: "note",
             subject: said.what.clone(),
-            role: Role::Accent,
+            role: Role::Text,
         },
         Item::Event(event) => {
             let title = every.then(|| titled(app, &event.session)).flatten();
@@ -90,7 +90,7 @@ fn said<'a>(app: &AppState, item: Item<'a>, every: bool) -> Said<'a> {
                     Some(title) => format!("{title} \u{b7} {}", event.subject),
                     None => event.subject.clone(),
                 },
-                role: Role::Accent,
+                role: Role::Text,
             }
         }
     }
