@@ -61,6 +61,7 @@ pub enum Mark {
     Theme,
     Split,
     Inline,
+    File,
 }
 
 impl Mark {
@@ -135,6 +136,7 @@ impl Mark {
             Mark::Theme => Icon::Palette,
             Mark::Split => Icon::Columns,
             Mark::Inline => Icon::Rows,
+            Mark::File => Icon::File,
         }
     }
 }

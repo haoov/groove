@@ -241,3 +241,25 @@ fn the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight() {
     assert_eq!(ui.session.resources.cursor, Some(lines - 1));
     assert_eq!(ui.session.resources.kinds, extent, "the last line in sight");
 }
+
+#[test]
+fn the_kind_the_search_names_comes_before_scattered_letters() {
+    let (mut app, mut ui) = listing();
+    let hpa = kind(
+        "autoscaling",
+        "HorizontalPodAutoscaler",
+        "horizontalpodautoscalers",
+        true,
+    );
+    let kinds = vec![pods(), hpa, kind("", "Node", "nodes", false)];
+    app.cluster.store.set_kinds("staging", kinds);
+    ui.session.resources.filter.set("nodes");
+    let (texts, _) = drawn(&app, &ui);
+    let at = |label: &str| texts.iter().position(|one| one == label);
+    let nodes = at("Nodes").expect("nodes");
+    let hpa = texts.iter().position(|one| one.starts_with("Horizontal"));
+    assert!(
+        hpa.is_none_or(|hpa| nodes < hpa),
+        "the best match first: {texts:?}"
+    );
+}

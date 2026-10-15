@@ -256,3 +256,70 @@ fn the_last_row_selected_meets_the_box_edge() {
         "no gap, the edge kept"
     );
 }
+
+#[test]
+fn a_pinned_line_names_what_the_actions_run_on() {
+    let app = full_app();
+    let open = app.session.selected().expect("a session");
+    let branch = open.selected_worktree().expect("a worktree").branch.clone();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    let texts = |ui: &Ui| -> Vec<String> {
+        let frame = drawn(ui, &app);
+        frame.layers()[1]
+            .texts
+            .iter()
+            .map(|t| t.text.clone())
+            .collect()
+    };
+    let shown = texts(&ui);
+    assert!(shown.contains(&"in ".to_string()), "{shown:?}");
+    assert!(
+        shown.contains(&open.session.title) && shown.contains(&branch),
+        "{shown:?}"
+    );
+    typed("add work", &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert!(
+        !texts(&ui).contains(&"in ".to_string()),
+        "a step asks its own question"
+    );
+    let none = AppState::default();
+    let mut bare = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut bare, &none);
+    let frame = drawn(&bare, &none);
+    assert!(
+        !frame.layers()[1].texts.iter().any(|t| t.text == "in "),
+        "no session, no scope"
+    );
+}
+
+#[test]
+fn a_hash_searches_the_worktree_files_and_opens_the_one_picked() {
+    let mut app = full_app();
+    let file = |path: &str| groove_types::FileDiff {
+        path: path.into(),
+        added: 0,
+        deleted: 0,
+        status: groove_types::FileStatus::Modified,
+        staged: None,
+    };
+    let paths = ["src/play.rs", "docs/layout.md", "src/layout.rs"]
+        .map(file)
+        .to_vec();
+    app.workspace.set_paths(paths);
+    let mut palette = Palette::default();
+    let listed = palette.key(Key::Char('#'), &app);
+    assert_eq!(listed.commands[0].id(), "workspace.list_paths");
+    typed_into(&mut palette, "layout", &app);
+    let rows: Vec<String> = palette.rows(&app).into_iter().map(|e| e.label).collect();
+    assert_eq!(
+        rows,
+        ["src/layout.rs", "docs/layout.md"],
+        "names first, short first"
+    );
+    let mut ui = Ui::default();
+    let commands = ui.closed_palette(palette.key(Key::Enter, &app), &app);
+    assert_eq!(commands[0].id(), "workspace.open_file");
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
+}

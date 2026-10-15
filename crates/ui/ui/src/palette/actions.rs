@@ -3,7 +3,7 @@
 
 use groove_controllers::config_service::Preference;
 use groove_controllers::session_service::Open;
-use groove_controllers::{AppState, Command, agent, config, delivery, task, workspace};
+use groove_controllers::{AppState, Command, agent, config, task, workspace};
 use groove_types::{ApprovalId, DiffView, SessionKind, ThemeName};
 
 use super::{Entry, Run};
@@ -21,6 +21,10 @@ pub enum Act {
     Notes(Showing),
     /// The agent's ask, shown in its sheet.
     Examine(ApprovalId),
+    /// A file of the selected worktree, opened on the Files tab.
+    Open(String),
+    /// Every change of the worktree thrown away, once confirmed.
+    Discard,
 }
 
 impl Act {
@@ -32,6 +36,8 @@ impl Act {
             Act::Note => "notes.add",
             Act::Notes(_) => "notes.show",
             Act::Examine(_) => "agent.review",
+            Act::Open(_) => "workspace.open_file",
+            Act::Discard => "workspace.discard_all",
         }
     }
 }
@@ -65,6 +71,7 @@ pub(super) fn actions(app: &AppState) -> Vec<Entry> {
     out.extend(agent(app, open));
     out.extend(noting(app));
     out.extend(tasked(app, open));
+    out.extend(super::skills::entries(app, open));
     out.extend(themes(app));
     out
 }
@@ -114,20 +121,8 @@ fn landing(app: &AppState, open: &Open) -> Vec<Entry> {
         git("Push", workspace::Command::Push),
         git("Pull", workspace::Command::Pull),
     ];
-    let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
-    let mr = match delivery.mr {
-        Some(mr) => command(
-            "MR",
-            "Open the MR in the browser",
-            Command::Delivery(delivery::Command::BrowseMr { url: mr.url }),
-        ),
-        None => command(
-            "MR",
-            "Create the MR",
-            Command::Delivery(delivery::Command::CreateMr),
-        ),
-    };
-    out.push(mr);
+    out.extend(super::mr::entries(app, open, worktree));
+    out.push(act("Git", "Discard every change", Act::Discard));
     out
 }
 

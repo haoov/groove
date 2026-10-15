@@ -42,13 +42,14 @@ pub enum Icon {
     Palette,
     Columns,
     Rows,
+    File,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 35] = [
+    pub(crate) const ALL: [Icon; 36] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -84,6 +85,7 @@ impl Icon {
         Icon::Palette,
         Icon::Columns,
         Icon::Rows,
+        Icon::File,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -123,6 +125,7 @@ impl Icon {
             Icon::Palette => include_bytes!("../../../../assets/icons/palette.svg"),
             Icon::Columns => include_bytes!("../../../../assets/icons/columns.svg"),
             Icon::Rows => include_bytes!("../../../../assets/icons/rows.svg"),
+            Icon::File => include_bytes!("../../../../assets/icons/file.svg"),
         }
     }
 

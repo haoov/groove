@@ -1,6 +1,7 @@
 //! An action that asks for its arguments, one prompt at a time.
 
 mod clusters;
+mod picks;
 
 use groove_controllers::{AppState, Command, session, session_service::Open};
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
@@ -19,6 +20,10 @@ pub enum Action {
     ForceDelete,
     AttachCluster,
     DetachCluster,
+    /// The header's repo picker.
+    PickRepo,
+    /// The header's branch picker.
+    PickBranch,
 }
 
 impl Action {
@@ -28,7 +33,9 @@ impl Action {
             Action::AddRepo => "session.add_repo",
             Action::AddWorktree => "session.add_worktree",
             Action::RemoveRepo => "session.remove_repo",
-            Action::SelectWorktree => "session.select_worktree",
+            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
+                "session.select_worktree"
+            }
             Action::CloseWorktree | Action::ForceCloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
@@ -135,6 +142,8 @@ impl Flow {
             (Action::AttachCluster, 0) => Some(Prompt::choose("context", clusters::known(app))),
             (Action::AttachCluster, 1) => Some(clusters::namespaces(app, &self.answers[0])),
             (Action::DetachCluster, 0) => Some(Prompt::choose("cluster", clusters::held(open))),
+            (Action::PickRepo, 0) => Some(Prompt::choose("repo", picks::repos(open))),
+            (Action::PickBranch, 0) => Some(Prompt::choose("branch", picks::branches(open))),
             _ => None,
         }
     }
@@ -201,10 +210,9 @@ impl Flow {
                 repo: RepoId::new(answer(0)),
                 force: false,
             },
-            Action::SelectWorktree => session::Command::SelectWorktree {
-                session,
-                worktree: WorktreeId::new(answer(0)),
-            },
+            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
+                select(session, answer(0))
+            }
             Action::CloseWorktree | Action::ForceCloseWorktree => session::Command::CloseWorktree {
                 session,
                 worktree: WorktreeId::new(answer(0)),
@@ -283,4 +291,9 @@ fn base_prompt(app: &AppState, repo: &RepoId) -> Prompt {
         free: true,
         allow_empty: true,
     }
+}
+
+fn select(session: SessionId, worktree: String) -> session::Command {
+    let worktree = WorktreeId::new(worktree);
+    session::Command::SelectWorktree { session, worktree }
 }

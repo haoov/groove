@@ -2,9 +2,12 @@
 
 mod actions;
 mod entries;
+mod files;
 mod flow;
 mod grouped;
 mod marks;
+mod mr;
+mod skills;
 mod steps;
 
 use groove_controllers::{AppState, Command};
@@ -111,20 +114,18 @@ impl Anchor {
     }
 }
 
-/// The rows whose text holds every word of the query, best match first.
+/// The rows the query finds, the best fuzzy match first.
 pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Vec<T> {
-    let mut scored: Vec<(usize, T)> = rows
-        .into_iter()
-        .filter_map(|row| Some((groove_types::score(&text(&row), query)?, row)))
-        .collect();
-    scored.sort_by_key(|(score, _)| *score);
-    scored.into_iter().map(|(_, row)| row).collect()
+    groove_types::ranked(rows, text, query)
 }
 
 impl Palette {
     /// The rows under the query: entries, or the current prompt's options.
     pub fn rows(&self, app: &AppState) -> Vec<Entry> {
-        grouped::grouped(entries(app), self.query.text())
+        match self.query.text().strip_prefix('#') {
+            Some(rest) => files::rows(app, rest),
+            None => grouped::grouped(entries(app), self.query.text()),
+        }
     }
 
     /// The prompt a flow is on, if any.
@@ -176,6 +177,13 @@ impl Palette {
             Key::Enter => return self.enter(app),
             Key::Escape => return self.escape(),
             _ => {}
+        }
+        if typed && self.flow.is_none() && self.query.text() == "#" {
+            let list = groove_controllers::workspace::Command::ListPaths;
+            return Outcome {
+                commands: vec![Command::Workspace(list)],
+                ..Outcome::default()
+            };
         }
         Outcome::default()
     }

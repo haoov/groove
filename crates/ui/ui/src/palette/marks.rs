@@ -25,7 +25,8 @@ fn flowed(action: Action) -> Mark {
         | Action::CloseWorktree
         | Action::ForceCloseWorktree
         | Action::ForceDelete => Mark::Close,
-        Action::SelectWorktree => Mark::Git,
+        Action::SelectWorktree | Action::PickBranch => Mark::Git,
+        Action::PickRepo => Mark::Repo,
         Action::RenameExplorer => Mark::Explorer,
         Action::AttachCluster | Action::DetachCluster => Mark::Cluster,
     }
@@ -38,6 +39,8 @@ fn acted(act: &Act) -> Option<Mark> {
         Act::View(DiffView::Split) => Mark::Split,
         Act::Note | Act::Notes(_) => Mark::Note,
         Act::Examine(_) => Mark::Agent,
+        Act::Open(_) => Mark::File,
+        Act::Discard => Mark::Close,
     };
     Some(mark)
 }
@@ -76,6 +79,10 @@ fn commanded(command: &Command, app: &AppState) -> Option<Mark> {
         Command::Workspace(workspace::Command::Pull) => Mark::Behind,
         Command::Delivery(delivery::Command::BrowseMr { .. }) => Mark::Outward,
         Command::Delivery(delivery::Command::CreateMr) => Mark::Review,
+        Command::Delivery(delivery::Command::RefreshMr) => Mark::Reload,
+        Command::Delivery(delivery::Command::UpdateMr) => Mark::Ahead,
+        Command::Delivery(delivery::Command::CloseMr) => Mark::Close,
+        Command::Delivery(delivery::Command::Say(_)) => Mark::Note,
         Command::Agent(_) => Mark::Agent,
         Command::Task(task::Command::Finish { .. }) => Mark::Task,
         Command::Task(task::Command::Browse { .. }) => Mark::Outward,

@@ -44,16 +44,54 @@ fn a_click_on_a_worktree_row_selects_it() {
 }
 
 #[test]
-fn a_click_on_a_picker_opens_the_worktree_selector() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    let hits = regions(&app, &ui);
-    let rect = hits
-        .rect_of(&Target::Picker(Picks::Repo))
-        .expect("the header has one");
-    assert!(click(rect, &mut ui, &app, &hits).is_empty());
-    let prompt = ui.palette().and_then(|p| p.prompt(&app));
-    assert_eq!(prompt.map(|p| p.label), Some("worktree"));
+fn the_repo_picker_lists_repos_and_the_branch_picker_their_worktrees() {
+    let app = two_repos();
+    let picked = |which: Picks| {
+        let mut ui = Ui::default();
+        let hits = regions(&app, &ui);
+        let rect = hits
+            .rect_of(&Target::Picker(which))
+            .expect("the header has one");
+        assert!(click(rect, &mut ui, &app, &hits).is_empty());
+        let prompt = ui.palette().and_then(|p| p.prompt(&app)).expect("a picker");
+        let labels: Vec<String> = prompt.options.into_iter().map(|(label, _)| label).collect();
+        (prompt.label, labels)
+    };
+    assert_eq!(
+        picked(Picks::Repo),
+        ("repo", vec!["mayo".into(), "pomme".into()])
+    );
+    let branches = vec!["explorer/alpha".to_string(), "fix/y".into()];
+    assert_eq!(
+        picked(Picks::Branch),
+        ("branch", branches),
+        "only the selected repo's"
+    );
+}
+
+/// The fixture's repo with a second worktree, and a second repo with one of its own.
+fn two_repos() -> AppState {
+    let mut app = full_app();
+    let open = app.session.get_mut(&SessionId::new("a")).unwrap();
+    let mayo = open.repos[0].clone();
+    let worktree = |id: &str, repo: &groove_types::Repo, branch: &str| groove_types::Worktree {
+        id: WorktreeId::new(id),
+        session: SessionId::new("a"),
+        repo: repo.id.clone(),
+        branch: branch.into(),
+        path: format!("/code/worktrees/a/{}/{branch}", repo.project),
+        base_ref: None,
+        created_at: groove_types::Timestamp::new(0),
+    };
+    let pomme = groove_types::Repo {
+        id: groove_types::RepoId::new("gitlab.example.com/g/pomme"),
+        project: "pomme".into(),
+        local_path: "/pool/pomme".into(),
+        ..mayo.clone()
+    };
+    open.add_worktree(mayo.clone(), worktree("wt-3", &mayo, "fix/y"));
+    open.add_worktree(pomme.clone(), worktree("wt-2", &pomme, "main"));
+    app
 }
 
 #[test]
@@ -112,9 +150,8 @@ fn a_click_outside_the_palette_closes_it() {
     let mut ui = Ui::default();
     press(Key::Char('k'), ALT, &mut ui, &app);
     let hits = regions(&app, &ui);
-    let rect = hits
-        .rect_of(&Target::Worktree(WorktreeId::new("wt-1")))
-        .expect("the overview is under the palette");
+    let palette = hits.rect_of(&Target::Palette).expect("the palette");
+    let rect = groove_gfx::Rect::new(palette.x - 40.0, palette.y + 40.0, 10.0, 10.0);
     assert!(
         click(rect, &mut ui, &app, &hits).is_empty(),
         "the click closes the palette and does nothing else"

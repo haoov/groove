@@ -169,12 +169,16 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     picked.commands
 }
 
-/// Either picker opens the worktree selector, under the picker itself.
+/// The repo picker lists the repos, the branch picker the repo's worktrees, under the picker.
 pub(super) fn selector(ui: &mut Ui, app: &AppState, hits: &Hits, which: Picks) -> Vec<Command> {
     let Some(session) = app.session.selected.clone() else {
         return Vec::new();
     };
-    let flow = Flow::new(Action::SelectWorktree, session);
+    let action = match which {
+        Picks::Repo => Action::PickRepo,
+        _ => Action::PickBranch,
+    };
+    let flow = Flow::new(action, session);
     let commands = flow.refresh(app).into_iter().collect();
     ui.overlay = Some(Overlay::Palette(Palette {
         flow: Some(flow),

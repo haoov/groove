@@ -3,8 +3,8 @@
 use super::Entry;
 
 /// The order the groups show in while nothing ranks them.
-const ORDER: [&str; 10] = [
-    "Go", "Session", "Diff", "Git", "MR", "Agent", "Notes", "Task", "Look", "Config",
+const ORDER: [&str; 11] = [
+    "Go", "Session", "Diff", "Git", "MR", "Agent", "Skills", "Notes", "Task", "Look", "Config",
 ];
 
 /// The entries the query keeps, grouped; a group the first word names comes first.

@@ -1,5 +1,10 @@
 //! The panel every choice is made in: the palette, or a picker on what it belongs to.
 
+mod rows;
+mod scoped;
+
+use rows::{entry, matched};
+
 use groove_controllers::AppState;
 use std::ops::Range;
 
@@ -14,7 +19,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::{PALETTE_LINES, PALETTE_ROWS};
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Row, input_at, list, modal, panel_at, stepped_input};
+use groove_ui_kit::widgets::{Lead, Row, list, modal, panel_at, stepped_input};
 
 /// Lines the panel shows: more centred than on a picker.
 fn limit(palette: &Palette) -> usize {
@@ -52,10 +57,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
     let shown = lines.len().clamp(usize::from(!typing_only), limit(palette));
     let typed = has_input(palette, &prompt, rows.len());
-    let rows_high = ctx.tokens.row * (shown + usize::from(typed)) as f32;
+    let scope = scoped::scope(app, palette);
+    let rows_high = ctx.tokens.row * (shown + usize::from(scope.is_some())) as f32;
     let hairline = ctx.tokens.hairline;
     let height = match typed {
-        true => rows_high + ctx.tokens.xs * 2.0 + hairline,
+        true => rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0 + hairline,
         false => rows_high + hairline * 2.0,
     };
     let edge = ctx.styles.border();
@@ -74,6 +80,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
             let [_, rest] = column_in(rect, [tall(hairline), Spec::fill()]);
             rest
         }
+    };
+    let under = match &scope {
+        Some(words) => scoped::draw(ctx, under, words),
+        None => under,
     };
     let body = inset(ctx, under, shown);
     let ends = (
@@ -142,7 +152,7 @@ fn input_line(
         rect,
         [
             tall(ctx.tokens.xs),
-            tall(ctx.tokens.row),
+            tall(ctx.tokens.bar),
             tall(ctx.tokens.xs),
             Spec::fill(),
         ],
@@ -156,9 +166,17 @@ fn input_line(
                 (false, false) => None,
             };
             let typed = (query.text(), query.before(), hint);
-            stepped_input(ctx, line, prompt.label, typed);
+            stepped_input(ctx, line, Lead::Step(prompt.label), typed);
         }
-        None => input_at(ctx, line, "> ", (query.text(), query.before())),
+        None => {
+            let hint = match query.text() {
+                "" => Some("# Files"),
+                text if text.starts_with('#') => Some("Files"),
+                _ => None,
+            };
+            let typed = (query.text(), query.before(), hint);
+            stepped_input(ctx, line, Lead::Mark(Mark::Search), typed);
+        }
     }
     rest
 }
@@ -252,41 +270,4 @@ fn items(
         .iter()
         .position(|line| *line == Line::Row(palette.selected));
     list(ctx, body, &items, at.filter(|_| lit));
-}
-
-fn entry<'a>(
-    ctx: &Ctx,
-    text: &'a str,
-    (chord, mark, found): (Option<&'a str>, Option<Mark>, &'a [Range<usize>]),
-    selected: bool,
-) -> Row<'a, Target> {
-    let styles = &ctx.styles;
-    let row = Row::new(ctx.tokens.md, text, styles.label(Role::Text));
-    let row = row.lit(found, styles.label(Role::Accent));
-    let row = match chord {
-        Some(chord) => row.end(chord, styles.small(Role::Faint)),
-        None => row,
-    };
-    let tint = styles.color(if selected { Role::Text } else { Role::Faint });
-    match mark {
-        Some(mark) => row.mark(mark).tint(tint),
-        None => row,
-    }
-}
-
-/// Where each word of the query first stands in `text`, merged.
-fn matched(text: &str, query: &str) -> Vec<Range<usize>> {
-    let mut found: Vec<Range<usize>> = query
-        .split_whitespace()
-        .filter_map(|word| groove_types::occurrences(text, word).into_iter().next())
-        .collect();
-    found.sort_by_key(|range| range.start);
-    let mut out: Vec<Range<usize>> = Vec::with_capacity(found.len());
-    for range in found {
-        match out.last_mut() {
-            Some(last) if range.start <= last.end => last.end = last.end.max(range.end),
-            _ => out.push(range),
-        }
-    }
-    out
 }

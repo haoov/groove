@@ -111,34 +111,45 @@ fn lines(app: &AppState, open: &Open, ui: &Ui) -> Vec<Line> {
         }
     }
     let filter = held.filter.text().to_lowercase();
-    let matches = |one: &&KubeKind| matched(one, &filter);
-    let mut headed: std::collections::BTreeMap<KindHeading, Vec<&KubeKind>> = Default::default();
-    for one in kinds.into_iter().filter(matches) {
-        headed.entry(one.heading()).or_default().push(one);
+    let mut headed: std::collections::BTreeMap<KindHeading, Vec<(i32, &KubeKind)>> =
+        Default::default();
+    for one in kinds {
+        if let Some(score) = matched(one, &filter) {
+            headed.entry(one.heading()).or_default().push((score, one));
+        }
     }
+    let mut headed: Vec<_> = headed.into_iter().collect();
+    for (_, under) in &mut headed {
+        under.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.kind.cmp(&b.1.kind)));
+    }
+    headed.sort_by_key(|(_, under)| std::cmp::Reverse(under.first().map_or(0, |one| one.0)));
     let mut out = Vec::new();
-    for (heading, mut under) in headed {
+    for (heading, under) in headed {
         let open = !held.folded.contains(&heading);
         out.push(Line::Heading(heading, open));
         if open {
-            under.sort_by(|a, b| a.kind.cmp(&b.kind));
-            out.extend(under.into_iter().cloned().map(Line::Kind));
+            out.extend(under.into_iter().map(|(_, one)| Line::Kind(one.clone())));
         }
     }
     out
 }
 
-/// A word in the kind, its plural, its heading or its API group; `heading/kind` narrows both.
-fn matched(one: &KubeKind, filter: &str) -> bool {
+/// How well the kind, its plural, its heading or its API group match; `heading/kind` narrows both.
+fn matched(one: &KubeKind, filter: &str) -> Option<i32> {
     let heading = one.heading().label().to_lowercase();
-    let in_place = |place: &str| {
-        groove_types::fuzzy(&heading, place) || groove_types::fuzzy(&one.group, place)
+    let best = |texts: &[&str], query: &str| {
+        let scores = texts
+            .iter()
+            .filter_map(|text| groove_types::sought(text, query));
+        scores.map(|found| found.score).max()
     };
-    let in_kind =
-        |word: &str| groove_types::fuzzy(&one.kind, word) || groove_types::fuzzy(&one.plural, word);
+    let (kind, place) = (
+        [one.kind.as_str(), one.plural.as_str()],
+        [heading.as_str(), one.group.as_str()],
+    );
     match filter.split_once('/') {
-        Some((place, kind)) => in_place(place) && in_kind(kind),
-        None => in_kind(filter) || in_place(filter),
+        Some((there, what)) => best(&place, there).and(best(&kind, what)),
+        None => best(&[kind[0], kind[1], place[0], place[1]], filter),
     }
 }
 

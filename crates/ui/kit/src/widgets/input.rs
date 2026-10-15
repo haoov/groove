@@ -27,13 +27,22 @@ pub fn input_at<A: App>(
 pub fn stepped_input<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,
-    step: &str,
+    lead: Lead<'_>,
     (text, before, hint): (&str, &str, Option<&str>),
 ) {
     let (style, faint) = (ctx.styles.body(Role::Text), ctx.styles.body(Role::Faint));
     let pad = ctx.tokens.md;
-    row(ctx, rect, pad, step, faint);
-    let at = pad + ctx.measure(step, &faint) + pad;
+    let at = match lead {
+        Lead::Step(step) => {
+            row(ctx, rect, pad, step, faint);
+            pad + ctx.measure(step, &faint) + pad
+        }
+        Lead::Mark(mark) => {
+            let slot = crate::shape::leading(ctx, rect, rect.x + pad);
+            ctx.icon(slot, mark, 0, faint.color);
+            crate::shape::after_mark(ctx, pad)
+        }
+    };
     row(ctx, rect, at, text, style);
     if let Some(hint) = hint {
         let x = rect.w - pad - ctx.measure(hint, &faint);
@@ -42,6 +51,13 @@ pub fn stepped_input<A: App>(
     caret_after(ctx, rect, at, before, style);
     let line = ctx.styles.line();
     hairline(ctx, rect, line);
+}
+
+/// What leads an input line: the step it answers, or a mark.
+#[derive(Debug, Clone, Copy)]
+pub enum Lead<'a> {
+    Step(&'a str),
+    Mark(crate::base::mark::Mark),
 }
 
 /// The caret of a line typed in `style`, `indent` into `rect`, after `before`.

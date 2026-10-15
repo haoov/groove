@@ -23,6 +23,7 @@ mod overview;
 mod painted;
 mod palette;
 mod palette_look;
+mod palette_more;
 mod pasting;
 mod pending;
 mod perf;

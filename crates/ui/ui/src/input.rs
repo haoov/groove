@@ -186,6 +186,13 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             ui.session.folded = false;
         }
         Act::Examine(id) => ui.overlay = Some(crate::Overlay::Examining(id)),
+        Act::Discard => ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Everything)),
+        Act::Open(path) => {
+            ui.session.tab = Tab::Files;
+            ui.focus = crate::Focus::Workspace;
+            let open = groove_controllers::workspace::Command::OpenFile { path, at: None };
+            return vec![Command::Workspace(open)];
+        }
     }
     Vec::new()
 }

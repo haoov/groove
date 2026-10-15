@@ -257,6 +257,11 @@ dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an 
 takes the last answer back into it, and on the first question returns to the entries.
 Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
 
+**`#` searches files.** A query that starts with `#` lists the selected worktree's files, a
+match in the file name first, and opens the one picked on the Files tab. A line under the
+input names the session, repo and branch the palette acts on.
+Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
+
 **One button says what to do now.** The commit box offers a single action — commit while
 something is staged, push while ahead, pull while behind, open an MR once the branch is
 landed and has none — with a caret beside it for everything else the worktree can do,
