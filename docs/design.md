@@ -32,6 +32,9 @@ the rail only as its attention count.
   does what a click does, Space stages a changed file, Left and Right fold a folder, and
   `[` and `]` change the list. `alt+c` puts the caret in the commit box.
   Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
+- **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
+  `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
+  workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
 
 ## Limits
 

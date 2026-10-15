@@ -103,8 +103,29 @@ fn in_message(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap) -> Vec
     asked.copied.into_iter().chain(edit).collect()
 }
 
-/// Up and down move along the sessions the rail shows.
-pub(super) fn in_rail(key: Key, ui: &Ui, app: &AppState) -> Vec<Command> {
+/// Up and down select a session, Enter goes to its workspace, `a` and `v` answer its ask.
+pub(super) fn in_rail(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let ask = app
+        .session
+        .selected
+        .as_ref()
+        .and_then(|session| app.agent.activity(session))
+        .and_then(|one| one.asks.first());
+    match (key, ask) {
+        (Key::Enter, _) => {
+            ui.focus = crate::Focus::Workspace;
+            return Vec::new();
+        }
+        (Key::Char('a'), Some(ask)) => {
+            let approve = groove_controllers::agent::Command::Approve { id: ask.id.clone() };
+            return vec![Command::Agent(approve)];
+        }
+        (Key::Char('v'), Some(ask)) => {
+            ui.overlay = Some(crate::Overlay::Examining(ask.id.clone()));
+            return Vec::new();
+        }
+        _ => {}
+    }
     let shown = crate::views::rail::shown(app, ui);
     let selected = app.session.selected.as_ref();
     let at = shown

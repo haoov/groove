@@ -18,6 +18,8 @@ pub enum Action {
     FocusWorkspace,
     FocusSidebar,
     FocusCommit,
+    NextTab,
+    PreviousTab,
     FoldSidebar,
     Overview,
     Diff,
@@ -71,10 +73,19 @@ const fn spec(
     }
 }
 
+/// A region the keys go to, in the Panes group.
+const fn pane(
+    action: Action,
+    (id, label): (&'static str, &'static str),
+    chords: &'static [&'static str],
+) -> Spec {
+    spec(action, (id, label, "Panes"), Ring::App, chords)
+}
+
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 38] = [
+pub const TABLE: [Spec; 40] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -129,36 +140,21 @@ pub const TABLE: [Spec; 38] = [
         App,
         &["alt+shift+right"],
     ),
-    spec(
-        A::FocusRail,
-        ("pane.rail", "the rail", "Panes"),
-        App,
-        &["alt+1"],
-    ),
-    spec(
-        A::FocusAgent,
-        ("pane.agent", "the agent", "Panes"),
-        App,
-        &["alt+2"],
-    ),
-    spec(
+    pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+1"]),
+    pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+2"]),
+    pane(
         A::FocusWorkspace,
-        ("pane.workspace", "the workspace", "Panes"),
-        App,
+        ("pane.workspace", "the workspace"),
         &["alt+3"],
     ),
-    spec(
-        A::FocusSidebar,
-        ("pane.sidebar", "the sidebar", "Panes"),
-        App,
-        &["alt+4"],
-    ),
-    spec(
+    pane(A::FocusSidebar, ("pane.sidebar", "the sidebar"), &["alt+4"]),
+    pane(
         A::FocusCommit,
-        ("pane.commit", "the commit box", "Panes"),
-        App,
+        ("pane.commit", "the commit box"),
         &["alt+c"],
     ),
+    pane(A::NextTab, ("tab.next", "next tab"), &["alt+]"]),
+    pane(A::PreviousTab, ("tab.previous", "previous tab"), &["alt+["]),
     spec(
         A::FoldSidebar,
         ("sidebar.fold", "fold the sidebar", "Panes"),
