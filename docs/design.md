@@ -21,8 +21,10 @@ the rail only as its attention count.
   a button. Groove never runs it by itself.
 - **Everything is reachable from the keyboard.** The palette is the front door to every
   action. The mouse is a shortcut.
-- **Selection is a background**, one step above its ground — never an underline or a bar.
-  A selected tab is the exception: it keeps its accent underline.
+- **Selection is a background**, one step above its ground. A selected tab adds its accent
+  underline.
+- **Focus is a line.** The region that holds the keyboard carries a 2px accent line along
+  its bottom edge. Enforced by `the_focused_region_alone_carries_the_line`.
 
 ## Limits
 

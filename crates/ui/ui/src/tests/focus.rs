@@ -128,3 +128,58 @@ fn a_click_on_the_overview_takes_the_keys_from_the_agent() {
     );
     assert!(typed.is_empty(), "the agent no longer hears the keys");
 }
+
+#[test]
+fn the_focused_region_alone_carries_the_line() {
+    let app = full_app();
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
+    let thick = tokens.hairline * 2.0;
+    for focus in [
+        Focus::Rail,
+        Focus::Agent,
+        Focus::Workspace,
+        Focus::Sidebar,
+        Focus::Terminal,
+    ] {
+        let mut ui = Ui::default();
+        ui.session.tab = Tab::Diff;
+        ui.session.manual = true;
+        ui.focus = focus;
+        let layout = crate::layout::Layout::of(window(), &ui);
+        let region = match focus {
+            Focus::Rail => layout.rail,
+            Focus::Agent => layout.agent_bar,
+            Focus::Workspace => layout.workspace,
+            Focus::Sidebar => layout.commit,
+            Focus::Terminal => layout.manual,
+        };
+        let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+        let regions = [
+            layout.rail,
+            layout.agent_bar,
+            layout.workspace,
+            layout.commit,
+            layout.manual,
+        ];
+        let under = |quad: &&groove_gfx::Quad| {
+            let at = (quad.rect.x, quad.rect.w, quad.rect.bottom());
+            regions.iter().any(|one| (one.x, one.w, one.bottom()) == at)
+        };
+        let lines: Vec<_> = frame
+            .layers()
+            .iter()
+            .flat_map(|one| one.quads.iter())
+            .filter(|quad| quad.color == accent && quad.rect.h == thick)
+            .filter(under)
+            .collect();
+        assert_eq!(lines.len(), 1, "{focus:?}: one line, under no other region");
+        assert_eq!(lines[0].rect.bottom(), region.bottom(), "{focus:?}");
+        assert_eq!(
+            (lines[0].rect.x, lines[0].rect.w),
+            (region.x, region.w),
+            "{focus:?}"
+        );
+    }
+}
