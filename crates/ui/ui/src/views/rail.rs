@@ -33,6 +33,24 @@ pub struct RailUi {
     pub mine: bool,
     /// The routines' sessions stand open under their heading.
     pub routines: bool,
+    /// The feed's folded run that stands open.
+    pub open: Option<RunKey>,
+}
+
+/// A folded run of the feed: what kind it folds, and when its newest one happened.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RunKey {
+    pub fold: Fold,
+    pub newest: groove_types::Timestamp,
+}
+
+/// What a run of the feed folds together.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Fold {
+    Error,
+    Note,
+    /// A kind of event; a turn's start and end are one.
+    Event(groove_types::TimelineKind),
 }
 
 /// One row of the rail's list.

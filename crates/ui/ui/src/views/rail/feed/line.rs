@@ -4,9 +4,12 @@ use groove_controllers::AppState;
 use groove_gfx::{Align, Edges, Rect};
 use groove_types::{SessionId, TimelineKind, Timestamp};
 
+use super::super::RunKey;
 use super::Line;
+use super::runs::Item;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
@@ -22,30 +25,66 @@ struct Said<'a> {
 }
 
 /// One line of the feed, drawn in the row the list gives it; `every` names each event's session.
-pub(super) fn draw(ctx: &mut Ctx, line: Rect, one: &Line<'_>, (app, every): (&AppState, bool)) {
-    let said = match one {
-        Line::Job(label) => return running(ctx, line, label),
-        Line::Bad(bad) => Said {
+pub(super) fn draw(
+    ctx: &mut Ctx,
+    line: Rect,
+    one: &Line<'_>,
+    (app, every, open): (&AppState, bool, Option<RunKey>),
+) {
+    match one {
+        Line::Job(label) => running(ctx, line, label),
+        Line::Run(run) => {
+            let newest = run.items[0];
+            let count = run.items.len();
+            match count {
+                1 => reachable(ctx, line, newest),
+                _ => {
+                    let key = run.key();
+                    if open == Some(key) {
+                        groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+                    }
+                    hoverable(ctx, line, Target::FeedRun(key));
+                }
+            }
+            let mut said = said(app, newest, every);
+            if count > 1 {
+                said.subject.clear();
+            }
+            over(ctx, line, said, count);
+        }
+        Line::Under(item) => {
+            reachable(ctx, line, *item);
+            under(ctx, line, item.at(), &said(app, *item, false).subject);
+        }
+    }
+}
+
+/// What one item says, its session named when `every`.
+fn said<'a>(app: &AppState, item: Item<'a>, every: bool) -> Said<'a> {
+    match item {
+        Item::Bad(bad) => Said {
             at: bad.at,
             mark: Mark::Close,
             act: "error",
             subject: bad.what.message.clone(),
             role: Role::Bad,
         },
-        Line::Said(said) => Said {
+        Item::Said(said) => Said {
             at: said.at,
             mark: Mark::Note,
             act: "note",
             subject: said.what.clone(),
             role: Role::Accent,
         },
-        Line::Event(event) => {
-            reachable(ctx, line, &event.session);
+        Item::Event(event) => {
             let title = every.then(|| titled(app, &event.session)).flatten();
             Said {
                 at: event.at,
                 mark: mark_of(event.kind),
-                act: event.kind.label(),
+                act: match event.kind {
+                    TimelineKind::TurnStart | TimelineKind::TurnEnd => "turn",
+                    kind => kind.label(),
+                },
                 subject: match title {
                     Some(title) if event.subject.is_empty() => title.to_string(),
                     Some(title) => format!("{title} \u{b7} {}", event.subject),
@@ -54,8 +93,7 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, one: &Line<'_>, (app, every): (&Ap
                 role: Role::Accent,
             }
         }
-    };
-    over(ctx, line, said);
+    }
 }
 
 /// The session's title, open or only on disk.
@@ -85,10 +123,11 @@ fn mark_of(kind: TimelineKind) -> Mark {
     }
 }
 
-/// The line takes the pointer to the session it belongs to.
-fn reachable(ctx: &mut Ctx, line: Rect, session: &SessionId) {
-    let target = Target::FeedLine(session.clone());
-    hoverable(ctx, line, target);
+/// The line takes the pointer to the session it belongs to, when it has one.
+fn reachable(ctx: &mut Ctx, line: Rect, item: Item<'_>) {
+    if let Some(session) = item.session() {
+        hoverable(ctx, line, Target::FeedLine(session.clone()));
+    }
 }
 
 /// A job the user waits on, with the mark that keeps turning in the mark's place.
@@ -102,8 +141,8 @@ fn running(ctx: &mut Ctx, line: Rect, label: &str) {
     Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
 }
 
-/// The mark, the act and its age on the right, then the subject under the act.
-fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>) {
+/// The mark, the act with its count and its age on the right, then the subject under the act.
+fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>, count: usize) {
     let (mut top, mut under) = halves(ctx, line);
     let size = ctx.tokens.icon;
     let slot = top.take_left(size);
@@ -117,10 +156,23 @@ fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>) {
     let when = ago(said.at.age_at(ctx.now));
     Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut top, 0.0);
     top.take_right(ctx.tokens.sm);
-    Label::new(said.act, ctx.styles.strong(said.role)).draw(ctx, top);
+    Label::new(said.act, ctx.styles.strong(said.role)).left(ctx, &mut top, ctx.tokens.xs);
+    if count > 1 {
+        Label::new(&count.to_string(), ctx.styles.small(Role::Ghost)).draw(ctx, top);
+    }
     if !said.subject.is_empty() {
         Label::new(&said.subject, ctx.styles.small(Role::Muted)).draw(ctx, under);
     }
+}
+
+/// One event of an open run: its subject under the act's column, its age on the right.
+fn under(ctx: &mut Ctx, line: Rect, at: Timestamp, subject: &str) {
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    room.take_left(ctx.tokens.icon + ctx.tokens.sm);
+    let when = ago(at.age_at(ctx.now));
+    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, 0.0);
+    room.take_right(ctx.tokens.sm);
+    Label::new(subject, ctx.styles.small(Role::Muted)).draw(ctx, room);
 }
 
 /// The line's two halves, inside its margins.

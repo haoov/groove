@@ -340,3 +340,86 @@ fn this_session_s_feed_leaves_the_title_out() {
         "{drawn:?}"
     );
 }
+
+/// Session a's three commits, then b's push between two of its own.
+fn runs() -> groove_controllers::AppState {
+    let mut app = app();
+    app.session.feed = vec![
+        line("a", 70, TimelineKind::Commit, "c3"),
+        line("a", 60, TimelineKind::Commit, "c2"),
+        line("a", 50, TimelineKind::Commit, "c1"),
+        line("b", 40, TimelineKind::Commit, "d2"),
+        line("b", 30, TimelineKind::Push, "fix/two"),
+        line("b", 20, TimelineKind::Commit, "d1"),
+    ];
+    app
+}
+
+#[test]
+fn back_to_back_events_of_one_kind_fold_into_one_row() {
+    let drawn = in_rail(&runs(), &Ui::default());
+    let count = |text: &str| drawn.iter().filter(|one| *one == text).count();
+    assert_eq!(
+        count("commit"),
+        3,
+        "a's three, then b's two apart: {drawn:?}"
+    );
+    assert!(drawn.iter().any(|one| one == "3"), "the count: {drawn:?}");
+    let subjects = ["Alpha \u{b7} c3", "Alpha \u{b7} c2", "Alpha \u{b7} c1"];
+    let said = drawn.iter().any(|one| subjects.contains(&one.as_str()));
+    assert!(!said, "a folded row has no second line: {drawn:?}");
+}
+
+#[test]
+fn a_folded_run_opens_on_a_click_and_its_lines_lead_to_the_session() {
+    let app = runs();
+    let mut ui = Ui::default();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let key = crate::views::rail::RunKey {
+        fold: crate::views::rail::Fold::Event(TimelineKind::Commit),
+        newest: Timestamp::new(70),
+    };
+    let row = hits
+        .rect_of(&Target::FeedRun(key))
+        .expect("the folded commits");
+    click(row, &mut ui, &app, &hits);
+    let drawn = in_rail(&app, &ui);
+    for one in ["c3", "c2", "c1"] {
+        assert!(drawn.iter().any(|drawn| drawn == one), "{one}: {drawn:?}");
+    }
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let c2 = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "c2")
+        .expect("c2");
+    let under = hits.at(c2.x + 1.0, c2.y + 1.0);
+    assert_eq!(
+        under,
+        Some(Target::FeedLine(SessionId::new("a"))),
+        "a line leads to a"
+    );
+    let row = hits.rect_of(&Target::FeedRun(key)).expect("still there");
+    click(row, &mut ui, &app, &hits);
+    let drawn = in_rail(&app, &ui);
+    assert!(
+        !drawn.iter().any(|one| one == "c2"),
+        "folded again: {drawn:?}"
+    );
+}
+
+#[test]
+fn a_turn_s_start_and_end_fold_as_one_turn() {
+    let mut app = app();
+    app.session.feed = vec![
+        line("a", 90, TimelineKind::TurnEnd, "pair the runs"),
+        line("a", 80, TimelineKind::TurnStart, "pair the runs"),
+    ];
+    let drawn = in_rail(&app, &Ui::default());
+    assert_eq!(
+        drawn.iter().filter(|one| *one == "turn").count(),
+        1,
+        "{drawn:?}"
+    );
+    assert!(drawn.iter().any(|one| one == "2"), "{drawn:?}");
+}

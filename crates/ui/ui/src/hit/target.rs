@@ -152,6 +152,8 @@ pub enum Target {
     Routines,
     /// A line of the feed, and the session it belongs to.
     FeedLine(SessionId),
+    /// A folded run of the feed, opened or folded again.
+    FeedRun(crate::views::rail::RunKey),
     /// The write the agent asked for, taken or refused.
     Approve(groove_types::ApprovalId),
     /// The sheet that shows a write before it is decided.

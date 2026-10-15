@@ -1,10 +1,12 @@
 //! What the opened sessions have done, under their rows: newest first, quiet.
 
-use groove_controllers::{AppState, Told};
+use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Error, TimelineEvent, Timestamp};
 
 mod line;
+mod runs;
+
+use runs::{Item, Run};
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -63,27 +65,30 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         Label::new("nothing yet", style).draw(ctx, line);
         return;
     }
-    let height = ctx.tokens.feed_row;
+    let (tall, short) = (ctx.tokens.feed_row, ctx.tokens.row);
+    let open = ui.rail.open;
     let at = (Scroller::Feed, ui.offset(Scroller::Feed));
     listed(
         ctx,
         body,
         at,
         &shown,
-        |_| height,
-        |ctx, line, one| line::draw(ctx, line, one, (app, !ui.rail.mine)),
+        |one| match one {
+            Line::Under(_) => short,
+            _ => tall,
+        },
+        |ctx, line, one| line::draw(ctx, line, one, (app, !ui.rail.mine, open)),
     );
 }
 
-/// One line of the feed: a job running now, or something that happened.
+/// One line of the feed: a job running now, a run of what happened, or one of an open run.
 enum Line<'a> {
     Job(&'a str),
-    Bad(&'a Told<Error>),
-    Said(&'a Told<String>),
-    Event(&'a TimelineEvent),
+    Run(Run<'a>),
+    Under(Item<'a>),
 }
 
-/// The running jobs first, then what happened, newest first.
+/// The running jobs first, then what happened, newest first, each run folded unless open.
 fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     let mut out: Vec<Line<'a>> = app
         .pending
@@ -92,21 +97,29 @@ fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
         .map(|job| Line::Job(&job.label))
         .collect();
     let mut over = happened(app, ui);
-    over.sort_by_key(|(at, _)| std::cmp::Reverse(at.seconds()));
-    out.extend(over.into_iter().map(|(_, line)| line));
+    over.sort_by_key(|one| std::cmp::Reverse(one.at().seconds()));
+    for run in runs::folded(over) {
+        let opened = run.items.len() > 1 && ui.rail.open == Some(run.key());
+        let under: Vec<Item<'a>> = match opened {
+            true => run.items.clone(),
+            false => Vec::new(),
+        };
+        out.push(Line::Run(run));
+        out.extend(under.into_iter().map(Line::Under));
+    }
     out
 }
 
-/// What is over, each at its own moment: this session's lines, or every session's.
-fn happened<'a>(app: &'a AppState, ui: &Ui) -> Vec<(Timestamp, Line<'a>)> {
-    let mut out: Vec<(Timestamp, Line<'a>)> = app
+/// What is over: this session's events, or every session's, and Groove's own errors and notes.
+fn happened<'a>(app: &'a AppState, ui: &Ui) -> Vec<Item<'a>> {
+    let mut out: Vec<Item<'a>> = app
         .session
         .feed
         .iter()
         .filter(|one| !ui.rail.mine || app.session.selected.as_ref() == Some(&one.session))
-        .map(|one| (one.at, Line::Event(one)))
+        .map(Item::Event)
         .collect();
-    out.extend(app.errors.iter().map(|one| (one.at, Line::Bad(one))));
-    out.extend(app.notes.iter().map(|one| (one.at, Line::Said(one))));
+    out.extend(app.errors.iter().map(Item::Bad));
+    out.extend(app.notes.iter().map(Item::Said));
     out
 }
