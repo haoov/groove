@@ -25,6 +25,9 @@ the rail only as its attention count.
   underline.
 - **Focus is a line.** The region that holds the keyboard carries a 2px accent line along
   its bottom edge. Enforced by `the_focused_region_alone_carries_the_line`.
+- **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
+  the workspace and the sidebar; the terminals keep their own chord. A second press folds
+  the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
 
 ## Limits
 

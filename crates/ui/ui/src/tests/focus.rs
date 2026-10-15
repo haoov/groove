@@ -183,3 +183,37 @@ fn the_focused_region_alone_carries_the_line() {
         );
     }
 }
+
+#[test]
+fn alt_and_a_number_hand_the_keys_to_a_region() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    for (key, focus) in [
+        ('1', Focus::Rail),
+        ('2', Focus::Agent),
+        ('3', Focus::Workspace),
+        ('4', Focus::Sidebar),
+    ] {
+        press(Key::Char(key), crate::tests::ALT, &mut ui, &app);
+        assert_eq!(ui.focus, focus, "alt+{key}");
+    }
+}
+
+#[test]
+fn a_second_press_folds_the_sidebar_away() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    assert!(!ui.session.folded && ui.focus == Focus::Sidebar);
+    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    assert!(ui.session.folded, "folded on the second press");
+    assert_eq!(
+        ui.focus,
+        Focus::Workspace,
+        "the keys go back to the workspace"
+    );
+    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    assert!(!ui.session.folded && ui.focus == Focus::Sidebar, "and back");
+}

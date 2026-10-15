@@ -29,6 +29,10 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::FocusLeft | Action::FocusRight => {
             ui.focus = ui.focus.beside(action == Action::FocusRight);
         }
+        Action::FocusRail => ui.focus = Focus::Rail,
+        Action::FocusAgent => ui.focus = Focus::Agent,
+        Action::FocusWorkspace => ui.focus = Focus::Workspace,
+        Action::FocusSidebar => sidebar(ui),
         Action::FoldSidebar => ui.session.folded = !ui.session.folded,
         Action::Overview => ui.session.tab = Tab::Overview,
         Action::Diff => ui.session.tab = Tab::Diff,
@@ -61,6 +65,19 @@ fn board(ui: &mut Ui) -> Vec<Command> {
         Surface::Board => crate::input::pointer::board_reads(),
         Surface::Session => Vec::new(),
     }
+}
+
+/// The sidebar unfolded and given the keys, or folded away when it has them.
+fn sidebar(ui: &mut Ui) {
+    if !ui.session.tab.has_sidebar() {
+        return;
+    }
+    let held = !ui.session.folded && ui.focus == Focus::Sidebar;
+    ui.session.folded = held;
+    ui.focus = match held {
+        true => Focus::Workspace,
+        false => Focus::Sidebar,
+    };
 }
 
 /// The terminals up and given the keys, or folded away when they have them.

@@ -93,6 +93,14 @@ fn going(open: &Open) -> Vec<Entry> {
             Act::Key(Action::FoldSidebar),
         ),
         act("Go", "Terminals", Act::Key(Action::Terminals)),
+        act("Go", "Keys to the rail", Act::Key(Action::FocusRail)),
+        act("Go", "Keys to the agent", Act::Key(Action::FocusAgent)),
+        act(
+            "Go",
+            "Keys to the workspace",
+            Act::Key(Action::FocusWorkspace),
+        ),
+        act("Go", "Keys to the sidebar", Act::Key(Action::FocusSidebar)),
         act("Go", "New terminal", Act::Key(Action::NewTerminal)),
         act("Go", "Reload the worktree", Act::Key(Action::Reload)),
     ]);

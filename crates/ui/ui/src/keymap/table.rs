@@ -13,6 +13,10 @@ pub enum Action {
     PreviousSession,
     FocusLeft,
     FocusRight,
+    FocusRail,
+    FocusAgent,
+    FocusWorkspace,
+    FocusSidebar,
     FoldSidebar,
     Overview,
     Diff,
@@ -69,7 +73,7 @@ const fn spec(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 33] = [
+pub const TABLE: [Spec; 37] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -123,6 +127,30 @@ pub const TABLE: [Spec; 33] = [
         ("pane.right", "pane to the right", "Panes"),
         App,
         &["alt+shift+right"],
+    ),
+    spec(
+        A::FocusRail,
+        ("pane.rail", "the rail", "Panes"),
+        App,
+        &["alt+1"],
+    ),
+    spec(
+        A::FocusAgent,
+        ("pane.agent", "the agent", "Panes"),
+        App,
+        &["alt+2"],
+    ),
+    spec(
+        A::FocusWorkspace,
+        ("pane.workspace", "the workspace", "Panes"),
+        App,
+        &["alt+3"],
+    ),
+    spec(
+        A::FocusSidebar,
+        ("pane.sidebar", "the sidebar", "Panes"),
+        App,
+        &["alt+4"],
     ),
     spec(
         A::FoldSidebar,
