@@ -6,6 +6,9 @@ use crate::{Focus, Ui};
 /// The pane a click lands in, the search bars let go of the keys when it is none of theirs.
 pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
     ui.focus = pane(target, ui.focus);
+    if listed(target) {
+        ui.session.composing = false;
+    }
     if matches!(ui.focus, Focus::Agent | Focus::Terminal | Focus::Rail) {
         ui.session.bar.typing = None;
         if let Some(find) = ui.session.find.as_mut() {
@@ -13,6 +16,22 @@ pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
         }
         (ui.session.resources.typing, ui.session.resources.filtering) = (false, false);
     }
+}
+
+/// A row of the sidebar's lists, or what changes the list: the keys leave the commit box.
+fn listed(target: &Option<Target>) -> bool {
+    matches!(
+        target,
+        Some(
+            Target::File(_)
+                | Target::Dir(_)
+                | Target::Group(_)
+                | Target::Commit(_)
+                | Target::NoteAt(_)
+                | Target::Pane(_)
+                | Target::Showing(_)
+        )
+    )
 }
 
 /// The pane a click lands in. What it lands on says which.
@@ -49,6 +68,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::LogRange
             | Target::LogFollow,
         ) => Focus::Workspace,
+        Some(target) if listed(&Some(target.clone())) => Focus::Sidebar,
         Some(
             Target::File(_)
             | Target::Stage(_)

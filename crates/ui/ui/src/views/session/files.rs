@@ -7,9 +7,11 @@ mod heading;
 mod notes;
 mod results;
 mod rows;
+mod stops;
 mod tree;
 pub(crate) mod walked;
 
+pub(crate) use stops::{Stop, stops};
 pub(crate) use tree::{Listing, listing, reads_as};
 
 use groove_controllers::AppState;

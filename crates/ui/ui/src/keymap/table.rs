@@ -17,6 +17,7 @@ pub enum Action {
     FocusAgent,
     FocusWorkspace,
     FocusSidebar,
+    FocusCommit,
     FoldSidebar,
     Overview,
     Diff,
@@ -73,7 +74,7 @@ const fn spec(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 37] = [
+pub const TABLE: [Spec; 38] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -151,6 +152,12 @@ pub const TABLE: [Spec; 37] = [
         ("pane.sidebar", "the sidebar", "Panes"),
         App,
         &["alt+4"],
+    ),
+    spec(
+        A::FocusCommit,
+        ("pane.commit", "the commit box", "Panes"),
+        App,
+        &["alt+c"],
     ),
     spec(
         A::FoldSidebar,

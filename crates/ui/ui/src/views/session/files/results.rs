@@ -15,7 +15,7 @@ use groove_ui_kit::widgets::folder;
 
 use groove_gfx::Edges;
 
-enum Item<'a> {
+pub(super) enum Item<'a> {
     File(&'a str, usize),
     Match(usize, &'a Found),
 }
@@ -38,7 +38,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
 }
 
 /// Each file once, over its matches unless it is shut.
-fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
+pub(super) fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
     let mut items = Vec::new();
     let mut over: Option<&str> = None;
     for (at, one) in found.iter().enumerate() {

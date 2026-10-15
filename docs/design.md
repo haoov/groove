@@ -28,6 +28,10 @@ the rail only as its attention count.
 - **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
   the workspace and the sidebar; the terminals keep their own chord. A second press folds
   the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
+- **A list walks from the keyboard.** In the sidebar the arrows step through the rows, Enter
+  does what a click does, Space stages a changed file, Left and Right fold a folder, and
+  `[` and `]` change the list. `alt+c` puts the caret in the commit box.
+  Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
 
 ## Limits
 

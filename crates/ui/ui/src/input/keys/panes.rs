@@ -5,9 +5,9 @@ use groove_types::{Edit, Motion};
 
 use super::super::{Key, Modifiers};
 use super::worded::{Asked, asked};
+use crate::Ui;
 use crate::editor::Editing;
 use crate::keymap::{Action, Keymap};
-use crate::{Focus, Ui};
 
 /// The open buffer takes the keystroke: a motion, a change, or a save.
 pub(super) fn in_file(
@@ -68,14 +68,14 @@ fn bound(editing: &Editing, keymap: &Keymap, key: Key, mods: Modifiers) -> Optio
 
 /// The list, or the commit message once the box has been clicked.
 pub(super) fn in_sidebar(
-    key: Key,
-    mods: Modifiers,
+    (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
     keymap: &Keymap,
+    seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
     if !(ui.session.composing && ui.session.commits()) {
-        return in_list(key, ui, app);
+        return super::listed::in_list(key, ui, app, seen);
     }
     if key == Key::Escape {
         ui.session.composing = false;
@@ -103,24 +103,6 @@ fn in_message(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap) -> Vec
     asked.copied.into_iter().chain(edit).collect()
 }
 
-/// Up and down open the file above or below in the list.
-fn in_list(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    if key == Key::Enter {
-        ui.focus = Focus::Workspace;
-        return Vec::new();
-    }
-    let files = crate::views::session::changed(app);
-    let active = app.workspace.active().map(|open| &open.path);
-    let at = files.iter().position(|file| Some(&file.path) == active);
-    let Some(file) = stepped(key, at, files.len()).and_then(|next| files.get(next)) else {
-        return Vec::new();
-    };
-    vec![Command::Workspace(workspace::Command::OpenFile {
-        at: None,
-        path: file.path.clone(),
-    })]
-}
-
 /// Up and down move along the sessions the rail shows.
 pub(super) fn in_rail(key: Key, ui: &Ui, app: &AppState) -> Vec<Command> {
     let shown = crate::views::rail::shown(app, ui);
@@ -137,7 +119,7 @@ pub(super) fn in_rail(key: Key, ui: &Ui, app: &AppState) -> Vec<Command> {
 }
 
 /// The row up or down from `at` in a list of `len`, the first one when none is held.
-fn stepped(key: Key, at: Option<usize>, len: usize) -> Option<usize> {
+pub(super) fn stepped(key: Key, at: Option<usize>, len: usize) -> Option<usize> {
     match (key, at) {
         (Key::Up, Some(at)) => Some(at.saturating_sub(1)),
         (Key::Down, Some(at)) => Some((at + 1).min(len.saturating_sub(1))),

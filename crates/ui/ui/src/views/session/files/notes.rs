@@ -17,7 +17,7 @@ use groove_ui_kit::text::{Label, ago, row};
 use groove_ui_kit::widgets::{Badge, tabs};
 
 /// One row of the list: a file's heading, or a note under it.
-enum Item {
+pub(super) enum Item {
     /// The file's path, none for the notes on the MR itself, and how many stand under it.
     Head(Option<String>, usize),
     Note(usize),
@@ -87,7 +87,7 @@ fn said(showing: Showing) -> &'static str {
 
 /// The notes shown, each file's under its heading: the change's files in their order, the
 /// others by path, the MR's own last.
-fn items(app: &AppState, showing: Showing) -> Vec<Item> {
+pub(super) fn items(app: &AppState, showing: Showing) -> Vec<Item> {
     let notes: Vec<(usize, &Note)> = app
         .delivery
         .shown

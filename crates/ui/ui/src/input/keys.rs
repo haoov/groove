@@ -5,6 +5,7 @@ mod app;
 mod bar;
 mod board;
 mod filter;
+mod listed;
 mod naming;
 mod noting;
 mod panes;
@@ -81,7 +82,12 @@ fn in_session(
     match super::typed::keyed(ui, app) {
         Some(Typed::Naming) => return in_name(key, mods, ui),
         Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
-        Some(Typed::Bar(_)) => return in_bar(key, mods, ui, app, keymap),
+        Some(Typed::Bar(_)) => {
+            if let Some(commands) = listed::from_bar(key, ui, app, seen) {
+                return commands;
+            }
+            return in_bar(key, mods, ui, app, keymap);
+        }
         Some(Typed::Kinds | Typed::Search) => {
             return resources::in_resources((key, mods), ui, app, seen);
         }
@@ -122,7 +128,7 @@ fn in_pane(
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
-        Focus::Sidebar => in_sidebar(key, mods, ui, app, keymap),
+        Focus::Sidebar => in_sidebar((key, mods), ui, app, keymap, seen),
         Focus::Rail => in_rail(key, ui, app),
     }
 }

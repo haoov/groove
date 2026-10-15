@@ -4,6 +4,7 @@ use groove_types::{FileDiff, FileStatus};
 
 mod commits;
 mod explorer;
+mod keys;
 mod panes;
 mod paths;
 mod search;

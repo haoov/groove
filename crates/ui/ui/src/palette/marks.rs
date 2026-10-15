@@ -54,6 +54,7 @@ fn keyed(key: Key) -> Option<Mark> {
         Key::Resources => Mark::Cluster,
         Key::FoldSidebar | Key::FocusSidebar | Key::FocusRail => Mark::Sidebar,
         Key::FocusAgent => Mark::Agent,
+        Key::FocusCommit => Mark::Commit,
         Key::FocusWorkspace => Mark::File,
         Key::Terminals | Key::NewTerminal => Mark::Terminal,
         Key::Reload => Mark::Reload,

@@ -33,6 +33,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::FocusAgent => ui.focus = Focus::Agent,
         Action::FocusWorkspace => ui.focus = Focus::Workspace,
         Action::FocusSidebar => sidebar(ui),
+        Action::FocusCommit => commit_box(ui),
         Action::FoldSidebar => ui.session.folded = !ui.session.folded,
         Action::Overview => ui.session.tab = Tab::Overview,
         Action::Diff => ui.session.tab = Tab::Diff,
@@ -72,12 +73,25 @@ fn sidebar(ui: &mut Ui) {
     if !ui.session.tab.has_sidebar() {
         return;
     }
-    let held = !ui.session.folded && ui.focus == Focus::Sidebar;
+    let held = !ui.session.folded && ui.focus == Focus::Sidebar && !ui.session.composing;
     ui.session.folded = held;
+    ui.session.composing = false;
     ui.focus = match held {
         true => Focus::Workspace,
         false => Focus::Sidebar,
     };
+}
+
+/// The caret in the commit box, the sidebar unfolded for it.
+fn commit_box(ui: &mut Ui) {
+    if !ui.session.tab.has_sidebar() {
+        return;
+    }
+    ui.session.folded = false;
+    if ui.session.commits() {
+        ui.session.composing = true;
+        ui.focus = Focus::Sidebar;
+    }
 }
 
 /// The terminals up and given the keys, or folded away when they have them.

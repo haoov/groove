@@ -16,6 +16,7 @@ mod skilled;
 mod surface;
 
 pub(super) use menu::asked;
+pub(super) use sidebar::act_on;
 pub(super) use surface::middle;
 
 use groove_controllers::{AppState, Command, delivery, task, workspace};
