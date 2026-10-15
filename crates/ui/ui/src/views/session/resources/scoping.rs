@@ -164,7 +164,8 @@ fn namespace_lines(
     }
     let listed = app.cluster.store.namespaces(context).unwrap_or_default();
     let open_ones = listed.iter().filter(|one| !taken(one) && hit(one));
-    out.extend(open_ones.map(|one| free(Some(one), false)));
+    let open_ones = groove_types::ranked(open_ones, |one| one.to_string(), query);
+    out.extend(open_ones.into_iter().map(|one| free(Some(one), false)));
     let named_already = listed.iter().any(|one| one == query) || taken(query);
     if valid(query) && !named_already {
         out.push(free(Some(query), true));

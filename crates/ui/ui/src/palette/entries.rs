@@ -27,6 +27,7 @@ pub fn entries(app: &AppState) -> Vec<Entry> {
         ));
     }
     let Some(open) = app.session.selected() else {
+        out.extend(super::actions::actions(app));
         return out;
     };
     out.extend(repos(open));
@@ -34,6 +35,7 @@ pub fn entries(app: &AppState) -> Vec<Entry> {
     out.extend(clusters(app, open));
     out.extend(explorer(open));
     out.extend(sessions(app, open));
+    out.extend(super::actions::actions(app));
     out
 }
 

@@ -1,12 +1,21 @@
 //! The command palette: every action, filtered by what is typed, arguments asked one at a time.
 
+mod actions;
 mod entries;
+mod files;
 mod flow;
+mod grouped;
+mod marks;
+mod mr;
+mod skills;
+mod steps;
 
 use groove_controllers::{AppState, Command};
 
+pub use actions::Act;
 pub use entries::entries;
 pub use flow::{Action, CLONE, Flow, Prompt};
+pub use marks::mark_of;
 
 use crate::Corner;
 use groove_ui_kit::widgets::Field;
@@ -22,6 +31,7 @@ pub enum Run {
     Settings,
     /// The namespace picker's panel, under its picker.
     Scope,
+    Act(Act),
 }
 
 /// One row of the palette. A command row's id is the command's own.
@@ -39,6 +49,7 @@ impl Entry {
             Run::Flow(a) => a.id(),
             Run::Settings => "settings.open",
             Run::Scope => "resources.select_namespace",
+            Run::Act(act) => act.id(),
         }
     }
 
@@ -67,6 +78,7 @@ pub struct Outcome {
     pub settings: bool,
     /// The namespace picker's panel opens.
     pub scoping: bool,
+    pub act: Option<Act>,
 }
 
 /// The palette's own state while it is open.
@@ -102,24 +114,18 @@ impl Anchor {
     }
 }
 
-/// The rows whose text holds every word of the query, best match first.
+/// The rows the query finds, the best fuzzy match first.
 pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Vec<T> {
-    let mut scored: Vec<(usize, T)> = rows
-        .into_iter()
-        .filter_map(|row| Some((groove_types::score(&text(&row), query)?, row)))
-        .collect();
-    scored.sort_by_key(|(score, _)| *score);
-    scored.into_iter().map(|(_, row)| row).collect()
+    groove_types::ranked(rows, text, query)
 }
 
 impl Palette {
     /// The rows under the query: entries, or the current prompt's options.
     pub fn rows(&self, app: &AppState) -> Vec<Entry> {
-        matching(
-            entries(app),
-            |e| format!("{} {}", e.group, e.label),
-            self.query.text(),
-        )
+        match self.query.text().strip_prefix('#') {
+            Some(rest) => files::rows(app, rest),
+            None => grouped::grouped(entries(app), self.query.text()),
+        }
     }
 
     /// The prompt a flow is on, if any.
@@ -157,6 +163,7 @@ impl Palette {
         }
         match key {
             Key::Char(c) => self.query.insert(c),
+            Key::Backspace if self.query.is_empty() => self.back(),
             Key::Backspace => self.query.backspace(),
             Key::Delete => self.query.delete(),
             Key::Left => self.query.left(),
@@ -170,6 +177,13 @@ impl Palette {
             Key::Enter => return self.enter(app),
             Key::Escape => return self.escape(),
             _ => {}
+        }
+        if typed && self.flow.is_none() && self.query.text() == "#" {
+            let list = groove_controllers::workspace::Command::ListPaths;
+            return Outcome {
+                commands: vec![Command::Workspace(list)],
+                ..Outcome::default()
+            };
         }
         Outcome::default()
     }
@@ -197,13 +211,19 @@ impl Palette {
                 settings: true,
                 ..Outcome::default()
             },
+            Run::Act(act) => Outcome {
+                close: true,
+                act: Some(act),
+                ..Outcome::default()
+            },
             Run::Flow(action) => {
                 let session = match (app.session.selected.clone(), action) {
                     (Some(session), _) => session,
                     (None, Action::ForceDelete) => groove_types::SessionId::new(""),
                     (None, _) => return Outcome::default(),
                 };
-                let flow = Flow::new(action, session);
+                let mut flow = Flow::new(action, session);
+                flow.from = (entry.label, self.query.text().to_string());
                 let refresh = flow.refresh(app);
                 self.flow = Some(flow);
                 self.reset();
@@ -212,73 +232,6 @@ impl Palette {
                     ..Outcome::default()
                 }
             }
-        }
-    }
-
-    /// The typed text or the picked option becomes the answer; the flow moves on or ends.
-    fn answer(&mut self, app: &AppState) -> Outcome {
-        let Some(prompt) = self.prompt(app) else {
-            return Outcome::default();
-        };
-        let picked = self
-            .options(app)
-            .into_iter()
-            .nth(self.selected)
-            .map(|(_, value)| value);
-        let value = match picked {
-            Some(value)
-                if !prompt.options.is_empty() && !(self.query.is_empty() && prompt.allow_empty) =>
-            {
-                value
-            }
-            _ if prompt.free || (prompt.allow_empty && self.query.is_empty()) => {
-                self.query.text().to_string()
-            }
-            _ => return Outcome::default(),
-        };
-        if value.is_empty() && !prompt.allow_empty {
-            return Outcome::default();
-        }
-        let Some(flow) = self.flow.as_mut() else {
-            return Outcome::default();
-        };
-        flow.answers.push(value);
-        self.reset();
-        let Some(flow) = self.flow.as_ref() else {
-            return Outcome::default();
-        };
-        if flow.prompt(app).is_some() {
-            return Outcome {
-                commands: flow.refresh(app).into_iter().collect(),
-                ..Outcome::default()
-            };
-        }
-        let command = flow.command();
-        self.flow = None;
-        Outcome {
-            commands: command.into_iter().collect(),
-            close: true,
-            ..Outcome::default()
-        }
-    }
-
-    /// Back one prompt; out of the flow; closed.
-    fn escape(&mut self) -> Outcome {
-        match self.flow.as_mut() {
-            Some(flow) if !flow.answers.is_empty() => {
-                flow.answers.pop();
-                self.reset();
-                Outcome::default()
-            }
-            Some(_) => {
-                self.flow = None;
-                self.reset();
-                Outcome::default()
-            }
-            None => Outcome {
-                close: true,
-                ..Outcome::default()
-            },
         }
     }
 

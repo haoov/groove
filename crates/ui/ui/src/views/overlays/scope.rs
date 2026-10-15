@@ -77,9 +77,10 @@ fn item<'a>(
     ctx: &Ctx,
     app: &AppState,
     held: &crate::views::session::resources::ResourcesUi,
-    (at, line, label): (usize, &ScopeLine, &'a str),
+    (at, line, label, lit): (usize, &ScopeLine, &'a str, &'a [std::ops::Range<usize>]),
 ) -> Row<'a, Target> {
     let pad = ctx.tokens.md;
+    let accent = ctx.styles.label(Role::Accent);
     match line {
         ScopeLine::Heading(context) => {
             let hue = app.config.cluster(context).map(|one| Role::Hue(one.hue));
@@ -92,6 +93,7 @@ fn item<'a>(
             };
             let style = ctx.styles.label(Role::Text);
             Row::new(pad, label, style)
+                .lit(lit, accent)
                 .mark(mark)
                 .tint(ctx.styles.label(role).color)
                 .mark_size(ctx.tokens.small)
@@ -99,7 +101,8 @@ fn item<'a>(
         }
         _ => {
             let past = pad + ctx.tokens.icon + ctx.tokens.sm;
-            Row::new(past, label, ctx.styles.label(Role::Muted)).target(Target::ScopeLine(at))
+            let row = Row::new(past, label, ctx.styles.label(Role::Muted));
+            row.lit(lit, accent).target(Target::ScopeLine(at))
         }
     }
 }
@@ -116,13 +119,18 @@ fn rows(
         .unwrap_or_default()
         .saturating_sub(PALETTE_ROWS - 1);
     let held = &ui.session.resources;
+    let query = scoping.query.text();
+    let found: Vec<_> = labels
+        .iter()
+        .map(|one| groove_types::spans(one, &[query]))
+        .collect();
     let items: Vec<Row<'_, Target>> = lines
         .iter()
         .zip(labels)
         .enumerate()
         .skip(first)
         .take(PALETTE_ROWS)
-        .map(|(at, (line, label))| item(ctx, app, held, (at, line, label)))
+        .map(|(at, (line, label))| item(ctx, app, held, (at, line, label, &found[at])))
         .collect();
     let selected = scoping.cursor.map(|at| at - first);
     list(ctx, body, &items, selected);

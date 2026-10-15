@@ -145,7 +145,8 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
         };
         return says(ctx, body, said);
     }
-    rows::draw(ctx, body, app, &listing(&files), open, ui);
+    let ranked = !ui.session.bar.path.is_empty();
+    rows::draw(ctx, body, app, &listing(&files, ranked), open, ui);
 }
 
 /// Whether the list is the whole worktree, which a query flattens back to matches.

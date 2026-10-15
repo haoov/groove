@@ -21,6 +21,59 @@ pub fn row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, indent: f32, text: &str, st
     });
 }
 
+/// A row with the characters in `lit` drawn in `lit_style`, underlined.
+pub fn lit_row<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    (rect, indent): (Rect, f32),
+    text: &str,
+    style: TextStyle,
+    (lit, lit_style): (&[std::ops::Range<usize>], TextStyle),
+) {
+    let bytes: Vec<usize> = text
+        .char_indices()
+        .map(|(at, _)| at)
+        .chain([text.len()])
+        .collect();
+    let mut pieces = Vec::new();
+    let mut from = 0;
+    for range in lit.iter().filter(|range| range.end < bytes.len()) {
+        let (start, end) = (bytes[range.start].max(from), bytes[range.end]);
+        if start >= end {
+            continue;
+        }
+        pieces.push((from..start, style, false));
+        pieces.push((start..end, lit_style, true));
+        from = end;
+    }
+    pieces.push((from..text.len(), style, false));
+    ctx.clipped(rect, |ctx| {
+        let under = rect.y + (rect.h + style.size) / 2.0;
+        for (range, style, lit) in pieces.into_iter().filter(|(range, ..)| !range.is_empty()) {
+            let x = rect.x + indent + ctx.measure(&text[..range.start], &style);
+            if lit {
+                let wide = ctx.measure(&text[range.clone()], &style);
+                let line = Rect::new(x, under, wide, ctx.tokens.hairline);
+                ctx.quad(line, style.color);
+            }
+            ctx.text(&text[range], x, rect.y, rect.h, style);
+        }
+    });
+}
+
+/// `text` cut to the room right of `indent`, its `lit` characters drawn in `lit_style` where kept.
+pub fn lit_cut<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    (rect, indent): (Rect, f32),
+    text: &str,
+    style: TextStyle,
+    (lit, lit_style): (&[std::ops::Range<usize>], TextStyle),
+) {
+    let cut = elide(ctx, text, &style, (rect.w - indent).max(0.0));
+    let whole = cut.chars().count() - usize::from(cut != text);
+    let kept: Vec<_> = lit.iter().filter(|one| one.end <= whole).cloned().collect();
+    lit_row(ctx, (rect, indent), &cut, style, (&kept, lit_style));
+}
+
 /// The text as it fits `width`: whole, or cut at a character with an ellipsis.
 pub fn elide<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> String {
     if ctx.measure(text, style) <= width {

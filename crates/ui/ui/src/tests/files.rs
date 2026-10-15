@@ -57,7 +57,7 @@ fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
         changed("crates/ui/ui/src/tokens.rs", 1, 0),
         changed("Cargo.toml", 1, 0),
     ];
-    let listing = listing(&files.iter().collect::<Vec<_>>());
+    let listing = listing(&files.iter().collect::<Vec<_>>(), false);
     let groups: Vec<(&str, Vec<&str>)> = listing
         .groups
         .iter()
@@ -94,7 +94,7 @@ fn what_every_file_shares_is_shown_once_and_taken_off_the_groups() {
         changed("crates/ui/ui/src/views/session/session.rs", 1, 0),
         changed("crates/ui/ui/src/views/shared/rail.rs", 1, 0),
     ];
-    let listing = listing(&files.iter().collect::<Vec<_>>());
+    let listing = listing(&files.iter().collect::<Vec<_>>(), false);
     assert_eq!(listing.root, "crates/ui/ui/src");
     let dirs: Vec<&str> = listing.groups.iter().map(|g| g.dir.as_str()).collect();
     assert_eq!(
@@ -128,7 +128,7 @@ fn a_name_that_says_nothing_reads_as_its_directory() {
 #[test]
 fn one_file_is_all_root_and_no_group_line() {
     let files = [changed("crates/base/gfx/src/icons.rs", 3, 2)];
-    let listing = listing(&files.iter().collect::<Vec<_>>());
+    let listing = listing(&files.iter().collect::<Vec<_>>(), false);
     assert_eq!(listing.root, "crates/base/gfx/src");
     assert_eq!(listing.groups.len(), 1);
     assert_eq!(listing.groups[0].dir, "", "its path is the root itself");

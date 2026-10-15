@@ -1,6 +1,7 @@
 //! An action that asks for its arguments, one prompt at a time.
 
 mod clusters;
+mod picks;
 
 use groove_controllers::{AppState, Command, session, session_service::Open};
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
@@ -19,6 +20,10 @@ pub enum Action {
     ForceDelete,
     AttachCluster,
     DetachCluster,
+    /// The header's repo picker.
+    PickRepo,
+    /// The header's branch picker.
+    PickBranch,
 }
 
 impl Action {
@@ -28,7 +33,9 @@ impl Action {
             Action::AddRepo => "session.add_repo",
             Action::AddWorktree => "session.add_worktree",
             Action::RemoveRepo => "session.remove_repo",
-            Action::SelectWorktree => "session.select_worktree",
+            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
+                "session.select_worktree"
+            }
             Action::CloseWorktree | Action::ForceCloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
@@ -77,6 +84,10 @@ pub struct Flow {
     pub action: Action,
     pub session: SessionId,
     pub answers: Vec<String>,
+    /// Each answer as the breadcrumb shows it.
+    pub said: Vec<String>,
+    /// The entry that started it, and the palette's query then; empty from a picker.
+    pub from: (String, String),
 }
 
 impl Flow {
@@ -85,7 +96,20 @@ impl Flow {
             action,
             session,
             answers: Vec::new(),
+            said: Vec::new(),
+            from: (String::new(), String::new()),
         }
+    }
+
+    pub fn answer(&mut self, value: String, said: String) {
+        self.answers.push(value);
+        self.said.push(said);
+    }
+
+    /// The last answer taken back, as it was said.
+    pub fn unanswer(&mut self) -> Option<String> {
+        self.answers.pop()?;
+        self.said.pop()
     }
 
     /// The next question, or `None` when every answer is in.
@@ -102,7 +126,7 @@ impl Flow {
             (Action::AddRepo, 0) => Some(Prompt::choose("repo", pool_choices(app, open))),
             (Action::AddRepo, 1) if self.cloning() => Some(Prompt::text("git URL", false)),
             (Action::AddRepo, n) if n == 1 + usize::from(self.cloning()) => {
-                Some(Prompt::text("branch, empty for the default", true))
+                Some(Prompt::text("branch", true))
             }
             (Action::AddRepo, n) if n == 2 + usize::from(self.cloning()) => {
                 Some(base_prompt(app, &RepoId::new(self.repo_name())))
@@ -118,6 +142,8 @@ impl Flow {
             (Action::AttachCluster, 0) => Some(Prompt::choose("context", clusters::known(app))),
             (Action::AttachCluster, 1) => Some(clusters::namespaces(app, &self.answers[0])),
             (Action::DetachCluster, 0) => Some(Prompt::choose("cluster", clusters::held(open))),
+            (Action::PickRepo, 0) => Some(Prompt::choose("repo", picks::repos(open))),
+            (Action::PickBranch, 0) => Some(Prompt::choose("branch", picks::branches(open))),
             _ => None,
         }
     }
@@ -184,10 +210,9 @@ impl Flow {
                 repo: RepoId::new(answer(0)),
                 force: false,
             },
-            Action::SelectWorktree => session::Command::SelectWorktree {
-                session,
-                worktree: WorktreeId::new(answer(0)),
-            },
+            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
+                select(session, answer(0))
+            }
             Action::CloseWorktree | Action::ForceCloseWorktree => session::Command::CloseWorktree {
                 session,
                 worktree: WorktreeId::new(answer(0)),
@@ -261,9 +286,14 @@ fn base_prompt(app: &AppState, repo: &RepoId) -> Prompt {
         .map(|(_, heads)| heads.iter().map(|h| (h.clone(), h.clone())).collect())
         .unwrap_or_default();
     Prompt {
-        label: "base, empty for the repo's default",
+        label: "target",
         options: heads,
         free: true,
         allow_empty: true,
     }
+}
+
+fn select(session: SessionId, worktree: String) -> session::Command {
+    let worktree = WorktreeId::new(worktree);
+    session::Command::SelectWorktree { session, worktree }
 }

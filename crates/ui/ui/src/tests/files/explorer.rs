@@ -16,12 +16,13 @@ pub(super) fn browsing(paths: &[&str]) -> (AppState, Ui) {
 fn shown(app: &AppState, ui: &Ui) -> Vec<String> {
     let sidebar = Layout::of(window(), ui).sidebar;
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
-    frame.layers()[0]
+    let runs: Vec<_> = frame.layers()[0]
         .texts
         .iter()
         .filter(|run| run.x >= sidebar.x)
-        .map(|run| run.text.clone())
-        .collect()
+        .cloned()
+        .collect();
+    crate::tests::whole_texts(&runs)
 }
 
 #[test]
@@ -121,5 +122,26 @@ fn a_path_typed_while_browsing_flattens_the_tree_to_its_matches() {
     assert!(
         !drawn.iter().any(|t| t == "src"),
         "no tree while a query narrows it: {drawn:?}"
+    );
+}
+
+#[test]
+fn the_path_term_lights_what_it_found_in_each_name() {
+    let (app, mut ui) = browsing(&["src/one/alpha.rs", "src/two/beta.rs"]);
+    ui.session.bar.path.set("two bt");
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
+    let lit: Vec<&str> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.style.color == accent)
+        .map(|run| run.text.as_str())
+        .collect();
+    assert_eq!(
+        lit,
+        ["b", "t"],
+        "the directory's letters stay on its own row"
     );
 }

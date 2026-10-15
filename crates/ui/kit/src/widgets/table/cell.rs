@@ -7,7 +7,7 @@ use groove_gfx::{Align, Edges, Rect, TextStyle};
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::text::{elide, row};
+use crate::text::{elide, lit_row, row};
 use crate::widgets::Badge;
 
 #[derive(Debug)]
@@ -18,6 +18,8 @@ pub struct Cell<'a> {
     badge: bool,
     mark: Option<(Mark, u8, Role)>,
     bar: Option<Bar>,
+    /// Characters of the text drawn in the accent, underlined.
+    lit: Vec<std::ops::Range<usize>>,
 }
 
 /// The text's size: small, body, or label.
@@ -46,6 +48,7 @@ impl<'a> Cell<'a> {
             badge: false,
             mark: None,
             bar: None,
+            lit: Vec::new(),
         }
     }
 
@@ -79,6 +82,11 @@ impl<'a> Cell<'a> {
     /// A mark before the text: its turn in eighths, and its own role.
     pub fn mark(mut self, mark: Mark, turn: u8, role: Role) -> Self {
         self.mark = Some((mark, turn, role));
+        self
+    }
+
+    pub fn lit(mut self, ranges: Vec<std::ops::Range<usize>>) -> Self {
+        self.lit = ranges;
         self
     }
 
@@ -167,15 +175,32 @@ impl<'a> Cell<'a> {
             true => (room.w - wide).max(0.0),
             false => 0.0,
         };
-        row(ctx, room, lead, &text, style);
+        let kept = text.chars().count() - usize::from(!whole && text != *self.text);
+        let lit: Vec<_> = self
+            .lit
+            .iter()
+            .filter(|one| one.end <= kept)
+            .cloned()
+            .collect();
+        match lit.is_empty() {
+            true => row(ctx, room, lead, &text, style),
+            false => {
+                let accent = self.style_in(ctx, Role::Accent);
+                lit_row(ctx, (room, lead), &text, style, (&lit, accent));
+            }
+        }
         (room.x + lead, room.x + lead + wide)
     }
 
     fn style<A: App>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
+        self.style_in(ctx, self.role)
+    }
+
+    fn style_in<A: App>(&self, ctx: &Ctx<'_, A>, role: Role) -> TextStyle {
         match self.size {
-            Size::Small => ctx.styles.small(self.role),
-            Size::Body => ctx.styles.body(self.role),
-            Size::Label => ctx.styles.label(self.role),
+            Size::Small => ctx.styles.small(role),
+            Size::Body => ctx.styles.body(role),
+            Size::Label => ctx.styles.label(role),
         }
     }
 

@@ -37,13 +37,19 @@ pub enum Icon {
     Branch,
     Kubernetes,
     Copy,
+    Terminal,
+    Robot,
+    Palette,
+    Columns,
+    Rows,
+    File,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 30] = [
+    pub(crate) const ALL: [Icon; 36] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -74,6 +80,12 @@ impl Icon {
         Icon::Branch,
         Icon::Kubernetes,
         Icon::Copy,
+        Icon::Terminal,
+        Icon::Robot,
+        Icon::Palette,
+        Icon::Columns,
+        Icon::Rows,
+        Icon::File,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -108,6 +120,12 @@ impl Icon {
             Icon::Branch => include_bytes!("../../../../assets/icons/git-branch.svg"),
             Icon::Kubernetes => include_bytes!("../../../../assets/icons/kubernetes.svg"),
             Icon::Copy => include_bytes!("../../../../assets/icons/copy.svg"),
+            Icon::Terminal => include_bytes!("../../../../assets/icons/terminal-window.svg"),
+            Icon::Robot => include_bytes!("../../../../assets/icons/robot.svg"),
+            Icon::Palette => include_bytes!("../../../../assets/icons/palette.svg"),
+            Icon::Columns => include_bytes!("../../../../assets/icons/columns.svg"),
+            Icon::Rows => include_bytes!("../../../../assets/icons/rows.svg"),
+            Icon::File => include_bytes!("../../../../assets/icons/file.svg"),
         }
     }
 

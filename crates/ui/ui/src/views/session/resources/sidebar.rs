@@ -2,14 +2,14 @@
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{KindHeading, KubeKind};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::shape::hoverable;
-use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::text::lit_cut;
 use groove_ui_kit::widgets::{Heading, Search, Side, pane};
 
 use super::scope;
@@ -60,7 +60,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             }
             Line::Kind(kind) => {
                 let marks = (picked.as_ref() == Some(kind), stood.as_ref() == Some(one));
-                named(ctx, line, kind, marks)
+                named(ctx, line, (kind, ui.session.resources.filter.text()), marks)
             }
         },
     );
@@ -78,7 +78,12 @@ fn searched(ctx: &mut Ctx, line: Rect, ui: &Ui) {
 }
 
 /// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.
-fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (bool, bool)) {
+fn named(
+    ctx: &mut Ctx,
+    line: Rect,
+    (kind, filter): (&KubeKind, &str),
+    (picked, highlighted): (bool, bool),
+) {
     if highlighted {
         groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
     }
@@ -89,10 +94,17 @@ fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (boo
     let role = if picked { Role::Text } else { Role::Muted };
     let style = ctx.styles.body(role);
     let at = crate::views::session::files::text_at(ctx, ctx.tokens.md * 2.0);
-    let room = (line.w - at - ctx.tokens.md).max(0.0);
+    let room = line.pad(Edges::across(0.0, ctx.tokens.md));
     let label = super::list::plural(kind);
-    let text = elide(ctx, &label, &style, room);
-    row(ctx, line, at, &text, style);
+    let word = filter.split_once('/').map_or(filter, |(_, kind)| kind);
+    let lit = groove_types::spans(&label, &[word]);
+    lit_cut(
+        ctx,
+        (room, at),
+        &label,
+        style,
+        (&lit, ctx.styles.body(Role::Accent)),
+    );
 }
 
 /// Every watchable kind of the contexts in scope, once each, under its heading.
@@ -111,34 +123,45 @@ fn lines(app: &AppState, open: &Open, ui: &Ui) -> Vec<Line> {
         }
     }
     let filter = held.filter.text().to_lowercase();
-    let matches = |one: &&KubeKind| matched(one, &filter);
-    let mut headed: std::collections::BTreeMap<KindHeading, Vec<&KubeKind>> = Default::default();
-    for one in kinds.into_iter().filter(matches) {
-        headed.entry(one.heading()).or_default().push(one);
+    let mut headed: std::collections::BTreeMap<KindHeading, Vec<(i32, &KubeKind)>> =
+        Default::default();
+    for one in kinds {
+        if let Some(score) = matched(one, &filter) {
+            headed.entry(one.heading()).or_default().push((score, one));
+        }
     }
+    let mut headed: Vec<_> = headed.into_iter().collect();
+    for (_, under) in &mut headed {
+        under.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.kind.cmp(&b.1.kind)));
+    }
+    headed.sort_by_key(|(_, under)| std::cmp::Reverse(under.first().map_or(0, |one| one.0)));
     let mut out = Vec::new();
-    for (heading, mut under) in headed {
+    for (heading, under) in headed {
         let open = !held.folded.contains(&heading);
         out.push(Line::Heading(heading, open));
         if open {
-            under.sort_by(|a, b| a.kind.cmp(&b.kind));
-            out.extend(under.into_iter().cloned().map(Line::Kind));
+            out.extend(under.into_iter().map(|(_, one)| Line::Kind(one.clone())));
         }
     }
     out
 }
 
-/// A word in the kind, its plural, its heading or its API group; `heading/kind` narrows both.
-fn matched(one: &KubeKind, filter: &str) -> bool {
+/// How well the kind, its plural, its heading or its API group match; `heading/kind` narrows both.
+fn matched(one: &KubeKind, filter: &str) -> Option<i32> {
     let heading = one.heading().label().to_lowercase();
-    let in_place = |place: &str| {
-        groove_types::fuzzy(&heading, place) || groove_types::fuzzy(&one.group, place)
+    let best = |texts: &[&str], query: &str| {
+        let scores = texts
+            .iter()
+            .filter_map(|text| groove_types::sought(text, query));
+        scores.map(|found| found.score).max()
     };
-    let in_kind =
-        |word: &str| groove_types::fuzzy(&one.kind, word) || groove_types::fuzzy(&one.plural, word);
+    let (kind, place) = (
+        [one.kind.as_str(), one.plural.as_str()],
+        [heading.as_str(), one.group.as_str()],
+    );
     match filter.split_once('/') {
-        Some((place, kind)) => in_place(place) && in_kind(kind),
-        None => in_kind(filter) || in_place(filter),
+        Some((there, what)) => best(&place, there).and(best(&kind, what)),
+        None => best(&[kind[0], kind[1], place[0], place[1]], filter),
     }
 }
 

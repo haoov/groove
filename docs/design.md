@@ -247,6 +247,21 @@ does, filtered and keyed the same way, anchored under what was clicked, as wide 
 rows, nothing behind it dimmed, and it asks for a query only once the list is longer than
 it shows. The palette stays in the middle of the window and dims it.
 
+**The palette keeps its groups while it filters.** Each group runs under its heading, the
+group with the best match first. A first word that starts a group's name keeps that group
+whole and on top: `go` lists every Go entry, `git pu` finds Push.
+Enforced by `a_group_named_first_comes_first_and_whole`.
+
+**A step names what it asks.** An entry that asks several questions shows the current one,
+dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an empty field
+takes the last answer back into it, and on the first question returns to the entries.
+Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
+
+**`#` searches files.** A query that starts with `#` lists the selected worktree's files, a
+match in the file name first, and opens the one picked on the Files tab. A line under the
+input names the session, repo and branch the palette acts on.
+Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
+
 **One button says what to do now.** The commit box offers a single action — commit while
 something is staged, push while ahead, pull while behind, open an MR once the branch is
 landed and has none — with a caret beside it for everything else the worktree can do,

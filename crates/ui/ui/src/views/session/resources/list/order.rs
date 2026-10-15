@@ -10,6 +10,7 @@ use groove_types::{ObjectRow, WatchKey};
 use groove_ui_kit::widgets::Sorted;
 
 use super::plan::Plan;
+use crate::views::session::resources::scope::{self, ResourcesUi};
 
 /// What an order was built for: each key at its revision, the search, the sort.
 #[derive(Debug, Clone, PartialEq)]
@@ -103,4 +104,37 @@ pub(super) fn sorted<'a>(
         if descending { order.reverse() } else { order }
     });
     places.into_iter().map(|at| rows[at]).collect()
+}
+
+/// Every row whose name holds every name word: by the column picked, else the best match first.
+pub(super) fn ordered(
+    app: &AppState,
+    keys: &[WatchKey],
+    held: &ResourcesUi,
+) -> Vec<(usize, usize)> {
+    let (_, names) = scope::search(held);
+    let mut found = Vec::new();
+    for (place, key) in keys.iter().enumerate() {
+        let Some(watched) = app.cluster.store.watched(key) else {
+            continue;
+        };
+        for (at, row) in watched.rows.iter().enumerate() {
+            let scores = names
+                .iter()
+                .map(|word| groove_types::sought(&row.name, word));
+            if let Some(score) = scores
+                .map(|one| one.map(|found| found.score))
+                .sum::<Option<i32>>()
+            {
+                found.push(((place, at), score));
+            }
+        }
+    }
+    if held.sort.is_none() && !names.is_empty() {
+        found.sort_by_key(|(_, score)| std::cmp::Reverse(*score));
+    }
+    let found: Vec<(usize, usize)> = found.into_iter().map(|(at, _)| at).collect();
+    let rows = super::resolved(app, keys, &found);
+    let plan = super::plan(app, keys, &rows);
+    sorted(found, &rows, &plan, held.sort.as_ref())
 }

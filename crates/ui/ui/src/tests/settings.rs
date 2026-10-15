@@ -11,6 +11,16 @@ pub(super) fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
     render(app, ui, window())
 }
 
+/// The same, a lit label read back whole.
+pub(super) fn drawn_whole(app: &AppState, ui: &Ui) -> Vec<String> {
+    let (frame, _) = crate::view(app, ui, window(), &mut groove_gfx::Fonts::embedded());
+    frame
+        .layers()
+        .iter()
+        .flat_map(|one| super::whole_texts(&one.texts))
+        .collect()
+}
+
 pub(super) fn opened() -> (AppState, Ui) {
     let app = full_app();
     let mut ui = Ui::default();

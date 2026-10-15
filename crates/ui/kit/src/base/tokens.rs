@@ -2,6 +2,8 @@
 
 /// Unitless and non-pixel values, which no scale touches.
 pub const PALETTE_ROWS: usize = 8;
+/// Lines the centred palette shows, its headings counted.
+pub const PALETTE_LINES: usize = 14;
 /// How many suggestions the board's filter shows at once.
 pub const SUGGESTED_ROWS: usize = 6;
 /// The characters a note row holds before the frame has measured, and the fewest.
@@ -126,6 +128,7 @@ pub struct Tokens {
     pub aside_far: f32,
     /// The palette's box.
     pub modal: f32,
+    pub palette: f32,
     pub modal_top: f32,
     /// What the right button opens.
     pub menu: f32,
@@ -183,6 +186,7 @@ const LOGICAL: Tokens = Tokens {
     aside_mid: 160.0,
     aside_far: 320.0,
     modal: 560.0,
+    palette: 720.0,
     modal_top: 96.0,
     menu: 150.0,
 };
@@ -234,6 +238,7 @@ impl Tokens {
             aside_mid: s(LOGICAL.aside_mid),
             aside_far: s(LOGICAL.aside_far),
             modal: s(LOGICAL.modal),
+            palette: s(LOGICAL.palette),
             modal_top: s(LOGICAL.modal_top),
             menu: s(LOGICAL.menu),
         }

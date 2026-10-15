@@ -20,7 +20,7 @@ fn a_kind_in_the_sidebar_is_listed_from_the_top() {
 fn the_sidebar_s_search_narrows_the_kinds_and_a_heading_folds_its_own() {
     let (app, mut ui) = listing();
     ui.session.resources.filter.set("node");
-    let (texts, _) = drawn(&app, &ui);
+    let texts = crate::tests::settings::drawn_whole(&app, &ui);
     assert!(texts.iter().any(|one| one == "Nodes"), "{texts:?}");
     assert!(!texts.iter().any(|one| one == "Deployments"), "{texts:?}");
     ui.session.resources.filter.clear();
@@ -34,7 +34,7 @@ fn the_sidebar_s_search_narrows_the_kinds_and_a_heading_folds_its_own() {
         &app,
         &hits,
     );
-    let (texts, _) = drawn(&app, &ui);
+    let texts = crate::tests::settings::drawn_whole(&app, &ui);
     assert!(!texts.iter().any(|one| one == "Deployments"), "{texts:?}");
     assert!(texts.iter().any(|one| one == "Nodes"), "{texts:?}");
 }
@@ -81,7 +81,7 @@ fn ctrl_shift_p_searches_the_kinds_by_name_group_or_group_and_kind() {
     press(crate::input::Key::Char('p'), both, &mut ui, &app);
     assert!(ui.session.resources.filtering && !ui.session.resources.typing);
     let shown = |app: &AppState, ui: &Ui| {
-        let (texts, _) = drawn(app, ui);
+        let texts = crate::tests::settings::drawn_whole(app, ui);
         let kinds = [
             "Pods",
             "Deployments",
@@ -115,7 +115,7 @@ fn a_click_on_the_sidebar_s_bar_and_typing_narrow_the_kinds_and_leave_the_rows_b
     typed("node", &mut ui, &app);
     assert_eq!(ui.session.resources.filter.text(), "node");
     assert!(ui.session.resources.search.is_empty());
-    let (texts, _) = drawn(&app, &ui);
+    let texts = crate::tests::settings::drawn_whole(&app, &ui);
     assert!(texts.iter().any(|one| one == "Pods · 3"), "{texts:?}");
     assert!(texts.iter().any(|one| one == "Nodes"), "{texts:?}");
     assert!(!texts.iter().any(|one| one == "Deployments"), "{texts:?}");
@@ -240,4 +240,49 @@ fn the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight() {
     }
     assert_eq!(ui.session.resources.cursor, Some(lines - 1));
     assert_eq!(ui.session.resources.kinds, extent, "the last line in sight");
+}
+
+#[test]
+fn the_kind_the_search_names_comes_before_scattered_letters() {
+    let (mut app, mut ui) = listing();
+    let hpa = kind(
+        "autoscaling",
+        "HorizontalPodAutoscaler",
+        "horizontalpodautoscalers",
+        true,
+    );
+    let kinds = vec![pods(), hpa, kind("", "Node", "nodes", false)];
+    app.cluster.store.set_kinds("staging", kinds);
+    ui.session.resources.filter.set("nodes");
+    let (texts, _) = drawn(&app, &ui);
+    let at = |label: &str| texts.iter().position(|one| one == label);
+    let nodes = at("Nodes").expect("nodes");
+    let hpa = texts.iter().position(|one| one.starts_with("Horizontal"));
+    assert!(
+        hpa.is_none_or(|hpa| nodes < hpa),
+        "the best match first: {texts:?}"
+    );
+}
+
+#[test]
+fn the_kind_search_lights_its_letters() {
+    let (app, mut ui) = listing();
+    ui.session.resources.filter.set("nds");
+    let (frame, _) = crate::view(
+        &app,
+        &ui,
+        crate::tests::window(),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
+    let lit: Vec<String> = frame
+        .layers()
+        .iter()
+        .flat_map(|one| one.texts.iter())
+        .filter(|run| run.style.color == accent)
+        .map(|run| run.text.clone())
+        .collect();
+    assert_eq!(lit, ["N", "d", "s"], "{lit:?}");
 }

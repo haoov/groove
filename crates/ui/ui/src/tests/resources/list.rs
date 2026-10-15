@@ -297,3 +297,40 @@ fn a_sideways_offset_with_the_list_shown_leaves_its_scroll_down() {
     *ui.session.resources.across_mut() = 120.0;
     assert_eq!(ui.session.resources.scroll, 40.0);
 }
+
+#[test]
+fn the_list_search_puts_the_best_name_first_until_a_column_is_picked() {
+    let (mut app, mut ui) = listing();
+    let pods = key("staging", Some("paxone"));
+    let rows = vec![
+        row("worker-email-bot", "paxone", "Running"),
+        row("web-0", "paxone", "Running"),
+    ];
+    let columns = app
+        .cluster
+        .store
+        .watched(&pods)
+        .expect("watched")
+        .columns
+        .clone();
+    let reset = Batch::Reset { columns, rows };
+    app.cluster.store.apply(&pods, reset);
+    ui.session.resources.search.set("web");
+    let lit = |app: &AppState, ui: &Ui| {
+        let (texts, _) = drawn(app, ui);
+        let table = texts
+            .iter()
+            .position(|one| one == "STATUS")
+            .expect("the table");
+        let at = |piece: &str| texts[table..].iter().position(|one| one == piece);
+        (
+            at("web").expect("web lit whole"),
+            at("w").expect("worker lit in pieces"),
+        )
+    };
+    let (web, worker) = lit(&app, &ui);
+    assert!(web < worker, "the whole run first");
+    ui.session.resources.sort = Some(("NAME".into(), true));
+    let (web, worker) = lit(&app, &ui);
+    assert!(worker < web, "a picked column wins");
+}

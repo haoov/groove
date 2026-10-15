@@ -171,6 +171,9 @@ impl Ui {
         if outcome.settings {
             commands.extend(self.open_settings());
         }
+        if let Some(act) = outcome.act {
+            commands.extend(crate::input::acted(act, self, app));
+        }
         commands
     }
 

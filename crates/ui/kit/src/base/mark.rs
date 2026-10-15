@@ -52,6 +52,16 @@ pub enum Mark {
     /// What copies a value, and what it turns to once copied.
     Copy,
     Copied,
+    Overview,
+    Add,
+    Reload,
+    Commit,
+    Terminal,
+    Agent,
+    Theme,
+    Split,
+    Inline,
+    File,
 }
 
 impl Mark {
@@ -117,6 +127,16 @@ impl Mark {
             Mark::Folder => Icon::Folder,
             Mark::FolderOpen => Icon::FolderOpen,
             Mark::Routine => Icon::Repeat,
+            Mark::Overview => Icon::Eye,
+            Mark::Add => Icon::Plus,
+            Mark::Reload => Icon::Notch,
+            Mark::Commit => Icon::Check,
+            Mark::Terminal => Icon::Terminal,
+            Mark::Agent => Icon::Robot,
+            Mark::Theme => Icon::Palette,
+            Mark::Split => Icon::Columns,
+            Mark::Inline => Icon::Rows,
+            Mark::File => Icon::File,
         }
     }
 }

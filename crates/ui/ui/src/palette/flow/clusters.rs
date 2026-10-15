@@ -24,7 +24,7 @@ pub(super) fn namespaces(app: &AppState, context: &str) -> Prompt {
     let whole = std::iter::once((whole, String::new()));
     let named = listed.iter().map(|one| (one.clone(), one.clone()));
     Prompt {
-        label: "namespace, empty for the whole cluster",
+        label: "namespace",
         options: whole.chain(named).collect(),
         free: true,
         allow_empty: true,

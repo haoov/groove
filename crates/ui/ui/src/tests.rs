@@ -22,6 +22,8 @@ mod mouse;
 mod overview;
 mod painted;
 mod palette;
+mod palette_look;
+mod palette_more;
 mod pasting;
 mod pending;
 mod perf;
@@ -150,6 +152,18 @@ fn all_texts(frame: &groove_gfx::Frame) -> Vec<String> {
 fn render(app: &AppState, ui: &Ui, metrics: Metrics) -> (Vec<String>, Hits) {
     let (frame, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     (texts_of(&frame), hits)
+}
+
+/// The frame's texts, a line drawn in lit pieces read back whole.
+fn whole_texts(runs: &[groove_gfx::TextRun]) -> Vec<String> {
+    let mut out: Vec<(String, f32, groove_gfx::Rect)> = Vec::new();
+    for run in runs {
+        match out.last_mut() {
+            Some((text, y, clip)) if *y == run.y && *clip == run.clip => text.push_str(&run.text),
+            _ => out.push((run.text.clone(), run.y, run.clip)),
+        }
+    }
+    out.into_iter().map(|(text, ..)| text).collect()
 }
 
 /// The open file, and the whole change it belongs to.
