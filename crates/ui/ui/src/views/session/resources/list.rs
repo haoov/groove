@@ -33,7 +33,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     let [strip, mut body] = column_in(body, [band, Spec::fill()]);
     let keys = scope::keys(app, open, held);
     let picked = (keys.as_slice(), held.search.text(), held.sort.as_ref());
-    let order = held.kept.of(app, picked, || ordered(app, &keys, held));
+    let order = held
+        .kept
+        .of(app, picked, || order::ordered(app, &keys, held));
     let rows = resolved(app, &keys, &order);
     let kind = scope::kind(app, open, held);
     title(ctx, strip, (kind.as_ref(), rows.len()), held);
@@ -154,27 +156,6 @@ fn standing(
     }
 }
 
-/// Every row of every key whose name holds every name word, in the order picked.
-fn ordered(app: &AppState, keys: &[WatchKey], held: &ResourcesUi) -> Vec<(usize, usize)> {
-    let (_, names) = scope::search(held);
-    let mut found = Vec::new();
-    for (place, key) in keys.iter().enumerate() {
-        let Some(watched) = app.cluster.store.watched(key) else {
-            continue;
-        };
-        let named = |(_, row): &(usize, &ObjectRow)| {
-            names
-                .iter()
-                .all(|word| groove_types::fuzzy(&row.name, word))
-        };
-        let rows = watched.rows.iter().enumerate().filter(named);
-        found.extend(rows.map(|(at, _)| (place, at)));
-    }
-    let rows = resolved(app, keys, &found);
-    let plan = plan(app, keys, &rows);
-    order::sorted(found, &rows, &plan, held.sort.as_ref())
-}
-
 /// The rows an order names, as they stand.
 fn resolved<'a>(
     app: &'a AppState,
@@ -232,14 +213,15 @@ fn listed(
         selected: None,
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
-    let laid = table.draw(ctx, body, |at| one(app, rows[at], &plan));
+    let (_, names) = scope::search(held);
+    let laid = table.draw(ctx, body, |at| one(app, rows[at], (&plan, &names)));
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
 
 fn one<'a>(
     app: &AppState,
     (key, row): (&'a WatchKey, &'a ObjectRow),
-    plan: &Plan,
+    (plan, names): (&Plan, &[&str]),
 ) -> Shown<'a, Target> {
     let mut cells = Vec::new();
     if plan.clusters {
@@ -272,9 +254,13 @@ fn one<'a>(
             (_, Some(health)) => colour(health),
             _ => Role::Muted,
         };
-        cells.push(match reads {
+        let cell = match reads {
             Reads::Time => Cell::small(text, role),
             _ => Cell::body(text, role),
+        };
+        cells.push(match place {
+            0 => cell.lit(groove_types::spans(text, names)),
+            _ => cell,
         });
     }
     Shown::row(cells).target(Target::ResourceRow(row.uid.clone()))

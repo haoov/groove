@@ -28,17 +28,18 @@ pub(super) fn entry<'a>(
     }
 }
 
-/// Where the query stands in `text`: after `#` each character the fuzzy match placed, else each word.
-pub(super) fn matched(text: &str, query: &str) -> Vec<Range<usize>> {
-    let mut found: Vec<Range<usize>> = match query.strip_prefix('#') {
-        Some(rest) => groove_types::sought(text, rest)
-            .map(|one| one.at.into_iter().map(|at| at..at + 1).collect())
-            .unwrap_or_default(),
-        None => query
-            .split_whitespace()
-            .filter_map(|word| groove_types::occurrences(text, word).into_iter().next())
-            .collect(),
-    };
+/// Where the query stands in `text`: fuzzy for a file or a picker's option, else each word.
+pub(super) fn matched(text: &str, query: &str, fuzzy: bool) -> Vec<Range<usize>> {
+    if let Some(rest) = query.strip_prefix('#') {
+        return groove_types::spans(text, &[rest]);
+    }
+    if fuzzy {
+        return groove_types::spans(text, &[query]);
+    }
+    let mut found: Vec<Range<usize>> = query
+        .split_whitespace()
+        .filter_map(|word| groove_types::occurrences(text, word).into_iter().next())
+        .collect();
     found.sort_by_key(|range| range.start);
     let mut out: Vec<Range<usize>> = Vec::with_capacity(found.len());
     for range in found {

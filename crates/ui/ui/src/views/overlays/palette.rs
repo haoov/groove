@@ -249,7 +249,11 @@ fn items(
         .map(|(group, label)| if prompt.is_some() { group } else { label }.as_str())
         .collect();
     let query = palette.query.text();
-    let found: Vec<Vec<Range<usize>>> = texts.iter().map(|text| matched(text, query)).collect();
+    let fuzzy = prompt.is_some();
+    let found: Vec<Vec<Range<usize>>> = texts
+        .iter()
+        .map(|text| matched(text, query, fuzzy))
+        .collect();
     let shown = &lines[first..lines.len().min(first + limit(palette))];
     let lit = palette.anchor.is_none() || palette.keyed;
     let pad = ctx.tokens.md;

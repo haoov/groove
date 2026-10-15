@@ -14,7 +14,7 @@ pub(crate) struct Group<'a> {
     pub files: Vec<&'a FileDiff>,
 }
 
-pub(crate) fn listing<'a>(files: &[&'a FileDiff]) -> Listing<'a> {
+pub(crate) fn listing<'a>(files: &[&'a FileDiff], ranked: bool) -> Listing<'a> {
     let root = common(files);
     let mut groups: Vec<Group<'a>> = Vec::new();
     let mut at: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
@@ -31,7 +31,9 @@ pub(crate) fn listing<'a>(files: &[&'a FileDiff]) -> Listing<'a> {
             }
         }
     }
-    groups.sort_by(|a, b| a.dir.cmp(&b.dir));
+    if !ranked {
+        groups.sort_by(|a, b| a.dir.cmp(&b.dir));
+    }
     Listing { root, groups }
 }
 

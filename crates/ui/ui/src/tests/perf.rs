@@ -422,7 +422,7 @@ fn time_the_file_lists_parts() {
     };
     time("narrowed", &|| drop(narrowed(&app, &ui)));
     let files = narrowed(&app, &ui);
-    time("listing", &|| drop(listing(&files)));
+    time("listing", &|| drop(listing(&files, false)));
     time("explorer rows", &|| {
         drop(explorer::rows(
             (app.workspace.paths(), app.workspace.paths_stamp()),

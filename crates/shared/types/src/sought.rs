@@ -117,3 +117,29 @@ pub fn ranked<T>(
     scored.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
     scored.into_iter().map(|(_, row)| row).collect()
 }
+
+/// Where each word lands in `text`, as runs of characters; nothing when a word misses.
+pub fn spans(text: &str, words: &[&str]) -> Vec<std::ops::Range<usize>> {
+    let mut at: Vec<usize> = Vec::new();
+    for word in words {
+        let Some(found) = sought(text, word) else {
+            return Vec::new();
+        };
+        at.extend(found.at);
+    }
+    runs(at)
+}
+
+/// Character positions as runs, each position once.
+pub fn runs(mut at: Vec<usize>) -> Vec<std::ops::Range<usize>> {
+    at.sort_unstable();
+    at.dedup();
+    let mut out: Vec<std::ops::Range<usize>> = Vec::new();
+    for one in at {
+        match out.last_mut() {
+            Some(last) if last.end == one => last.end += 1,
+            _ => out.push(one..one + 1),
+        }
+    }
+    out
+}

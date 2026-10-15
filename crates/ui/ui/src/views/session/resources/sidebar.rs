@@ -2,14 +2,14 @@
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{KindHeading, KubeKind};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::shape::hoverable;
-use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::text::lit_cut;
 use groove_ui_kit::widgets::{Heading, Search, Side, pane};
 
 use super::scope;
@@ -60,7 +60,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             }
             Line::Kind(kind) => {
                 let marks = (picked.as_ref() == Some(kind), stood.as_ref() == Some(one));
-                named(ctx, line, kind, marks)
+                named(ctx, line, (kind, ui.session.resources.filter.text()), marks)
             }
         },
     );
@@ -78,7 +78,12 @@ fn searched(ctx: &mut Ctx, line: Rect, ui: &Ui) {
 }
 
 /// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.
-fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (bool, bool)) {
+fn named(
+    ctx: &mut Ctx,
+    line: Rect,
+    (kind, filter): (&KubeKind, &str),
+    (picked, highlighted): (bool, bool),
+) {
     if highlighted {
         groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
     }
@@ -89,10 +94,17 @@ fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (boo
     let role = if picked { Role::Text } else { Role::Muted };
     let style = ctx.styles.body(role);
     let at = crate::views::session::files::text_at(ctx, ctx.tokens.md * 2.0);
-    let room = (line.w - at - ctx.tokens.md).max(0.0);
+    let room = line.pad(Edges::across(0.0, ctx.tokens.md));
     let label = super::list::plural(kind);
-    let text = elide(ctx, &label, &style, room);
-    row(ctx, line, at, &text, style);
+    let word = filter.split_once('/').map_or(filter, |(_, kind)| kind);
+    let lit = groove_types::spans(&label, &[word]);
+    lit_cut(
+        ctx,
+        (room, at),
+        &label,
+        style,
+        (&lit, ctx.styles.body(Role::Accent)),
+    );
 }
 
 /// Every watchable kind of the contexts in scope, once each, under its heading.

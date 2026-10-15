@@ -60,6 +60,20 @@ pub fn lit_row<A: App>(
     });
 }
 
+/// `text` cut to the room right of `indent`, its `lit` characters drawn in `lit_style` where kept.
+pub fn lit_cut<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    (rect, indent): (Rect, f32),
+    text: &str,
+    style: TextStyle,
+    (lit, lit_style): (&[std::ops::Range<usize>], TextStyle),
+) {
+    let cut = elide(ctx, text, &style, (rect.w - indent).max(0.0));
+    let whole = cut.chars().count() - usize::from(cut != text);
+    let kept: Vec<_> = lit.iter().filter(|one| one.end <= whole).cloned().collect();
+    lit_row(ctx, (rect, indent), &cut, style, (&kept, lit_style));
+}
+
 /// The text as it fits `width`: whole, or cut at a character with an ellipsis.
 pub fn elide<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> String {
     if ctx.measure(text, style) <= width {

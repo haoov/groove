@@ -12,7 +12,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
-use groove_ui_kit::text::{Label, elide, row};
+use groove_ui_kit::text::{Label, elide, lit_cut, row};
 use groove_ui_kit::widgets::{changes, folder};
 
 enum Item<'a> {
@@ -137,13 +137,25 @@ pub(super) fn entry(
         groove_ui_kit::widgets::icon(ctx, mark, Mark::Note, Role::Faint);
     }
     room.take_right(sm);
-    named(ctx, room, file);
+    named(ctx, room, file, ui.session.bar.path.text());
 }
 
-/// The file's name; its directory is the row above it.
-fn named(ctx: &mut Ctx, room: Rect, file: &FileDiff) {
+/// The file's name, the letters the path term found lit; its directory is the row above it.
+fn named(ctx: &mut Ctx, room: Rect, file: &FileDiff, query: &str) {
     let (name, _) = reads_as(&file.path);
-    Label::new(&name, ctx.styles.body(Role::Text)).draw(ctx, room);
+    let from = file.path.chars().count() - name.chars().count();
+    let found = groove_types::sought(&file.path, query)
+        .map(|one| one.at)
+        .unwrap_or_default();
+    let lit = groove_types::runs(
+        found
+            .into_iter()
+            .filter(|at| *at >= from)
+            .map(|at| at - from)
+            .collect(),
+    );
+    let (style, accent) = (ctx.styles.body(Role::Text), ctx.styles.body(Role::Accent));
+    lit_cut(ctx, (room, 0.0), &name, style, (&lit, accent));
 }
 
 /// The colour of a file's status letter.

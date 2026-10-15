@@ -123,3 +123,29 @@ fn a_file_found_in_pieces_lights_each_piece_and_the_whole_run_ranks_first() {
         "{lit:?}"
     );
 }
+
+#[test]
+fn a_picker_lights_its_fuzzy_letters() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    crate::tests::typed("add work", &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    crate::tests::typed("mg", &mut ui, &app);
+    let (frame, _) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
+    let lit: Vec<String> = frame.layers()[1]
+        .texts
+        .iter()
+        .filter(|t| t.style.color == accent)
+        .map(|t| t.text.clone())
+        .collect();
+    assert_eq!(lit, ["m", "g"], "a word start each");
+}
