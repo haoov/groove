@@ -43,7 +43,12 @@ fn in_rail(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
 fn the_feed_says_what_each_session_did() {
     let drawn = in_rail(&fed(), &Ui::default());
     assert!(drawn.iter().any(|one| one == "FEED"), "{drawn:?}");
-    for one in ["commit", "fix: one", "push", "fix/two"] {
+    for one in [
+        "commit",
+        "Alpha \u{b7} fix: one",
+        "push",
+        "Beta \u{b7} fix/two",
+    ] {
         assert!(drawn.iter().any(|drawn| drawn == one), "{one}: {drawn:?}");
     }
 }
@@ -280,7 +285,7 @@ fn the_act_is_bolder_than_its_subject() {
             .expect(text)
     };
     let act = style("commit");
-    let subject = style("fix: one");
+    let subject = style("Alpha \u{b7} fix: one");
     assert_eq!(act.weight, groove_gfx::Weight::Bold);
     assert_eq!(subject.weight, groove_gfx::Weight::Regular);
     assert_ne!(act.color, subject.color);
@@ -300,5 +305,151 @@ fn every_act_starts_at_the_same_column() {
             .expect(text)
     };
     assert_eq!(at("push"), at("commit"), "the age's column is fixed");
-    assert_eq!(at("push"), at("fix/two"), "and the subject stands under it");
+    assert_eq!(
+        at("push"),
+        at("Beta \u{b7} fix/two"),
+        "and the subject stands under it"
+    );
+}
+
+#[test]
+fn the_age_stands_right_of_the_act_and_the_kind_s_mark_left_of_it() {
+    let app = fed();
+    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
+    let layer = &frame.layers()[0];
+    let run = |text: &str| layer.texts.iter().find(|run| run.text == text).expect(text);
+    let (commit, age) = (run("commit"), run("now"));
+    assert!(age.x > commit.x, "the age at the right");
+    let mark = layer
+        .icons
+        .iter()
+        .find(|one| one.icon == groove_gfx::Icon::Check && one.rect.y <= commit.y + commit.height)
+        .expect("the commit's mark");
+    assert!(mark.rect.right() <= commit.x, "the mark before the act");
+}
+
+#[test]
+fn this_session_s_feed_leaves_the_title_out() {
+    let app = fed();
+    let mut ui = Ui::default();
+    ui.rail.mine = true;
+    let drawn = in_rail(&app, &ui);
+    assert!(drawn.iter().any(|one| one == "fix: one"), "{drawn:?}");
+    assert!(
+        !drawn.iter().any(|one| one.contains(" \u{b7} ")),
+        "{drawn:?}"
+    );
+}
+
+/// Session a's three commits, then b's push between two of its own.
+fn runs() -> groove_controllers::AppState {
+    let mut app = app();
+    app.session.feed = vec![
+        line("a", 70, TimelineKind::Commit, "c3"),
+        line("a", 60, TimelineKind::Commit, "c2"),
+        line("a", 50, TimelineKind::Commit, "c1"),
+        line("b", 40, TimelineKind::Commit, "d2"),
+        line("b", 30, TimelineKind::Push, "fix/two"),
+        line("b", 20, TimelineKind::Commit, "d1"),
+    ];
+    app
+}
+
+#[test]
+fn back_to_back_events_of_one_kind_fold_into_one_row() {
+    let drawn = in_rail(&runs(), &Ui::default());
+    let count = |text: &str| drawn.iter().filter(|one| *one == text).count();
+    assert_eq!(
+        count("commit"),
+        3,
+        "a's three, then b's two apart: {drawn:?}"
+    );
+    assert!(drawn.iter().any(|one| one == "3"), "the count: {drawn:?}");
+    let subjects = ["Alpha \u{b7} c3", "Alpha \u{b7} c2", "Alpha \u{b7} c1"];
+    let said = drawn.iter().any(|one| subjects.contains(&one.as_str()));
+    assert!(!said, "a folded row has no second line: {drawn:?}");
+}
+
+#[test]
+fn a_folded_run_opens_on_a_click_and_its_lines_lead_to_the_session() {
+    let app = runs();
+    let mut ui = Ui::default();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let key = crate::views::rail::RunKey {
+        fold: crate::views::rail::Fold::Event(TimelineKind::Commit),
+        newest: Timestamp::new(70),
+    };
+    let row = hits
+        .rect_of(&Target::FeedRun(key))
+        .expect("the folded commits");
+    click(row, &mut ui, &app, &hits);
+    let drawn = in_rail(&app, &ui);
+    for one in ["c3", "c2", "c1"] {
+        assert!(drawn.iter().any(|drawn| drawn == one), "{one}: {drawn:?}");
+    }
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let c2 = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "c2")
+        .expect("c2");
+    let under = hits.at(c2.x + 1.0, c2.y + 1.0);
+    assert_eq!(
+        under,
+        Some(Target::FeedLine(SessionId::new("a"))),
+        "a line leads to a"
+    );
+    let row = hits.rect_of(&Target::FeedRun(key)).expect("still there");
+    click(row, &mut ui, &app, &hits);
+    let drawn = in_rail(&app, &ui);
+    assert!(
+        !drawn.iter().any(|one| one == "c2"),
+        "folded again: {drawn:?}"
+    );
+}
+
+#[test]
+fn a_turn_s_start_and_end_fold_as_one_turn() {
+    let mut app = app();
+    app.session.feed = vec![
+        line("a", 90, TimelineKind::TurnEnd, "pair the runs"),
+        line("a", 80, TimelineKind::TurnStart, "pair the runs"),
+    ];
+    let drawn = in_rail(&app, &Ui::default());
+    assert_eq!(
+        drawn.iter().filter(|one| *one == "turn").count(),
+        1,
+        "{drawn:?}"
+    );
+    assert!(drawn.iter().any(|one| one == "2"), "{drawn:?}");
+}
+
+#[test]
+fn the_feed_is_monochrome_but_for_its_errors() {
+    let mut app = fed();
+    app.errors
+        .push(groove_controllers::Told::now(groove_types::Error::new(
+            groove_types::ErrorKind::Internal,
+            "the walk failed",
+        )));
+    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
+    let rail = crate::layout::Layout::of(window(), &Ui::default()).rail;
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let (accent, bad) = (
+        styles.color(groove_ui_kit::base::style::Role::Accent),
+        styles.color(groove_ui_kit::base::style::Role::Bad),
+    );
+    let layer = &frame.layers()[0];
+    let feed = layer.texts.iter().filter(|run| run.x < rail.right());
+    assert!(
+        feed.clone().all(|run| run.style.color != accent),
+        "no accent in the rail's text"
+    );
+    let error = layer
+        .texts
+        .iter()
+        .find(|run| run.text == "error")
+        .expect("the error");
+    assert_eq!(error.style.color, bad);
 }

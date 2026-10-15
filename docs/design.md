@@ -126,6 +126,9 @@ appears on the board.
 **Feed.** Below the rows, the event log of the opened sessions, newest first, filterable to
 the selected session: agent turns, commits, pushes, MR events, CI results, notes.
 Monochrome, no motion, collapsible. Asks are never in the feed; they live on the row.
+Back-to-back events of one kind from one session fold into one row with a count; a click
+opens the run to one line per event.
+Enforced by `back_to_back_events_of_one_kind_fold_into_one_row`.
 
 ## Session — small scope
 
