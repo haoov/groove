@@ -43,7 +43,12 @@ fn in_rail(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
 fn the_feed_says_what_each_session_did() {
     let drawn = in_rail(&fed(), &Ui::default());
     assert!(drawn.iter().any(|one| one == "FEED"), "{drawn:?}");
-    for one in ["commit", "fix: one", "push", "fix/two"] {
+    for one in [
+        "commit",
+        "Alpha \u{b7} fix: one",
+        "push",
+        "Beta \u{b7} fix/two",
+    ] {
         assert!(drawn.iter().any(|drawn| drawn == one), "{one}: {drawn:?}");
     }
 }
@@ -280,7 +285,7 @@ fn the_act_is_bolder_than_its_subject() {
             .expect(text)
     };
     let act = style("commit");
-    let subject = style("fix: one");
+    let subject = style("Alpha \u{b7} fix: one");
     assert_eq!(act.weight, groove_gfx::Weight::Bold);
     assert_eq!(subject.weight, groove_gfx::Weight::Regular);
     assert_ne!(act.color, subject.color);
@@ -300,5 +305,38 @@ fn every_act_starts_at_the_same_column() {
             .expect(text)
     };
     assert_eq!(at("push"), at("commit"), "the age's column is fixed");
-    assert_eq!(at("push"), at("fix/two"), "and the subject stands under it");
+    assert_eq!(
+        at("push"),
+        at("Beta \u{b7} fix/two"),
+        "and the subject stands under it"
+    );
+}
+
+#[test]
+fn the_age_stands_right_of_the_act_and_the_kind_s_mark_left_of_it() {
+    let app = fed();
+    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
+    let layer = &frame.layers()[0];
+    let run = |text: &str| layer.texts.iter().find(|run| run.text == text).expect(text);
+    let (commit, age) = (run("commit"), run("now"));
+    assert!(age.x > commit.x, "the age at the right");
+    let mark = layer
+        .icons
+        .iter()
+        .find(|one| one.icon == groove_gfx::Icon::Check && one.rect.y <= commit.y + commit.height)
+        .expect("the commit's mark");
+    assert!(mark.rect.right() <= commit.x, "the mark before the act");
+}
+
+#[test]
+fn this_session_s_feed_leaves_the_title_out() {
+    let app = fed();
+    let mut ui = Ui::default();
+    ui.rail.mine = true;
+    let drawn = in_rail(&app, &ui);
+    assert!(drawn.iter().any(|one| one == "fix: one"), "{drawn:?}");
+    assert!(
+        !drawn.iter().any(|one| one.contains(" \u{b7} ")),
+        "{drawn:?}"
+    );
 }

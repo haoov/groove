@@ -71,7 +71,7 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         at,
         &shown,
         |_| height,
-        |ctx, line, one| line::draw(ctx, line, one),
+        |ctx, line, one| line::draw(ctx, line, one, (app, !ui.rail.mine)),
     );
 }
 
