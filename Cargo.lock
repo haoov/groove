@@ -1277,7 +1277,7 @@ dependencies = [
 
 [[package]]
 name = "groove"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-annotations",
  "groove-config",
@@ -1302,7 +1302,7 @@ dependencies = [
 
 [[package]]
 name = "groove-agent-launch"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-hooks",
@@ -1315,7 +1315,7 @@ dependencies = [
 
 [[package]]
 name = "groove-agent-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-agent-launch",
  "groove-approvals",
@@ -1331,7 +1331,7 @@ dependencies = [
 
 [[package]]
 name = "groove-annotations"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-types",
@@ -1342,7 +1342,7 @@ dependencies = [
 
 [[package]]
 name = "groove-approvals"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-types",
  "serde_json",
@@ -1351,7 +1351,7 @@ dependencies = [
 
 [[package]]
 name = "groove-browser"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-types",
@@ -1359,7 +1359,7 @@ dependencies = [
 
 [[package]]
 name = "groove-cluster-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-contexts",
  "groove-kubectl",
@@ -1371,7 +1371,7 @@ dependencies = [
 
 [[package]]
 name = "groove-config"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-types",
@@ -1384,7 +1384,7 @@ dependencies = [
 
 [[package]]
 name = "groove-config-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-agent-launch",
  "groove-config",
@@ -1396,7 +1396,7 @@ dependencies = [
 
 [[package]]
 name = "groove-contexts"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-kube",
  "groove-types",
@@ -1408,7 +1408,7 @@ dependencies = [
 
 [[package]]
 name = "groove-controllers"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-agent-service",
  "groove-cluster-service",
@@ -1429,7 +1429,7 @@ dependencies = [
 
 [[package]]
 name = "groove-db"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "sqlx",
  "tempfile",
@@ -1439,7 +1439,7 @@ dependencies = [
 
 [[package]]
 name = "groove-delivery-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-annotations",
  "groove-browser",
@@ -1457,7 +1457,7 @@ dependencies = [
 
 [[package]]
 name = "groove-diff"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-git",
  "groove-text",
@@ -1469,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "groove-editor"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "arboard",
  "groove-types",
@@ -1479,7 +1479,7 @@ dependencies = [
 
 [[package]]
 name = "groove-exec"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "anyhow",
  "nix 0.29.0",
@@ -1490,7 +1490,7 @@ dependencies = [
 
 [[package]]
 name = "groove-forge"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-http",
  "groove-token",
@@ -1503,7 +1503,7 @@ dependencies = [
 
 [[package]]
 name = "groove-gfx"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "bytemuck",
  "glyphon",
@@ -1517,7 +1517,7 @@ dependencies = [
 
 [[package]]
 name = "groove-git"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-types",
@@ -1528,7 +1528,7 @@ dependencies = [
 
 [[package]]
 name = "groove-grep"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-types",
  "ignore",
@@ -1538,7 +1538,7 @@ dependencies = [
 
 [[package]]
 name = "groove-hooks"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-loopback",
  "groove-types",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "groove-http"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "reqwest",
  "serde",
@@ -1563,7 +1563,7 @@ dependencies = [
 
 [[package]]
 name = "groove-kube"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "futures-util",
  "http",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "groove-kubectl"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-types",
@@ -1588,7 +1588,7 @@ dependencies = [
 
 [[package]]
 name = "groove-ledger"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-types",
@@ -1598,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "groove-loopback"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "http-body-util",
  "hyper",
@@ -1609,7 +1609,7 @@ dependencies = [
 
 [[package]]
 name = "groove-mcp"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-loopback",
  "groove-tools",
@@ -1624,7 +1624,7 @@ dependencies = [
 
 [[package]]
 name = "groove-mrs"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-types",
@@ -1635,7 +1635,7 @@ dependencies = [
 
 [[package]]
 name = "groove-objects"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "futures-util",
  "groove-kube",
@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "groove-plan"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-types",
@@ -1658,7 +1658,7 @@ dependencies = [
 
 [[package]]
 name = "groove-provider"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-http",
  "groove-token",
@@ -1671,7 +1671,7 @@ dependencies = [
 
 [[package]]
 name = "groove-routine-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-routines",
  "groove-types",
@@ -1679,7 +1679,7 @@ dependencies = [
 
 [[package]]
 name = "groove-routines"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-types",
  "tempfile",
@@ -1688,7 +1688,7 @@ dependencies = [
 
 [[package]]
 name = "groove-session-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-git",
  "groove-sessions",
@@ -1702,7 +1702,7 @@ dependencies = [
 
 [[package]]
 name = "groove-sessions"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-types",
@@ -1713,7 +1713,7 @@ dependencies = [
 
 [[package]]
 name = "groove-shell-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-terminal",
  "groove-types",
@@ -1721,7 +1721,7 @@ dependencies = [
 
 [[package]]
 name = "groove-skill-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-git",
  "groove-routines",
@@ -1734,7 +1734,7 @@ dependencies = [
 
 [[package]]
 name = "groove-skills"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-types",
  "serde_json",
@@ -1744,7 +1744,7 @@ dependencies = [
 
 [[package]]
 name = "groove-task-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-browser",
  "groove-ledger",
@@ -1757,7 +1757,7 @@ dependencies = [
 
 [[package]]
 name = "groove-terminal"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "alacritty_terminal",
  "groove-exec",
@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "groove-text"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-types",
  "ropey",
@@ -1783,7 +1783,7 @@ dependencies = [
 
 [[package]]
 name = "groove-timeline"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-types",
@@ -1794,7 +1794,7 @@ dependencies = [
 
 [[package]]
 name = "groove-token"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-http",
@@ -1803,7 +1803,7 @@ dependencies = [
 
 [[package]]
 name = "groove-tools"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-types",
  "serde",
@@ -1812,7 +1812,7 @@ dependencies = [
 
 [[package]]
 name = "groove-types"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1820,7 +1820,7 @@ dependencies = [
 
 [[package]]
 name = "groove-ui"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-controllers",
  "groove-gfx",
@@ -1831,7 +1831,7 @@ dependencies = [
 
 [[package]]
 name = "groove-ui-kit"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-gfx",
  "groove-types",
@@ -1841,7 +1841,7 @@ dependencies = [
 
 [[package]]
 name = "groove-watch"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-grep",
  "groove-types",
@@ -1853,7 +1853,7 @@ dependencies = [
 
 [[package]]
 name = "groove-workspace-service"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-diff",
  "groove-editor",
@@ -1867,7 +1867,7 @@ dependencies = [
 
 [[package]]
 name = "groove-worktree"
-version = "1.0.0-alpha.3"
+version = "1.0.0-beta.1"
 dependencies = [
  "groove-db",
  "groove-git",
