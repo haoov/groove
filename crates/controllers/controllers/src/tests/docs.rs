@@ -7,20 +7,28 @@ fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
 }
 
-/// Every Markdown file under `docs/`, as `(path, text)`.
+/// Every Markdown file under `docs/`, and every `AGENTS.md`, as `(path, text)`.
 fn docs() -> Vec<(PathBuf, String)> {
+    let root = repo_root();
     let mut out = Vec::new();
-    markdown_under(&repo_root().join("docs"), &mut out);
+    markdown_under(&root.join("docs"), &mut out, |_| true);
     assert!(out.len() >= 5, "found {} docs", out.len());
+    let agents = |path: &Path| path.ends_with("AGENTS.md");
+    markdown_under(&root.join("crates"), &mut out, agents);
+    let own = root.join("AGENTS.md");
+    out.push((own.clone(), fs::read_to_string(own).expect("AGENTS.md")));
     out
 }
 
-fn markdown_under(dir: &Path, out: &mut Vec<(PathBuf, String)>) {
+/// The Markdown files under `dir` that `wanted` keeps; a `CLAUDE.md` link is read once, as
+/// the `AGENTS.md` it points to.
+fn markdown_under(dir: &Path, out: &mut Vec<(PathBuf, String)>, wanted: fn(&Path) -> bool) {
     for entry in fs::read_dir(dir).expect("a directory").flatten() {
         let path = entry.path();
         if path.is_dir() {
-            markdown_under(&path, out);
-        } else if path.extension().is_some_and(|e| e == "md") {
+            markdown_under(&path, out, wanted);
+        } else if path.extension().is_some_and(|e| e == "md") && !path.is_symlink() && wanted(&path)
+        {
             let text = fs::read_to_string(&path).expect("a doc");
             out.push((path, text));
         }
