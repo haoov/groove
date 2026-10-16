@@ -4,9 +4,9 @@ name: docs
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "**.md"]
+    paths: ["docs/**", "book/**", "**.md"]
   pull_request:
-    paths: ["docs/**", "**.md"]
+    paths: ["docs/**", "book/**", "**.md"]
 
 concurrency:
   group: docs-${{ github.ref }}

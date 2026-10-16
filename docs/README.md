@@ -28,6 +28,7 @@ The docs hold the intent, the rules and the decisions. The code holds what exist
 | Which actions exist? | the `Command` enum of each controller, one doc comment a variant |
 | What does each service own? | the `//!` doc of the service crate |
 | What is planned? | the GitHub issues |
+| How does a user install, set up and use Groove? | the user guide in `book/`, published on each release |
 
 A doc never lists what the code already lists. A doc that names a file, a function or a
 test names one that exists: `docs.rs` in the controllers' tests checks it.
