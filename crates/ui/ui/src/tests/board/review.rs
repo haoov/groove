@@ -308,3 +308,15 @@ fn the_selection_scrolls_into_view_past_the_bottom() {
     assert!(ui.board.review > 0.0, "the column scrolled");
     assert!(order(&app, &ui).contains(&title), "{title} is on screen");
 }
+
+#[test]
+fn an_approved_mr_or_one_a_session_reviews_leaves_the_column() {
+    let mut app = waiting();
+    app.delivery.reviews[0].approved = true;
+    let rows = crate::views::board::review::sorted(&app, &Ui::default());
+    assert_eq!(rows.len(), 1, "nothing to do on the approved one");
+    let live = app.delivery.reviews[1].session_id();
+    app.session.open[0].session.id = groove_types::SessionId::new(live);
+    let rows = crate::views::board::review::sorted(&app, &Ui::default());
+    assert!(rows.is_empty(), "the live one is in Live already");
+}

@@ -65,7 +65,7 @@ the task at the provider is the agent's own write.
 |---|---|---|
 | **Live** | every session on disk, open or closed | last opened |
 | **Up next** | tickets with no session, in the user's local order — the plan | the user's order |
-| **Review** | the forge queue: MRs where the user is a requested reviewer | updated |
+| **Review** | the forge queue: MRs where the user is a requested reviewer, neither approved by them nor open in a session | updated |
 
 Each column header carries its count.
 
