@@ -30,10 +30,7 @@ async fn the_handshake_offers_utf32_and_names_the_root() {
 async fn a_server_naming_no_encoding_gets_its_columns_in_utf16() {
     let (client, mut fake, _heard) = connected(None, Value::Null).await;
     let path = Path::new("/work/tree/a.py");
-    client
-        .open(path, "python", "é😀x = 1\n".into())
-        .await
-        .unwrap();
+    client.open(path, "python", "é😀x = 1\n".into()).unwrap();
     let opened = fake.expect("textDocument/didOpen").await;
     assert_eq!(opened["params"]["textDocument"]["languageId"], "python");
     let asking = tokio::spawn(async move { client.hover(path, Caret::new(0, 2)).await });
@@ -50,10 +47,10 @@ async fn a_server_naming_no_encoding_gets_its_columns_in_utf16() {
 async fn each_change_sends_the_whole_text_at_a_higher_version() {
     let (client, mut fake, _heard) = connected(Some("utf-32"), Value::Null).await;
     let path = Path::new("/work/tree/a.py");
-    client.open(path, "python", "a\n".into()).await.unwrap();
+    client.open(path, "python", "a\n".into()).unwrap();
     fake.expect("textDocument/didOpen").await;
     for (version, text) in [(2, "ab\n"), (3, "abc\n")] {
-        client.change(path, text.into()).await.unwrap();
+        client.change(path, text.into()).unwrap();
         let changed = fake.expect("textDocument/didChange").await;
         assert_eq!(changed["params"]["textDocument"]["version"], version);
         assert_eq!(
@@ -69,7 +66,6 @@ async fn published_diagnostics_reach_the_hook_in_characters() {
     let path = PathBuf::from("/work/tree/a.py");
     client
         .open(&path, "python", "é😀x = None\n".into())
-        .await
         .unwrap();
     fake.expect("textDocument/didOpen").await;
     let range =
@@ -105,7 +101,7 @@ async fn asking_about_a_file_not_open_is_refused() {
 async fn a_closed_server_fails_what_waits_on_it_and_says_so() {
     let (client, mut fake, heard) = connected(None, Value::Null).await;
     let path = Path::new("/work/tree/a.py");
-    client.open(path, "python", "x\n".into()).await.unwrap();
+    client.open(path, "python", "x\n".into()).unwrap();
     fake.expect("textDocument/didOpen").await;
     let asking = tokio::spawn(async move { client.definition(path, Caret::new(0, 0)).await });
     fake.expect("textDocument/definition").await;

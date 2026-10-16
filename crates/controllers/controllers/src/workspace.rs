@@ -7,6 +7,7 @@ mod editor;
 pub(crate) mod git;
 mod paths;
 mod search;
+mod servers;
 
 use crate::asker::Asker;
 pub(crate) use commits::{due as revision_due, ended as revision_ended};

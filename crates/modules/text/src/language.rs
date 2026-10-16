@@ -81,6 +81,19 @@ impl Language {
         }
     }
 
+    /// The id a language server knows it by.
+    pub fn id(self) -> &'static str {
+        match self {
+            Language::Rust => "rust",
+            Language::Yaml => "yaml",
+            Language::Bash => "shellscript",
+            Language::Markdown => "markdown",
+            Language::Python => "python",
+            Language::Go => "go",
+            Language::Template => "gotmpl",
+        }
+    }
+
     /// The language a file name carries, by extension and then by whole name.
     pub fn of(path: &str) -> Option<Language> {
         let name = path.rsplit('/').next().unwrap_or(path);

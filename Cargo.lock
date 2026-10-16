@@ -1869,6 +1869,7 @@ dependencies = [
  "groove-editor",
  "groove-git",
  "groove-grep",
+ "groove-lsp",
  "groove-text",
  "groove-types",
  "groove-watch",

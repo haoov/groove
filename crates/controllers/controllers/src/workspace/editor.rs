@@ -10,6 +10,7 @@ use crate::{AppState, Continuation, Services, Spawner};
 /// One keystroke on the active buffer; its rows move at once, the diff and the colours in a job.
 pub(super) fn edit_file(state: &mut AppState, spawner: &dyn Spawner, edit: Edit) {
     if let Some(path) = state.workspace.edit(&edit) {
+        super::servers::changed(state, &path);
         derive(state, spawner, path);
     }
 }
@@ -66,7 +67,10 @@ pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match written {
-                Ok(()) => state.workspace.saved(&id, &path, revision),
+                Ok(()) => {
+                    state.workspace.saved(&id, &path, revision);
+                    super::servers::saved(state, &id, &path);
+                }
                 Err(e) => state.failed(e),
             }
         }) as Continuation
@@ -182,7 +186,8 @@ pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String, at: 
         return state.workspace.focus(&path, at);
     }
     if let Some(file) = state.workspace.in_hand(&path) {
-        return state.workspace.arrived(&worktree, file, at, true);
+        state.workspace.arrived(&worktree, file, at, true);
+        return super::servers::opened(state, spawner, &worktree, &path);
     }
     read(state, spawner, path, None, (at, true));
 }
@@ -202,21 +207,27 @@ pub(super) fn read(
         let dir = &asked.dir;
         let rev = groove_workspace_service::against(dir, asked.mode, asked.base.as_deref()).await;
         let file = sides(dir, &path, old, &rev).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.end(job);
-            if !asked.holds(state) {
-                return;
-            }
-            match file {
-                Ok(file) => state.workspace.arrived(&asked.worktree, file, at, focus),
-                Err(e) => state.failed(e),
-            }
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                if !asked.holds(state) {
+                    return;
+                }
+                match file {
+                    Ok(file) => {
+                        state.workspace.arrived(&asked.worktree, file, at, focus);
+                        super::servers::opened(state, spawner, &asked.worktree, &path);
+                    }
+                    Err(e) => state.failed(e),
+                }
+            },
+        ) as Continuation
     }));
 }
 
 /// A file's tab taken away; the ui asked first when it owed the disk.
 pub(super) fn close_file(state: &mut AppState, path: &str) {
+    super::servers::closing(state, path);
     state.workspace.close(path);
 }
 

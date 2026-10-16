@@ -1,7 +1,9 @@
 mod clusters;
+mod servers;
 mod sources;
 
 pub use clusters::{ClusterChange, ClusterConfig, Hue};
+pub use servers::LanguageServer;
 
 pub use sources::{
     EstimateUnit, FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap,
@@ -36,6 +38,9 @@ pub struct Config {
     pub routines: RoutinesConfig,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub clusters: Vec<ClusterConfig>,
+    /// The language servers to start; the defaults when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language_servers: Option<Vec<LanguageServer>>,
 }
 
 /// The routines switched on, and the triggers the user turned off on each.
