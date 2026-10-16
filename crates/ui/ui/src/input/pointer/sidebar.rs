@@ -84,3 +84,16 @@ pub(super) fn finding(ui: &mut Ui) -> Vec<Command> {
     }
     Vec::new()
 }
+
+/// What a click on `target` does, from the keyboard: at the middle of where it was drawn.
+pub(in crate::input) fn act_on(
+    target: crate::hit::Target,
+    ui: &mut crate::Ui,
+    app: &groove_controllers::AppState,
+    (hits, metrics): (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
+) -> Vec<groove_controllers::Command> {
+    let point = hits.rect_of(&target).map_or((0.0, 0.0), |rect| {
+        (rect.x + rect.w / 2.0, rect.y + rect.h / 2.0)
+    });
+    super::acted(Some(target), point, ui, app, hits, metrics)
+}

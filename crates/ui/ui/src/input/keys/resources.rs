@@ -52,7 +52,13 @@ pub(super) fn in_resources(
     }
     let held = &mut ui.session.resources;
     match key {
-        Key::Enter => held.typing = false,
+        Key::Enter => {
+            held.typing = false;
+            let first = crate::views::session::resources::row_uids(app, ui)
+                .into_iter()
+                .next();
+            ui.hover = first.map(crate::hit::Target::ResourceRow);
+        }
         Key::Escape => {
             held.finding &= !held.search.is_empty();
             held.typing = false;
@@ -102,6 +108,7 @@ fn in_kinds(
             Some(Line::Kind(kind)) => {
                 (held.kind, held.scroll) = (Some(kind.clone()), 0.0);
                 (held.filtering, held.cursor) = (false, None);
+                ui.focus = Focus::Workspace;
             }
             None => (held.filtering, held.cursor) = (false, None),
         },
@@ -124,4 +131,85 @@ pub(in crate::input) fn kinds_changed(ui: &mut Ui, app: &AppState) {
     let lines = crate::views::session::resources::shown(app, ui);
     let first = lines.iter().position(|one| matches!(one, Line::Kind(_)));
     ui.session.resources.cursor = first;
+}
+
+/// The kinds sidebar has the keys: the arrows walk it, Enter lists or folds, a letter searches.
+pub(super) fn in_kinds_list(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    seen: (&Hits, Metrics),
+) -> Vec<Command> {
+    match key {
+        Key::Char(_) if !mods.ctrl && !mods.alt => {
+            ui.session.resources.filtering = true;
+            in_kinds((key, mods), ui, app, seen)
+        }
+        Key::Up | Key::Down | Key::Enter => in_kinds((key, mods), ui, app, seen),
+        _ => Vec::new(),
+    }
+}
+
+/// The list has the keys: the arrows walk its rows, Enter describes one, `y` and `l` open its
+/// YAML and its logs; `None` for any other key.
+pub(super) fn in_table(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    (hits, metrics): (&Hits, Metrics),
+) -> Option<Vec<Command>> {
+    let held = &ui.session.resources;
+    let listed = ui.session.tab == Tab::Resources && held.showing.is_none() && !held.typing;
+    if !listed || mods.ctrl || mods.alt {
+        return None;
+    }
+    let rows = crate::views::session::resources::row_uids(app, ui);
+    let row = |uid: &String| crate::hit::Target::ResourceRow(uid.clone());
+    let at = rows
+        .iter()
+        .position(|uid| ui.hover.as_ref() == Some(&row(uid)));
+    let view = match key {
+        Key::Up | Key::Down => {
+            let next = match at {
+                None => (!rows.is_empty()).then_some(0),
+                at => super::panes::stepped(key, at, rows.len()),
+            }?;
+            ui.hover = Some(row(&rows[next]));
+            followed(ui, next, hits, metrics);
+            return Some(Vec::new());
+        }
+        Key::Enter => crate::views::session::resources::View::Describe,
+        Key::Char('y') => crate::views::session::resources::View::Yaml,
+        Key::Char('l') if pods(ui) => crate::views::session::resources::View::Logs,
+        _ => return None,
+    };
+    let uid = rows.get(at?)?;
+    let open = app.session.selected()?;
+    let link = crate::views::session::resources::row_link(app, open, &ui.session.resources, uid)?;
+    ui.session.resources.open(link);
+    if let Some(tab) = ui.session.resources.tab_mut() {
+        tab.view = view;
+    }
+    Some(Vec::new())
+}
+
+/// Whether the list shows pods, whose rows have logs.
+fn pods(ui: &Ui) -> bool {
+    let kind = ui.session.resources.kind.as_ref();
+    kind.is_none_or(|one| one.kind == "Pod")
+}
+
+/// The list scrolled until the row at `at` stands whole inside it.
+fn followed(ui: &mut Ui, at: usize, hits: &Hits, metrics: Metrics) {
+    let row = metrics.tokens().row;
+    let target = ui.hover.clone();
+    let bottom = crate::layout::Layout::of(metrics, ui).workspace.bottom();
+    let held = &mut ui.session.resources;
+    let top = at as f32 * row;
+    held.scroll = match target.and_then(|one| hits.rect_of(&one)) {
+        Some(rect) if rect.bottom() > bottom => held.scroll + rect.bottom() - bottom,
+        Some(_) => held.scroll,
+        None if top < held.scroll => top,
+        None => held.scroll + row,
+    };
 }

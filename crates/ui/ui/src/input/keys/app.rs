@@ -29,6 +29,18 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::FocusLeft | Action::FocusRight => {
             ui.focus = ui.focus.beside(action == Action::FocusRight);
         }
+        Action::FocusRail => ui.focus = Focus::Rail,
+        Action::FocusAgent => ui.focus = Focus::Agent,
+        Action::FocusWorkspace => ui.focus = Focus::Workspace,
+        Action::FocusSidebar => sidebar(ui),
+        Action::FocusCommit => commit_box(ui),
+        Action::NextTab | Action::PreviousTab => {
+            let forward = action == Action::NextTab;
+            if ui.focus == Focus::Terminal {
+                return terminal_tab(app, forward);
+            }
+            ui.session.tab = stepped_tab(ui.session.tab, forward, holds_clusters(app));
+        }
         Action::FoldSidebar => ui.session.folded = !ui.session.folded,
         Action::Overview => ui.session.tab = Tab::Overview,
         Action::Diff => ui.session.tab = Tab::Diff,
@@ -60,6 +72,32 @@ fn board(ui: &mut Ui) -> Vec<Command> {
     match ui.surface {
         Surface::Board => crate::input::pointer::board_reads(),
         Surface::Session => Vec::new(),
+    }
+}
+
+/// The sidebar unfolded and given the keys, or folded away when it has them.
+fn sidebar(ui: &mut Ui) {
+    if !ui.session.tab.has_sidebar() {
+        return;
+    }
+    let held = !ui.session.folded && ui.focus == Focus::Sidebar && !ui.session.composing;
+    ui.session.folded = held;
+    ui.session.composing = false;
+    ui.focus = match held {
+        true => Focus::Workspace,
+        false => Focus::Sidebar,
+    };
+}
+
+/// The caret in the commit box, the sidebar unfolded for it.
+fn commit_box(ui: &mut Ui) {
+    if !ui.session.tab.has_sidebar() {
+        return;
+    }
+    ui.session.folded = false;
+    if ui.session.commits() {
+        ui.session.composing = true;
+        ui.focus = Focus::Sidebar;
     }
 }
 
@@ -105,4 +143,45 @@ fn holds_clusters(app: &AppState) -> bool {
     app.session
         .selected()
         .is_some_and(|open| open.holds_clusters())
+}
+
+/// The workspace tab beside `tab`, from the last back to the first.
+fn stepped_tab(tab: Tab, forward: bool, clusters: bool) -> Tab {
+    let up: Vec<Tab> = Tab::ALL
+        .into_iter()
+        .filter(|one| *one != Tab::Resources || clusters)
+        .collect();
+    let at = up.iter().position(|one| *one == tab).unwrap_or(0);
+    let len = up.len();
+    match forward {
+        true => up[(at + 1) % len],
+        false => up[(at + len - 1) % len],
+    }
+}
+
+/// The selected session's next or previous terminal tab, from the last back to the first.
+fn terminal_tab(app: &AppState, forward: bool) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let Some(shells) = app.shell.shells(&session) else {
+        return Vec::new();
+    };
+    let len = shells.tabs.len();
+    let at = shells
+        .tabs
+        .iter()
+        .position(|tab| Some(tab.id) == shells.selected)
+        .unwrap_or(0);
+    let next = match forward {
+        true => (at + 1) % len.max(1),
+        false => (at + len.max(1) - 1) % len.max(1),
+    };
+    let Some(tab) = shells.tabs.get(next) else {
+        return Vec::new();
+    };
+    vec![Command::Shell(shell::Command::SelectTab {
+        session,
+        tab: tab.id,
+    })]
 }

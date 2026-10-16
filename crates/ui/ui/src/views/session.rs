@@ -16,7 +16,6 @@ mod sheet;
 mod state;
 mod tab;
 
-pub(crate) use files::changed;
 pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Showing, Tab, Term, Writing};
 
 use groove_controllers::AppState;

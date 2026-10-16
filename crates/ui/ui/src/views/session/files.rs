@@ -4,12 +4,16 @@ mod bar;
 mod commits;
 pub(crate) mod explorer;
 mod heading;
+mod narrowing;
 mod notes;
 mod results;
 mod rows;
+mod stops;
 mod tree;
 pub(crate) mod walked;
 
+pub use narrowing::Narrowing;
+pub(crate) use stops::{Stop, stops};
 pub(crate) use tree::{Listing, listing, reads_as};
 
 use groove_controllers::AppState;
@@ -198,27 +202,51 @@ pub(crate) const ROWS_MAX: usize = 200;
 
 /// The changed files the path term leaves, then the other worktree files it names.
 pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
-    let changed: Vec<&FileDiff> = changed(app).iter().collect();
+    let (changed, paths) = (changed(app), app.workspace.paths());
     let query = ui.session.bar.path.text();
     if query.is_empty() {
-        return changed;
+        return changed.iter().collect();
     }
-    let mut left = crate::palette::matching(changed, |file| file.path.clone(), query);
+    let key = (
+        query.to_string(),
+        app.workspace.paths_stamp(),
+        stamp(changed),
+    );
+    let kept = ui.narrowing.of(key, || kept_by(changed, paths, query));
+    let row = |(of_change, at): &(bool, usize)| match of_change {
+        true => changed.get(*at),
+        false => paths.get(*at),
+    };
+    kept.iter().filter_map(row).collect()
+}
+
+/// The rows the term keeps: the changed files it finds, then the other paths, best first.
+fn kept_by(changed: &[FileDiff], paths: &[FileDiff], query: &str) -> Vec<(bool, usize)> {
+    let path = |(_, file): &(usize, &FileDiff)| file.path.clone();
+    let left = crate::palette::matching(changed.iter().enumerate().collect(), path, query);
     let shown: std::collections::HashSet<&str> =
-        left.iter().map(|file| file.path.as_str()).collect();
-    let rest: Vec<&FileDiff> = app
-        .workspace
-        .paths()
+        left.iter().map(|(_, one)| one.path.as_str()).collect();
+    let rest = paths
         .iter()
-        .filter(|file| !shown.contains(file.path.as_str()))
+        .enumerate()
+        .filter(|(_, one)| !shown.contains(one.path.as_str()));
+    let rest = crate::palette::matching(rest.collect(), path, query);
+    let left = left.into_iter().map(|(at, _)| (true, at));
+    let mut out: Vec<(bool, usize)> = left
+        .chain(rest.into_iter().map(|(at, _)| (false, at)))
         .collect();
-    left.extend(crate::palette::matching(
-        rest,
-        |file| file.path.clone(),
-        query,
-    ));
-    left.truncate(ROWS_MAX);
-    left
+    out.truncate(ROWS_MAX);
+    out
+}
+
+/// What tells one change's files from another's.
+fn stamp(files: &[FileDiff]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    for one in files {
+        one.path.hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 /// A question in the row's own place: discard, or keep.

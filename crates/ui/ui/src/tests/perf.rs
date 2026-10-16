@@ -432,4 +432,10 @@ fn time_the_file_lists_parts() {
     });
     ui.session.bar.path.set("t1");
     time("narrowed by a query", &|| drop(narrowed(&app, &ui)));
+    ui.session.bar.path.set("src/compo");
+    time("narrowed by a long query", &|| drop(narrowed(&app, &ui)));
+    let fonts = std::cell::RefCell::new(groove_gfx::Fonts::embedded());
+    time("a frame under the query", &|| {
+        drop(view(&app, &ui, window(), &mut fonts.borrow_mut()))
+    });
 }

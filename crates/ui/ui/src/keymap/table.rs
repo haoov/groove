@@ -2,42 +2,7 @@
 
 use super::Ring;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Action {
-    Palette,
-    Settings,
-    Board,
-    NewExplorer,
-    CloseSession,
-    NextSession,
-    PreviousSession,
-    FocusLeft,
-    FocusRight,
-    FoldSidebar,
-    Overview,
-    Diff,
-    Files,
-    Resources,
-    SelectNamespace,
-    Terminals,
-    NewTerminal,
-    Reload,
-    Save,
-    Undo,
-    Redo,
-    SelectAll,
-    Copy,
-    Cut,
-    Paste,
-    Find,
-    FindNext,
-    FindPrevious,
-    OpenPath,
-    SearchFiles,
-    Commit,
-    TerminalCopy,
-    TerminalPaste,
-}
+pub use super::action::Action;
 
 /// One action as the keymap knows it.
 pub struct Spec {
@@ -66,10 +31,28 @@ const fn spec(
     }
 }
 
+/// A region the keys go to, in the Panes group.
+/// An open file's or object's tab, while the workspace has the keys.
+const fn opened(
+    action: Action,
+    (id, label): (&'static str, &'static str),
+    chords: &'static [&'static str],
+) -> Spec {
+    spec(action, (id, label, "Panes"), Ring::Code, chords)
+}
+
+const fn pane(
+    action: Action,
+    (id, label): (&'static str, &'static str),
+    chords: &'static [&'static str],
+) -> Spec {
+    spec(action, (id, label, "Panes"), Ring::App, chords)
+}
+
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 33] = [
+pub const TABLE: [Spec; 43] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -123,6 +106,36 @@ pub const TABLE: [Spec; 33] = [
         ("pane.right", "pane to the right", "Panes"),
         App,
         &["alt+shift+right"],
+    ),
+    pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+1"]),
+    pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+2"]),
+    pane(
+        A::FocusWorkspace,
+        ("pane.workspace", "the workspace"),
+        &["alt+3"],
+    ),
+    pane(A::FocusSidebar, ("pane.sidebar", "the sidebar"), &["alt+4"]),
+    pane(
+        A::FocusCommit,
+        ("pane.commit", "the commit box"),
+        &["alt+c"],
+    ),
+    pane(A::NextTab, ("tab.next", "next tab"), &["alt+]"]),
+    pane(A::PreviousTab, ("tab.previous", "previous tab"), &["alt+["]),
+    opened(
+        A::CloseOpen,
+        ("open.close", "close the open tab"),
+        &["ctrl+w"],
+    ),
+    opened(
+        A::NextOpen,
+        ("open.next", "next open tab"),
+        &["ctrl+tab", "ctrl+pagedown"],
+    ),
+    opened(
+        A::PreviousOpen,
+        ("open.previous", "previous open tab"),
+        &["ctrl+shift+tab", "ctrl+pageup"],
     ),
     spec(
         A::FoldSidebar,

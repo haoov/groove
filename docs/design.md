@@ -21,8 +21,25 @@ the rail only as its attention count.
   a button. Groove never runs it by itself.
 - **Everything is reachable from the keyboard.** The palette is the front door to every
   action. The mouse is a shortcut.
-- **Selection is a background**, one step above its ground — never an underline or a bar.
-  A selected tab is the exception: it keeps its accent underline.
+- **Selection is a background**, one step above its ground. A selected tab adds its accent
+  underline.
+- **Focus is a line.** The region that holds the keyboard carries a 2px accent line along
+  its bottom edge. Enforced by `the_focused_region_alone_carries_the_line`.
+- **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
+  the workspace and the sidebar; the terminals keep their own chord. A second press folds
+  the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
+- **A list walks from the keyboard.** In the sidebar the arrows step through the rows, Enter
+  does what a click does, Space stages a changed file, Left and Right fold a folder, and
+  `[` and `]` change the list. `alt+c` puts the caret in the commit box.
+  Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
+- **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
+  `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
+  workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
+- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter starts
+  their search. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
+  its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files or objects,
+  `ctrl+w` closes the one shown.
+  Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs`.
 
 ## Limits
 

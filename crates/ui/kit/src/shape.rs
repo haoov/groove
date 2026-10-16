@@ -83,6 +83,16 @@ pub fn chosen_rules<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     ruled(ctx, rect, ctx.styles.chosen());
 }
 
+/// The focused region's mark: a line of two hairlines in the accent along the bottom of `rect`.
+pub fn focus_line<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let thick = ctx.tokens.hairline * 2.0;
+    let color = ctx.styles.color(crate::base::style::Role::Accent);
+    ctx.quad(
+        Rect::new(rect.x, rect.bottom() - thick, rect.w, thick),
+        color,
+    );
+}
+
 /// A hairline along the bottom of `rect`.
 pub fn hairline<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;
