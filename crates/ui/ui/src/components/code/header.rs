@@ -19,12 +19,11 @@ pub struct Header {
     pub reply: bool,
 }
 
-/// A row of room a note keeps: above its card, below it, or ruled across it.
+/// A row of room inside a note's card: plain, or ruled across it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Room {
-    Above,
+    Gap,
     Between,
-    Below,
 }
 
 /// A row of the composer around the words being typed.

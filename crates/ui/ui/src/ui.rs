@@ -32,6 +32,7 @@ pub struct Ui {
     /// The colours and the tree the last frames built, kept while they still hold.
     pub painted: views::session::diff::painted::Painted,
     pub walked: views::session::files::walked::Walked,
+    pub wrapping: views::session::diff::wrapping::Wrapping,
     pub narrowing: views::session::files::Narrowing,
 }
 

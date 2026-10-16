@@ -52,7 +52,7 @@ fn a_note_draws_under_the_line_it_was_left_on() {
 }
 
 #[test]
-fn a_note_stands_in_a_card_with_room_above_and_below() {
+fn a_note_stands_in_a_card_with_no_room_around_it() {
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
@@ -68,25 +68,21 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
         .collect();
     card.sort_by(|a, b| a.y.total_cmp(&b.y));
     let heights: Vec<f32> = card.iter().map(|rect| rect.h).collect();
-    assert_eq!(
-        heights,
-        [line / 2.0, line, line, line, line, line / 2.0],
-        "{card:?}"
-    );
+    assert_eq!(heights, [line, line, line, line], "{card:?}");
     assert!(card[0].x > code.x && card[0].right() < code.right());
     let edge = |y: f32| {
         quads
             .iter()
             .any(|quad| quad.color == styles.line() && quad.rect.h == thin && quad.rect.y == y)
     };
-    assert!(edge(card[0].y), "closed half a row under the code above");
+    assert!(edge(card[0].y), "closed right under the code above");
     assert!(
-        edge(card[3].y + line / 2.0),
+        edge(card[2].y + line / 2.0),
         "the buttons ruled off from what the note says, half a row from each"
     );
     assert!(
-        edge(card[5].bottom() - thin),
-        "and half a row over the code below"
+        edge(card[3].bottom() - thin),
+        "and right over the code below"
     );
     let deep: Vec<groove_gfx::Rect> = quads
         .iter()
@@ -95,7 +91,7 @@ fn a_note_stands_in_a_card_with_room_above_and_below() {
         .collect();
     let rows = deep.iter().filter(|rect| rect.w > card[0].w).count();
     assert_eq!(
-        rows, 6,
+        rows, 4,
         "every row of the note stands on the deepest ground: {deep:?}"
     );
 }
@@ -132,8 +128,8 @@ fn a_note_takes_a_row_of_the_surface() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
-        "room above, its header, its words, a rule, the row of buttons, room below"
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 4,
+        "its header, its words, a rule, the row of buttons"
     );
 }
 
@@ -147,7 +143,7 @@ fn a_thread_takes_a_header_and_a_row_for_every_comment_of_it() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 8,
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
         "a header and a row for each comment of it, the buttons, room above and below"
     );
     let drawn = in_editor(&app);
@@ -210,12 +206,12 @@ fn a_click_on_a_note_moves_no_caret() {
             row,
         )
     };
-    for row in 1..=6 {
+    for row in 1..=4 {
         assert_eq!(line_at(row), None, "row {row} is the note left on row 0");
     }
     assert_eq!(
-        line_at(7),
-        Some(("src/lib.rs".to_string(), 1)),
+        line_at(5),
+        Some(("src/lib.rs".to_string(), 1, 0)),
         "the line after it is the file's second"
     );
 }

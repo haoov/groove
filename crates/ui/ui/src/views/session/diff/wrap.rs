@@ -37,3 +37,29 @@ pub(crate) fn wrapped(note: &Note, cols: usize) -> Vec<Worded> {
     }
     out
 }
+
+/// The rows typed text takes at `cols`: each one's line, and its first and past-last character,
+/// a long line broken after its last space that fits.
+pub(crate) fn pieces(text: &str, cols: usize) -> Vec<(usize, usize, usize)> {
+    let cols = cols.max(1);
+    let mut out = Vec::new();
+    for (line, body) in text.split('\n').enumerate() {
+        let chars: Vec<char> = body.chars().collect();
+        let mut start = 0;
+        loop {
+            let mut end = (start + cols).min(chars.len());
+            if end < chars.len()
+                && let Some(space) = chars[start..end].iter().rposition(|c| *c == ' ')
+                && space > 0
+            {
+                end = start + space + 1;
+            }
+            out.push((line, start, end));
+            if end >= chars.len() {
+                break;
+            }
+            start = end;
+        }
+    }
+    out
+}

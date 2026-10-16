@@ -41,6 +41,7 @@ pub enum Preference {
     StaleAfterSecs(u64),
     RoutineCap(u32),
     RoutinesPaused(bool),
+    WrapCode(bool),
 }
 
 /// A size is never NaN: it comes from the file's number or a step of it.
@@ -155,8 +156,13 @@ impl State {
             Preference::StaleAfterSecs(secs) => held.stale_after_secs = secs,
             Preference::RoutineCap(agents) => held.routine_cap = agents.max(1),
             Preference::RoutinesPaused(paused) => held.routines_paused = paused,
+            Preference::WrapCode(on) => ui.wrap_code = on,
         }
         Some(config)
+    }
+
+    pub fn wrap_code(&self) -> bool {
+        self.config.as_ref().is_some_and(|c| c.ui.wrap_code)
     }
 
     pub fn theme(&self) -> ThemeName {

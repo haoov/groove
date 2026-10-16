@@ -31,7 +31,7 @@ fn the_editor_stands_one_row_tall_on_an_empty_file() {
             (crate::views::session::Face::File, drawn_cols(&app, &ui)),
             0
         ),
-        Some(("src/new.rs".to_string(), 0)),
+        Some(("src/new.rs".to_string(), 0, 0)),
         "and a click on it lands on that line"
     );
 }

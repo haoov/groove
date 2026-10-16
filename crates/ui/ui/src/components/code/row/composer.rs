@@ -25,9 +25,14 @@ const CHIPS: [&str; 7] = [
 const DECORATIONS: [&str; 2] = ["blocking", "non-blocking"];
 
 /// A row of the composer: the lines and the chips to pick, or the hint and its buttons.
-pub(super) fn composer(ctx: &mut Ctx, line: Rect, composed: &Composed, gutter: Block) {
+pub(super) fn composer(
+    ctx: &mut Ctx,
+    line: Rect,
+    composed: &Composed,
+    (gutter, edges): (Block, (bool, bool)),
+) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, (false, false));
+    card_row(ctx, card, edges);
     let at = gutter.content(ctx, line);
     let mut room = Rect::new(
         at,

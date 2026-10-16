@@ -18,16 +18,16 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, ac
         return;
     }
     if let Some(composed) = code.composed.as_ref() {
-        return composer(ctx, line, composed, gutter);
+        return composer(ctx, line, composed, (gutter, code.edges));
     }
     if let Some(room) = code.pad {
-        return padded(ctx, line, room, gutter);
+        return padded(ctx, line, room, (gutter, code.edges));
     }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);
     }
     if let Some(acting) = code.acting.as_ref() {
-        return acts(ctx, line, acting, gutter);
+        return acts(ctx, line, acting, (gutter, code.edges));
     }
     code::draw(ctx, line, &painted(code), gutter, across);
 }

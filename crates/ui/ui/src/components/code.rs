@@ -52,8 +52,8 @@ pub struct Line<'a> {
     pub covered: bool,
     /// A side of a split row with no line on it.
     pub empty: bool,
-    /// The room above a note's card, or below it, where its edge runs.
     pub pad: Option<Room>,
+    pub edges: (bool, bool), // a note row opening its card, closing it
     pub composed: Option<Composed>,
     /// The notes this line carries, and the resolved one a click on them opens.
     pub tile: Option<(Tile, Option<groove_types::NoteOrigin>)>,
@@ -104,7 +104,6 @@ impl<'a> Line<'a> {
         }
     }
 
-    /// A row the one above it already draws over.
     pub fn covered() -> Self {
         Self {
             covered: true,
@@ -129,6 +128,7 @@ impl<'a> Line<'a> {
             covered: false,
             empty: false,
             pad: None,
+            edges: (false, false),
             composed: None,
             tile: None,
             caret: None,

@@ -36,6 +36,17 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     fonts.extend(sizes(app));
     let mut out = grouped("Theme", vec![theme]);
     out.extend(grouped("Fonts", fonts));
+    let wrap = Value::Toggle {
+        on: ui.wrap_code,
+        flip: Preference::WrapCode(!ui.wrap_code),
+    };
+    let wrapping = Row::new(
+        section,
+        "wrap long lines",
+        "code editor wrap soft lines",
+        wrap,
+    );
+    out.extend(grouped("Code", vec![wrapping]));
     out
 }
 
