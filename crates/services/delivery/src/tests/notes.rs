@@ -207,3 +207,17 @@ fn a_comment_on_the_mr_or_an_event_the_forge_logs_is_no_note() {
         "a thread on the MR stays"
     );
 }
+
+#[test]
+fn a_review_posts_with_nothing_in_it_but_a_comment_needs_words() {
+    use crate::service::Said;
+    use groove_types::ReviewVerdict;
+    for verdict in [
+        ReviewVerdict::Comment,
+        ReviewVerdict::Approve,
+        ReviewVerdict::RequestChanges,
+    ] {
+        assert!(Said::empty(Some(verdict), "", &[]).is_ok(), "{verdict:?}");
+    }
+    assert!(Said::empty(None, "", &[]).is_err());
+}
