@@ -44,10 +44,14 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState) {
         false => known(ctx, contexts, app, added),
     }
     group(ctx, second, "In your kubeconfig, not added");
-    match (app.cluster.found.is_none(), rest.is_empty()) {
-        (true, _) => quiet(ctx, others, "reading the kubeconfig…"),
-        (false, true) => quiet(ctx, others, "every context is added"),
-        (false, false) => unknown(ctx, others, &rest),
+    match (&app.cluster.found, &app.cluster.unread, rest.is_empty()) {
+        (None, Some(why), _) => {
+            let said = format!("could not read the kubeconfig: {why}");
+            quiet(ctx, others, &said)
+        }
+        (None, None, _) => quiet(ctx, others, "reading the kubeconfig…"),
+        (Some(_), _, true) => quiet(ctx, others, "every context is added"),
+        (Some(_), _, false) => unknown(ctx, others, &rest),
     }
 }
 

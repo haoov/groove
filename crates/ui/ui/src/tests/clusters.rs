@@ -127,3 +127,18 @@ fn a_context_s_dot_opens_the_hues_and_one_picked_becomes_its_colour() {
     held.change(ClusterChange::Hue(groove_types::Hue::Pink));
     assert_eq!(held.hue, groove_types::Hue::Pink);
 }
+
+#[test]
+fn a_kubeconfig_that_cannot_be_read_says_why_not_that_it_is_reading() {
+    let (mut app, ui) = clusters();
+    app.cluster.found = None;
+    apply(&mut app.cluster, Event::Unread("bad yaml".into()));
+    let (texts, _) = drawn(&app, &ui);
+    let said = "could not read the kubeconfig: bad yaml";
+    assert!(texts.iter().any(|one| one == said), "{texts:?}");
+    assert!(
+        !texts
+            .iter()
+            .any(|one| one.starts_with("reading the kubeconfig"))
+    );
+}

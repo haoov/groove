@@ -1,4 +1,5 @@
 mod clusters;
+mod names;
 mod sources;
 
 pub use clusters::{ClusterChange, ClusterConfig, Hue};

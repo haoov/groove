@@ -1,8 +1,12 @@
 //! Turning a task source on with its config, or off, and mapping its names and values.
 
-use groove_types::{Config, Error, GithubConfig, Mapping, NotionConfig, Property, ProviderId};
+use groove_types::{
+    Config, Error, GitConfig, GithubConfig, Mapping, NotionConfig, Property, ProviderId,
+};
 
 use crate::State;
+
+pub(crate) const FIRST_WORKTREE_ROOT: &str = "~/groove";
 
 /// One source's block: the config to hold, or `None` to turn it off.
 #[derive(Debug, Clone, PartialEq)]
@@ -22,12 +26,9 @@ impl Source {
 
 impl State {
     /// The source's block replaced; the config to write. The last source stays on.
+    /// Before the first run, the first source turned on starts the config.
     pub fn set_source(&mut self, source: Source) -> Result<&Config, Error> {
-        let config = self
-            .config
-            .as_mut()
-            .ok_or_else(|| Error::invalid("there is no config to change before the first run"))?;
-        let mut next = config.clone();
+        let mut next = self.config.clone().unwrap_or_else(first);
         let source_id = source.id();
         match source {
             Source::Notion(block) => next.notion = block,
@@ -36,9 +37,8 @@ impl State {
         if next.notion.is_none() && next.github.is_none() {
             return Err(Error::invalid("that would leave no task source at all"));
         }
-        *config = next;
         self.schemas.retain(|(id, _)| *id != source_id);
-        Ok(config)
+        Ok(self.config.insert(next))
     }
 
     /// One change to a source's mapping; the config to write.
@@ -54,7 +54,27 @@ impl State {
         }
         Ok(config)
     }
+}
 
+/// The config a first run starts from.
+fn first() -> Config {
+    Config {
+        notion: None,
+        github: None,
+        git: GitConfig {
+            worktree_root: FIRST_WORKTREE_ROOT.into(),
+        },
+        ui: Default::default(),
+        preferences: Default::default(),
+        keymap: Default::default(),
+        shared: None,
+        skills_off: Vec::new(),
+        routines: Default::default(),
+        clusters: Vec::new(),
+    }
+}
+
+impl State {
     /// What one source was last read to hold.
     pub fn schema(&self, source: ProviderId) -> Option<&[Property]> {
         let held = self.schemas.iter().find(|(id, _)| *id == source);
