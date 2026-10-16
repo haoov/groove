@@ -97,6 +97,34 @@ variants map to different kinds. Every other module returns `groove_types::Error
 *Example:* `agent-launch` has one way to fail, so it returns `groove_types::Error`.
 Not enforced by a test.
 
+**A path the OS reports is compared by its real path.** A watch, a diff and a test never
+assume the path they asked about is the path they are told.
+*Example:* the temp dir `/var/folders/…` is `/private/var/folders/…` to FSEvents, so the
+watcher keeps both forms of what it watches.
+Enforced, on the macOS CI job, by `a_directory_that_appears_is_watched_from_then_on`.
+
+## Platforms
+
+Linux and macOS 26 or later, one code base. Apple Silicon and Intel both run it. A
+`cfg(target_os)` is a last resort, a line long, in the module that must differ: the
+browser's opener (`xdg-open`, `open`) and the window's launcher name are the two there are.
+
+- **Dirs.** Config, data and cache sit under the XDG dirs, or `~/.config`, `~/.local/share`
+  and `~/.cache` when unset, on macOS too: one place to look, one place to back up.
+- **Keys.** The chords are `ctrl` and `alt` on both; `alt` is Option. Cmd is not a
+  modifier of ours, but Cmd+Q still quits, and so does closing the window.
+- **Quitting.** Cmd+Q ends the loop inside AppKit, so `run_app` may never return.
+  Whatever must outlive the loop, the agents and the config's last write, runs in
+  `ApplicationHandler::exiting`, which both ways out reach.
+- **GPU.** `wgpu` picks Vulkan or Metal; neither is named in our code.
+- **Shells.** A terminal is a login shell reading the profile of `Env.home`, so a test's
+  home is the only one it sees.
+- **Release.** A `.deb` for Linux and a universal `.dmg` for macOS, built by
+  `packaging/macos/dmg.sh`. The app is signed ad hoc, not by a Developer ID, so the first
+  launch goes through Gatekeeper by hand: the README says how. Notarising it would drop
+  that step.
+- **CI.** `lint` and `test` run on Ubuntu, and the `macos` job runs both again on macOS.
+
 ## Splitting what grows
 
 Growth is answered inside the services and controllers that exist.
