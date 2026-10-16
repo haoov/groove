@@ -30,9 +30,12 @@ fn a_scan_that_cannot_read_keeps_what_the_last_one_found() {
     let mut state = State::default();
     apply(&mut state, Event::Found(vec![context("kind")]));
     state.begin_scan();
-    apply(&mut state, Event::Unread);
+    apply(&mut state, Event::Unread("bad yaml".into()));
     assert_eq!(state.found, Some(vec![context("kind")]));
+    assert_eq!(state.unread.as_deref(), Some("bad yaml"));
     assert!(!state.scanning);
+    apply(&mut state, Event::Found(Vec::new()));
+    assert_eq!(state.unread, None, "a scan that reads clears the reason");
 }
 
 #[test]
