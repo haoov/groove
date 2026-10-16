@@ -183,12 +183,12 @@ fn open(
 ) {
     let id = state.shell.reserve(&session, beside);
     let palette = groove_agent_service::palette(state.config.theme());
-    let program = state.env.shell.clone();
+    let (program, home) = (state.env.shell.clone(), state.env.home.clone());
     let (sink, service) = (spawner.sink(), services.session.clone());
     spawner.spawn(Box::pin(async move {
         let hooks = hooks(&sink, &session, id);
         let result = match service.session_dir(&session).await {
-            Ok(cwd) => Ok(spawn(spec(&program, cwd, size), palette, hooks).await),
+            Ok(cwd) => Ok(spawn(spec(&program, (cwd, &home), size), palette, hooks).await),
             Err(e) => Err(e),
         };
         Box::new(
