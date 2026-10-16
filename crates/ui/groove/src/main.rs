@@ -53,14 +53,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = config_state.config;
     let panes =
         groove_config::panes::load(&groove_config::panes::path(&env.data_dir)).unwrap_or_default();
-    let keeper = services.config.clone();
-    let mut app = app::App::new(spawner, services, env, (config, panes), explore);
+    let handle = runtime.handle().clone();
+    let mut app = app::App::new((spawner, handle), services, env, (config, panes), explore);
     let ran = event_loop.run_app(&mut app);
     let result = app.into_result();
-    let flushed = runtime.block_on(keeper.quit());
     runtime.shutdown_timeout(std::time::Duration::from_secs(2));
     ran?;
-    result.and(flushed.map_err(Into::into))
+    result
 }
 
 /// Every child gets the login shell's `PATH`, which a desktop launch lacks.

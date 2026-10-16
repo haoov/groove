@@ -85,6 +85,13 @@ impl ApplicationHandler<Message> for App {
         event_loop.set_control_flow(ControlFlow::WaitUntil(due));
     }
 
+    /// Both ways out end here: the window closed, or Cmd+Q on macOS, after which AppKit
+    /// calls `exit()` and `run_app` never returns. Whatever must outlive the loop is done now.
+    fn exiting(&mut self, _: &ActiveEventLoop) {
+        self.end_agents();
+        self.flushed = self.runtime.block_on(self.services.config.quit());
+    }
+
     fn user_event(&mut self, _: &ActiveEventLoop, message: Message) {
         match message {
             Message::Continue(continuation) => {
@@ -102,10 +109,7 @@ impl ApplicationHandler<Message> for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::CloseRequested => {
-                self.end_agents();
-                event_loop.exit();
-            }
+            WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => self.redraw(),
             WindowEvent::Focused(focused) => self.apply(Event::Window(WindowFocus::Focus(focused))),
             WindowEvent::RedrawRequested => self.draw(),

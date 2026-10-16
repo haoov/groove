@@ -38,11 +38,14 @@ pub struct App {
     tick: Option<Instant>,
     /// The paste asked for, while the read is out.
     unpasted: Option<events::Unpasted>,
+    /// Where the last flush of the config runs, and how it went.
+    runtime: tokio::runtime::Handle,
+    flushed: Result<(), groove_types::Error>,
 }
 
 impl App {
     pub fn new(
-        spawner: TokioSpawner,
+        (spawner, runtime): (TokioSpawner, tokio::runtime::Handle),
         services: Services,
         env: Env,
         (config, panes): (Option<Config>, Option<Panes>),
@@ -71,14 +74,16 @@ impl App {
             started: Instant::now(),
             tick: None,
             unpasted: None,
+            runtime,
+            flushed: Ok(()),
         }
     }
 
-    /// The reason the loop stopped, when it was ours.
+    /// The reason the loop stopped, when it was ours, or the last flush's failure.
     pub fn into_result(self) -> Result<(), Box<dyn std::error::Error>> {
         match self.failure {
             Some(e) => Err(Box::new(e)),
-            None => Ok(()),
+            None => self.flushed.map_err(Into::into),
         }
     }
 
