@@ -1,4 +1,4 @@
-//! The file view keeps the caret in sight once a key has moved it.
+//! The file view and the diff keep the caret in sight once a key has moved it.
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{Document, display_of};
@@ -10,7 +10,7 @@ use crate::views::session::diff::{Inline, text_at};
 use crate::{Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
-/// Scrolls the file view to a caret that moved since the last call, on both axes.
+/// Scrolls to a caret that moved since the last call, on both axes.
 pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let Some(caret) = caret_of(ui, app) else {
         return;
@@ -22,11 +22,42 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
         return;
     };
     let tokens = metrics.tokens();
-    let row = Inline::of(app, ui, Face::File, hits.wrap()).shifted(caret.line) as f32 * tokens.line;
+    let face = ui.session.face();
+    let wrapped = crate::views::session::diff::wrapping::wrap_of(app, ui);
+    let code = match (face, &wrapped) {
+        (Face::File, Some((starts, cols))) => {
+            let display = caret_display(app, ui, caret);
+            Some(crate::views::session::diff::wrapping::row_of(
+                starts,
+                *cols,
+                (caret.line, display),
+            ))
+        }
+        (Face::File, None) => Some(caret.line),
+        (Face::Stream(_), _) => crate::views::session::diff::edited(app, ui)
+            .and_then(|one| app.workspace.changes.row_of(&one.path, caret.line as u32)),
+    };
+    let Some(code) = code else {
+        return;
+    };
+    let row = Inline::of(app, ui, face, hits.wrap()).shifted(code) as f32 * tokens.line;
     *ui.session.scroll_mut() = into_view(ui.session.scroll(), row, tokens.line, rect.h);
-    if let Some(editor) = crate::views::session::diff::edited(app, ui) {
+    if wrapped.is_some() {
+        *ui.session.across_mut() = 0.0;
+    } else if let Some(editor) = crate::views::session::diff::edited(app, ui) {
         let to = across_at(ui, app, (&editor.path, caret), (hits, metrics));
         *ui.session.across_mut() = to;
+    }
+}
+
+/// The caret's display column on its line of the file being edited.
+fn caret_display(app: &AppState, ui: &Ui, caret: Caret) -> usize {
+    let Some(editor) = crate::views::session::diff::edited(app, ui) else {
+        return 0;
+    };
+    match text_at((app, ui), &editor.path, caret.line) {
+        Some((text, width)) => display_of(&text, caret.column, width),
+        None => 0,
     }
 }
 
@@ -70,11 +101,11 @@ fn across_to(across: f32, column: usize, (rows, hits): (Target, &Hits), metrics:
     into_view(across, column as f32 * chars.advance, chars.advance, room)
 }
 
-/// The caret of the file view, while it holds the keyboard.
+/// The caret of the file being edited, while the code holds the keyboard.
 fn caret_of(ui: &Ui, app: &AppState) -> Option<Caret> {
     let here = ui.focus == Focus::Workspace && !ui.session.typing();
     let editor = crate::views::session::diff::edited(app, ui).filter(|_| here)?;
-    (ui.session.face() == Face::File).then(|| editor.buffer.caret())
+    Some(editor.buffer.caret())
 }
 
 /// The least offset change that shows `[at, at + size)` in a window of `room`.

@@ -370,8 +370,8 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        with_note,
-        "the composer stands in place of the note's header, words and buttons"
+        with_note + 2,
+        "the composer stands in place of the note, room around its chips"
     );
 }
 
@@ -425,7 +425,7 @@ fn noted_row(app: &AppState, ui: &Ui) -> usize {
                 ui,
                 (ui.session.face(), drawn_cols(app, ui)),
                 *row,
-            ) == Some(("src/lib.rs".to_string(), 1))
+            ) == Some(("src/lib.rs".to_string(), 1, 0))
         })
         .expect("the note's line")
 }

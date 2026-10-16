@@ -45,6 +45,12 @@ the rail only as its attention count.
   to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
   Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
+- **Long lines wrap on a toggle.** With *wrap long lines* on (Settings › Appearance or the
+  palette), the editor wraps each line to its width; the arrows step row by row, a click
+  lands along the line, and nothing scrolls sideways. A note wraps in its card and while it
+  is typed. Without wrap, the diff and the editor scroll sideways to keep the caret in view.
+  Enforced by `down_steps_along_a_wrapped_line_before_the_next_one`.
+
 ## Limits
 
 - **No accessibility layer.** Groove draws its own pixels and gives screen readers

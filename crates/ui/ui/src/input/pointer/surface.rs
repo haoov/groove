@@ -186,9 +186,12 @@ pub(super) fn at(
     point: (f32, f32),
 ) -> Option<(String, Caret)> {
     let (row, display) = row_at(hits, metrics, point)?;
-    let (path, line) = diff::line_at(app, ui, (ui.session.face(), hits.wrap()), row)?;
+    let (path, line, from) = diff::line_at(app, ui, (ui.session.face(), hits.wrap()), row)?;
     let (text, width) = diff::text_at((app, ui), &path, line)?;
-    Some((path, Caret::new(line, column_of(&text, display, width))))
+    Some((
+        path,
+        Caret::new(line, column_of(&text, from + display, width)),
+    ))
 }
 
 /// Where a click in the commit box puts its caret.

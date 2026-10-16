@@ -62,8 +62,8 @@ pub(crate) enum Slot {
     },
 }
 
-/// The rows of room every note keeps, one above its card and one below.
-const PADS: usize = 2;
+/// The rows of room the composer keeps around its label chips, one above and one below.
+const GAPS: usize = 2;
 /// The row that rules off what a note says from what it offers.
 const BETWEEN: usize = 1;
 
@@ -71,6 +71,8 @@ const BETWEEN: usize = 1;
 #[derive(Default)]
 pub(crate) struct Inline {
     blocks: Vec<Block>,
+    /// The note being typed, as its rows show it.
+    typed: Vec<(usize, usize, usize)>,
 }
 
 impl Inline {
@@ -81,7 +83,12 @@ impl Inline {
         if app.workspace.commit.is_some() || unfiled {
             return Self::default();
         }
+        let wrapped = super::wrapping::wrap_of(app, ui).map(|(starts, _)| starts);
+        let lines = wrapped.as_deref().map(Vec::as_slice);
         let noting = ui.session.noting.as_ref();
+        let typed = noting.map_or_else(Vec::new, |one| {
+            super::wrap::pieces(&one.buffer.text(), cols_of(cols))
+        });
         let over = noting.and_then(|one| one.over_id());
         let mut blocks: Vec<Block> = app
             .delivery
@@ -91,18 +98,18 @@ impl Inline {
             .filter(|(_, note)| !written(note, over))
             .filter_map(|(at, note)| {
                 let hidden = note.resolved && !ui.session.unfolded.contains(&note.origin);
-                block(app, view, (note, at, hidden), cols_of(cols))
+                block(app, (view, lines), (note, at, hidden), cols_of(cols))
             })
             .collect();
-        let answered = noting.and_then(|one| answering(app, one, &mut blocks));
+        let answered = noting.and_then(|one| answering(app, one, (&mut blocks, typed.len())));
         if let Some(noting) = noting.filter(|_| answered.is_none())
-            && let Some(after) = anchored(app, view, &noting.anchor)
+            && let Some(after) = anchored(app, (view, lines), &noting.anchor)
         {
-            let typing = noting.buffer.text().split('\n').count();
+            let typing = typed.len();
             blocks.push(Block {
                 after,
-                from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: 1 + typing + BETWEEN + 1 + PADS,
+                from: anchored(app, (view, lines), &starts(&noting.anchor)).unwrap_or(after),
+                rows: GAPS + 1 + typing + BETWEEN + 1,
                 at: None,
                 acts: false,
                 typing,
@@ -110,7 +117,7 @@ impl Inline {
             });
         }
         blocks.sort_by_key(|block| (block.after, block.at));
-        Self { blocks }
+        Self { blocks, typed }
     }
 
     /// What one row of a note holds: a comment's header, or a line of its words.
@@ -135,6 +142,19 @@ impl Inline {
     /// The row of the view a surface row belongs to; a note row belongs to its line.
     pub(crate) fn base(&self, row: usize) -> usize {
         self.found(row).1
+    }
+
+    /// Whether a row opens its note's card, and whether it closes it.
+    pub(crate) fn edges(&self, row: usize) -> (bool, bool) {
+        let mut shift = 0;
+        for block in &self.blocks {
+            let start = block.after + 1 + shift;
+            if row >= start && row < start + block.rows {
+                return (row == start, row + 1 == start + block.rows);
+            }
+            shift += block.rows;
+        }
+        (false, false)
     }
 
     /// What the row holds, and the row of the view it belongs to.
@@ -199,19 +219,16 @@ impl Inline {
 impl Block {
     /// What one row of the block holds, counted from its first.
     fn slot(&self, row: usize) -> Slot {
-        if row == 0 || row + 1 == self.rows {
-            let room = if row == 0 { Room::Above } else { Room::Below };
-            return Slot::Pad { room };
-        }
-        let row = row - 1;
         let Some(at) = self.at else {
+            let typed = GAPS + 1;
             return match row {
-                0 => Slot::Chips,
-                row if row <= self.typing => Slot::Typed {
-                    row: row - 1,
+                0 | 2 => Slot::Pad { room: Room::Gap },
+                1 => Slot::Chips,
+                row if row < typed + self.typing => Slot::Typed {
+                    row: row - typed,
                     reply: false,
                 },
-                row if row == self.typing + BETWEEN => Slot::Pad {
+                row if row == typed + self.typing => Slot::Pad {
                     room: Room::Between,
                 },
                 _ => Slot::Footer { reply: false },
@@ -245,16 +262,29 @@ pub(crate) fn noting_drawn(app: &AppState, ui: &Ui) -> bool {
     let Some(noting) = ui.session.noting.as_ref() else {
         return false;
     };
-    app.workspace.commit.is_none() && anchored(app, ui.session.face(), &noting.anchor).is_some()
+    let wrapped = super::wrapping::wrap_of(app, ui).map(|(starts, _)| starts);
+    app.workspace.commit.is_none()
+        && anchored(
+            app,
+            (ui.session.face(), wrapped.as_deref().map(Vec::as_slice)),
+            &noting.anchor,
+        )
+        .is_some()
 }
 
 /// The row an anchor's last line stands on, in the view that draws it.
-fn anchored(app: &AppState, view: Face, anchor: &Anchor) -> Option<usize> {
+fn anchored(
+    app: &AppState,
+    (view, wrapped): (Face, Option<&[usize]>),
+    anchor: &Anchor,
+) -> Option<usize> {
     match view {
         Face::File => {
             let open = app.workspace.active()?;
-            (open.path == anchor.path && (anchor.end_line as usize) < open.new.lines().max(1))
-                .then_some(anchor.end_line as usize)
+            let line = anchor.end_line as usize;
+            let shown = open.path == anchor.path && line < open.new.lines().max(1);
+            let last = |starts: &[usize]| starts.get(line + 1).map_or(line, |next| next - 1);
+            shown.then(|| wrapped.map_or(line, last))
         }
         _ => app.workspace.changes.row_of(&anchor.path, anchor.end_line),
     }

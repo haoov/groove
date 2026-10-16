@@ -15,7 +15,7 @@ use groove_ui_kit::widgets::{Badge, Button, typed_line};
 /// One row of a note: its part of the card, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, (false, false));
+    card_row(ctx, card, code.edges);
     let role = match said.resolved {
         true => Role::Faint,
         false => Role::Text,
@@ -85,19 +85,19 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
     }
 }
 
-/// A row of room, the card's edge or a rule across it half way down.
-pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, gutter: Block) {
+/// A row of room inside the card, a rule across it half way down when it parts two blocks.
+pub(super) fn padded(
+    ctx: &mut Ctx,
+    line: Rect,
+    room: Room,
+    (gutter, edges): (Block, (bool, bool)),
+) {
     let card = slotted(ctx, line, gutter);
-    let half = card.h / 2.0;
-    let lower = Rect::new(card.x, card.y + half, card.w, half);
-    match room {
-        Room::Above => card_row(ctx, lower, (true, false)),
-        Room::Below => card_row(ctx, Rect::new(card.x, card.y, card.w, half), (false, true)),
-        Room::Between => {
-            card_row(ctx, card, (false, false));
-            let rule = ctx.styles.line();
-            top_rule(ctx, lower, rule);
-        }
+    card_row(ctx, card, edges);
+    if room == Room::Between {
+        let half = card.h / 2.0;
+        let lower = Rect::new(card.x, card.y + half, card.w, half);
+        top_rule(ctx, lower, ctx.styles.line());
     }
 }
 
@@ -131,9 +131,14 @@ fn by(ctx: &mut Ctx, card: Rect, said: Noted<'_>) -> f32 {
 }
 
 /// What a note offers, as buttons from the column its words start on.
-pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
+pub(super) fn acts(
+    ctx: &mut Ctx,
+    line: Rect,
+    acting: &Acting,
+    (gutter, edges): (Block, (bool, bool)),
+) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, (false, false));
+    card_row(ctx, card, edges);
     let at = gutter.content(ctx, line);
     let mut room = Rect::new(
         at,

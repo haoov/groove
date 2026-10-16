@@ -150,6 +150,9 @@ pub struct UiConfig {
     /// Code, the agent and the terminals.
     #[serde(default, alias = "agent_font_family")]
     pub mono_font_family: String,
+    /// Long lines of code wrap to the editor's width.
+    #[serde(default)]
+    pub wrap_code: bool,
 }
 
 impl Default for UiConfig {
@@ -161,6 +164,7 @@ impl Default for UiConfig {
             theme: ThemeName::default(),
             font_family: String::new(),
             mono_font_family: String::new(),
+            wrap_code: false,
         }
     }
 }

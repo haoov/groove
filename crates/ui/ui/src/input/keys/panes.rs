@@ -28,14 +28,41 @@ pub(super) fn in_file(
         Key::Tab => Edit::Indent,
         Key::Backspace => Edit::Backspace,
         Key::Delete => Edit::Delete,
-        _ => return moved(&editing, key, mods).into_iter().collect(),
+        _ => {
+            let wrapped = matches!(key, Key::Up | Key::Down)
+                .then(|| along(app, ui, key == Key::Down))
+                .flatten();
+            return moved(&editing, (key, mods), wrapped).into_iter().collect();
+        }
     };
     vec![editing.edit(edit)]
 }
 
+/// Up or down a row of a wrapped line rather than a whole line; `None` while nothing wraps.
+fn along(app: &AppState, ui: &Ui, down: bool) -> Option<Motion> {
+    use crate::views::session::diff::{edited, text_at, wrapping};
+    use groove_controllers::workspace_service::{column_of, display_of};
+    let (starts, cols) = wrapping::wrap_of(app, ui)?;
+    let editor = edited(app, ui)?;
+    let caret = editor.buffer.caret();
+    let (text, width) = text_at((app, ui), &editor.path, caret.line)?;
+    let display = display_of(&text, caret.column, width);
+    let (line, at) = wrapping::stepped(&starts, cols, (caret.line, display), down)?;
+    let (text, width) = text_at((app, ui), &editor.path, line)?;
+    Some(Motion::To(groove_types::Caret::new(
+        line,
+        column_of(&text, at, width),
+    )))
+}
+
 /// A motion, extending what the caret holds while shift is down.
-fn moved(editing: &Editing, key: Key, mods: Modifiers) -> Option<Command> {
+fn moved(
+    editing: &Editing,
+    (key, mods): (Key, Modifiers),
+    wrapped: Option<Motion>,
+) -> Option<Command> {
     let motion = match key {
+        Key::Up | Key::Down if wrapped.is_some() => wrapped?,
         Key::Left => Motion::Left,
         Key::Right => Motion::Right,
         Key::Up => Motion::Up,

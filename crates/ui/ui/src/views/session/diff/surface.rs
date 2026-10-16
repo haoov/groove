@@ -1,9 +1,13 @@
 //! Where the rows are drawn: one column, or the two sides beside each other.
 
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 use groove_types::{DiffView, RowKind};
 
 use groove_controllers::AppState;
+
+mod measure;
+
+pub(super) use measure::note_cols;
 
 use super::notes::{Inline, Slot};
 use super::row::{Drawn, Side, count, drawn};
@@ -15,9 +19,6 @@ use crate::components::{
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::views::session::Face;
-use groove_ui_kit::base::style::Role;
-use groove_ui_kit::base::tokens::{NOTE_BY, NOTE_SLACK};
-use groove_ui_kit::layout::{Boxes, Spec};
 
 pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) {
     match ui.session.face() {
@@ -59,7 +60,7 @@ fn surface(
     inline: &Inline,
     (side, clickable): (Side, bool),
 ) {
-    let view = ui.session.face();
+    let view = measure::code_cols(ctx, (app, ui), rect);
     let total = inline.total(count(app, ui, view));
     let scroll = scroll_of(ctx, ui, rect, total);
     let window = visible(ctx, rect, total, scroll);
@@ -83,9 +84,9 @@ fn surface(
         said: said.as_ref(),
         heads: view != Face::Stream(DiffView::Split),
     };
-    let lines = lines_of(ctx, app, held);
+    let lines = edged(lines_of(ctx, app, held), inline, window.start);
     let numbers = numbers(app, ui, view);
-    let across = across_of(ctx, ui, numbers, rect, &rows);
+    let across = across_of(ctx, (app, ui), numbers, rect, &rows);
     if clickable {
         asks(ctx, rect, code_rows.clone(), numbers, (scroll, across));
     }
@@ -110,8 +111,17 @@ fn scroll_of(ctx: &mut Ctx, ui: &Ui, rect: Rect, total: usize) -> f32 {
 }
 
 /// How far the rows in view are scrolled sideways, inside what their widest allows.
-fn across_of(ctx: &mut Ctx, ui: &Ui, numbers: Gutters, rect: Rect, rows: &[Drawn]) -> f32 {
-    let reach = across_extent(ctx, numbers, rect, rows.iter().map(|row| row.text.as_str()));
+fn across_of(
+    ctx: &mut Ctx,
+    (app, ui): (&AppState, &Ui),
+    numbers: Gutters,
+    rect: Rect,
+    rows: &[Drawn],
+) -> f32 {
+    let reach = match super::wrapping::wrap_of(app, ui).is_some() {
+        true => 0.0,
+        false => across_extent(ctx, numbers, rect, rows.iter().map(|row| row.text.as_str())),
+    };
     ctx.app.hits.scrolls(Scroller::Across, reach);
     ui.session.across().min(reach)
 }
@@ -135,30 +145,6 @@ fn asks(
     ctx.hit(rect, Target::Code);
     let chars = chars_of(ctx, numbers, rect, (scroll, across));
     ctx.app.hits.characters(chars);
-}
-
-/// How many characters a note row holds this frame, in the surface that draws the notes.
-pub(super) fn note_cols(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> usize {
-    let view = ui.session.face();
-    let rect = match view {
-        Face::Stream(DiffView::Split) => halves(ctx, body).1,
-        _ => body,
-    };
-    let sample = "the quick brown fox jumps over the lazy dog";
-    let words = ctx.styles.body(Role::Text);
-    let each = ctx.measure(sample, &words) / sample.len() as f32 * NOTE_SLACK;
-    let text = chars_of(ctx, numbers(app, ui, view), rect, (0.0, 0.0)).left;
-    let mut boxes = Boxes::new();
-    let note = boxes.leaf(Spec::default().grow(1.0));
-    let by = boxes.leaf(Spec::default().width(each * NOTE_BY));
-    let pad = Edges {
-        left: text - rect.x,
-        right: ctx.tokens.md,
-        ..Edges::default()
-    };
-    let row = boxes.row(Spec::default().pad(pad), &[note, by]);
-    boxes.solve(ctx, row, rect);
-    (boxes.rect(note).w / each).floor().max(0.0) as usize
 }
 
 /// What the surface holds for the rows it is about to draw.
@@ -218,6 +204,14 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 .held(held.words[on].held),
         })
         .collect()
+}
+
+/// Each note row told whether it opens its card or closes it.
+fn edged<'a>(mut lines: Vec<Line<'a>>, inline: &Inline, first: usize) -> Vec<Line<'a>> {
+    for (at, line) in lines.iter_mut().enumerate() {
+        line.edges = inline.edges(first + at);
+    }
+    lines
 }
 
 /// A row of a note, from what it says.

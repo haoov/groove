@@ -13,7 +13,8 @@ mod row;
 mod scroll;
 mod surface;
 mod words;
-mod wrap;
+pub(crate) mod wrap;
+pub(crate) mod wrapping;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::At;

@@ -45,31 +45,45 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> 
             ..Words::default()
         },
         Slot::Typed { row, .. } => match ui.session.noting.as_ref() {
-            Some(noting) => typed(noting, row, ui.focus == crate::Focus::Workspace),
+            Some(noting) => typed(noting, (row, inline), ui.focus == crate::Focus::Workspace),
             None => Words::default(),
         },
         Slot::Acts { .. } | Slot::Pad { .. } | Slot::Code(_) => Words::default(),
     }
 }
 
-/// One row of the note being typed: its line of the buffer, the caret and what is held on it.
-fn typed(noting: &Noting, row: usize, lit: bool) -> Words {
+/// One row of the note being typed: its piece of a line, the caret and what is held on it.
+fn typed(noting: &Noting, (row, inline): (usize, &Inline), lit: bool) -> Words {
     let buffer = &noting.buffer;
-    let body = buffer.line(row).unwrap_or_default().to_string();
+    let Some((line, start, end)) = inline.piece(row) else {
+        return Words::default();
+    };
+    let whole = buffer.line(line).unwrap_or_default();
+    let chars = whole.chars().count();
+    let tail = end >= chars;
+    let body: String = whole.chars().skip(start).take(end - start).collect();
     let caret = buffer.caret();
-    let chars = body.chars().count();
-    let last = row + 1 == buffer.text().split('\n').count();
+    let on = caret.line == line && caret.column >= start && (caret.column < end || tail);
+    let held = buffer
+        .selections()
+        .first()
+        .and_then(|one| one.on(line, chars));
+    let held = held.and_then(|(from, to, through)| {
+        let (from, to) = (from.max(start), to.min(end));
+        (from < to || (from == to && to == end && through && tail)).then_some((
+            from - start,
+            to - start,
+            through && tail,
+        ))
+    });
     Words {
         field: Some(Field {
             first: row == 0,
-            last,
+            last: row + 1 == inline.typed_rows(),
             lit,
         }),
-        held: buffer
-            .selections()
-            .first()
-            .and_then(|one| one.on(row, chars)),
-        caret: (caret.line == row).then_some(caret.column),
+        held,
+        caret: on.then(|| caret.column - start),
         body,
         ..Words::default()
     }

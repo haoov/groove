@@ -16,8 +16,6 @@ pub struct BoardUi {
     /// The line a carried task would land on.
     pub drop: Option<usize>,
     pub reviews: super::review::Order,
-    /// The review the keyboard stands on, by its project and number.
-    pub chosen: Option<(String, u64)>,
     /// The column the keys walk; none is the review table.
     pub list: Option<super::List>,
 }

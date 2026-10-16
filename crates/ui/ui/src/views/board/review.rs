@@ -36,13 +36,6 @@ pub fn sorted<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a ReviewMr> {
     asked
 }
 
-pub fn chosen(ui: &Ui, asked: &[&ReviewMr]) -> Option<usize> {
-    let (project, iid) = ui.board.chosen.as_ref()?;
-    asked
-        .iter()
-        .position(|mr| &mr.project == project && mr.iid == *iid)
-}
-
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
     if asked.is_empty() {
         let text = match ui.board.query().is_empty() {
@@ -70,7 +63,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
         },
         count: asked.len(),
         offset: ui.board.review,
-        selected: chosen(ui, asked),
+        selected: None,
         sorted: Some(ui.board.reviews.sorted()),
     };
     let now = ctx.now;

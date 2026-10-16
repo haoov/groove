@@ -11,6 +11,7 @@ mod prose;
 mod rows;
 mod stream;
 mod views;
+mod wrapping;
 
 use groove_controllers::AppState;
 use groove_gfx::{Fonts, Rect};

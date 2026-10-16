@@ -7,7 +7,11 @@ use super::Block;
 use crate::views::session::{Noting, Writing};
 
 /// The thread a reply answers takes the reply's rows in place of its buttons; returns that note.
-pub(super) fn answering(app: &AppState, noting: &Noting, blocks: &mut [Block]) -> Option<usize> {
+pub(super) fn answering(
+    app: &AppState,
+    noting: &Noting,
+    (blocks, typing): (&mut [Block], usize),
+) -> Option<usize> {
     let Writing::Reply(thread) = &noting.writing else {
         return None;
     };
@@ -18,7 +22,6 @@ pub(super) fn answering(app: &AppState, noting: &Noting, blocks: &mut [Block]) -
             .and_then(|at| shown.get(at))
             .is_some_and(|note| note.origin == NoteOrigin::Thread(thread.clone()))
     })?;
-    let typing = noting.buffer.text().split('\n').count();
     block.rows += typing;
     block.typing = typing;
     block.acts = false;

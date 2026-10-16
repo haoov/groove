@@ -73,7 +73,10 @@ pub(super) fn drawn(
 /// How many rows the view stands, all of it.
 pub(super) fn count(app: &AppState, ui: &Ui, view: Face) -> usize {
     match view {
-        Face::File => edited(app, ui).map_or(0, |one| one.buffer.lines().max(1)),
+        Face::File => match super::wrapping::wrap_of(app, ui) {
+            Some((starts, _)) => starts.last().copied().unwrap_or(0),
+            None => edited(app, ui).map_or(0, |one| one.buffer.lines().max(1)),
+        },
         _ => app.workspace.changes.rows(),
     }
 }
@@ -88,8 +91,25 @@ pub(crate) fn edited<'a>(app: &'a AppState, ui: &Ui) -> Option<Editor<'a>> {
     Editing::keyed(app, ui)?.editor(app)
 }
 
-/// The lines of the buffer as it is now, marked where the file's change touched them.
+/// The rows in `window`: the buffer's lines, or their pieces while the lines wrap.
 fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
+    let Some((starts, cols)) = super::wrapping::wrap_of(app, ui) else {
+        return lines(app, ui, window);
+    };
+    let first = super::wrapping::line_of(&starts, window.start).0;
+    let last = super::wrapping::line_of(&starts, window.end.saturating_sub(1)).0;
+    let rows = lines(app, ui, first..last + 1);
+    window
+        .filter_map(|row| {
+            let (line, part) = super::wrapping::line_of(&starts, row);
+            let whole = rows.get(line - first)?;
+            Some(super::wrapping::piece(whole, part, cols))
+        })
+        .collect()
+}
+
+/// The lines of the buffer as it is now, marked where the file's change touched them.
+fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
     let Some(editor) = edited(app, ui) else {
         return Vec::new();
     };
@@ -190,13 +210,13 @@ pub(super) fn caret(ui: &Ui, buffer: &Buffer) -> Option<Caret> {
     here.then(|| buffer.caret())
 }
 
-/// The file and new-side line a row shows; a note's row shows none.
+/// The file and new-side line a row shows, and the column its piece starts at; a note's row shows none.
 pub(crate) fn line_at(
     app: &AppState,
     ui: &Ui,
     (view, cols): (Face, usize),
     row: usize,
-) -> Option<(String, usize)> {
+) -> Option<(String, usize, usize)> {
     let super::notes::Slot::Code(row) = super::notes::Inline::of(app, ui, view, cols).slot(row)
     else {
         return None;
@@ -204,13 +224,20 @@ pub(crate) fn line_at(
     match view {
         Face::File => {
             let editor = edited(app, ui)?;
-            (row < editor.buffer.lines().max(1)).then(|| (editor.path.to_string(), row))
+            let (row, part) = match super::wrapping::wrap_of(app, ui) {
+                Some((starts, cols)) => {
+                    let (line, part) = super::wrapping::line_of(&starts, row);
+                    (line, part * cols)
+                }
+                None => (row, 0),
+            };
+            (row < editor.buffer.lines().max(1)).then(|| (editor.path.to_string(), row, part))
         }
         _ => match app.workspace.changes.at(row)? {
             At::Head(_) => None,
             At::Row(file, at) => {
                 let line = file.row(at)?.new?;
-                Some((file.path.clone(), line as usize))
+                Some((file.path.clone(), line as usize, 0))
             }
         },
     }
