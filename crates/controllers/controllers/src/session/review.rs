@@ -27,6 +27,7 @@ pub fn open_review(
         branch: Some(at.source_branch.clone()),
         target: Some(at.target_branch.clone()),
         track_remote: Some(at.source_branch.clone()),
+        mr_head: Some(at.head_ref()),
     };
     let (service, pending) = (
         services.session.clone(),

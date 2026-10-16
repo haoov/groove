@@ -193,7 +193,7 @@ impl Flow {
                 spec: WorktreeSpec {
                     branch: non_empty(1 + shift),
                     target: non_empty(2 + shift),
-                    track_remote: None,
+                    ..Default::default()
                 },
             },
             Action::AddWorktree => session::Command::AddWorktree {
@@ -202,7 +202,7 @@ impl Flow {
                 spec: WorktreeSpec {
                     branch: non_empty(1),
                     target: non_empty(2),
-                    track_remote: None,
+                    ..Default::default()
                 },
             },
             Action::RemoveRepo => session::Command::RemoveRepo {

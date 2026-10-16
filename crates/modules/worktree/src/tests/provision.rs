@@ -56,6 +56,7 @@ async fn a_target_pins_the_base_and_an_unknown_target_lists_what_exists() {
         branch: Some("fix/x".into()),
         target: Some("release/1.0".into()),
         track_remote: None,
+        mr_head: None,
     };
     let done = fx
         .pool
@@ -75,6 +76,7 @@ async fn a_target_pins_the_base_and_an_unknown_target_lists_what_exists() {
         branch: Some("fix/y".into()),
         target: Some("nope".into()),
         track_remote: None,
+        mr_head: None,
     };
     let err = fx
         .pool
@@ -132,6 +134,7 @@ async fn a_review_worktree_tracks_the_remote_branch() {
         branch: Some("release/1.0".into()),
         target: Some("main".into()),
         track_remote: Some("release/1.0".into()),
+        mr_head: None,
     };
     let done = fx
         .pool
@@ -147,6 +150,32 @@ async fn a_review_worktree_tracks_the_remote_branch() {
         "origin/release/1.0"
     );
     assert_eq!(done.worktree.base_ref.as_deref(), Some("main"));
+}
+
+#[tokio::test]
+async fn a_review_of_a_fork_s_branch_checks_out_the_mr_s_head() {
+    let fx = Fixture::new().await;
+    let repo = fx.repo().await;
+    let head = sh(&fx.origin, &["rev-parse", "main"]);
+    sh(&fx.origin, &["update-ref", "refs/pull/7/head", &head]);
+    let spec = WorktreeSpec {
+        branch: Some("fork-feature".into()),
+        target: Some("main".into()),
+        track_remote: Some("fork-feature".into()),
+        mr_head: Some("refs/pull/7/head".into()),
+    };
+    let done = fx
+        .pool
+        .provision(&fx.session, &repo, &spec, None)
+        .await
+        .unwrap();
+    let path = std::path::Path::new(&done.worktree.path);
+    assert_eq!(sh(path, &["rev-parse", "HEAD"]), head, "on the MR's head");
+    assert_eq!(
+        sh(path, &["config", "branch.fork-feature.merge"]),
+        "refs/pull/7/head"
+    );
+    sh(path, &["pull", "--ff-only"]);
 }
 
 #[tokio::test]

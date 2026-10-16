@@ -162,7 +162,13 @@ async fn cut(
     let local = clone.ref_exists(&format!("refs/heads/{branch}")).await?;
     match (&spec.track_remote, local) {
         (Some(remote), false) => {
-            clone.worktree_add_tracking(path, branch, remote).await?;
+            let on_origin = clone
+                .ref_exists(&format!("refs/remotes/origin/{remote}"))
+                .await?;
+            match (&spec.mr_head, on_origin) {
+                (Some(head), false) => from_head(clone, path, branch, head).await?,
+                _ => clone.worktree_add_tracking(path, branch, remote).await?,
+            }
             Ok(false)
         }
         (_, true) => {
@@ -220,6 +226,16 @@ async fn refresh(clone: &Git, label: &str, notes: &mut Vec<String>) -> Option<St
         ));
     }
     default
+}
+
+/// A review of a branch origin lacks: the MR's head fetched as `branch`, which pulls from it.
+async fn from_head(clone: &Git, path: &std::path::Path, branch: &str, head: &str) -> Result<()> {
+    clone
+        .fetch(&[&format!("+{head}:refs/heads/{branch}")])
+        .await?;
+    clone.worktree_add(path, branch).await?;
+    clone.follow_ref(branch, head).await?;
+    Ok(())
 }
 
 /// `worktree add`, or align the checkout when the directory already holds one.
