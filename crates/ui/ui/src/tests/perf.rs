@@ -432,6 +432,18 @@ fn time_the_file_lists_parts() {
     });
     ui.session.bar.path.set("t1");
     time("narrowed by a query", &|| drop(narrowed(&app, &ui)));
+    let mut palette = crate::palette::Palette::default();
+    palette.query.set("#t1");
+    time("the palette's files, cached", &|| drop(palette.rows(&app)));
+    time("the palette's files, each query new", &|| {
+        drop(
+            crate::palette::Palette {
+                query: palette.query.clone(),
+                ..Default::default()
+            }
+            .rows(&app),
+        )
+    });
     ui.session.bar.path.set("src/compo");
     time("narrowed by a long query", &|| drop(narrowed(&app, &ui)));
     let fonts = std::cell::RefCell::new(groove_gfx::Fonts::embedded());

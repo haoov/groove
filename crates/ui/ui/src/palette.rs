@@ -91,6 +91,7 @@ pub struct Palette {
     pub anchor: Option<Anchor>,
     /// A key has moved or narrowed the rows since it opened.
     pub keyed: bool,
+    pub(crate) found: files::Found,
 }
 
 /// The corner of the panel, and where that corner sits.
@@ -123,7 +124,7 @@ impl Palette {
     /// The rows under the query: entries, or the current prompt's options.
     pub fn rows(&self, app: &AppState) -> Vec<Entry> {
         match self.query.text().strip_prefix('#') {
-            Some(rest) => files::rows(app, rest),
+            Some(rest) => files::rows(app, rest, &self.found),
             None => grouped::grouped(entries(app), self.query.text()),
         }
     }
