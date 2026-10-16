@@ -181,3 +181,29 @@ fn a_range_the_forge_gives_end_first_covers_both_ends_and_a_line_zero_hangs_nowh
     assert!(anchors.contains(&Some(range)), "{anchors:?}");
     assert!(anchors.contains(&None), "{anchors:?}");
 }
+
+#[test]
+fn a_comment_on_the_mr_or_an_event_the_forge_logs_is_no_note() {
+    let loose = MrNote {
+        resolvable: false,
+        ..note("bot", false, None)
+    };
+    let threads = vec![
+        thread("t1", vec![note("reviewer", false, None)]),
+        thread("c1", vec![loose.clone()]),
+        thread(
+            "e1",
+            vec![MrNote {
+                body: "added 1 commit".into(),
+                ..loose
+            }],
+        ),
+    ];
+    let read = merged(&[], &threads);
+    let kept: Vec<_> = read.iter().map(|one| one.origin.clone()).collect();
+    assert_eq!(
+        kept,
+        [NoteOrigin::Thread("t1".into())],
+        "a thread on the MR stays"
+    );
+}
