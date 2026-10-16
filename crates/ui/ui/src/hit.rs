@@ -95,6 +95,8 @@ pub struct Hits {
     /// How far each column can scroll, one per `Scroller`.
     extents: [f32; OWN + crate::views::board::List::ALL.len()],
     chars: Chars,
+    /// Under the caret, where the code surface drew it.
+    caret: Option<(f32, f32)>,
 }
 
 impl Hits {
@@ -137,6 +139,14 @@ impl Hits {
 
     pub fn chars(&self) -> Chars {
         self.chars
+    }
+
+    pub fn caret_at(&mut self, at: (f32, f32)) {
+        self.caret = Some(at);
+    }
+
+    pub fn caret(&self) -> Option<(f32, f32)> {
+        self.caret
     }
 
     /// The last thing drawn over this point.

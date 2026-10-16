@@ -130,5 +130,9 @@ async fn start_reports_a_server_that_is_not_installed() {
     let Err(err) = start(launch, hooks).await else {
         panic!("a missing server started");
     };
-    assert_eq!(err.kind, ErrorKind::Io);
+    assert_eq!(err.kind, ErrorKind::NotFound);
+    assert_eq!(
+        err.message,
+        "`groove-no-such-server` is not on the login PATH"
+    );
 }

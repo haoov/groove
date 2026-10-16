@@ -1,7 +1,7 @@
 //! The colours of a diff: what a line did, and the grounds a changed row takes.
 
 use groove_gfx::Color;
-use groove_types::{Capture, LineMark, RowKind};
+use groove_types::{Capture, LineMark, RowKind, Severity};
 
 use super::Styles;
 use crate::base::tokens::{GROUND_ALPHA, GUTTER_ALPHA, NUMBER_TINT, WORD_ALPHA};
@@ -51,6 +51,16 @@ impl Styles {
         match capture {
             Capture::Comment => self.palette.subtext1,
             _ => self.syntax(capture),
+        }
+    }
+
+    /// What a language server found, by how bad it is.
+    pub fn fault(&self, severity: Severity) -> Color {
+        match severity {
+            Severity::Error => self.palette.red,
+            Severity::Warning => self.palette.yellow,
+            Severity::Information => self.palette.blue,
+            Severity::Hint => self.palette.overlay0,
         }
     }
 }

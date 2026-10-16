@@ -47,9 +47,7 @@ pub async fn start(launch: Launch, hooks: Hooks) -> Result<Client> {
     for key in &launch.unset {
         piped = piped.unset(key);
     }
-    let mut process = piped
-        .start()
-        .map_err(|e| Error::new(ErrorKind::Io, e.to_string()))?;
+    let mut process = piped.start().map_err(|e| unstarted(&launch.program, e))?;
     let Some(Pipes {
         stdin,
         stdout,
@@ -197,6 +195,18 @@ impl Client {
         let document = json!({ "uri": uri::of(path) });
         let params = json!({ "textDocument": document, "position": position });
         self.link.request(method, params).await
+    }
+}
+
+/// A program missing from the login `PATH` is not found, not a failure of the server.
+fn unstarted(program: &str, error: groove_exec::Error) -> Error {
+    match error {
+        groove_exec::Error::Spawn { source, .. }
+            if source.kind() == std::io::ErrorKind::NotFound =>
+        {
+            Error::not_found(format!("`{program}` is not on the login PATH"))
+        }
+        other => Error::new(ErrorKind::Io, other.to_string()),
     }
 }
 

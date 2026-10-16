@@ -128,6 +128,17 @@ holds this end to end.
 - **The editor tells, the server never blocks it.** An open, an edit, a save and a close
   queue on the server's writer; a keystroke sends the whole text for now.
 - **Columns are characters on Groove's side**, whatever unit the server counts in.
+- **A diagnostic waves under what it covers, on the new side only**, in its severity's
+  colour; the line's number takes the worst one, and a file's head and row count its
+  errors and warnings. `split_marks_only_the_new_side` holds the side.
+- **What the servers say of a spot shows once the pointer rests on it**, after the quarter
+  second blame waits, or at once at the caret on `ctrl+k`. The diagnostics stand above the
+  hover, and the panel leaves with the pointer or the caret.
+  `a_rested_pointer_shows_the_diagnostic_over_what_the_hover_said` holds the order.
+- **A ctrl+click goes to the definition when the worktree holds it**: the file opens with
+  the caret on it, centred in the view. A place outside the worktree, or none, is said in
+  the popup at the spot, never in the feed, and opens nothing.
+  `a_definition_outside_the_worktree_is_said_at_the_spot_and_opens_nothing` holds it.
 
 **Search** walks the worktree in parallel, reports in batches, caps what it returns, and
 stops when the next search starts. The path search covers the whole worktree, not only

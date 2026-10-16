@@ -2,6 +2,7 @@
 
 mod blame;
 mod commits;
+mod definition;
 pub(crate) mod diff;
 mod editor;
 pub(crate) mod git;
@@ -12,7 +13,7 @@ mod servers;
 use crate::asker::Asker;
 pub(crate) use commits::{due as revision_due, ended as revision_ended};
 pub(crate) use editor::copied;
-use groove_types::{DiffMode, Edit, Selection};
+use groove_types::{Caret, DiffMode, Edit, Selection};
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{close_file, copy, cut, edit_file, open_file, paste, save_file};
@@ -97,6 +98,14 @@ pub enum Command {
     },
     /// `workspace.blame`: who last changed each line of one file, uncommitted lines marked.
     Blame { path: String },
+    /// `workspace.definition`: the open file's symbol at `at`, opened where it is defined.
+    Definition { path: String, at: Caret },
+    /// `workspace.hover`: what the language servers say of the symbol at one spot of the open file.
+    Hover {
+        path: String,
+        at: Caret,
+        caret: bool,
+    },
 }
 
 impl Command {
@@ -134,6 +143,8 @@ impl Command {
             Command::LeaveCommit => "workspace.leave_commit",
             Command::ShowRepo { .. } => "workspace.show_repo",
             Command::Blame { .. } => "workspace.blame",
+            Command::Definition { .. } => "workspace.definition",
+            Command::Hover { .. } => "workspace.hover",
         }
     }
 }
@@ -203,6 +214,8 @@ pub fn dispatch(
             commits::revision(state, services, spawner, (repo, target), sha)
         }
         Command::Blame { path } => blame::blame(state, spawner, path),
+        Command::Definition { path, at } => definition::definition(state, spawner, path, at),
+        Command::Hover { path, at, caret } => servers::hover(state, spawner, path, (at, caret)),
     }
 }
 

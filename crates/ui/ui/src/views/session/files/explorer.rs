@@ -150,6 +150,7 @@ fn one_row(
             let reading = Reading {
                 open: open == Some(&file.path),
                 noted: super::noted(app, &file.path),
+                tally: crate::views::session::diff::faults::tally(app, &file.path),
             };
             entry(ctx, line, file, indent, reading, ui)
         }

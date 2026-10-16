@@ -3,8 +3,10 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use groove_types::{Config, Diagnostic, Error, LanguageServer, WorktreeId};
-use groove_workspace_service::{Hooks, Language, ServerKey, Tell, Telling, launch, serving, start};
+use groove_types::{Caret, Config, Diagnostic, Error, ErrorKind, LanguageServer, WorktreeId};
+use groove_workspace_service::{
+    Client, Hooks, Language, ServerKey, Tell, Telling, launch, serving, start,
+};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
@@ -63,6 +65,52 @@ pub(super) fn closing(state: &mut AppState, path: &str) {
     told(state, None, &worktree, language, tell);
 }
 
+/// What the servers of `path` say of the symbol at `at`; the answer lands while it is still asked.
+pub(super) fn hover(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    path: String,
+    (at, caret): (Caret, bool),
+) {
+    state.workspace.servers.asked(&path, at, caret);
+    let Some((dir, clients)) = clients_of(state, &path) else {
+        return;
+    };
+    let file = dir.join(&path);
+    spawner.spawn(Box::pin(async move {
+        let mut said = None;
+        for client in clients {
+            if let Ok(Some(text)) = client.hover(&file, at).await {
+                said = Some(text);
+                break;
+            }
+        }
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.workspace.servers.answered(&path, at, said);
+        }) as Continuation
+    }));
+}
+
+/// The selected worktree's directory, and the clients up for the language of its open `path`.
+pub(super) fn clients_of(state: &AppState, path: &str) -> Option<(PathBuf, Vec<Arc<Client>>)> {
+    let worktree = state.workspace.worktree.clone()?;
+    let dir = state.session.find(&worktree).map(|(_, _, one)| one.dir())?;
+    let open = state.workspace.buffer(path)?;
+    let language = open.new.document().language()?;
+    let names: Vec<String> = configured(state)
+        .into_iter()
+        .filter(|one| one.serves(language.id()))
+        .map(|one| one.name)
+        .collect();
+    let clients = state.workspace.servers.clients(&worktree, &names);
+    (!clients.is_empty()).then_some((dir, clients))
+}
+
+fn configured(state: &AppState) -> Vec<LanguageServer> {
+    let config = state.config.config.as_ref();
+    config.map_or_else(LanguageServer::defaults, Config::servers)
+}
+
 fn held(state: &AppState, path: &str) -> Option<(Language, String)> {
     let open = state.workspace.buffer(path)?;
     Some((open.new.document().language()?, open.new.text()))
@@ -81,8 +129,7 @@ fn told(
     let Some(dir) = state.session.find(worktree).map(|(_, _, one)| one.dir()) else {
         return;
     };
-    let config = state.config.config.as_ref();
-    let servers = config.map_or_else(LanguageServer::defaults, Config::servers);
+    let servers = configured(state);
     for server in serving(&servers, language.id()) {
         let key = ServerKey {
             worktree: worktree.clone(),
@@ -104,11 +151,22 @@ fn begin(spawner: &dyn Spawner, key: ServerKey, server: &LanguageServer) {
         let client = start(launch, hooks).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = state.workspace.servers.started(&key, client) {
-                let said = format!("{} did not start: {}", key.name, e.message);
-                state.failed(Error::new(e.kind, said));
+                state.failed(unstarted(&key.name, e));
             }
         }) as Continuation
     }));
+}
+
+/// Why a server did not start; one not installed says how to get it.
+fn unstarted(name: &str, e: Error) -> Error {
+    let said = match e.kind {
+        ErrorKind::NotFound => format!(
+            "{name} is not installed: {}. Install it, or set its program under `language_servers` in the config.",
+            e.message
+        ),
+        _ => format!("{name} did not start: {}", e.message),
+    };
+    Error::new(e.kind, said)
 }
 
 /// Diagnostics batched to one continuation in flight; a close delivered as it comes.
@@ -137,12 +195,7 @@ fn hooks(sink: Arc<dyn Deliver>, key: ServerKey) -> Hooks {
     }
 }
 
-/// A server that stopped while up is said to have, with the last line of its log.
 fn down(state: &mut AppState, key: &ServerKey) {
-    if let Some(client) = state.workspace.servers.client(key) {
-        let last = client.said().pop().map(|line| format!(": {line}"));
-        state.say(format!("{} stopped{}", key.name, last.unwrap_or_default()));
-    }
     state.workspace.servers.closed(key);
 }
 

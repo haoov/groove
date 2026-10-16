@@ -247,7 +247,8 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
             .folded(row.folded)
             .read(row.read)
             .part(row.part)
-            .counts(row.counts);
+            .counts(row.counts)
+            .tally(row.tally);
     }
     if let RowKind::Gap(_) = row.kind {
         return Line::banner(&row.text);
@@ -258,6 +259,7 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
         .words(&row.words, ctx.styles.word(row.kind, row.mark))
         .found(&row.found)
         .standing(row.standing)
+        .faults(&row.faults)
         .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
         .gutter(ctx.styles.gutter(row.kind))
         .empty(row.empty)

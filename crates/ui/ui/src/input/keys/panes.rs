@@ -19,6 +19,9 @@ pub(super) fn in_file(
     let Some(editing) = Editing::keyed(app, ui) else {
         return Vec::new();
     };
+    if keymap.is(Action::Hover, key, mods) {
+        return hover_here(&editing, app).into_iter().collect();
+    }
     if mods.ctrl || mods.alt {
         return bound(&editing, keymap, key, mods).into_iter().collect();
     }
@@ -76,6 +79,19 @@ fn moved(
         false => Edit::Move(motion),
     };
     Some(editing.edit(edit))
+}
+
+/// What the servers say of the symbol under the caret of the open file.
+fn hover_here(editing: &Editing, app: &AppState) -> Option<Command> {
+    let open = app
+        .workspace
+        .active()
+        .filter(|_| *editing == Editing::File)?;
+    Some(Command::Workspace(workspace::Command::Hover {
+        path: open.path.clone(),
+        at: open.new.caret(),
+        caret: true,
+    }))
 }
 
 /// What a bound chord asks of the buffer.
