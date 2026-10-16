@@ -1,0 +1,10 @@
+[book]
+title = "Groove"
+description = "Install, set up and use Groove."
+language = "en"
+src = "src"
+
+[output.html]
+site-url = "/groove/"
+git-repository-url = "https://github.com/haoov/groove"
+edit-url-template = "https://github.com/haoov/groove/edit/main/book/{path}"

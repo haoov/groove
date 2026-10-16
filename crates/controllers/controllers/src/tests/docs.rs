@@ -7,12 +7,13 @@ fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
 }
 
-/// Every Markdown file under `docs/`, and every `AGENTS.md`, as `(path, text)`.
+/// Every Markdown file under `docs/` and `book/`, and every `AGENTS.md`, as `(path, text)`.
 fn docs() -> Vec<(PathBuf, String)> {
     let root = repo_root();
     let mut out = Vec::new();
     markdown_under(&root.join("docs"), &mut out, |_| true);
     assert!(out.len() >= 5, "found {} docs", out.len());
+    markdown_under(&root.join("book"), &mut out, |_| true);
     let agents = |path: &Path| path.ends_with("AGENTS.md");
     markdown_under(&root.join("crates"), &mut out, agents);
     let own = root.join("AGENTS.md");

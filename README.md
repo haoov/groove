@@ -2,7 +2,10 @@
 
 A desktop workspace for a platform engineer who works through agents.
 
-Groove is a Rust application drawn on the GPU. Its docs are in [`docs/`](docs/README.md).
+Read the [user guide](https://haoov.github.io/groove/) to install, set up and use Groove.
+
+Groove is a Rust application drawn on the GPU. Its contributor docs are in
+[`docs/`](docs/README.md).
 
 ## Install
 
