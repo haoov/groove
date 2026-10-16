@@ -47,6 +47,7 @@ fn spec(write: &Write) -> WorktreeSpec {
         branch: write.text("branch").map(str::to_string),
         target: write.text("target_branch").map(str::to_string),
         track_remote: None,
+        mr_head: None,
     }
 }
 

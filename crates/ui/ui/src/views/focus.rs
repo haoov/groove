@@ -19,9 +19,15 @@ fn region(ctx: &Ctx, app: &AppState, ui: &Ui) -> Option<Rect> {
     if ui.focus == Focus::Rail {
         return Some(layout.rail);
     }
-    if ui.showing(app) != Surface::Session || app.session.selected().is_none() {
-        return None;
+    if ui.showing(app) == Surface::Board {
+        let list = ui.board.list?;
+        return Some(crate::views::board::column_of(
+            &ctx.tokens,
+            layout.board,
+            list,
+        ));
     }
+    app.session.selected()?;
     let lowest = |a: Rect, b: Rect| if b.is_empty() { a } else { b };
     match ui.focus {
         Focus::Rail => None,

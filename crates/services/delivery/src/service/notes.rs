@@ -16,16 +16,12 @@ pub struct Said<'a> {
 }
 
 impl Said<'_> {
-    /// Why a comment, or a review when `verdict` is one, has nothing to post.
-    pub fn empty(verdict: Option<ReviewVerdict>, body: &str, notes: &[Annotation]) -> Result<()> {
-        let why = match verdict {
-            None if body.is_empty() => "a comment needs a body",
-            Some(ReviewVerdict::Comment) if body.is_empty() && notes.is_empty() => {
-                "a review needs words in the box or a note to post"
-            }
-            _ => return Ok(()),
-        };
-        Err(groove_types::Error::invalid(why))
+    /// Why a comment has nothing to post; a review posts as it stands, words and notes or none.
+    pub fn empty(verdict: Option<ReviewVerdict>, body: &str, _notes: &[Annotation]) -> Result<()> {
+        match (verdict, body.is_empty()) {
+            (None, true) => Err(groove_types::Error::invalid("a comment needs a body")),
+            _ => Ok(()),
+        }
     }
 }
 

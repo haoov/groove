@@ -308,3 +308,51 @@ fn the_selection_scrolls_into_view_past_the_bottom() {
     assert!(ui.board.review > 0.0, "the column scrolled");
     assert!(order(&app, &ui).contains(&title), "{title} is on screen");
 }
+
+#[test]
+fn an_approved_mr_or_one_a_session_reviews_leaves_the_column() {
+    let mut app = waiting();
+    app.delivery.reviews[0].approved = true;
+    let rows = crate::views::board::review::sorted(&app, &Ui::default());
+    assert_eq!(rows.len(), 1, "nothing to do on the approved one");
+    let live = app.delivery.reviews[1].session_id();
+    app.session.open[0].session.id = groove_types::SessionId::new(live);
+    let rows = crate::views::board::review::sorted(&app, &Ui::default());
+    assert!(rows.is_empty(), "the live one is in Live already");
+}
+
+#[test]
+fn the_board_s_columns_walk_by_key_and_enter_goes_or_stays() {
+    use crate::input::Modifiers;
+    let app = waiting();
+    let (mut ui, _) = on_board(&app);
+    press(Key::Char('2'), crate::tests::ALT, &mut ui, &app);
+    assert_eq!(ui.board.list, Some(crate::views::board::List::Live));
+    press(Key::Down, Modifiers::default(), &mut ui, &app);
+    assert!(
+        matches!(ui.hover, Some(crate::hit::Target::Session(_))),
+        "{:?}",
+        ui.hover
+    );
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..Modifiers::default()
+    };
+    let stayed = press(Key::Enter, ctrl, &mut ui, &app);
+    assert_eq!(stayed[0].id(), "session.open");
+    assert_eq!(
+        ui.surface,
+        crate::Surface::Board,
+        "ctrl+Enter stays on the board"
+    );
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert_eq!(ui.surface, crate::Surface::Session, "Enter goes to it");
+    ui.surface = crate::Surface::Board;
+    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Down, Modifiers::default(), &mut ui, &app);
+    let opened = press(Key::Enter, ctrl, &mut ui, &app);
+    assert_eq!(opened[0].id(), "session.open_review");
+    assert_eq!(ui.surface, crate::Surface::Board);
+    press(Key::Char('1'), crate::tests::ALT, &mut ui, &app);
+    assert_eq!(ui.focus, crate::Focus::Rail);
+}

@@ -117,6 +117,32 @@ fn next_column(tokens: &Tokens, layout: Layout) -> Rect {
 }
 
 /// One MR of the review column, opened as a session of its own.
+/// A row that opens a session: a live one, a task's, a review's.
+pub(super) fn opens(target: &Target) -> bool {
+    matches!(
+        target,
+        Target::Session(_) | Target::Task(_) | Target::Review(..)
+    )
+}
+
+/// A board row's session opened, the window going to it when `switch`.
+pub(in crate::input) fn opened_from_board(
+    target: Target,
+    ui: &mut Ui,
+    switch: bool,
+) -> Vec<Command> {
+    let commands = match target {
+        Target::Session(session) => vec![Command::Session(session::Command::Open { session })],
+        Target::Task(short_id) => vec![Command::Task(task::Command::Open { short_id })],
+        Target::Review(project, iid) => review(project, iid),
+        _ => return Vec::new(),
+    };
+    if switch {
+        ui.surface = Surface::Session;
+    }
+    commands
+}
+
 pub(super) fn review(project: String, iid: u64) -> Vec<Command> {
     vec![Command::Session(session::Command::OpenReview {
         project,

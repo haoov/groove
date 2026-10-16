@@ -20,7 +20,10 @@ pub(super) fn on_board(
             ui.board.focus();
             return Vec::new();
         }
-        return super::board::chosen(key, ui, app, seen);
+        if ui.focus == crate::Focus::Rail {
+            return super::panes::in_rail(key, ui, app);
+        }
+        return super::board::chosen((key, mods), ui, app, seen);
     }
     let offers = complete::offers(app, ui.board.filter.text());
     let shown = offers

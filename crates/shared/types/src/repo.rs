@@ -62,4 +62,7 @@ pub struct WorktreeSpec {
     pub target: Option<String>,
     /// A review: check out this branch of origin instead of cutting a new one.
     pub track_remote: Option<String>,
+    /// A review's own head on origin, for a branch origin lacks: an MR from a fork.
+    #[serde(default)]
+    pub mr_head: Option<String>,
 }

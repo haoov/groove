@@ -21,6 +21,14 @@ pub struct ReviewMr {
 }
 
 impl ReviewMr {
+    /// The ref the forge keeps the MR's head under, on the target repo, forks included.
+    pub fn head_ref(&self) -> String {
+        match self.forge {
+            Forge::Github => format!("refs/pull/{}/head", self.iid),
+            Forge::Gitlab => format!("refs/merge-requests/{}/head", self.iid),
+        }
+    }
+
     /// The session that reviews it, the same one every time it is opened.
     pub fn session_id(&self) -> String {
         let project = self

@@ -255,7 +255,7 @@ fn a_comment_with_nothing_to_post_says_so_in_the_feed() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     worktree(&mut state, &services, &spawner);
-    let comment = crate::delivery::Say::Review(groove_types::ReviewVerdict::Comment);
+    let comment = crate::delivery::Say::Comment;
     dispatch(
         Cmd::Delivery(crate::delivery::Command::Say(comment)),
         &mut state,

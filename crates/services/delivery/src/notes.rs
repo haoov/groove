@@ -40,9 +40,9 @@ fn of_annotation(one: &Annotation) -> Note {
     }
 }
 
-/// A thread the forge answered. One with nothing said is not a note.
+/// A thread the forge answered; one with nothing said, or that nobody can resolve, is none.
 fn of_thread(thread: &MrThread) -> Option<Note> {
-    let first = thread.notes.first()?;
+    let first = thread.notes.first().filter(|one| one.resolvable)?;
     Some(Note {
         origin: NoteOrigin::Thread(thread.id.clone()),
         anchor: anchor_of(first),

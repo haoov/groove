@@ -2,7 +2,7 @@
 
 use groove_controllers::{AppState, Command, session};
 
-use super::super::Key;
+use super::super::{Key, Modifiers};
 use crate::Ui;
 use crate::hit::{Hits, Scroller};
 use crate::views::board::List;
@@ -10,11 +10,14 @@ use crate::views::board::review::{chosen as at, sorted};
 use groove_ui_kit::base::ctx::Metrics;
 
 pub(super) fn chosen(
-    key: Key,
+    (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
     (hits, metrics): (&Hits, Metrics),
 ) -> Vec<Command> {
+    if let Some(list @ (List::Live | List::Next)) = ui.board.list {
+        return walked((key, mods), ui, app, list);
+    }
     let asked = sorted(app, ui);
     let Some(last) = asked.len().checked_sub(1) else {
         return Vec::new();
@@ -32,6 +35,9 @@ pub(super) fn chosen(
                 return Vec::new();
             };
             let (project, iid) = (mr.project.clone(), mr.iid);
+            if !mods.ctrl {
+                ui.surface = crate::Surface::Session;
+            }
             return vec![Command::Session(session::Command::OpenReview {
                 project,
                 iid,
@@ -55,4 +61,29 @@ pub(super) fn kept(offset: f32, (at, row): (usize, f32), (count, extent): (usize
     let top = at as f32 * row;
     let offset = offset.min(top);
     offset.max(top + row - room).clamp(0.0, extent)
+}
+
+/// Live or Up next: the arrows walk the rows, Enter opens one and goes to it, ctrl+Enter stays.
+fn walked((key, mods): (Key, Modifiers), ui: &mut Ui, app: &AppState, list: List) -> Vec<Command> {
+    let rows = crate::views::board::targets(app, ui, list);
+    let at = rows.iter().position(|one| ui.hover.as_ref() == Some(one));
+    match key {
+        Key::Up | Key::Down => {
+            let next = match at {
+                None => (!rows.is_empty()).then_some(0),
+                at => super::panes::stepped(key, at, rows.len()),
+            };
+            ui.hover = next.and_then(|next| rows.get(next)).cloned();
+            Vec::new()
+        }
+        Key::Enter => match at.and_then(|at| rows.get(at)).cloned() {
+            Some(target) => crate::input::pointer::opened_from_board(target, ui, !mods.ctrl),
+            None => Vec::new(),
+        },
+        Key::Escape => {
+            ui.hover = None;
+            Vec::new()
+        }
+        _ => Vec::new(),
+    }
 }

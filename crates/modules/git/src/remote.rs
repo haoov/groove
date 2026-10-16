@@ -10,6 +10,14 @@ impl Git {
         self.text(&args).await.map(drop)
     }
 
+    /// `branch` follows `merge` on origin: a pull reads that ref.
+    pub async fn follow_ref(&self, branch: &str, merge: &str) -> Result<()> {
+        let remote = format!("branch.{branch}.remote");
+        self.text(&["config", &remote, "origin"]).await?;
+        let followed = format!("branch.{branch}.merge");
+        self.text(&["config", &followed, merge]).await.map(drop)
+    }
+
     /// Every branch head on origin, asked of the remote; an error means origin is unreachable.
     pub async fn remote_heads(&self) -> Result<Vec<String>> {
         let out = self.text(&["ls-remote", "--heads", "origin"]).await?;

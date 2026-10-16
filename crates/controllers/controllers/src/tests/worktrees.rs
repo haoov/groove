@@ -173,6 +173,7 @@ pub(super) fn second_worktree(
         branch: Some("fix/x".into()),
         target: Some("release/1.0".into()),
         track_remote: None,
+        mr_head: None,
     };
     dispatch(
         session_cmd(Command::AddWorktree {
@@ -303,6 +304,7 @@ fn an_unknown_repo_or_target_is_an_error_not_a_worktree() {
         branch: None,
         target: Some("ghost".into()),
         track_remote: None,
+        mr_head: None,
     };
     dispatch(
         session_cmd(Command::AddRepo {
