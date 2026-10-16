@@ -201,16 +201,26 @@ impl Run {
         if self.bare {
             command.env_clear();
         }
-        if let Some(path) = crate::login::adopted() {
-            command.env("PATH", path);
-        }
+        prepared(&mut command, &self.args, &self.env, self.cwd.as_deref());
         command
-            .args(&self.args)
-            .envs(self.env.iter().cloned())
-            .kill_on_drop(true);
-        if let Some(dir) = &self.cwd {
-            command.current_dir(dir);
-        }
-        command
+    }
+}
+
+/// Sets the login `PATH`, `args`, `env` and `cwd`, and kill on drop.
+pub(crate) fn prepared(
+    command: &mut tokio::process::Command,
+    args: &[String],
+    env: &[(String, String)],
+    cwd: Option<&Path>,
+) {
+    if let Some(path) = crate::login::adopted() {
+        command.env("PATH", path);
+    }
+    command
+        .args(args)
+        .envs(env.iter().cloned())
+        .kill_on_drop(true);
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
     }
 }
