@@ -13,6 +13,10 @@ pub(crate) struct Tree {
     /// Watched whatever the walk says.
     fixed: Vec<PathBuf>,
     watched: HashSet<PathBuf>,
+    /// The same two by their real paths, which is how macOS names what moved: `/var` is
+    /// `/private/var`.
+    real_fixed: Vec<PathBuf>,
+    real_watched: HashSet<PathBuf>,
     size: Arc<AtomicUsize>,
 }
 
@@ -20,8 +24,10 @@ impl Tree {
     pub(crate) fn new(root: &Path, fixed: Vec<PathBuf>, size: Arc<AtomicUsize>) -> Self {
         Self {
             root: root.to_path_buf(),
+            real_fixed: fixed.iter().map(|dir| real(dir)).collect(),
             fixed,
             watched: HashSet::new(),
+            real_watched: HashSet::new(),
             size,
         }
     }
@@ -41,17 +47,24 @@ impl Tree {
             let _ = watcher.unwatch(&dir);
             self.watched.remove(&dir);
         }
+        self.real_watched = self.watched.iter().map(|dir| real(dir)).collect();
         self.size.store(self.watched.len(), Ordering::Relaxed);
         self.watched.len()
     }
 
     /// Whether a path is worth reporting: not in an unwatched directory, and of git only what moves.
     pub(crate) fn keeps(&self, path: &Path) -> bool {
-        if self.fixed.iter().any(|dir| path.starts_with(dir)) {
-            return git_state(path);
+        let path = real(path);
+        if self.real_fixed.iter().any(|dir| path.starts_with(dir)) {
+            return git_state(&path);
         }
-        !path.is_dir() || self.watched.contains(path)
+        !path.is_dir() || self.real_watched.contains(&path)
     }
+}
+
+/// `path` with its links resolved; as it stands when it is gone.
+fn real(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
 
 /// The names in git's own directory that a commit, a stage or a checkout moves.
