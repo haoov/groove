@@ -90,7 +90,7 @@ fn sections(ctx: &mut Ctx, list: Rect, app: &AppState, settings: &SettingsUi) {
 fn needs(app: &AppState, section: Section) -> String {
     let count = match section {
         Section::Setup => rows::setup_left(app),
-        Section::Providers => usize::from(rows::no_source(app)),
+        Section::Providers => usize::from(rows::no_source(app)) + rows::source_gaps(app),
         _ => 0,
     };
     match count {

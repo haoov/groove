@@ -134,3 +134,28 @@ fn a_task_source_turns_on_and_off_by_its_toggle() {
         "{texts:?}"
     );
 }
+
+#[test]
+fn each_source_sums_up_its_gaps_and_splits_its_mapping_under_headings() {
+    let app = crate::tests::bar::sourced(checked(ready(), true), true, true);
+    let mut ui = Ui::default();
+    (ui.settings.open, ui.settings.section) = (true, Section::Providers);
+    let texts = crate::tests::settings::drawn_whole(&app, &ui);
+    for heading in ["Notion", "Notion fields", "GitHub", "GitHub fields"] {
+        assert!(
+            texts.iter().any(|one| one == heading),
+            "{heading}: {texts:?}"
+        );
+    }
+    let gaps = crate::views::settings::rows::source_gaps(&app);
+    assert!(gaps > 0, "the fixture leaves gaps");
+    assert!(
+        texts.iter().any(|one| one.ends_with(" gaps")),
+        "the source row sums them up: {texts:?}"
+    );
+    let at = texts
+        .iter()
+        .position(|one| one == "Providers")
+        .expect("the nav row");
+    assert_eq!(texts[at - 1], gaps.to_string(), "the nav counts them");
+}

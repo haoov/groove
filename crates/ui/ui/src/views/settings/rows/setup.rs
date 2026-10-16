@@ -82,6 +82,22 @@ pub fn left(app: &AppState) -> usize {
     short + usize::from(app.config.config.is_none())
 }
 
+/// The gaps of every source set up.
+pub fn gaps(app: &AppState) -> usize {
+    let config = app.config.config.as_ref();
+    let notion = config
+        .and_then(|c| c.notion.as_ref())
+        .map(super::mapping::Held::Notion);
+    let github = config
+        .and_then(|c| c.github.as_ref())
+        .map(super::mapping::Held::Github);
+    notion
+        .into_iter()
+        .chain(github)
+        .map(|one| super::mapping::gaps(&one))
+        .sum()
+}
+
 /// No task source is set up yet.
 pub fn no_source(app: &AppState) -> bool {
     groove_controllers::task_service::source_ids(app.config.config.as_ref()).is_empty()

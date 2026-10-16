@@ -15,10 +15,10 @@ pub(super) fn switch(
     app: &AppState,
     settings: &SettingsUi,
     source: ProviderId,
-    on: bool,
+    gaps: Option<usize>,
 ) -> Vec<Row> {
-    if on {
-        return vec![turned_on(settings, source)];
+    if let Some(gaps) = gaps {
+        return vec![turned_on(settings, source, gaps)];
     }
     let drafted = Drafted::Source(source);
     let Some(draft) = settings.draft.as_ref().filter(|one| one.source == drafted) else {
@@ -32,7 +32,7 @@ pub(super) fn switch(
 }
 
 /// On, and asking to be turned off: the second click confirms.
-fn turned_on(settings: &SettingsUi, source: ProviderId) -> Row {
+fn turned_on(settings: &SettingsUi, source: ProviderId, gaps: usize) -> Row {
     let off = Target::SettingsTurnOff(source);
     match settings.leaving == Some(source) {
         true => {
@@ -40,7 +40,14 @@ fn turned_on(settings: &SettingsUi, source: ProviderId) -> Row {
             let act = Some(("yes, turn off", Target::SettingsTurnOffSure(source)));
             toggled(true, off, said, act)
         }
-        false => toggled(true, off, None, None),
+        false => {
+            let said = match gaps {
+                0 => ("connected".to_string(), Role::Ok),
+                1 => ("1 gap".to_string(), Role::Warn),
+                n => (format!("{n} gaps"), Role::Warn),
+            };
+            toggled(true, off, Some(said), None)
+        }
     }
 }
 

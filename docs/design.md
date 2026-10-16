@@ -390,7 +390,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Section | Rows |
 |---|---|
 | Setup | environment check — git, gh, glab, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
-| Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
+| Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: IBM Plex Sans · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |

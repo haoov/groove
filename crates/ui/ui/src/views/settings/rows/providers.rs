@@ -12,48 +12,71 @@ use super::{Row, Section, grouped};
 const P: Section = Section::Providers;
 
 pub(super) fn providers(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
-    let mut out = grouped("Notion", notion(app, settings));
-    out.extend(grouped("GitHub", github(app, settings)));
+    let config = app.config.config.as_ref();
+    let notion = config.and_then(|c| c.notion.as_ref()).map(Held::Notion);
+    let github = config.and_then(|c| c.github.as_ref()).map(Held::Github);
+    let mut out = source(app, settings, (ProviderId::Notion, notion), NOTION);
+    out.extend(source(app, settings, (ProviderId::Github, github), GITHUB));
     out.extend(grouped("Forge tokens", forges(app)));
     out
 }
 
-fn notion(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
-    let held = app.config.config.as_ref().and_then(|c| c.notion.as_ref());
-    let mut out = switch(app, settings, ProviderId::Notion, held.is_some());
-    let Some(notion) = held else {
-        return out;
+/// A source's four headings: the source, its fields, its status values, its priority values.
+type Headings = [&'static str; 4];
+const NOTION: Headings = [
+    "Notion",
+    "Notion fields",
+    "Notion status values",
+    "Notion priority values",
+];
+const GITHUB: Headings = [
+    "GitHub",
+    "GitHub fields",
+    "GitHub status values",
+    "GitHub priority values",
+];
+
+/// The source's toggle and connection, then its mapping block by block.
+fn source(
+    app: &AppState,
+    settings: &SettingsUi,
+    (id, held): (ProviderId, Option<Held>),
+    heads: Headings,
+) -> Vec<Row> {
+    let gaps = held.as_ref().map(super::mapping::gaps);
+    let mut out = switch(app, settings, id, gaps);
+    let Some(held) = held else {
+        return grouped(heads[0], out);
     };
-    out.extend([
-        Row::text(P, "database", "database id", &notion.database_id),
-        Row::text(P, "user", "user id assignee", &notion.user_id),
-        Row::state(
-            P,
-            ("token", "token secret"),
-            ("held".into(), Role::Ok),
-            None,
-        ),
-    ]);
-    out.extend(mapping(&Held::Notion(notion)));
+    out.extend(connection(&held));
+    let mut out = grouped(heads[0], out);
+    let blocks = mapping(&held);
+    out.extend(grouped(heads[1], blocks.fields));
+    out.extend(grouped(heads[2], blocks.statuses));
+    out.extend(grouped(heads[3], blocks.priorities));
     out
 }
 
-fn github(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
-    let held = app.config.config.as_ref().and_then(|c| c.github.as_ref());
-    let mut out = switch(app, settings, ProviderId::Github, held.is_some());
-    let Some(github) = held else {
-        return out;
-    };
-    let token = match github.token {
-        Some(_) => "held",
-        None => "from gh",
-    };
-    out.extend([
-        Row::text(P, "host", "host issues", &github.host),
-        Row::state(P, ("token", "token secret"), (token.into(), Role::Ok), None),
-    ]);
-    out.extend(mapping(&Held::Github(github)));
-    out
+/// Where the source is read from, and with what.
+fn connection(held: &Held) -> Vec<Row> {
+    let held_token = ("held".to_string(), Role::Ok);
+    match held {
+        Held::Notion(notion) => vec![
+            Row::text(P, "database", "database id", &notion.database_id),
+            Row::text(P, "user", "user id assignee", &notion.user_id),
+            Row::state(P, ("token", "token secret"), held_token, None),
+        ],
+        Held::Github(github) => {
+            let token = match github.token {
+                Some(_) => held_token,
+                None => ("from gh".to_string(), Role::Ok),
+            };
+            vec![
+                Row::text(P, "host", "host issues", &github.host),
+                Row::state(P, ("token", "token secret"), token, None),
+            ]
+        }
+    }
 }
 
 /// The forges' own tokens, as the environment check found their sign-in.

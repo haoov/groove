@@ -152,11 +152,12 @@ fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
         "Due date",
         "from gh",
         "Assignee",
-        "gap · no task is listed",
+        "no task is listed",
+        "Notion fields",
     ] {
         assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
     }
-    let gap = "gap · the hours measured are not logged";
+    let gap = "the hours measured are not logged";
     assert_eq!(
         texts.iter().filter(|t| *t == gap).count(),
         2,
