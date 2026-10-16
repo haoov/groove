@@ -13,6 +13,7 @@ mod feed;
 mod field;
 mod files;
 mod finding;
+mod first_run;
 mod focus;
 mod frame;
 mod keymap;

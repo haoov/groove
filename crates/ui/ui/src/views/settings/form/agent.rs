@@ -16,6 +16,20 @@ pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         Value::Switch { on, target } => {
             Toggle::new(*on, target.clone()).left(ctx, &mut room, sm);
         }
+        Value::Source {
+            on,
+            target,
+            said,
+            act,
+        } => {
+            Toggle::new(*on, target.clone()).left(ctx, &mut room, sm);
+            if let Some((said, role)) = said {
+                Label::new(said, ctx.styles.body(*role)).left(ctx, &mut room, sm);
+            }
+            if let Some((word, target)) = act {
+                Button::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+            }
+        }
         Value::Routine { id, on, said, runs } => {
             let flip = match on {
                 true => Target::RoutineOff(id.clone()),

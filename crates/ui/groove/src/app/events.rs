@@ -57,6 +57,7 @@ impl ApplicationHandler<Message> for App {
             Command::Task(task::Command::Load),
             Command::Delivery(groove_controllers::delivery::Command::ReviewQueue),
             Command::Agent(groove_controllers::agent::Command::ListSkills),
+            Command::Config(groove_controllers::config::Command::CheckEnvironment),
         ] {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
@@ -89,6 +90,7 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Continue(continuation) => {
                 continuation(&mut self.state, &self.services, &self.spawner);
+                self.ui.settled(&self.state);
                 let aim = groove_ui::input::aim(&self.ui, &self.state);
                 if let Some(input) = landed(&mut self.state, &mut self.unpasted, aim) {
                     self.input(input);

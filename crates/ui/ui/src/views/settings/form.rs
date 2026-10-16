@@ -180,7 +180,9 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             deletes,
             asking,
         } => skill(ctx, room, (id, *on, said), (*deletes, *asking)),
-        Value::Routine { .. } | Value::Switch { .. } => routine(ctx, room, value),
+        Value::Routine { .. } | Value::Switch { .. } | Value::Source { .. } => {
+            routine(ctx, room, value)
+        }
     }
 }
 

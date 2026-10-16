@@ -382,9 +382,14 @@ selected section's form on the right: labels left, controls right, one row per s
 hairlines between groups, paths and ids in mono. Clusters alone is a table, since each
 context holds several settings.
 
+**Setup opens on its own once.** At start Groove checks the environment; when a required
+program is missing, claude is signed out or no config file stands, Settings opens on Setup,
+once a launch, unless the user acted first. A section that still needs something shows its
+count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_something_left`.
+
 | Section | Rows |
 |---|---|
-| Setup | environment check — git, gh, glab, claude, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
+| Setup | environment check — git, gh, glab, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |

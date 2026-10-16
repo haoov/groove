@@ -9,6 +9,7 @@ mod preferences;
 mod providers;
 mod routines;
 mod setup;
+pub use setup::{left as setup_left, no_source};
 mod shared;
 mod skills;
 mod switch;
@@ -117,6 +118,13 @@ pub enum Value {
     Switch {
         on: bool,
         target: Target,
+    },
+    /// A task source's toggle, what it says beside, and the action that answers it.
+    Source {
+        on: bool,
+        target: Target,
+        said: Option<(String, Role)>,
+        act: Option<(&'static str, Target)>,
     },
 }
 
