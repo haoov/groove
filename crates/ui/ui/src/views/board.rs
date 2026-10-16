@@ -11,7 +11,6 @@ pub mod review;
 mod row;
 mod state;
 
-pub use row::card;
 pub use state::BoardUi;
 
 use groove_controllers::AppState;
@@ -57,22 +56,45 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     header::offers(ctx, field, app, ui);
 }
 
-/// What a click on each row of Live or Up next aims at, top to bottom.
-pub fn targets(app: &AppState, ui: &Ui, list: List) -> Vec<crate::hit::Target> {
+/// What a click on each row of a column aims at, where the row starts, and how tall it stands.
+pub fn spans(
+    app: &AppState,
+    ui: &Ui,
+    list: List,
+    tokens: &groove_ui_kit::base::tokens::Tokens,
+) -> Vec<(crate::hit::Target, f32, f32)> {
     use crate::hit::Target;
+    let card = row::card(tokens);
+    let even = |targets: Vec<Target>| -> Vec<(Target, f32, f32)> {
+        let at = |(n, one): (usize, Target)| (one, n as f32 * card, card);
+        targets.into_iter().enumerate().map(at).collect()
+    };
     match list {
-        List::Live => live::living(app, ui)
-            .into_iter()
-            .map(|one| Target::Session(one.session.id.clone()))
-            .collect(),
-        List::Next => plan::lines(app, ui)
-            .into_iter()
-            .filter_map(|line| match line {
-                row::Line::Task(task) => Some(Target::Task(task.short_id.clone())),
-                _ => None,
-            })
-            .collect(),
-        List::Review => Vec::new(),
+        List::Live => even(
+            live::living(app, ui)
+                .into_iter()
+                .map(|one| Target::Session(one.session.id.clone()))
+                .collect(),
+        ),
+        List::Review => even(
+            review::sorted(app, ui)
+                .into_iter()
+                .map(|mr| Target::Review(mr.project.clone(), mr.iid))
+                .collect(),
+        ),
+        List::Next => {
+            let lines = plan::lines(app, ui);
+            let heights = row::heights(tokens, app, &lines);
+            let mut top = 0.0;
+            let mut out = Vec::new();
+            for (line, tall) in lines.iter().zip(heights) {
+                if let row::Line::Task(task) = line {
+                    out.push((Target::Task(task.short_id.clone()), top, tall));
+                }
+                top += tall;
+            }
+            out
+        }
     }
 }
 

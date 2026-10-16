@@ -253,7 +253,7 @@ fn down_selects_the_first_review_and_enter_opens_it() {
     let app = waiting();
     let (mut ui, _) = on_board(&app);
     key(Key::Down, &mut ui, &app);
-    assert_eq!(ui.board.chosen, Some(("acme/groove".into(), 7)));
+    assert_eq!(ui.hover, Some(Target::Review("acme/groove".into(), 7)));
     let asked = key(Key::Enter, &mut ui, &app);
     assert_eq!(
         asked,
@@ -276,7 +276,7 @@ fn the_selection_stays_on_its_mr_when_the_order_changes() {
         .reviews
         .clicked(crate::views::board::review::By::Title);
     key(Key::Up, &mut ui, &app);
-    assert_eq!(ui.board.chosen, Some(("acme/other".into(), 12)));
+    assert_eq!(ui.hover, Some(Target::Review("acme/other".into(), 12)));
 }
 
 #[test]
@@ -285,7 +285,7 @@ fn escape_lets_the_selection_go() {
     let (mut ui, _) = on_board(&app);
     key(Key::Down, &mut ui, &app);
     key(Key::Escape, &mut ui, &app);
-    assert_eq!(ui.board.chosen, None);
+    assert_eq!(ui.hover, None);
 }
 
 #[test]
@@ -303,8 +303,10 @@ fn the_selection_scrolls_into_view_past_the_bottom() {
     for _ in 0..150 {
         key(Key::Down, &mut ui, &app);
     }
-    let chosen = ui.board.chosen.clone().expect("a selection");
-    let title = format!("mr {}", chosen.1);
+    let Some(Target::Review(_, iid)) = ui.hover.clone() else {
+        panic!("a row is stood on");
+    };
+    let title = format!("mr {iid}");
     assert!(ui.board.review > 0.0, "the column scrolled");
     assert!(order(&app, &ui).contains(&title), "{title} is on screen");
 }
