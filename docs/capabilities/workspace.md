@@ -117,6 +117,18 @@ root and is refused when it escapes.
 - **An undo takes back a typing run**, not a character. A motion or a newline ends the
   run.
 
+**A language server runs per worktree and server, from the file that first needs it.**
+Opening a file of its language starts it in the worktree root; a save, an edit or a close
+never does. The config names the servers, or the defaults run: `ty` for Python, started
+without `VIRTUAL_ENV`, and `yaml-language-server` for YAML. A server that fails to start
+is said once and stays down; one that stops while up takes its diagnostics with it.
+Closing the worktree kills its servers. `a_python_file_opened_shows_what_its_server_finds`
+holds this end to end.
+
+- **The editor tells, the server never blocks it.** An open, an edit, a save and a close
+  queue on the server's writer; a keystroke sends the whole text for now.
+- **Columns are characters on Groove's side**, whatever unit the server counts in.
+
 **Search** walks the worktree in parallel, reports in batches, caps what it returns, and
 stops when the next search starts. The path search covers the whole worktree, not only
 the diff.

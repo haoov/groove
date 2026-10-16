@@ -16,7 +16,7 @@ mod tests;
 use std::borrow::Cow;
 use std::ops::Range;
 
-use crate::language::Language;
+pub use crate::language::Language;
 use groove_types::{Caret, Highlight, Indent};
 use ropey::Rope;
 

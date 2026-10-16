@@ -126,7 +126,11 @@ impl Client {
         lock(&self.said).iter().cloned().collect()
     }
 
-    pub async fn open(&self, path: &Path, language: &str, text: String) -> Result<()> {
+    /// Opens a document, or sends its new text when it is open already. Queues; never blocks.
+    pub fn open(&self, path: &Path, language: &str, text: String) -> Result<()> {
+        if lock(&self.documents).is_open(path) {
+            return self.change(path, text);
+        }
         let document =
             json!({ "uri": uri::of(path), "languageId": language, "version": 1, "text": text });
         lock(&self.documents).open(path, text);
@@ -134,10 +138,10 @@ impl Client {
             .notify("textDocument/didOpen", json!({ "textDocument": document }))
     }
 
-    /// Sends the whole new text of an open document.
-    pub async fn change(&self, path: &Path, text: String) -> Result<()> {
+    /// Sends the whole new text of an open document; one not open is left alone. Queues; never blocks.
+    pub fn change(&self, path: &Path, text: String) -> Result<()> {
         let Some(version) = lock(&self.documents).change(path, text.clone()) else {
-            return Err(Error::invalid(format!("{} is not open", path.display())));
+            return Ok(());
         };
         let document = json!({ "uri": uri::of(path), "version": version });
         let changes = json!([{ "text": text }]);
@@ -145,12 +149,15 @@ impl Client {
         self.link.notify("textDocument/didChange", params)
     }
 
-    pub async fn save(&self, path: &Path) -> Result<()> {
+    pub fn save(&self, path: &Path) -> Result<()> {
+        if !lock(&self.documents).is_open(path) {
+            return Ok(());
+        }
         let params = json!({ "textDocument": { "uri": uri::of(path) } });
         self.link.notify("textDocument/didSave", params)
     }
 
-    pub async fn close(&self, path: &Path) -> Result<()> {
+    pub fn close(&self, path: &Path) -> Result<()> {
         if !lock(&self.documents).close(path) {
             return Ok(());
         }

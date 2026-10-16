@@ -9,6 +9,7 @@ mod git;
 mod paths;
 mod revision;
 mod search;
+mod servers;
 mod switching;
 mod unshown;
 

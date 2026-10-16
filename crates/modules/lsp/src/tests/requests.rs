@@ -12,7 +12,6 @@ async fn opened(settings: Value) -> (Client, Fake) {
     let (client, mut fake, _heard) = connected(Some("utf-32"), settings).await;
     client
         .open(Path::new(PATH), "python", "x = 1\n".into())
-        .await
         .unwrap();
     fake.expect("textDocument/didOpen").await;
     (client, fake)

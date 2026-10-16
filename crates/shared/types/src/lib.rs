@@ -62,8 +62,9 @@ pub use cluster::{
 };
 pub use config::{
     ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,
-    GitConfig, GithubConfig, GithubView, Hue, NotionConfig, NotionView, Preferences, PriorityMap,
-    PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap, ThemeName, UiConfig,
+    GitConfig, GithubConfig, GithubView, Hue, LanguageServer, NotionConfig, NotionView,
+    Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap,
+    ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use described::{

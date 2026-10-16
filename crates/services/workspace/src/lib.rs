@@ -8,7 +8,7 @@ pub use groove_diff::{
 };
 pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};
-pub use groove_text::{Buffer, Colours};
+pub use groove_text::{Buffer, Colours, Language};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
@@ -24,6 +24,7 @@ mod paths;
 mod read;
 mod revision;
 mod rows;
+mod servers;
 
 #[cfg(test)]
 mod tests;
@@ -40,6 +41,9 @@ pub use read::{
 };
 pub use revision::{Revision, Step};
 pub use rows::Way;
+pub use servers::{
+    Client, Hooks, Launch, ServerKey, Servers, Tell, Telling, launch, serving, start,
+};
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -92,6 +96,8 @@ pub struct State {
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     pub blames: Blames,
     watch: Option<Watch>,
+    /// Each worktree's language servers, and what they said of its files.
+    pub servers: Servers,
     /// The end of each worktree's last file operation, which the next one waits for.
     filings: BTreeMap<WorktreeId, tokio::sync::oneshot::Receiver<()>>,
 }
