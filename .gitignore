@@ -14,3 +14,7 @@ target/
 *.njsproj
 *.sln
 *.sw?
+
+# local stuff
+*.local*
+PLAN*.md
