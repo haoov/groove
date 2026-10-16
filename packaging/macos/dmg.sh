@@ -13,6 +13,9 @@ dmg=$out/groove_${version}_universal.dmg
 rm -rf "$out"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 
+# The floor Info.plist's LSMinimumSystemVersion promises.
+export MACOSX_DEPLOYMENT_TARGET=26.0
+
 targets=(aarch64-apple-darwin x86_64-apple-darwin)
 rustup target add "${targets[@]}"
 for target in "${targets[@]}"; do
