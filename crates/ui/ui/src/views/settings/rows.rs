@@ -9,6 +9,7 @@ mod preferences;
 mod providers;
 mod routines;
 mod setup;
+pub use setup::{gaps as source_gaps, left as setup_left, no_source};
 mod shared;
 mod skills;
 mod switch;
@@ -117,6 +118,20 @@ pub enum Value {
     Switch {
         on: bool,
         target: Target,
+    },
+    /// What a source holds for one of Groove's slots, as its picker, and the gap's cost beside.
+    Mapped {
+        shown: String,
+        role: Role,
+        target: Target,
+        note: Option<(String, Role)>,
+    },
+    /// A task source's toggle, what it says beside, and the action that answers it.
+    Source {
+        on: bool,
+        target: Target,
+        said: Option<(String, Role)>,
+        act: Option<(&'static str, Target)>,
     },
 }
 

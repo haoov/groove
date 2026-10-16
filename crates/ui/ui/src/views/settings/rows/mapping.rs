@@ -112,34 +112,73 @@ pub fn choices(app: &AppState, source: ProviderId, slot: Slot) -> Choices {
     }
 }
 
-pub(super) fn mapping(held: &Held) -> Vec<Row> {
-    let mut slots: Vec<(Slot, &'static str)> = Vec::new();
-    for which in held.names() {
-        slots.push((Slot::Name(*which), which.label()));
-        let values: &[(Slot, &str)] = match (which, held.held(Slot::Name(*which))) {
-            (Mapped::Status, Some(_)) => &STATUSES.map(|(one, label)| (Slot::Status(one), label)),
-            (Mapped::Priority, Some(_)) => {
-                &Priority::ALL.map(|one| (Slot::Priority(one), one.label()))
-            }
-            (Mapped::Estimate, Some(_)) => &[(Slot::Unit, "counted in")],
-            _ => &[],
-        };
-        slots.extend(values.iter().copied());
-    }
-    let row = |(slot, label)| slotted(held, slot, label);
-    slots.into_iter().map(row).collect()
+/// The mapping in three blocks: the names Groove reads, then the status and the priority values.
+pub(super) struct Blocks {
+    pub fields: Vec<Row>,
+    pub statuses: Vec<Row>,
+    pub priorities: Vec<Row>,
 }
 
-/// A slot's value, or what its gap costs, as the button that opens its menu.
+pub(super) fn mapping(held: &Held) -> Blocks {
+    let row = |(slot, label)| slotted(held, slot, label);
+    let mut fields = Vec::new();
+    for which in held.names() {
+        fields.push(row((Slot::Name(*which), which.label())));
+        if *which == Mapped::Estimate && held.held(Slot::Name(*which)).is_some() {
+            fields.push(row((Slot::Unit, "estimate unit")));
+        }
+    }
+    let mapped =
+        |which: Mapped| held.names().contains(&which) && held.held(Slot::Name(which)).is_some();
+    let statuses = match mapped(Mapped::Status) {
+        true => STATUSES
+            .iter()
+            .map(|(one, label)| row((Slot::Status(*one), label)))
+            .collect(),
+        false => Vec::new(),
+    };
+    let priorities = match mapped(Mapped::Priority) {
+        true => Priority::ALL
+            .iter()
+            .map(|one| row((Slot::Priority(*one), one.label())))
+            .collect(),
+        false => Vec::new(),
+    };
+    Blocks {
+        fields,
+        statuses,
+        priorities,
+    }
+}
+
+/// How many of the source's slots are still gaps.
+pub(super) fn gaps(held: &Held) -> usize {
+    let blocks = mapping(held);
+    let all = blocks
+        .fields
+        .iter()
+        .chain(&blocks.statuses)
+        .chain(&blocks.priorities);
+    let gap = |one: &&Row| matches!(&one.value, Value::Mapped { role, .. } if *role != Role::Text);
+    all.filter(gap).count()
+}
+
+/// A slot's value as the button that opens its menu, and what its gap costs beside it.
 fn slotted(held: &Held, slot: Slot, label: &'static str) -> Row {
     let now = held.held(slot);
-    let (shown, role) = match (now, slot) {
-        (Some(name), _) => (name.to_string(), Role::Text),
-        (None, Slot::Name(which @ (Mapped::Assignee | Mapped::Sprint))) => {
-            (format!("gap · {}", which.cost()), Role::Bad)
-        }
-        (None, Slot::Name(which)) => (format!("gap · {}", which.cost()), Role::Warn),
-        (None, _) => ("gap".to_string(), Role::Warn),
+    let (shown, role, note) = match (now, slot) {
+        (Some(name), _) => (name.to_string(), Role::Text, None),
+        (None, Slot::Name(which @ (Mapped::Assignee | Mapped::Sprint))) => (
+            "pick".to_string(),
+            Role::Bad,
+            Some((which.cost().to_string(), Role::Bad)),
+        ),
+        (None, Slot::Name(which)) => (
+            "pick".to_string(),
+            Role::Warn,
+            Some((which.cost().to_string(), Role::Warn)),
+        ),
+        (None, _) => ("pick".to_string(), Role::Warn, None),
     };
     let words = match slot {
         Slot::Name(_) => "property field name",
@@ -147,11 +186,11 @@ fn slotted(held: &Held, slot: Slot, label: &'static str) -> Row {
         Slot::Priority(_) => "priority value",
         Slot::Unit => "estimate unit hours days",
     };
-    let value = Value::Picker {
+    let value = Value::Mapped {
         shown,
         role,
         target: Target::SettingsPick(held.id(), slot),
-        act: None,
+        note,
     };
     Row::new(Section::Providers, label, words, value)
 }

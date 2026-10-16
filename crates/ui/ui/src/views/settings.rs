@@ -25,6 +25,8 @@ use groove_ui_kit::widgets::{Side, pane};
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SettingsUi {
     pub open: bool,
+    /// Setup was offered at start, or the user acted before it could be.
+    pub offered: bool,
     pub section: Section,
     pub search: Field,
     /// The keyboard is in the search.
@@ -49,12 +51,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         [Spec::default().width(ctx.tokens.sidebar), Spec::fill()],
     );
     pane(ctx, list, Ground::Band, Side::Right);
-    sections(ctx, list, &ui.settings);
+    sections(ctx, list, app, &ui.settings);
     form::draw(ctx, window, app, &ui.settings);
 }
 
 /// The search at the top of the list, then a row per section, the one up raised.
-fn sections(ctx: &mut Ctx, list: Rect, settings: &SettingsUi) {
+fn sections(ctx: &mut Ctx, list: Rect, app: &AppState, settings: &SettingsUi) {
     let [search, list] = column_in(
         list,
         [Spec::default().height(ctx.tokens.header), Spec::fill()],
@@ -62,6 +64,7 @@ fn sections(ctx: &mut Ctx, list: Rect, settings: &SettingsUi) {
     searched(ctx, search, settings);
     let up = Section::ALL.iter().position(|one| *one == settings.section);
     let up = up.filter(|_| settings.search.is_empty());
+    let counts: Vec<String> = Section::ALL.iter().map(|one| needs(app, *one)).collect();
     let rows: Vec<Row<'_, Target>> = Section::ALL
         .iter()
         .enumerate()
@@ -72,11 +75,28 @@ fn sections(ctx: &mut Ctx, list: Rect, settings: &SettingsUi) {
                 Role::Muted
             };
             let style = ctx.styles.label(role);
-            Row::new(ctx.tokens.md, section.label(), style)
-                .target(Target::SettingsSection(*section))
+            let row = Row::new(ctx.tokens.md, section.label(), style);
+            let row = match counts.get(at).filter(|one| !one.is_empty()) {
+                Some(count) => row.end(count, ctx.styles.small(Role::Attention)),
+                None => row,
+            };
+            row.target(Target::SettingsSection(*section))
         })
         .collect();
     groove_ui_kit::widgets::list(ctx, list, &rows, up);
+}
+
+/// How many things a section still needs, as its row shows it; empty for none.
+fn needs(app: &AppState, section: Section) -> String {
+    let count = match section {
+        Section::Setup => rows::setup_left(app),
+        Section::Providers => usize::from(rows::no_source(app)) + rows::source_gaps(app),
+        _ => 0,
+    };
+    match count {
+        0 => String::new(),
+        n => n.to_string(),
+    }
 }
 
 fn searched(ctx: &mut Ctx, line: Rect, settings: &SettingsUi) {

@@ -6,7 +6,7 @@ use groove_ui_kit::base::style::Role;
 
 use super::super::SettingsUi;
 use super::super::draft::Drafted;
-use super::{Row, Section};
+use super::{Row, Section, Value};
 
 const P: Section = Section::Providers;
 use crate::hit::Target;
@@ -15,46 +15,56 @@ pub(super) fn switch(
     app: &AppState,
     settings: &SettingsUi,
     source: ProviderId,
-    on: bool,
+    gaps: Option<usize>,
 ) -> Vec<Row> {
-    if on {
-        return vec![turned_on(settings, source)];
+    if let Some(gaps) = gaps {
+        return vec![turned_on(settings, source, gaps)];
     }
     let drafted = Drafted::Source(source);
     let Some(draft) = settings.draft.as_ref().filter(|one| one.source == drafted) else {
-        let act = Some(("turn on", Target::SettingsTurnOn(source)));
-        return vec![Row::state(
-            P,
-            ("source", "on off"),
-            ("off".into(), Role::Muted),
-            act,
-        )];
+        return vec![toggled(false, Target::SettingsTurnOn(source), None, None)];
     };
-    let cancel = Some(("cancel", Target::SettingsDraftCancel));
-    let mut out = vec![Row::state(
-        P,
-        ("source", "on off"),
-        ("turning on".into(), Role::Working),
-        cancel,
-    )];
+    let said = Some(("turning on".to_string(), Role::Working));
+    let mut out = vec![toggled(true, Target::SettingsDraftCancel, said, None)];
     out.extend(super::drafting::fields(draft, Section::Providers));
     out.push(sent(app));
     out
 }
 
 /// On, and asking to be turned off: the second click confirms.
-fn turned_on(settings: &SettingsUi, source: ProviderId) -> Row {
+fn turned_on(settings: &SettingsUi, source: ProviderId, gaps: usize) -> Row {
+    let off = Target::SettingsTurnOff(source);
     match settings.leaving == Some(source) {
         true => {
+            let said = Some(("its token and names go".to_string(), Role::Warn));
             let act = Some(("yes, turn off", Target::SettingsTurnOffSure(source)));
-            let shown = "turn off? its token and names go".to_string();
-            Row::state(P, ("source", "on off"), (shown, Role::Warn), act)
+            toggled(true, off, said, act)
         }
         false => {
-            let act = Some(("turn off", Target::SettingsTurnOff(source)));
-            Row::state(P, ("source", "on off"), ("on".into(), Role::Ok), act)
+            let said = match gaps {
+                0 => ("connected".to_string(), Role::Ok),
+                1 => ("1 gap".to_string(), Role::Warn),
+                n => (format!("{n} gaps"), Role::Warn),
+            };
+            toggled(true, off, Some(said), None)
         }
     }
+}
+
+/// The source's row: its toggle, what it says beside it, and the action that answers.
+fn toggled(
+    on: bool,
+    target: Target,
+    said: Option<(String, Role)>,
+    act: Option<(&'static str, Target)>,
+) -> Row {
+    let value = Value::Source {
+        on,
+        target,
+        said,
+        act,
+    };
+    Row::new(P, "source", "on off", value)
 }
 
 /// What sends the fields, and what the last send came back with.

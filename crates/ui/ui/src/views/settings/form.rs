@@ -138,13 +138,7 @@ fn setting(ctx: &mut Ctx, line: Rect, one: &Row, (searching, ruled): (bool, bool
 fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
     let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
     match value {
-        Value::Text { text, mono } => {
-            let style = match mono {
-                true => ctx.styles.code(Role::Text),
-                false => ctx.styles.body(Role::Text),
-            };
-            Label::new(text, style).draw(ctx, room);
-        }
+        Value::Text { text, mono } => written(ctx, room, text, *mono),
         Value::Toggle { on, flip } => {
             let toggle = groove_ui_kit::widgets::Toggle::new(*on, Target::SetPreference(*flip));
             toggle.left(ctx, &mut room, sm);
@@ -180,7 +174,40 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             deletes,
             asking,
         } => skill(ctx, room, (id, *on, said), (*deletes, *asking)),
-        Value::Routine { .. } | Value::Switch { .. } => routine(ctx, room, value),
+        Value::Mapped { .. } => noted(ctx, room, value),
+        Value::Routine { .. } | Value::Switch { .. } | Value::Source { .. } => {
+            routine(ctx, room, value)
+        }
+    }
+}
+
+/// A read-only value; a path or an id in mono.
+fn written(ctx: &mut Ctx, room: Rect, text: &str, mono: bool) {
+    let style = match mono {
+        true => ctx.styles.code(Role::Text),
+        false => ctx.styles.body(Role::Text),
+    };
+    Label::new(text, style).draw(ctx, room);
+}
+
+/// A source's slot: its picker, then the gap's cost in its own column.
+fn noted(ctx: &mut Ctx, room: Rect, value: &Value) {
+    let Value::Mapped {
+        shown,
+        role,
+        target,
+        note,
+    } = value
+    else {
+        return;
+    };
+    let [pick, rest] = row_in(
+        room,
+        [Spec::default().width(ctx.tokens.aside_mid), Spec::fill()],
+    );
+    picked(ctx, pick, (shown, *role, target), None);
+    if let Some((note, role)) = note {
+        Label::new(note, ctx.styles.small(*role)).draw(ctx, rest);
     }
 }
 

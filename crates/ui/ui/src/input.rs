@@ -117,6 +117,12 @@ pub fn handle(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
+    if matches!(
+        input,
+        Input::Key { .. } | Input::Press { .. } | Input::Menu { .. } | Input::Paste(_)
+    ) {
+        ui.settings.offered = true;
+    }
     match input {
         Input::Key { key, mods } => keys::key_input(key, mods, ui, app, (hits, metrics)),
         Input::Press { x, y, mods } => pointer::press(x, y, mods, ui, app, hits, metrics),

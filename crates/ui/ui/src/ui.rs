@@ -188,6 +188,20 @@ impl Ui {
         ]
     }
 
+    /// Setup opened once, when the first check finds something left and nothing was done yet.
+    pub fn settled(&mut self, app: &AppState) {
+        let checked = app.config.tools.is_some() && !app.config.checking;
+        if self.settings.offered || !checked {
+            return;
+        }
+        self.settings.offered = true;
+        if views::settings::rows::setup_left(app) > 0 {
+            self.settings.open = true;
+            self.settings.section = views::settings::Section::Setup;
+            self.overlay = None;
+        }
+    }
+
     /// Back to the window; a sign-in still running ends with it.
     pub(crate) fn close_settings(&mut self) -> Vec<Command> {
         let settings = &mut self.settings;

@@ -1,4 +1,4 @@
-//! The Setup section's rows: the three paths, then what the environment check found.
+//! The Setup section's rows: what the environment check found, the sign-in, the paths, what's next.
 
 use std::path::Path;
 
@@ -10,9 +10,30 @@ use super::{Row, Section, Value, grouped};
 use crate::hit::Target;
 
 pub(super) fn setup(app: &AppState) -> Vec<Row> {
+    let signing_in = app.config.login.is_some() || app.config.signing_in;
+    let (login, tools): (Vec<&Tool>, Vec<&Tool>) = app
+        .config
+        .tools
+        .iter()
+        .flatten()
+        .partition(|one| one.name == "claude");
+    let checks =
+        std::iter::once(checked(app)).chain(tools.into_iter().map(|one| tool(one, signing_in)));
+    let mut out = grouped("Environment", checks.collect());
+    let login = login.into_iter().map(|one| tool(one, signing_in));
+    out.extend(grouped("Claude login", login.collect()));
+    out.extend(grouped("Files", paths(app)));
+    if no_source(app) {
+        out.extend(grouped("Next", vec![providers()]));
+    }
+    out
+}
+
+/// The config file, the database, and the root the worktrees stand under.
+fn paths(app: &AppState) -> Vec<Row> {
     let env = &app.env;
     let root = app.config.worktree_root(&env.home);
-    let paths = vec![
+    vec![
         Row::text(
             Section::Setup,
             "config",
@@ -31,13 +52,55 @@ pub(super) fn setup(app: &AppState) -> Vec<Row> {
             "path pool clones git",
             shown(&root, &env.home),
         ),
-    ];
+    ]
+}
+
+/// The way to Providers while no task source is set up.
+fn providers() -> Row {
+    let next = Value::State {
+        shown: "no task source · Notion or GitHub".into(),
+        role: Role::Attention,
+        act: Some(("open", Target::SettingsSection(Section::Providers))),
+    };
+    Row::new(
+        Section::Setup,
+        "providers",
+        "task source notion github",
+        next,
+    )
+}
+
+/// What Setup still needs: a required program missing, claude signed out, no config file.
+pub fn left(app: &AppState) -> usize {
     let tools = app.config.tools.iter().flatten();
-    let signing_in = app.config.login.is_some() || app.config.signing_in;
-    let checks = std::iter::once(checked(app)).chain(tools.map(|one| tool(one, signing_in)));
-    let mut out = grouped("Paths", paths);
-    out.extend(grouped("Environment", checks.collect()));
-    out
+    let short = tools
+        .filter(|one| match &one.found {
+            None => one.required,
+            Some(found) => found.signed_in == Some(false) && one.name == "claude",
+        })
+        .count();
+    short + usize::from(app.config.config.is_none())
+}
+
+/// The gaps of every source set up.
+pub fn gaps(app: &AppState) -> usize {
+    let config = app.config.config.as_ref();
+    let notion = config
+        .and_then(|c| c.notion.as_ref())
+        .map(super::mapping::Held::Notion);
+    let github = config
+        .and_then(|c| c.github.as_ref())
+        .map(super::mapping::Held::Github);
+    notion
+        .into_iter()
+        .chain(github)
+        .map(|one| super::mapping::gaps(&one))
+        .sum()
+}
+
+/// No task source is set up yet.
+pub fn no_source(app: &AppState) -> bool {
+    groove_controllers::task_service::source_ids(app.config.config.as_ref()).is_empty()
 }
 
 /// The check as a whole: running, every program ready, or how many are not.
