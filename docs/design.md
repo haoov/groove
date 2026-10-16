@@ -40,6 +40,10 @@ the rail only as its attention count.
   its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files or objects,
   `ctrl+w` closes the one shown.
   Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs`.
+- **The board walks too.** `alt+1` is the rail, `alt+2` to `alt+4` the Live, Up next and
+  Review columns. The arrows walk the column; Enter, or a click, opens the session and goes
+  to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
+  Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
 ## Limits
 

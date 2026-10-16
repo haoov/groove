@@ -57,6 +57,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     header::offers(ctx, field, app, ui);
 }
 
+/// What a click on each row of Live or Up next aims at, top to bottom.
+pub fn targets(app: &AppState, ui: &Ui, list: List) -> Vec<crate::hit::Target> {
+    use crate::hit::Target;
+    match list {
+        List::Live => live::living(app, ui)
+            .into_iter()
+            .map(|one| Target::Session(one.session.id.clone()))
+            .collect(),
+        List::Next => plan::lines(app, ui)
+            .into_iter()
+            .filter_map(|line| match line {
+                row::Line::Task(task) => Some(Target::Task(task.short_id.clone())),
+                _ => None,
+            })
+            .collect(),
+        List::Review => Vec::new(),
+    }
+}
+
 /// The room one list's column takes under the header.
 pub fn column_of(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, list: List) -> Rect {
     let body = columns(tokens, area);

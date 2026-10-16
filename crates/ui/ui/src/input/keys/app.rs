@@ -29,6 +29,11 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::FocusLeft | Action::FocusRight => {
             ui.focus = ui.focus.beside(action == Action::FocusRight);
         }
+        Action::FocusRail | Action::FocusAgent | Action::FocusWorkspace | Action::FocusSidebar
+            if ui.showing(app) == Surface::Board =>
+        {
+            on_board(action, ui);
+        }
         Action::FocusRail => ui.focus = Focus::Rail,
         Action::FocusAgent => ui.focus = Focus::Agent,
         Action::FocusWorkspace => ui.focus = Focus::Workspace,
@@ -52,6 +57,22 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         _ => {}
     }
     Vec::new()
+}
+
+/// On the board, `alt+1` is the rail and the next three are its columns.
+fn on_board(action: Action, ui: &mut Ui) {
+    use crate::views::board::List;
+    let list = match action {
+        Action::FocusAgent => Some(List::Live),
+        Action::FocusWorkspace => Some(List::Next),
+        Action::FocusSidebar => Some(List::Review),
+        _ => None,
+    };
+    ui.board.list = list;
+    ui.focus = match list {
+        Some(_) => Focus::Workspace,
+        None => Focus::Rail,
+    };
 }
 
 /// The palette, or closed when it stands open.

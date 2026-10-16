@@ -22,9 +22,8 @@ pub(super) use surface::middle;
 use groove_controllers::{AppState, Command, delivery, task, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
-pub(super) use self::board::dropped;
-pub(super) use self::board::reads as board_reads;
-use self::board::{carried, opened_session, review, takes};
+use self::board::{carried, opened_session, takes};
+pub(super) use self::board::{dropped, opened_from_board, reads as board_reads};
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
 use self::header::{finishing, task_menu};
@@ -57,6 +56,7 @@ pub(super) fn press(
         Some(Target::Place(id)) => takes(ui, id),
         Some(Target::ResourceEdge(label)) => resources::held(ui, app, hits, (label, x)),
         Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
+        Some(target) if mods.ctrl && board::opens(&target) => opened_from_board(target, ui, false),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
@@ -171,7 +171,7 @@ fn acted(
         Some(Target::Blamed(sha)) => blamed(ui, sha),
         Some(Target::Working) => one(workspace::Command::LeaveCommit),
         Some(target @ (Target::Dir(_) | Target::Group(_))) => twisty(ui, target),
-        Some(Target::Review(project, iid)) => review(project, iid),
+        Some(target @ Target::Review(..)) => opened_from_board(target, ui, true),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         one => staging(one, ui, app),
     }
