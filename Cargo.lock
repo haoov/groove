@@ -1608,6 +1608,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-lsp"
+version = "1.0.0-beta.1"
+dependencies = [
+ "groove-exec",
+ "groove-types",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "groove-mcp"
 version = "1.0.0-beta.1"
 dependencies = [
