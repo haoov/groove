@@ -39,11 +39,15 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
 
 /// Each file once, over its matches unless it is shut.
 pub(super) fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
+    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for one in found {
+        *counts.entry(one.path.as_str()).or_default() += 1;
+    }
     let mut items = Vec::new();
     let mut over: Option<&str> = None;
     for (at, one) in found.iter().enumerate() {
         if over != Some(one.path.as_str()) {
-            let count = found.iter().filter(|it| it.path == one.path).count();
+            let count = counts.get(one.path.as_str()).copied().unwrap_or_default();
             items.push(Item::File(&one.path, count));
             over = Some(one.path.as_str());
         }

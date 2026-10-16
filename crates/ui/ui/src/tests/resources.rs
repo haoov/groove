@@ -15,6 +15,7 @@ mod argo_links;
 mod argo_sync;
 mod copy;
 mod fixture;
+mod keys;
 mod kinds;
 mod list;
 mod load;

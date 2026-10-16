@@ -13,7 +13,7 @@ mod tab;
 
 pub use argo::{ArgoUi, Filter};
 pub use around::row_link;
-pub use list::draw;
+pub use list::{draw, uids as row_uids};
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
 pub use opened::{Link, Opens, Section};
 pub use scope::{

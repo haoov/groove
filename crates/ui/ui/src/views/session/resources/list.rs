@@ -24,6 +24,21 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 
+/// The rows' uids, in the order the list draws them.
+pub fn uids(app: &AppState, ui: &Ui) -> Vec<String> {
+    let Some(open) = app.session.selected() else {
+        return Vec::new();
+    };
+    let held = &ui.session.resources;
+    let keys = scope::keys(app, open, held);
+    let picked = (keys.as_slice(), held.search.text(), held.sort.as_ref());
+    let order = held
+        .kept
+        .of(app, picked, || order::ordered(app, &keys, held));
+    let rows = resolved(app, &keys, &order);
+    rows.into_iter().map(|(_, row)| row.uid.clone()).collect()
+}
+
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     let Some(open) = app.session.selected() else {
         return;

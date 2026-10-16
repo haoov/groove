@@ -133,3 +133,26 @@ fn while_the_path_is_typed_the_arrows_walk_its_matches() {
     );
     assert!(ui.session.bar.typing.is_none(), "Enter leaves the bar");
 }
+
+#[test]
+fn ctrl_tab_walks_the_open_files_and_ctrl_w_closes_the_active_one() {
+    let mut app = crate::tests::app();
+    crate::tests::shows(&mut app, "a.rs", "a\n", "a\nb\n");
+    crate::tests::shows(&mut app, "b.rs", "c\n", "c\nd\n");
+    let mut ui = Ui::default();
+    (ui.session.tab, ui.focus) = (Tab::Files, Focus::Workspace);
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..Modifiers::default()
+    };
+    let next = press(Key::Tab, ctrl, &mut ui, &app);
+    assert!(
+        next.iter().any(|one| one.id() == "workspace.open_file"),
+        "{next:?}"
+    );
+    let closed = press(Key::Char('w'), ctrl, &mut ui, &app);
+    assert!(
+        closed.iter().any(|one| one.id() == "workspace.close_file"),
+        "{closed:?}"
+    );
+}

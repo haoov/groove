@@ -74,6 +74,9 @@ pub(super) fn in_sidebar(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
+    if ui.session.tab == crate::views::session::Tab::Resources {
+        return super::resources::in_kinds_list((key, mods), ui, app, seen);
+    }
     if !(ui.session.composing && ui.session.commits()) {
         return super::listed::in_list(key, ui, app, seen);
     }

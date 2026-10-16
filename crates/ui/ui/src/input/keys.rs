@@ -8,6 +8,7 @@ mod filter;
 mod listed;
 mod naming;
 mod noting;
+mod opened;
 mod panes;
 mod resources;
 mod scope;
@@ -123,6 +124,14 @@ fn in_pane(
     }
     if ui.showing(app) == Surface::Board {
         return on_board(key, mods, ui, app, seen);
+    }
+    if ui.focus == Focus::Workspace {
+        if let Some(commands) = opened::chord((key, mods), ui, app, (keymap, seen)) {
+            return commands;
+        }
+        if let Some(commands) = resources::in_table((key, mods), ui, app, seen) {
+            return commands;
+        }
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),

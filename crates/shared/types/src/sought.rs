@@ -18,8 +18,12 @@ type Cell = Option<(i32, usize)>;
 
 /// The best placing of `query`'s characters in `hay`, in order, case aside; spaces skipped.
 pub fn sought(hay: &str, query: &str) -> Option<Sought> {
+    if !query.contains(char::is_whitespace) && !crate::fuzzy(hay, query) {
+        return None;
+    }
     let fold = |c: char| c.to_lowercase().next().unwrap_or(c);
     let hay: Vec<char> = hay.chars().collect();
+    let low: Vec<char> = hay.iter().map(|c| fold(*c)).collect();
     let want: Vec<char> = query
         .chars()
         .filter(|c| !c.is_whitespace())
@@ -31,21 +35,20 @@ pub fn sought(hay: &str, query: &str) -> Option<Sought> {
             at: Vec::new(),
         });
     }
+    let mut rest = low.iter();
+    if !want.iter().all(|wanted| rest.any(|one| one == wanted)) {
+        return None;
+    }
     let mut best: Vec<Vec<Cell>> = Vec::with_capacity(want.len());
     for (i, wanted) in want.iter().enumerate() {
-        let row = placed(&hay, *wanted, best.last().filter(|_| i > 0), fold);
+        let row = placed((&hay, &low), *wanted, best.last().filter(|_| i > 0));
         best.push(row);
     }
     traced(&best)
 }
 
 /// Every place one character of the query can stand, given where the one before could.
-fn placed(
-    hay: &[char],
-    wanted: char,
-    before: Option<&Vec<Cell>>,
-    fold: impl Fn(char) -> char,
-) -> Vec<Cell> {
+fn placed((hay, low): (&[char], &[char]), wanted: char, before: Option<&Vec<Cell>>) -> Vec<Cell> {
     let mut row = vec![None; hay.len()];
     let mut carried: Cell = None;
     for j in 0..hay.len() {
@@ -54,7 +57,7 @@ fn placed(
             let kept = carried.map(|(score, from)| (score - GAP, from));
             carried = better(kept, last);
         }
-        if fold(hay[j]) != wanted {
+        if low[j] != wanted {
             continue;
         }
         let bonus = HIT

@@ -35,6 +35,11 @@ the rail only as its attention count.
 - **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
   `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
   workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
+- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter starts
+  their search. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
+  its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files or objects,
+  `ctrl+w` closes the one shown.
+  Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs`.
 
 ## Limits
 

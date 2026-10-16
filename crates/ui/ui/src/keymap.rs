@@ -1,5 +1,6 @@
 //! Every action a chord runs, its default chords, and the ones the config binds instead.
 
+mod action;
 mod rebind;
 mod table;
 
