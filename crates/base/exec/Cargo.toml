@@ -1,6 +1,6 @@
 [package]
 name = "groove-exec"
-description = "Run a process to completion, or on a pseudo-terminal"
+description = "Run a process to completion, on a pseudo-terminal, or piped for as long as it lives"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
