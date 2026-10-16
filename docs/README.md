@@ -49,7 +49,7 @@ Five, and they do not move. Growth is answered inside them.
 | File | Read it for |
 |---|---|
 | [glossary.md](glossary.md) | the words every other doc uses, one line each |
-| [architecture.md](architecture.md) | the layers, their rules, state and threads, rendering, tests |
+| [architecture.md](architecture.md) | the layers, their rules, platforms, state and threads, rendering, tests |
 | [trace.md](trace.md) | one action, `workspace.push`, followed from the click to the feed |
 | [design.md](design.md) | the surfaces and the rules they follow |
 | [capabilities/](capabilities/) | one file per capability: its tool sets and the rules each follows |

@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use groove_types::{Error, SessionId};
 
@@ -266,7 +266,8 @@ pub fn apply(state: &mut State, event: Event) {
 }
 
 /// The login shell `program` in `cwd`, on a grid of `cols` by `rows`; `sh` when none is named.
-pub fn spec(program: &str, cwd: PathBuf, (cols, rows): (u16, u16)) -> PtySpec {
+/// `home` is the one it reads its profile from.
+pub fn spec(program: &str, (cwd, home): (PathBuf, &Path), (cols, rows): (u16, u16)) -> PtySpec {
     let program = match program.is_empty() {
         true => "/bin/sh".to_string(),
         false => program.to_string(),
@@ -275,7 +276,10 @@ pub fn spec(program: &str, cwd: PathBuf, (cols, rows): (u16, u16)) -> PtySpec {
         program,
         args: vec!["-l".to_string()],
         cwd,
-        env: vec![("TERM".to_string(), "xterm-256color".to_string())],
+        env: vec![
+            ("TERM".to_string(), "xterm-256color".to_string()),
+            ("HOME".to_string(), home.to_string_lossy().into_owned()),
+        ],
         rows,
         cols,
     }

@@ -92,6 +92,9 @@ only what the user rebound.
 **A chord matches the key without its modifier**, so it stays on its key whatever the
 layout, AltGr or Option make of it.
 
+**The chords are the same on macOS.** `ctrl` and `alt`, which is Option; Cmd is never a
+modifier of a chord.
+
 **The defaults keep clear of Claude Code's and readline's alt keys**: p, o, t, v, up and
 down; b, f, d, the digits and the arrows.
 

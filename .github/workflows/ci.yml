@@ -66,6 +66,20 @@ jobs:
           shared-key: debug
       - run: cargo test --workspace --locked
 
+  # The app ships on macOS too, and the watcher, the shells and the paths differ there.
+  macos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: macos
+      - run: cargo lint
+      - run: cargo test --workspace --locked
+
   deny:
     name: licenses and advisories
     runs-on: ubuntu-latest

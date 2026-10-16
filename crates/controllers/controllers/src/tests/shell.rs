@@ -54,12 +54,9 @@ fn a_terminal_opens_in_the_session_s_own_directory() {
     });
     let screen = state.shell.terminal(&session, id).unwrap().screen();
     let dir = home.path().join("code/worktrees").join(session.as_str());
-    let said: Vec<String> = (0..screen.rows).map(|at| screen.line(at)).collect();
-    assert!(
-        said.iter()
-            .any(|line| line.trim().ends_with(dir.to_string_lossy().as_ref())),
-        "{said:?}"
-    );
+    // A long path wraps, so the rows are read as one run of text.
+    let said: String = (0..screen.rows).map(|at| screen.line(at)).collect();
+    assert!(said.contains(dir.to_string_lossy().as_ref()), "{said:?}");
 }
 
 #[test]
@@ -85,7 +82,7 @@ fn a_word_selected_on_a_terminal_copies_to_the_clipboard() {
         let screen = s.shell.terminal(&session, id)?.screen();
         (0..screen.rows).find_map(|at| {
             let line = screen.line(at);
-            let output = line.trim_end().ends_with(" groovy");
+            let output = line.trim_end().ends_with("groovy") && !line.contains("printf");
             line.find("groovy").filter(|_| output).map(|col| (col, at))
         })
     };

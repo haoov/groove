@@ -46,11 +46,17 @@ pub fn state(home: &Path) -> AppState {
 
 /// A home of its own with the fake `claude`, the services on it, and the state.
 pub fn fresh() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
-    let home = tempfile::tempdir().unwrap();
+    let home = home();
     let spawner = SyncSpawner::new().unwrap();
     let services = services(&spawner, home.path());
     let state = state(home.path());
     (home, spawner, services, state)
+}
+
+/// A temp directory by its real path: macOS's `/var` is a link a child's `pwd` resolves.
+pub fn home() -> tempfile::TempDir {
+    let tmp = std::env::temp_dir().canonicalize().unwrap();
+    tempfile::tempdir_in(tmp).unwrap()
 }
 
 /// Every service on an in-memory database, the pool under `<home>/code`.
