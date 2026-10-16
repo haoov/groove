@@ -178,7 +178,7 @@ pub(super) fn row_at(hits: &Hits, metrics: Metrics, point: (f32, f32)) -> Option
 }
 
 /// The file a click in the rows points at, and where the caret lands in it.
-pub(super) fn at(
+pub(in crate::input) fn at(
     ui: &Ui,
     app: &AppState,
     hits: &Hits,
@@ -244,4 +244,42 @@ pub(super) fn closing(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command>
         return Vec::new();
     }
     vec![Command::Workspace(workspace::Command::CloseFile { path })]
+}
+
+/// The pointer moved while it holds text of the open file: the selection carried to it.
+pub(super) fn extended(
+    (x, y): (f32, f32),
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
+    let Some((path, caret)) = at(ui, app, hits, metrics, (x, y)) else {
+        return Vec::new();
+    };
+    let editing = crate::editor::Editing::keyed(app, ui);
+    match (holds(app, ui, &path), editing) {
+        (true, Some(editing)) => vec![editing.edit(Edit::Extend(Motion::To(caret)))],
+        _ => Vec::new(),
+    }
+}
+
+/// A ctrl+click on the open file's code: where the symbol under the pointer is defined.
+pub(super) fn defined(
+    ui: &Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+    point: (f32, f32),
+) -> Vec<Command> {
+    let Some((path, at)) = at(ui, app, hits, metrics, point) else {
+        return Vec::new();
+    };
+    if app.workspace.buffer(&path).is_none() {
+        return Vec::new();
+    }
+    vec![Command::Workspace(workspace::Command::Definition {
+        path,
+        at,
+    })]
 }

@@ -46,8 +46,10 @@ pub const ABOVE_MATCH: usize = 4;
 pub const CLICK_MS: u64 = 400;
 pub const CLICK_SLOP: f32 = 4.0;
 
-/// How long the caret rests on a line before its blame shows, in milliseconds.
+/// How long the caret rests before its blame shows, and the pointer before its popup, in ms.
 pub const REST_MS: u64 = 250;
+/// The most lines a popup holds.
+pub const POPUP_LINES: usize = 14;
 
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
@@ -132,6 +134,8 @@ pub struct Tokens {
     pub modal_top: f32,
     /// What the right button opens.
     pub menu: f32,
+    /// What the language servers say of a spot, under it.
+    pub popup: f32,
 }
 
 /// The type scale and the bands that hold it, against the size they follow.
@@ -189,6 +193,7 @@ const LOGICAL: Tokens = Tokens {
     palette: 720.0,
     modal_top: 96.0,
     menu: 150.0,
+    popup: 560.0,
 };
 
 impl Tokens {
@@ -241,6 +246,7 @@ impl Tokens {
             palette: s(LOGICAL.palette),
             modal_top: s(LOGICAL.modal_top),
             menu: s(LOGICAL.menu),
+            popup: s(LOGICAL.popup),
         }
     }
 }

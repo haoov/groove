@@ -46,6 +46,7 @@ pub(super) fn draw(
                 let reading = Reading {
                     open: open == Some(&file.path),
                     noted: super::noted(app, &file.path),
+                    tally: crate::views::session::diff::faults::tally(app, &file.path),
                 };
                 entry(ctx, line, file, *indent, reading, ui)
             }
@@ -99,6 +100,8 @@ fn path(ctx: &mut Ctx, line: Rect, text: &str, role: Role) {
 pub(super) struct Reading {
     pub open: bool,
     pub noted: bool,
+    /// The file's errors and warnings, as its servers last found them.
+    pub tally: Option<(u32, u32)>,
 }
 
 pub(super) fn entry(
@@ -129,6 +132,9 @@ pub(super) fn entry(
     match on_row {
         true => offer(ctx, &mut room, file),
         false => counts(ctx, &mut room, file),
+    }
+    if let Some(tally) = reading.tally {
+        groove_ui_kit::widgets::faults(ctx, &mut room, tally);
     }
     if reading.noted {
         room.take_right(sm);

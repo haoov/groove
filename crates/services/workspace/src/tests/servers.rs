@@ -52,7 +52,7 @@ fn only_an_open_starts_a_server() {
 }
 
 #[test]
-fn a_server_that_failed_to_start_stays_down_until_restarted() {
+fn a_server_that_failed_to_start_waits_for_the_next_open_to_try_again() {
     let mut servers = Servers::default();
     let one = key("/w");
     servers.tell(&one, opened("a.py"));
@@ -62,8 +62,15 @@ fn a_server_that_failed_to_start_stays_down_until_restarted() {
             .is_err()
     );
     assert!(servers.is_down(&one));
-    assert_eq!(servers.tell(&one, opened("b.py")), Telling::Down);
-    servers.restart(&one);
+    let typed = Tell::Changed {
+        path: "a.py".into(),
+        text: "y".into(),
+    };
+    assert_eq!(
+        servers.tell(&one, typed),
+        Telling::Down,
+        "a keystroke starts nothing"
+    );
     assert_eq!(servers.tell(&one, opened("b.py")), Telling::Start);
 }
 

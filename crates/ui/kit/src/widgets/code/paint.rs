@@ -78,6 +78,7 @@ fn over<A: App>(ctx: &mut Ctx<'_, A>, (rect, room): (Rect, Rect), code: &Code<'_
         marked(ctx, rect, code.text, at, true);
     }
     text(ctx, rect, code);
+    super::faults::faulted(ctx, rect, code);
     if let Some(column) = code.caret {
         caret(ctx, rect, code.text, column);
     }
@@ -121,6 +122,9 @@ fn blamed<A: App>(
 fn numbers<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>, gutter: Block) {
     let (sm, mut style) = (ctx.tokens.sm, ctx.styles.code(Role::Ghost));
     if let Some((_, color)) = code.gutter {
+        style.color = color;
+    }
+    if let Some(color) = super::faults::worst(ctx, code) {
         style.color = color;
     }
     if let Some((tile, opens)) = code.tile.as_ref() {
@@ -178,7 +182,12 @@ fn shade<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, at: (usize, usize
 }
 
 /// How wide the first `column` characters are; ASCII by the code font's advance, unshaped.
-fn upto<A: App>(ctx: &mut Ctx<'_, A>, text: &str, column: usize, style: &TextStyle) -> f32 {
+pub(super) fn upto<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    text: &str,
+    column: usize,
+    style: &TextStyle,
+) -> f32 {
     let before: String = text.chars().take(column).collect();
     match before.is_ascii() {
         true => before.len() as f32 * ctx.advance,
@@ -222,6 +231,9 @@ pub(super) fn head<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::
     room.take_right(ctx.tokens.md + size);
     if let Some(counts) = code.counts {
         crate::widgets::changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
+    }
+    if let Some(tally) = code.tally {
+        crate::widgets::faults(ctx, &mut room, tally);
     }
     let (folder, name) = match code.text.rsplit_once('/') {
         Some((folder, name)) => (folder, name),

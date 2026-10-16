@@ -47,6 +47,9 @@ fn marked(
     let Some(row) = rows.get(at - first) else {
         return;
     };
+    if let Some(column) = row.caret {
+        super::popup::anchor(ctx, line, column);
+    }
     if let RowKind::Gap(_) = row.kind {
         gap_marks(ctx, line, *at, numbers.0, numbers.1, numbers.2);
         return;

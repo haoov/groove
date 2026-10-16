@@ -52,7 +52,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 43] = [
+pub const TABLE: [Spec; 44] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -186,6 +186,12 @@ pub const TABLE: [Spec; 43] = [
         &["alt+shift+r"],
     ),
     spec(A::Save, ("editor.save", "save", "Code"), Code, &["ctrl+s"]),
+    spec(
+        A::Hover,
+        ("editor.hover", "what the servers say here", "Code"),
+        Code,
+        &["ctrl+k"],
+    ),
     spec(A::Undo, ("editor.undo", "undo", "Code"), Code, &["ctrl+z"]),
     spec(
         A::Redo,

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub use groove_lsp::{Client, Hooks, Launch, start};
-use groove_types::{Diagnostic, LanguageServer, Result, WorktreeId};
+use groove_types::{Caret, Diagnostic, LanguageServer, Result, WorktreeId};
 
 /// One server: the worktree it serves, the directory it runs in, and its name.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -62,15 +62,32 @@ impl std::fmt::Debug for Running {
     }
 }
 
+/// What the servers said of one spot of a file, asked once the pointer rested on it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Hovered {
+    pub path: String,
+    pub at: Caret,
+    pub said: Option<String>,
+    /// Asked from the keyboard at the caret, not by a resting pointer.
+    pub caret: bool,
+    /// What Groove itself says of the spot, as a definition it could not open.
+    pub told: bool,
+}
+
 #[derive(Debug, Default)]
 pub struct Servers {
+    pub hovered: Option<Hovered>,
+    /// Where the last definition landed, and how many have, for the view to centre each once.
+    pub landed: Option<(String, Caret)>,
+    pub landings: u64,
     running: BTreeMap<ServerKey, Running>,
     /// Each file's diagnostics, by the server that found them.
     found: BTreeMap<(WorktreeId, String), BTreeMap<String, Vec<Diagnostic>>>,
 }
 
 impl Servers {
-    /// Tells `key` what the editor did, or queues it while the server starts. Only an open starts one.
+    /// Tells `key` what the editor did, or queues it while the server starts. Only an open
+    /// starts one, a server that is down included.
     pub fn tell(&mut self, key: &ServerKey, told: Tell) -> Telling {
         match self.running.get_mut(key) {
             Some(Running::Ready(client)) => {
@@ -85,9 +102,9 @@ impl Servers {
                 queued.push(told);
                 Telling::Told
             }
-            Some(Running::Down) => Telling::Down,
+            Some(Running::Down) if !matches!(told, Tell::Opened { .. }) => Telling::Down,
             None if !matches!(told, Tell::Opened { .. }) => Telling::Told,
-            None => {
+            Some(Running::Down) | None => {
                 self.running
                     .retain(|one, _| !(one.worktree == key.worktree && one.name == key.name));
                 self.running
@@ -143,6 +160,55 @@ impl Servers {
         match self.running.get(key)? {
             Running::Ready(client) => Some(client.clone()),
             _ => None,
+        }
+    }
+
+    /// The clients of `worktree` that are up, among the servers `names` names.
+    pub fn clients(&self, worktree: &WorktreeId, names: &[String]) -> Vec<Arc<Client>> {
+        let mut up = Vec::new();
+        for (key, running) in &self.running {
+            if let (true, Running::Ready(client)) = (&key.worktree == worktree, running)
+                && names.contains(&key.name)
+            {
+                up.push(client.clone());
+            }
+        }
+        up
+    }
+
+    /// A spot asked about, its answer not read yet.
+    pub fn asked(&mut self, path: &str, at: Caret, caret: bool) {
+        self.hovered = Some(Hovered {
+            path: path.to_string(),
+            at,
+            said: None,
+            caret,
+            told: false,
+        });
+    }
+
+    /// Groove's own word about a spot, shown where the pointer stands on it.
+    pub fn told(&mut self, path: &str, at: Caret, said: String) {
+        self.hovered = Some(Hovered {
+            path: path.to_string(),
+            at,
+            said: Some(said),
+            caret: false,
+            told: true,
+        });
+    }
+
+    /// A definition opened at `at` of `path`.
+    pub fn landed(&mut self, path: &str, at: Caret) {
+        self.landed = Some((path.to_string(), at));
+        self.landings += 1;
+    }
+
+    /// The answer about a spot, kept while that spot is still the one asked about.
+    pub fn answered(&mut self, path: &str, at: Caret, said: Option<String>) {
+        let asked = self.hovered.as_mut();
+        if let Some(hovered) = asked.filter(|one| one.path == path && one.at == at) {
+            hovered.said = said;
         }
     }
 

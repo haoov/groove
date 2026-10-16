@@ -62,6 +62,9 @@ pub enum Mark {
     Split,
     Inline,
     File,
+    /// What a language server found wrong in a file, and what it warns of.
+    Errors,
+    Warnings,
 }
 
 impl Mark {
@@ -108,7 +111,7 @@ impl Mark {
             Mark::Ahead => Icon::ArrowUp,
             Mark::Behind => Icon::ArrowDown,
             Mark::Staged => Icon::Plus,
-            Mark::Modified | Mark::Context => Icon::Dot,
+            Mark::Modified | Mark::Context | Mark::Warnings => Icon::Dot,
             Mark::Git => Icon::Branch,
             Mark::Cluster => Icon::Kubernetes,
             Mark::Read | Mark::Copied => Icon::Check,
@@ -117,7 +120,7 @@ impl Mark {
             Mark::Down => Icon::CaretDown,
             Mark::Sidebar => Icon::Sidebar,
             Mark::Note => Icon::Chat,
-            Mark::Close => Icon::Cross,
+            Mark::Close | Mark::Errors => Icon::Cross,
             Mark::Github => Icon::Github,
             Mark::Gitlab => Icon::Gitlab,
             Mark::Notion => Icon::Notion,

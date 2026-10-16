@@ -55,3 +55,16 @@ pub fn changes<A: App>(
         }
     }
 }
+
+/// How many errors and warnings a file has, from the right of `room`.
+pub fn faults<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, (errors, warnings): (u32, u32)) {
+    let items = [
+        (Mark::Errors, errors, Role::Bad),
+        (Mark::Warnings, warnings, Role::Warn),
+    ];
+    let wide = counts_room(ctx, &items);
+    if wide > 0.0 {
+        let at = room.take_right(wide);
+        counts(ctx, at, at.x, &items);
+    }
+}

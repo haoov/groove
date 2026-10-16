@@ -21,7 +21,36 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let Some(rect) = hits.rect_of(&Target::Code) else {
         return;
     };
-    let tokens = metrics.tokens();
+    let line = metrics.tokens().line;
+    let Some(row) = row_of(ui, app, hits, caret) else {
+        return;
+    };
+    *ui.session.scroll_mut() = into_view(ui.session.scroll(), row * line, line, rect.h);
+    sideways(ui, app, (hits, metrics), caret);
+}
+
+/// Centres the view on a definition the open file just landed on, once a landing.
+pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
+    let servers = &app.workspace.servers;
+    let Some((path, at)) = servers.landed.as_ref() else {
+        return;
+    };
+    let editor = crate::views::session::diff::edited(app, ui);
+    let here = editor.is_some_and(|one| one.path == *path && one.buffer.caret() == *at);
+    if !here || ui.session.centred == servers.landings {
+        return;
+    }
+    let (Some(rect), Some(row)) = (hits.rect_of(&Target::Code), row_of(ui, app, hits, *at)) else {
+        return;
+    };
+    let line = metrics.tokens().line;
+    *ui.session.scroll_mut() = (row * line - (rect.h - line) / 2.0).max(0.0);
+    sideways(ui, app, (hits, metrics), *at);
+    (ui.session.centred, ui.session.followed) = (servers.landings, Some(*at));
+}
+
+/// The surface's row the caret stands on, notes counted.
+fn row_of(ui: &Ui, app: &AppState, hits: &Hits, caret: Caret) -> Option<f32> {
     let face = ui.session.face();
     let wrapped = crate::views::session::diff::wrapping::wrap_of(app, ui);
     let code = match (face, &wrapped) {
@@ -37,11 +66,12 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
         (Face::Stream(_), _) => crate::views::session::diff::edited(app, ui)
             .and_then(|one| app.workspace.changes.row_of(&one.path, caret.line as u32)),
     };
-    let Some(code) = code else {
-        return;
-    };
-    let row = Inline::of(app, ui, face, hits.wrap()).shifted(code) as f32 * tokens.line;
-    *ui.session.scroll_mut() = into_view(ui.session.scroll(), row, tokens.line, rect.h);
+    Some(Inline::of(app, ui, face, hits.wrap()).shifted(code?) as f32)
+}
+
+/// The sideways offset that keeps `caret` in sight; none while lines wrap.
+fn sideways(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics), caret: Caret) {
+    let wrapped = crate::views::session::diff::wrapping::wrap_of(app, ui);
     if wrapped.is_some() {
         *ui.session.across_mut() = 0.0;
     } else if let Some(editor) = crate::views::session::diff::edited(app, ui) {

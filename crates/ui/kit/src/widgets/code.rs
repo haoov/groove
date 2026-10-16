@@ -1,10 +1,11 @@
 //! A row of the code surface: a line of code, a banner across the width, or a file's head.
 
+mod faults;
 mod gutter;
 mod paint;
 
 use groove_gfx::{Color, Rect};
-use groove_types::Highlight;
+use groove_types::{Highlight, Severity};
 
 pub use self::gutter::{Block, Gutters, rule};
 
@@ -33,8 +34,9 @@ pub struct Code<'a, T> {
     pub head: bool,
     /// Which of its head's rows this one is, and how many the head takes.
     pub part: (usize, usize),
-    /// What a head's file added and removed.
+    /// What a head's file added and removed, and its errors and warnings.
     pub counts: Option<(u32, u32)>,
+    pub tally: Option<(u32, u32)>,
     /// The notes a line carries, in its marks' column, and what a click on them opens.
     pub tile: Option<(Tile, Option<T>)>,
     /// A side of a split row with no line on it.
@@ -50,6 +52,8 @@ pub struct Code<'a, T> {
     pub words: &'a [(usize, usize)],
     pub word: Option<Color>,
     pub standing: Option<(usize, usize)>,
+    /// What a language server found, in columns of the text.
+    pub faults: &'a [(usize, usize, Severity)],
     pub noted: bool,
     pub blame: Option<(&'a str, Option<T>)>,
 }
