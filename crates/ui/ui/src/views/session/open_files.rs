@@ -38,17 +38,17 @@ pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
     let mut room = strip;
     for one in open {
         let preview = buffers.is_some_and(|all| all.previews(&one.path));
-        tab(
-            ctx,
-            &mut room,
-            one,
-            (active == Some(one.path.as_str()), preview),
-        );
+        let tally = crate::views::session::diff::faults::tally(app, &one.path);
+        let state = (active == Some(one.path.as_str()), preview, tally);
+        tab(ctx, &mut room, one, state);
     }
 }
 
+/// Whether a tab is the active one and the preview, and its file's errors and warnings.
+type Shown = (bool, bool, Option<(u32, u32)>);
+
 /// One file's tab from the left of `room`, its name in italic while it is the preview.
-fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview): (bool, bool)) {
+fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview, tally): Shown) {
     let close = Target::CloseTab(open.path.clone());
     let mark = match open.new.dirty() && !ctx.hovered(&close) {
         true => Mark::Modified,
@@ -62,6 +62,7 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview): (bool, 
     let ground = ctx.styles.ground();
     tab.text(Text::Small)
         .italic(preview)
+        .tally(tally)
         .quiet(Role::Muted)
         .ground(ground)
         .close(mark, close)

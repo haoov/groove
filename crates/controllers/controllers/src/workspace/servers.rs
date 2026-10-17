@@ -106,6 +106,18 @@ pub(super) fn clients_of(state: &AppState, path: &str) -> Option<(PathBuf, Vec<A
     (!clients.is_empty()).then_some((dir, clients))
 }
 
+/// The selected worktree's servers stopped, then started again from the files it holds open.
+pub(super) fn restart(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(worktree) = state.workspace.worktree.clone() else {
+        return;
+    };
+    state.workspace.servers.forget(&worktree);
+    state.workspace.servers.hovered = None;
+    for path in super::editor::held(state) {
+        opened(state, spawner, &worktree, &path);
+    }
+}
+
 fn configured(state: &AppState) -> Vec<LanguageServer> {
     let config = state.config.config.as_ref();
     config.map_or_else(LanguageServer::defaults, Config::servers)
@@ -138,15 +150,16 @@ fn told(
         };
         let telling = state.workspace.servers.tell(&key, tell.clone());
         if let (Telling::Start, Some(spawner)) = (telling, spawner) {
-            begin(spawner, key, server);
+            let epoch = state.workspace.servers.epoch(&key);
+            begin(spawner, (key, epoch), server);
         }
     }
 }
 
 /// Starts `server`; what it was told while starting follows once it is up.
-fn begin(spawner: &dyn Spawner, key: ServerKey, server: &LanguageServer) {
+fn begin(spawner: &dyn Spawner, (key, epoch): (ServerKey, u64), server: &LanguageServer) {
     let launch = launch(server, &key.dir);
-    let hooks = hooks(spawner.sink(), key.clone());
+    let hooks = hooks(spawner.sink(), (key.clone(), epoch));
     spawner.spawn(Box::pin(async move {
         let client = start(launch, hooks).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
@@ -170,7 +183,7 @@ fn unstarted(name: &str, e: Error) -> Error {
 }
 
 /// Diagnostics batched to one continuation in flight; a close delivered as it comes.
-fn hooks(sink: Arc<dyn Deliver>, key: ServerKey) -> Hooks {
+fn hooks(sink: Arc<dyn Deliver>, (key, epoch): (ServerKey, u64)) -> Hooks {
     let heard: Heard = Arc::default();
     let queue = heard.clone();
     let (from, owner) = (key.clone(), key);
@@ -178,7 +191,7 @@ fn hooks(sink: Arc<dyn Deliver>, key: ServerKey) -> Hooks {
         let (key, heard) = (from.clone(), heard.clone());
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             for (path, found) in std::mem::take(&mut *lock(&heard)) {
-                state.workspace.servers.diagnosed(&key, &path, found);
+                state.workspace.servers.heard((&key, epoch), &path, found);
             }
         }) as Continuation
     });
@@ -189,14 +202,12 @@ fn hooks(sink: Arc<dyn Deliver>, key: ServerKey) -> Hooks {
         }),
         on_closed: Box::new(move || {
             sink.deliver(Box::new(
-                move |state: &mut AppState, _: &Services, _: &dyn Spawner| down(state, &owner),
+                move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                    state.workspace.servers.ended(&owner, epoch)
+                },
             ));
         }),
     }
-}
-
-fn down(state: &mut AppState, key: &ServerKey) {
-    state.workspace.servers.closed(key);
 }
 
 fn lock<T>(held: &Mutex<T>) -> MutexGuard<'_, T> {

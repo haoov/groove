@@ -20,6 +20,8 @@ pub struct Tab<'a, T> {
     pub tight: bool,
     pub close: Option<(Mark, T)>,
     pub italic: bool,
+    /// The errors and warnings of the file it holds.
+    pub tally: Option<(u32, u32)>,
 }
 
 impl<'a, T: Clone + PartialEq> Tab<'a, T> {
@@ -34,6 +36,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             tight: false,
             close: None,
             italic: false,
+            tally: None,
         }
     }
 
@@ -60,6 +63,11 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     /// The small padding, for tabs set in a header's end.
     pub fn tight(mut self) -> Self {
         self.tight = true;
+        self
+    }
+
+    pub fn tally(mut self, tally: Option<(u32, u32)>) -> Self {
+        self.tally = tally;
         self
     }
 
@@ -112,8 +120,11 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             Some(_) => ctx.tokens.small + ctx.tokens.sm * 2.0,
             None => 0.0,
         };
+        let tallied = self
+            .tally
+            .map_or(0.0, |tally| crate::widgets::faults_room(ctx, tally));
         let style = self.style(ctx);
-        ctx.measure(self.label, &style) + self.pad(ctx) * 2.0 + closing
+        ctx.measure(self.label, &style) + self.pad(ctx) * 2.0 + closing + tallied
     }
 
     /// The label is drawn whole: the tab is as wide as it.
@@ -131,9 +142,12 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         }
         let style = self.style(ctx);
         let pad = self.pad(ctx);
+        let mut end = box_;
         if let Some((mark, target)) = self.close {
-            let mut end = box_;
             Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
+        }
+        if let Some(tally) = self.tally {
+            crate::widgets::faults(ctx, &mut end, tally);
         }
         row(ctx, box_, pad, self.label, style);
     }

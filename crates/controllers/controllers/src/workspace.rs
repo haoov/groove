@@ -98,6 +98,8 @@ pub enum Command {
     },
     /// `workspace.blame`: who last changed each line of one file, uncommitted lines marked.
     Blame { path: String },
+    /// `workspace.restart_servers`: the worktree's language servers stopped and started again.
+    RestartServers,
     /// `workspace.definition`: the open file's symbol at `at`, opened where it is defined.
     Definition { path: String, at: Caret },
     /// `workspace.hover`: what the language servers say of the symbol at one spot of the open file.
@@ -143,6 +145,7 @@ impl Command {
             Command::LeaveCommit => "workspace.leave_commit",
             Command::ShowRepo { .. } => "workspace.show_repo",
             Command::Blame { .. } => "workspace.blame",
+            Command::RestartServers => "workspace.restart_servers",
             Command::Definition { .. } => "workspace.definition",
             Command::Hover { .. } => "workspace.hover",
         }
@@ -213,9 +216,19 @@ pub fn dispatch(
         Command::ShowRepo { repo, target, sha } => {
             commits::revision(state, services, spawner, (repo, target), sha)
         }
+        other => read_of_file(state, spawner, other),
+    }
+}
+
+/// What the open file's surface asks: a line's blame, a definition, what the servers say of
+/// a spot, or the servers started again.
+fn read_of_file(state: &mut AppState, spawner: &dyn Spawner, command: Command) {
+    match command {
         Command::Blame { path } => blame::blame(state, spawner, path),
+        Command::RestartServers => servers::restart(state, spawner),
         Command::Definition { path, at } => definition::definition(state, spawner, path, at),
         Command::Hover { path, at, caret } => servers::hover(state, spawner, path, (at, caret)),
+        _ => {}
     }
 }
 

@@ -5,8 +5,8 @@ use groove_controllers::workspace_service::{Document, display_of};
 use groove_types::Caret;
 
 use crate::hit::{Hits, Target};
-use crate::views::session::Face;
 use crate::views::session::diff::{Inline, text_at};
+use crate::views::session::{Face, Tab};
 use crate::{Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -29,7 +29,8 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     sideways(ui, app, (hits, metrics), caret);
 }
 
-/// Centres the view on a definition the open file just landed on, once a landing.
+/// Centres the view on a definition the open file just landed on, once a landing; from the
+/// diff, on the file tab when the change does not show that file.
 pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let servers = &app.workspace.servers;
     let Some((path, at)) = servers.landed.as_ref() else {
@@ -39,6 +40,9 @@ pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let here = editor.is_some_and(|one| one.path == *path && one.buffer.caret() == *at);
     if !here || ui.session.centred == servers.landings {
         return;
+    }
+    if ui.session.tab == Tab::Diff && app.workspace.changes.get(path).is_none() {
+        ui.session.tab = Tab::Files;
     }
     let (Some(rect), Some(row)) = (hits.rect_of(&Target::Code), row_of(ui, app, hits, *at)) else {
         return;

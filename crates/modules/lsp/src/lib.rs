@@ -10,6 +10,7 @@ mod link;
 mod position;
 mod protocol;
 mod uri;
+mod watched;
 
 #[cfg(test)]
 mod tests;

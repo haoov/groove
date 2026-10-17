@@ -15,6 +15,7 @@ use crate::documents::Documents;
 use crate::incoming::{Hooks, Incoming};
 use crate::link::{Link, lock};
 use crate::position::Encoding;
+use crate::watched::{self, Watched};
 use crate::{frame, protocol, uri};
 
 /// How many lines of the server's log a client keeps.
@@ -30,6 +31,9 @@ pub struct Launch {
     pub unset: Vec<String>,
     pub root: PathBuf,
     pub settings: Value,
+    /// Directories under `root` watched for the server, `*` for any one, as
+    /// `.venv/lib/*/site-packages`.
+    pub watch: Vec<String>,
 }
 
 pub struct Client {
@@ -37,6 +41,7 @@ pub struct Client {
     documents: Arc<Mutex<Documents>>,
     process: Option<Process>,
     said: Arc<Mutex<VecDeque<String>>>,
+    watched: Watched,
 }
 
 /// Starts the server `launch` names in its root, and initializes it.
@@ -61,6 +66,8 @@ pub async fn start(launch: Launch, hooks: Hooks) -> Result<Client> {
     let mut client = connect(stdout, stdin, &launch.root, launch.settings, hooks).await?;
     client.process = Some(process);
     client.said = said;
+    let dirs = watched::resolved(&launch.root, &launch.watch).await;
+    client.watch(&dirs)?;
     Ok(client)
 }
 
@@ -107,6 +114,7 @@ where
         json!({ "settings": settings }),
     )?;
     Ok(Client {
+        watched: Watched::new(link.clone()),
         link,
         documents,
         process: None,
@@ -117,6 +125,16 @@ where
 impl Client {
     pub fn encoding(&self) -> Encoding {
         lock(&self.documents).encoding
+    }
+
+    /// Watches `dirs` for the server, their own entries only.
+    pub fn watch(&mut self, dirs: &[PathBuf]) -> Result<()> {
+        self.watched.watch(dirs)
+    }
+
+    /// Paths the editor saw move, for the server to read again. Queues; never blocks.
+    pub fn moved(&self, paths: Vec<PathBuf>) {
+        self.watched.moved(paths);
     }
 
     /// The last lines the server wrote to its log.

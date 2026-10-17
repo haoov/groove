@@ -23,9 +23,9 @@ pub fn wavy<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, (start, end): (f32, f32), 
         if x >= end {
             break;
         }
-        let y = foot - rise as f32 * step;
-        ctx.quad(Rect::new(x, y, step.min(end - x), step), color);
-        x += step;
+        let (y, wide) = (foot - rise as f32 * step, step * 2.0);
+        ctx.quad(Rect::new(x, y, wide.min(end - x), step), color);
+        x += wide;
     }
 }
 

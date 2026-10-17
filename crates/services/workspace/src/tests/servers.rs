@@ -158,4 +158,35 @@ fn the_defaults_serve_python_with_ty_and_yaml_with_its_server() {
     );
     assert!(serving(&defaults, "rust").is_empty());
     assert_eq!(defaults[0].unset, ["VIRTUAL_ENV"]);
+    assert_eq!(
+        defaults[0].watch,
+        [".venv/lib/*/site-packages"],
+        "ty sees what uv sync installs"
+    );
+}
+
+#[test]
+fn what_an_earlier_start_says_is_dropped_once_a_later_one_replaced_it() {
+    let mut servers = Servers::default();
+    let one = key("/w");
+    servers.tell(&one, opened("a.py"));
+    let first = servers.epoch(&one);
+    servers.forget(&one.worktree);
+    servers.tell(&one, opened("a.py"));
+    servers.ended(&one, first);
+    assert!(
+        !servers.is_down(&one),
+        "the restarted one is still starting"
+    );
+    servers.heard((&one, first), Path::new("/w/a.py"), vec![found("stale", 0)]);
+    assert!(servers.diagnostics(&one.worktree, "a.py").is_empty());
+    servers.heard(
+        (&one, servers.epoch(&one)),
+        Path::new("/w/a.py"),
+        vec![found("fresh", 0)],
+    );
+    assert_eq!(
+        servers.diagnostics(&one.worktree, "a.py")[0].message,
+        "fresh"
+    );
 }

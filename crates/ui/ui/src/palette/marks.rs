@@ -78,6 +78,7 @@ fn commanded(command: &Command, app: &AppState) -> Option<Mark> {
             Mark::of_kind(&open.session.kind)
         }
         Command::Workspace(workspace::Command::Commit) => Mark::Commit,
+        Command::Workspace(workspace::Command::RestartServers) => Mark::Reload,
         Command::Workspace(workspace::Command::Push) => Mark::Ahead,
         Command::Workspace(workspace::Command::Pull) => Mark::Behind,
         Command::Delivery(delivery::Command::BrowseMr { .. }) => Mark::Outward,

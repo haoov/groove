@@ -15,6 +15,12 @@ async fn the_handshake_offers_utf32_and_names_the_root() {
     let params = &initialize["params"];
     assert_eq!(params["rootUri"], "file:///work/tree");
     assert_eq!(params["workspaceFolders"][0]["name"], "tree");
+    let watched = &params["capabilities"]["workspace"]["didChangeWatchedFiles"];
+    assert_eq!(
+        watched,
+        &json!({ "dynamicRegistration": false }),
+        "ty reads moves only then"
+    );
     let offered = &params["capabilities"]["general"]["positionEncodings"];
     assert_eq!(offered, &json!(["utf-32", "utf-16"]));
     let chosen = json!({ "capabilities": { "positionEncoding": "utf-32" } });
@@ -122,6 +128,7 @@ async fn start_reports_a_server_that_is_not_installed() {
         unset: vec!["VIRTUAL_ENV".into()],
         root: PathBuf::from(ROOT),
         settings: Value::Null,
+        watch: vec![],
     };
     let hooks = Hooks {
         on_diagnostics: Box::new(|_, _| {}),
@@ -134,5 +141,50 @@ async fn start_reports_a_server_that_is_not_installed() {
     assert_eq!(
         err.message,
         "`groove-no-such-server` is not on the login PATH"
+    );
+}
+
+#[tokio::test]
+async fn a_package_appearing_in_a_watched_directory_is_told_as_created() {
+    let (mut client, mut fake, _heard) = connected(None, Value::Null).await;
+    let site = tempfile::tempdir().unwrap();
+    client.watch(&[site.path().to_path_buf()]).unwrap();
+    std::fs::create_dir(site.path().join("requests")).unwrap();
+    let told = fake.expect("workspace/didChangeWatchedFiles").await;
+    let changes = told["params"]["changes"].as_array().unwrap().clone();
+    let created = changes
+        .iter()
+        .find(|one| one["uri"].as_str().unwrap().ends_with("/requests"));
+    assert_eq!(
+        created.map(|one| one["type"].clone()),
+        Some(json!(1)),
+        "{changes:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_path_the_editor_saw_go_is_told_as_deleted() {
+    let (client, mut fake, _heard) = connected(None, Value::Null).await;
+    client.moved(vec![PathBuf::from("/work/tree/gone.py")]);
+    let told = fake.expect("workspace/didChangeWatchedFiles").await;
+    let changes = &told["params"]["changes"];
+    assert_eq!(
+        changes,
+        &json!([{ "uri": "file:///work/tree/gone.py", "type": 3 }])
+    );
+}
+
+#[tokio::test]
+async fn a_star_in_a_watched_pattern_stands_for_any_directory() {
+    let root = tempfile::tempdir().unwrap();
+    let site = root.path().join(".venv/lib/python3.14/site-packages");
+    std::fs::create_dir_all(&site).unwrap();
+    let patterns = vec![
+        ".venv/lib/*/site-packages".to_string(),
+        "missing/*".to_string(),
+    ];
+    assert_eq!(
+        crate::watched::resolved(root.path(), &patterns).await,
+        vec![site]
     );
 }

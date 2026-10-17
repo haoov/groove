@@ -25,7 +25,7 @@ mod typed;
 
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
-pub use counts::{changes, counts, counts_room, faults};
+pub use counts::{changes, counts, counts_room, faults, faults_room};
 pub use field::Field;
 pub use fold::{caret, fold, fold_box, fold_turn, folder};
 pub use heading::Heading;
@@ -35,7 +35,7 @@ pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
 pub use modal::{Corner, modal, panel_at};
 pub use pane::{Side, pane};
-pub use popup::{Said, popup};
+pub use popup::{Piece, Said, popup};
 pub use question::{offer, question};
 pub use scrolled::scrolled;
 pub use search::Search;

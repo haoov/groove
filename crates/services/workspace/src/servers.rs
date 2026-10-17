@@ -4,8 +4,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+mod spot;
+
 pub use groove_lsp::{Client, Hooks, Launch, start};
 use groove_types::{Caret, Diagnostic, LanguageServer, Result, WorktreeId};
+pub use spot::Hovered;
 
 /// One server: the worktree it serves, the directory it runs in, and its name.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -46,6 +49,14 @@ pub enum Telling {
     Down,
 }
 
+/// Where a server stands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Up {
+    Starting,
+    Ready,
+    Down,
+}
+
 enum Running {
     Starting(Vec<Tell>),
     Ready(Arc<Client>),
@@ -62,18 +73,6 @@ impl std::fmt::Debug for Running {
     }
 }
 
-/// What the servers said of one spot of a file, asked once the pointer rested on it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Hovered {
-    pub path: String,
-    pub at: Caret,
-    pub said: Option<String>,
-    /// Asked from the keyboard at the caret, not by a resting pointer.
-    pub caret: bool,
-    /// What Groove itself says of the spot, as a definition it could not open.
-    pub told: bool,
-}
-
 #[derive(Debug, Default)]
 pub struct Servers {
     pub hovered: Option<Hovered>,
@@ -81,6 +80,9 @@ pub struct Servers {
     pub landed: Option<(String, Caret)>,
     pub landings: u64,
     running: BTreeMap<ServerKey, Running>,
+    /// Which start each server is, for what an earlier one of the same key says to be dropped.
+    born: BTreeMap<ServerKey, u64>,
+    starts: u64,
     /// Each file's diagnostics, by the server that found them.
     found: BTreeMap<(WorktreeId, String), BTreeMap<String, Vec<Diagnostic>>>,
 }
@@ -109,6 +111,8 @@ impl Servers {
                     .retain(|one, _| !(one.worktree == key.worktree && one.name == key.name));
                 self.running
                     .insert(key.clone(), Running::Starting(vec![told]));
+                self.starts += 1;
+                self.born.insert(key.clone(), self.starts);
                 Telling::Start
             }
         }
@@ -150,6 +154,25 @@ impl Servers {
         self.found.retain(|_, by| !by.is_empty());
     }
 
+    /// Which start of `key` runs now.
+    pub fn epoch(&self, key: &ServerKey) -> u64 {
+        self.born.get(key).copied().unwrap_or_default()
+    }
+
+    /// What start `epoch` of `key` found, dropped when a later start replaced it.
+    pub fn heard(&mut self, (key, epoch): (&ServerKey, u64), path: &Path, found: Vec<Diagnostic>) {
+        if self.epoch(key) == epoch {
+            self.diagnosed(key, path, found);
+        }
+    }
+
+    /// Start `epoch` of `key` stopped talking; a later start of it is left alone.
+    pub fn ended(&mut self, key: &ServerKey, epoch: u64) {
+        if self.epoch(key) == epoch {
+            self.closed(key);
+        }
+    }
+
     /// The server is asked for again: the next file it serves starts it.
     pub fn restart(&mut self, key: &ServerKey) {
         self.running.remove(key);
@@ -176,40 +199,32 @@ impl Servers {
         up
     }
 
-    /// A spot asked about, its answer not read yet.
-    pub fn asked(&mut self, path: &str, at: Caret, caret: bool) {
-        self.hovered = Some(Hovered {
-            path: path.to_string(),
-            at,
-            said: None,
-            caret,
-            told: false,
-        });
+    /// Every client of `worktree` that is up.
+    pub fn up(&self, worktree: &WorktreeId) -> Vec<Arc<Client>> {
+        let mine = self
+            .running
+            .iter()
+            .filter(|(key, _)| &key.worktree == worktree);
+        mine.filter_map(|(_, running)| match running {
+            Running::Ready(client) => Some(client.clone()),
+            _ => None,
+        })
+        .collect()
     }
 
-    /// Groove's own word about a spot, shown where the pointer stands on it.
-    pub fn told(&mut self, path: &str, at: Caret, said: String) {
-        self.hovered = Some(Hovered {
-            path: path.to_string(),
-            at,
-            said: Some(said),
-            caret: false,
-            told: true,
-        });
-    }
-
-    /// A definition opened at `at` of `path`.
-    pub fn landed(&mut self, path: &str, at: Caret) {
-        self.landed = Some((path.to_string(), at));
-        self.landings += 1;
-    }
-
-    /// The answer about a spot, kept while that spot is still the one asked about.
-    pub fn answered(&mut self, path: &str, at: Caret, said: Option<String>) {
-        let asked = self.hovered.as_mut();
-        if let Some(hovered) = asked.filter(|one| one.path == path && one.at == at) {
-            hovered.said = said;
-        }
+    /// Each server of `worktree` by name, and where it stands.
+    pub fn states(&self, worktree: &WorktreeId) -> Vec<(String, Up)> {
+        let up = |running: &Running| match running {
+            Running::Starting(_) => Up::Starting,
+            Running::Ready(_) => Up::Ready,
+            Running::Down => Up::Down,
+        };
+        let mine = self
+            .running
+            .iter()
+            .filter(|(key, _)| &key.worktree == worktree);
+        mine.map(|(key, running)| (key.name.clone(), up(running)))
+            .collect()
     }
 
     pub fn is_down(&self, key: &ServerKey) -> bool {
@@ -243,6 +258,7 @@ impl Servers {
     /// A worktree gone: its servers are killed, as dropping their clients does.
     pub fn forget(&mut self, worktree: &WorktreeId) {
         self.running.retain(|key, _| &key.worktree != worktree);
+        self.born.retain(|key, _| &key.worktree != worktree);
         self.found.retain(|(one, _), _| one != worktree);
     }
 }
@@ -260,6 +276,7 @@ pub fn launch(server: &LanguageServer, dir: &Path) -> Launch {
         unset: server.unset.clone(),
         root: dir.to_path_buf(),
         settings: server.settings.clone(),
+        watch: server.watch.clone(),
     }
 }
 
