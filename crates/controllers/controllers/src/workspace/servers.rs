@@ -31,7 +31,7 @@ pub(super) fn opened(
     told(state, Some(spawner), worktree, language, tell);
 }
 
-/// The active buffer typed in: its servers get its whole new text.
+/// The active buffer typed in: its servers hear what changed.
 pub(super) fn changed(state: &mut AppState, path: &str) {
     let (Some(worktree), Some((language, text))) =
         (state.workspace.worktree.clone(), held(state, path))
@@ -113,6 +113,7 @@ pub(super) fn restart(state: &mut AppState, spawner: &dyn Spawner) {
     };
     state.workspace.servers.forget(&worktree);
     state.workspace.servers.hovered = None;
+    state.workspace.servers.dismiss();
     for path in super::editor::held(state) {
         opened(state, spawner, &worktree, &path);
     }

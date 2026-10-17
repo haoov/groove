@@ -33,3 +33,17 @@ pub struct Location {
     pub start: Caret,
     pub end: Caret,
 }
+
+/// One thing a server offers to type at the caret.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Completion {
+    pub label: String,
+    pub detail: Option<String>,
+    /// What accepting it types, snippet marks taken out.
+    pub insert: String,
+    /// Where the text it replaces starts; the word before the caret when the server names none.
+    pub from: Option<Caret>,
+    /// What the typed word is matched against.
+    pub filter: String,
+    pub sort: String,
+}

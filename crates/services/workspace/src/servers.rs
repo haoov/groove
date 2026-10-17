@@ -4,10 +4,12 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+mod offered;
 mod spot;
 
 pub use groove_lsp::{Client, Hooks, Launch, start};
 use groove_types::{Caret, Diagnostic, LanguageServer, Result, WorktreeId};
+pub use offered::{Offered, matching, word_start};
 pub use spot::Hovered;
 
 /// One server: the worktree it serves, the directory it runs in, and its name.
@@ -65,11 +67,17 @@ enum Running {
 
 impl std::fmt::Debug for Running {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Running::Starting(_) => "Starting",
-            Running::Ready(_) => "Ready",
-            Running::Down => "Down",
-        })
+        write!(f, "{:?}", self.up())
+    }
+}
+
+impl Running {
+    fn up(&self) -> Up {
+        match self {
+            Running::Starting(_) => Up::Starting,
+            Running::Ready(_) => Up::Ready,
+            Running::Down => Up::Down,
+        }
     }
 }
 
@@ -79,6 +87,8 @@ pub struct Servers {
     /// Where the last definition landed, and how many have, for the view to centre each once.
     pub landed: Option<(String, Caret)>,
     pub landings: u64,
+    pub offered: Option<Offered>,
+    asks: u64,
     running: BTreeMap<ServerKey, Running>,
     /// Which start each server is, for what an earlier one of the same key says to be dropped.
     born: BTreeMap<ServerKey, u64>,
@@ -214,16 +224,11 @@ impl Servers {
 
     /// Each server of `worktree` by name, and where it stands.
     pub fn states(&self, worktree: &WorktreeId) -> Vec<(String, Up)> {
-        let up = |running: &Running| match running {
-            Running::Starting(_) => Up::Starting,
-            Running::Ready(_) => Up::Ready,
-            Running::Down => Up::Down,
-        };
         let mine = self
             .running
             .iter()
             .filter(|(key, _)| &key.worktree == worktree);
-        mine.map(|(key, running)| (key.name.clone(), up(running)))
+        mine.map(|(key, running)| (key.name.clone(), running.up()))
             .collect()
     }
 

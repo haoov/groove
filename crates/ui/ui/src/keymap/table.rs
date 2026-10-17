@@ -52,7 +52,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 44] = [
+pub const TABLE: [Spec; 45] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -191,6 +191,16 @@ pub const TABLE: [Spec; 44] = [
         ("editor.hover", "what the servers say here", "Code"),
         Code,
         &["ctrl+k"],
+    ),
+    spec(
+        A::Complete,
+        (
+            "editor.complete",
+            "what the servers offer to type here",
+            "Code",
+        ),
+        Code,
+        &["ctrl+space"],
     ),
     spec(A::Undo, ("editor.undo", "undo", "Code"), Code, &["ctrl+z"]),
     spec(

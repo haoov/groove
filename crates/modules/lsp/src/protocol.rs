@@ -25,6 +25,9 @@ pub(crate) fn initialize(root: &Path) -> Value {
             },
             "textDocument": {
                 "synchronization": { "didSave": true },
+                "completion": {
+                    "completionItem": { "snippetSupport": false, "documentationFormat": ["markdown", "plaintext"] },
+                },
                 "publishDiagnostics": {},
                 "definition": { "linkSupport": true },
                 "hover": { "contentFormat": ["markdown", "plaintext"] },

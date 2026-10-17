@@ -3,6 +3,7 @@
 mod badge;
 mod button;
 pub mod code;
+mod completions;
 mod counts;
 mod field;
 mod fold;
@@ -25,6 +26,7 @@ mod typed;
 
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
+pub use completions::{Offer, completions};
 pub use counts::{changes, counts, counts_room, faults, faults_room};
 pub use field::Field;
 pub use fold::{caret, fold, fold_box, fold_turn, folder};

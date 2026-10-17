@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use groove_exec::piped::{Piped, Pipes, Process};
-use groove_types::{Caret, Error, ErrorKind, Location, Result};
+use groove_types::{Caret, Completion, Error, ErrorKind, Location, Result};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufReader};
 use tokio::sync::mpsc;
@@ -16,7 +16,7 @@ use crate::incoming::{Hooks, Incoming};
 use crate::link::{Link, lock};
 use crate::position::Encoding;
 use crate::watched::{self, Watched};
-use crate::{frame, protocol, uri};
+use crate::{completion, frame, protocol, uri};
 
 /// How many lines of the server's log a client keeps.
 const SAID: usize = 100;
@@ -104,10 +104,7 @@ where
     let answer = link
         .request("initialize", protocol::initialize(root))
         .await?;
-    let named = answer
-        .pointer("/capabilities/positionEncoding")
-        .and_then(Value::as_str);
-    lock(&documents).encoding = Encoding::named(named);
+    agreed(&answer, &mut lock(&documents));
     link.notify("initialized", json!({}))?;
     link.notify(
         "workspace/didChangeConfiguration",
@@ -154,13 +151,12 @@ impl Client {
             .notify("textDocument/didOpen", json!({ "textDocument": document }))
     }
 
-    /// Sends the whole new text of an open document; one not open is left alone. Queues; never blocks.
+    /// Sends what changed in an open document; one not open is left alone. Queues; never blocks.
     pub fn change(&self, path: &Path, text: String) -> Result<()> {
-        let Some(version) = lock(&self.documents).change(path, text.clone()) else {
+        let Some((version, changes)) = lock(&self.documents).change(path, text) else {
             return Ok(());
         };
         let document = json!({ "uri": uri::of(path), "version": version });
-        let changes = json!([{ "text": text }]);
         let params = json!({ "textDocument": document, "contentChanges": changes });
         self.link.notify("textDocument/didChange", params)
     }
@@ -192,6 +188,12 @@ impl Client {
         Ok(protocol::hover(&answer))
     }
 
+    /// What the server offers to type at `at`, in its order.
+    pub async fn completion(&self, path: &Path, at: Caret) -> Result<Vec<Completion>> {
+        let answer = self.ask("textDocument/completion", path, at).await?;
+        Ok(completion::items(&answer, path, &lock(&self.documents)))
+    }
+
     /// Asks the server to exit, then waits a moment; dropping the client kills what is left.
     pub async fn shutdown(mut self) {
         if self.link.request("shutdown", Value::Null).await.is_ok() {
@@ -214,6 +216,17 @@ impl Client {
         let params = json!({ "textDocument": document, "position": position });
         self.link.request(method, params).await
     }
+}
+
+/// The column unit and the sync kind the server chose at `initialize`.
+fn agreed(answer: &Value, documents: &mut Documents) {
+    let named = answer
+        .pointer("/capabilities/positionEncoding")
+        .and_then(Value::as_str);
+    let synced = answer.pointer("/capabilities/textDocumentSync");
+    let change = synced.and_then(|synced| synced.get("change").unwrap_or(synced).as_u64());
+    documents.encoding = Encoding::named(named);
+    documents.incremental = change == Some(2);
 }
 
 /// A program missing from the login `PATH` is not found, not a failure of the server.

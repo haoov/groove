@@ -50,6 +50,8 @@ pub const CLICK_SLOP: f32 = 4.0;
 pub const REST_MS: u64 = 250;
 /// The most lines a popup holds.
 pub const POPUP_LINES: usize = 14;
+/// The most rows the completion list shows at once.
+pub const COMPLETION_ROWS: usize = 10;
 
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;

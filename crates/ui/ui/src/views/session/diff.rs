@@ -1,6 +1,7 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
 mod blame;
+pub(crate) mod completion;
 pub(crate) mod faults;
 mod finder;
 mod header;

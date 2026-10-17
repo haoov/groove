@@ -126,7 +126,8 @@ Closing the worktree kills its servers. `a_python_file_opened_shows_what_its_ser
 holds this end to end.
 
 - **The editor tells, the server never blocks it.** An open, an edit, a save and a close
-  queue on the server's writer; a keystroke sends the whole text for now.
+  queue on the server's writer; a keystroke sends the one range it changed, or the whole
+  text to a server that takes no ranges.
 - **Columns are characters on Groove's side**, whatever unit the server counts in.
 - **A server hears what moves under it.** The worktree's own files that the watcher sees,
   and the directories its config watches, as ty's `.venv/lib/*/site-packages`, are told
@@ -143,6 +144,11 @@ holds this end to end.
   the caret on it, centred in the view. A place outside the worktree, or none, is said in
   the popup at the spot, never in the feed, and opens nothing.
   `a_definition_outside_the_worktree_is_said_at_the_spot_and_opens_nothing` holds it.
+- **Completion is asked as the user types**: a word character or a dot asks again, as
+  `ctrl+space` does, and any other edit puts the list away. An answer to an earlier ask
+  is dropped. The list under the caret keeps what holds the typed word's letters; the
+  arrows choose, `tab` types the choice over the word, `enter` stays a newline.
+  `down_chooses_the_next_and_tab_types_it_over_the_word` holds the keys.
 
 **Search** walks the worktree in parallel, reports in batches, caps what it returns, and
 stops when the next search starts. The path search covers the whole worktree, not only

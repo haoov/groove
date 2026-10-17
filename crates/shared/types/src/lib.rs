@@ -70,7 +70,7 @@ pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use described::{
     Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage, Used,
 };
-pub use diagnostic::{Diagnostic, Location, Severity};
+pub use diagnostic::{Completion, Diagnostic, Location, Severity};
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
     Row, RowKind, TEXT_MAX_BYTES, is_sha, short_sha, subject_of,

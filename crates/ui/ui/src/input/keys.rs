@@ -8,6 +8,7 @@ mod filter;
 mod listed;
 mod naming;
 mod noting;
+mod offered;
 mod opened;
 mod panes;
 mod resources;
@@ -132,6 +133,11 @@ fn in_pane(
         if let Some(commands) = resources::in_table((key, mods), ui, app, seen) {
             return commands;
         }
+    }
+    if ui.focus == Focus::Workspace
+        && let Some(commands) = offered::in_list((key, mods), ui, app)
+    {
+        return commands;
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
