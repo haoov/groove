@@ -1,4 +1,4 @@
-//! The panel's lines laid out as rows: prose wrapped by words within the widest it may be.
+//! The panel's lines as rows no wider than the panel: prose cut at words, code at characters.
 
 use groove_types::Highlight;
 
@@ -40,16 +40,7 @@ pub(super) fn rows<A: App>(ctx: &mut Ctx<'_, A>, said: &[Said], most: f32) -> Ve
                 },
                 width: 0.0,
             }),
-            Said::Code { text, spans } => {
-                let width = ctx
-                    .measure(text, &ctx.styles.prose_code(Role::Text))
-                    .min(most);
-                let row = Row::Code {
-                    text: text.clone(),
-                    spans: spans.clone(),
-                };
-                out.push(Laid { row, width });
-            }
+            Said::Code { text, spans } => out.extend(folded(ctx, text, spans, most)),
             Said::Prose { pieces, role, mark } => {
                 out.extend(wrapped(ctx, pieces, (*role, *mark), most))
             }
@@ -77,11 +68,18 @@ fn wrapped<A: App>(
     let (mut row, mut width) = (Vec::<Piece>::new(), lead);
     for piece in pieces {
         let style = super::styled(ctx, piece.code, role);
-        for word in piece.text.split_inclusive(' ') {
+        let fits = room(ctx, &style, most - lead);
+        let words = piece.text.split_inclusive(' ');
+        for word in words.flat_map(|word| cut(word, fits)) {
+            let word = word.as_str();
             let wide = ctx.measure(word, &style);
             if width + wide > most && !row.is_empty() {
                 let first = out.is_empty();
-                out.push(laid(std::mem::take(&mut row), (role, mark, first), width));
+                out.push(laid(
+                    std::mem::take(&mut row),
+                    (role, mark, first),
+                    (width, most),
+                ));
                 width = lead;
             }
             match row.last_mut().filter(|last| last.code == piece.code) {
@@ -95,14 +93,55 @@ fn wrapped<A: App>(
         }
     }
     let first = out.is_empty();
-    out.push(laid(row, (role, mark, first), width));
+    out.push(laid(row, (role, mark, first), (width, most)));
     out
 }
 
-fn laid(pieces: Vec<Piece>, (role, mark, first): (Role, Option<Mark>, bool), width: f32) -> Laid {
+fn laid(
+    pieces: Vec<Piece>,
+    (role, mark, first): (Role, Option<Mark>, bool),
+    (width, most): (f32, f32),
+) -> Laid {
     let mark = mark.filter(|_| first);
     Laid {
         row: Row::Prose { pieces, role, mark },
-        width,
+        width: width.min(most),
     }
+}
+
+/// How many characters of `style` fit in `most`, one at least.
+fn room<A: App>(ctx: &mut Ctx<'_, A>, style: &groove_gfx::TextStyle, most: f32) -> usize {
+    let one = ctx.measure("0", style).max(1.0);
+    ((most / one).floor() as usize).max(1)
+}
+
+/// `text` in pieces of `room` characters at most.
+fn cut(text: &str, room: usize) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    chars.chunks(room).map(|one| one.iter().collect()).collect()
+}
+
+/// A code line in rows of the characters that fit, each keeping its spans.
+fn folded<A: App>(ctx: &mut Ctx<'_, A>, text: &str, spans: &[Highlight], most: f32) -> Vec<Laid> {
+    let style = ctx.styles.prose_code(Role::Text);
+    let mut out = Vec::new();
+    let mut start = 0;
+    for piece in cut(text, room(ctx, &style, most)) {
+        let end = start + piece.len();
+        let kept = spans.iter().filter_map(|one| {
+            let range = one.range.start.max(start)..one.range.end.min(end);
+            (range.start < range.end).then(|| Highlight {
+                range: range.start - start..range.end - start,
+                capture: one.capture,
+            })
+        });
+        let spans = kept.collect();
+        let width = ctx.measure(&piece, &style).min(most);
+        out.push(Laid {
+            row: Row::Code { text: piece, spans },
+            width,
+        });
+        start = end;
+    }
+    out
 }
