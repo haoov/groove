@@ -59,7 +59,7 @@ fn markdown(path: &str, text: &str) -> Vec<Said> {
     let mut code: Vec<String> = Vec::new();
     for block in blocks(text) {
         if block.kind == Kind::Code {
-            code.push(block.spans.iter().map(|span| span.text.as_str()).collect());
+            code.extend(block.spans.iter().map(|span| span.text.clone()));
             continue;
         }
         out.extend(coloured(path, std::mem::take(&mut code)));
@@ -74,6 +74,10 @@ fn markdown(path: &str, text: &str) -> Vec<Said> {
 }
 
 fn coloured(path: &str, lines: Vec<String>) -> Vec<Said> {
+    let mut lines = lines;
+    while lines.last().is_some_and(|one| one.trim().is_empty()) {
+        lines.pop();
+    }
     if lines.is_empty() {
         return Vec::new();
     }
