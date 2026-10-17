@@ -262,3 +262,32 @@ fn a_code_block_stands_on_its_own_ground_in_the_panel() {
     assert_ne!(ground, styles.band(), "not the panel's own");
     assert!(last.quads.iter().any(|quad| quad.color == ground));
 }
+
+#[test]
+fn a_code_block_keeps_each_of_its_lines() {
+    let mut app = diagnosed(groove_types::Severity::Error);
+    let at = Caret::new(0, 0);
+    app.workspace.servers.asked(PATH, at, false);
+    let markdown = "```yaml\nlabels:\n  app: z\n  tier: w\n\n```";
+    app.workspace
+        .servers
+        .answered(PATH, at, Some(markdown.into()));
+    let mut ui = pointing_at(at);
+    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut drawn = metrics(1600, 1000, 1.0);
+    drawn.tick = 300;
+    let (frame, _) = view(&app, &ui, drawn, &mut Fonts::embedded());
+    let popup = &frame.layers().last().expect("the popup's layer").texts;
+    let row_of = |word: &str| {
+        popup
+            .iter()
+            .find(|run| run.text.contains(word))
+            .map(|run| run.y)
+    };
+    let rows = [row_of("labels"), row_of("app"), row_of("tier")];
+    assert!(rows.iter().all(Option::is_some), "{rows:?}");
+    assert!(
+        rows[0] < rows[1] && rows[1] < rows[2],
+        "a line each: {rows:?}"
+    );
+}
