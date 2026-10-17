@@ -22,6 +22,9 @@ pub(super) fn in_file(
     if keymap.is(Action::Hover, key, mods) {
         return hover_here(&editing, app).into_iter().collect();
     }
+    if keymap.is(Action::Complete, key, mods) && editing == Editing::File {
+        return vec![Command::Workspace(workspace::Command::Complete)];
+    }
     if mods.ctrl || mods.alt {
         return bound(&editing, keymap, key, mods).into_iter().collect();
     }

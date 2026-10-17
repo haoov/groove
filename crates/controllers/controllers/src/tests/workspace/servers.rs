@@ -11,6 +11,7 @@ use crate::AppState;
 
 /// Answers `initialize`, then one diagnostic on columns 4 to 8 of each file opened. A
 /// definition lands on line 3, column 5 of the same file, or outside once `.outside` exists.
+/// A completion offers `xenon` and `xylophone`.
 const FAKE_SERVER: &str = r#"#!/bin/sh
 send() { printf 'Content-Length: %s\r\n\r\n%s' "${#1}" "$1"; }
 next() {
@@ -39,6 +40,10 @@ while next; do
       [ -f .outside ] && uri=file:///elsewhere/lib.py
       range='{"start":{"line":2,"character":4},"end":{"line":2,"character":5}}'
       send "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"uri\":\"$uri\",\"range\":$range}}"
+      ;;
+    *textDocument/completion*)
+      id=$(printf %s "$body" | sed 's/.*"id":\([0-9]*\).*/\1/')
+      send "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":[{\"label\":\"xylophone\"},{\"label\":\"xenon\"}]}"
       ;;
   esac
 done
@@ -249,4 +254,25 @@ fn a_restart_starts_the_worktree_s_servers_again_from_its_open_files() {
         before,
         "up again, not left down"
     );
+}
+
+#[test]
+fn a_word_character_typed_asks_for_completions_and_a_newline_puts_them_away() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    served(home.path(), &mut state, &services, &spawner);
+    let typed = workspace::Command::Edit(Edit::Insert("x".into()));
+    dispatch(Cmd::Workspace(typed), &mut state, &services, &spawner);
+    let offered = |s: &AppState| s.workspace.servers.offered.clone();
+    settled(&spawner, &services, &mut state, |s| {
+        offered(s).is_some_and(|one| !one.items.is_empty())
+    });
+    let labels: Vec<String> = offered(&state)
+        .map(|one| one.items.into_iter().map(|item| item.label).collect())
+        .unwrap_or_default();
+    assert_eq!(labels, ["xylophone", "xenon"]);
+    assert_eq!(offered(&state).map(|one| one.at), Some(Caret::new(0, 1)));
+    let newline = workspace::Command::Edit(Edit::Newline);
+    dispatch(Cmd::Workspace(newline), &mut state, &services, &spawner);
+    assert!(offered(&state).is_none());
 }

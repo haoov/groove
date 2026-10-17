@@ -33,6 +33,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
                 Surface::Session => {
                     session::draw(&mut ctx, app, ui);
                     session::diff::popup::draw(&mut ctx, app, ui);
+                    session::diff::completion::draw(&mut ctx, app, ui);
                 }
                 Surface::Board => board::draw(&mut ctx, app, ui),
             }

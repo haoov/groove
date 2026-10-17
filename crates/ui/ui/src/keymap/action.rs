@@ -32,6 +32,7 @@ pub enum Action {
     Reload,
     Save,
     Hover,
+    Complete,
     Undo,
     Redo,
     SelectAll,

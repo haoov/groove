@@ -44,6 +44,8 @@ pub struct SessionUi {
     pub followed: Option<groove_types::Caret>,
     /// The landing of a definition the view last centred on.
     pub centred: u64,
+    /// The completion ask the list's chosen row belongs to, and that row.
+    pub chosen: (u64, usize),
     /// The line the caret rests on, and the frame tick it came to rest at.
     pub rest: Option<(crate::views::session::diff::Spot, u64)>,
     /// The spot of an open file the pointer stands on, and the one it last came to rest on.

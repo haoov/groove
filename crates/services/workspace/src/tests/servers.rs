@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use groove_types::{Caret, Diagnostic, Error, LanguageServer, Severity, WorktreeId};
+use groove_types::{Caret, Completion, Diagnostic, Error, LanguageServer, Severity, WorktreeId};
 
-use crate::{ServerKey, Servers, Tell, Telling, serving};
+use crate::{ServerKey, Servers, Tell, Telling, matching, serving, word_start};
 
 fn key(dir: &str) -> ServerKey {
     ServerKey {
@@ -189,4 +189,57 @@ fn what_an_earlier_start_says_is_dropped_once_a_later_one_replaced_it() {
         servers.diagnostics(&one.worktree, "a.py")[0].message,
         "fresh"
     );
+}
+
+fn item(label: &str, sort: &str) -> Completion {
+    Completion {
+        label: label.into(),
+        detail: None,
+        insert: label.into(),
+        from: None,
+        filter: label.into(),
+        sort: sort.into(),
+    }
+}
+
+#[test]
+fn an_answer_to_an_earlier_ask_is_dropped_and_the_last_items_stand_meanwhile() {
+    let mut servers = Servers::default();
+    let first = servers.offering("a.py", Caret::new(0, 1));
+    let second = servers.offering("a.py", Caret::new(0, 2));
+    servers.offers(first, vec![item("stale", "0")]);
+    assert!(servers.offered.as_ref().unwrap().items.is_empty());
+    servers.offers(second, vec![item("path", "0")]);
+    servers.offering("a.py", Caret::new(0, 3));
+    let offered = servers.offered.as_ref().unwrap();
+    assert_eq!(
+        (offered.items[0].label.as_str(), offered.at),
+        ("path", Caret::new(0, 3))
+    );
+    servers.dismiss();
+    servers.offers(second + 1, vec![item("late", "0")]);
+    assert!(servers.offered.is_none(), "a dismissed offer stays shut");
+}
+
+#[test]
+fn the_typed_word_keeps_what_holds_its_letters_those_it_begins_first() {
+    let items = [
+        item("PathLike", "0"),
+        item("altsep", "1"),
+        item("path", "2"),
+    ];
+    let kept: Vec<&str> = matching(&items, "pa")
+        .iter()
+        .map(|one| one.label.as_str())
+        .collect();
+    assert_eq!(kept, ["PathLike", "path"]);
+    assert_eq!(matching(&items, "px").len(), 0);
+    assert_eq!(matching(&items, "").len(), 3);
+}
+
+#[test]
+fn the_word_before_the_caret_starts_after_the_last_mark() {
+    assert_eq!(word_start("os.pa", 5), 3);
+    assert_eq!(word_start("x = é_b", 7), 4);
+    assert_eq!(word_start("os.", 3), 3);
 }

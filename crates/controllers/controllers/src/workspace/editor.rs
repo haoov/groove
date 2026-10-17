@@ -11,6 +11,7 @@ use crate::{AppState, Continuation, Services, Spawner};
 pub(super) fn edit_file(state: &mut AppState, spawner: &dyn Spawner, edit: Edit) {
     if let Some(path) = state.workspace.edit(&edit) {
         super::servers::changed(state, &path);
+        super::complete::after(state, spawner, &edit);
         derive(state, spawner, path);
     }
 }

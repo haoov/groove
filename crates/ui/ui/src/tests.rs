@@ -7,6 +7,7 @@ mod board;
 mod budget;
 mod clusters;
 mod commit;
+mod completion;
 mod definition;
 mod diagnostics;
 mod diff;
