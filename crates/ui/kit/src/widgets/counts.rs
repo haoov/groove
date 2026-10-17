@@ -56,12 +56,21 @@ pub fn changes<A: App>(
     }
 }
 
-/// How many errors and warnings a file has, from the right of `room`.
-pub fn faults<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, (errors, warnings): (u32, u32)) {
-    let items = [
+fn tallied((errors, warnings): (u32, u32)) -> [(Mark, u32, Role); 2] {
+    [
         (Mark::Errors, errors, Role::Bad),
         (Mark::Warnings, warnings, Role::Warn),
-    ];
+    ]
+}
+
+/// The room `faults` needs.
+pub fn faults_room<A: App>(ctx: &mut Ctx<'_, A>, tally: (u32, u32)) -> f32 {
+    counts_room(ctx, &tallied(tally))
+}
+
+/// How many errors and warnings a file has, from the right of `room`.
+pub fn faults<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, tally: (u32, u32)) {
+    let items = tallied(tally);
     let wide = counts_room(ctx, &items);
     if wide > 0.0 {
         let at = room.take_right(wide);

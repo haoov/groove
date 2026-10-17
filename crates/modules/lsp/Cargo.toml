@@ -9,11 +9,13 @@ publish.workspace = true
 [dependencies]
 groove-exec = { path = "../../base/exec" }
 groove-types = { path = "../../shared/types" }
+notify.workspace = true
 serde_json.workspace = true
-tokio = { workspace = true, features = ["rt", "sync"] }
+tokio = { workspace = true, features = ["rt", "sync", "fs"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "sync", "macros"] }
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt", "sync", "fs", "macros"] }
 
 [lints]
 workspace = true

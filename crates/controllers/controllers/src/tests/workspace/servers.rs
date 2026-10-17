@@ -53,6 +53,7 @@ fn serving_python(state: &mut AppState, program: &str) {
         args: vec![],
         unset: vec!["VIRTUAL_ENV".into()],
         settings: serde_json::Value::Null,
+        watch: vec![],
         off: false,
     };
     if let Some(config) = state.config.config.as_mut() {
@@ -225,4 +226,27 @@ fn a_definition_outside_the_worktree_is_said_at_the_spot_and_opens_nothing() {
     assert!(state.notes.is_empty(), "said at the spot, not in the feed");
     let caret = state.workspace.active().map(|open| open.new.caret());
     assert_eq!(caret, Some(Caret::new(0, 0)), "the caret stays");
+}
+
+#[test]
+fn a_restart_starts_the_worktree_s_servers_again_from_its_open_files() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    served(home.path(), &mut state, &services, &spawner);
+    let worktree = state.workspace.worktree.clone().expect("a worktree");
+    let before = state.workspace.servers.states(&worktree);
+    let restart = workspace::Command::RestartServers;
+    dispatch(Cmd::Workspace(restart), &mut state, &services, &spawner);
+    settled(&spawner, &services, &mut state, |s| {
+        !s.workspace
+            .servers
+            .diagnostics(&worktree, "a.py")
+            .is_empty()
+    });
+    spawner.settle(Duration::from_millis(100), &mut state, &services);
+    assert_eq!(
+        state.workspace.servers.states(&worktree),
+        before,
+        "up again, not left down"
+    );
 }

@@ -79,6 +79,11 @@ pub(super) fn refresh(
     spawner: &dyn Spawner,
     paths: &[PathBuf],
 ) {
+    if let Some(worktree) = state.workspace.worktree.as_ref() {
+        for client in state.workspace.servers.up(worktree) {
+            client.moved(paths.to_vec());
+        }
+    }
     if groove_workspace_service::moved_git(paths) {
         crate::session::refresh_status(state, services, spawner);
         return reread(state, spawner);

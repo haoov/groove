@@ -128,6 +128,10 @@ holds this end to end.
 - **The editor tells, the server never blocks it.** An open, an edit, a save and a close
   queue on the server's writer; a keystroke sends the whole text for now.
 - **Columns are characters on Groove's side**, whatever unit the server counts in.
+- **A server hears what moves under it.** The worktree's own files that the watcher sees,
+  and the directories its config watches, as ty's `.venv/lib/*/site-packages`, are told
+  in batches, so a `uv sync` needs no restart; the palette restarts the servers all the
+  same. `a_package_appearing_in_a_watched_directory_is_told_as_created` holds it.
 - **A diagnostic waves under what it covers, on the new side only**, in its severity's
   colour; the line's number takes the worst one, and a file's head and row count its
   errors and warnings. `split_marks_only_the_new_side` holds the side.

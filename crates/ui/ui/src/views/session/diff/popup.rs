@@ -1,12 +1,13 @@
 //! What the language servers say of one spot of the open file, in a panel under it.
 
+mod said;
+
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Hovered;
 use groove_gfx::Rect;
-use groove_types::{Caret, Diagnostic, Severity};
-use groove_ui_kit::base::style::Role;
+use groove_types::Caret;
 use groove_ui_kit::base::tokens::REST_MS;
-use groove_ui_kit::widgets::{Said, popup};
+use groove_ui_kit::widgets::popup;
 
 use crate::ctx::Ctx;
 use crate::{Focus, Ui};
@@ -33,19 +34,10 @@ pub(crate) fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let Some(at) = place(ctx, app, ui, hovered) else {
         return;
     };
-    let lines = said(app, hovered);
-    if lines.is_empty() {
-        return;
+    let said = said::said(app, hovered);
+    if !said.is_empty() {
+        popup(ctx, at, &said);
     }
-    let parts: Vec<Said> = lines
-        .iter()
-        .map(|(text, role, code)| Said {
-            text,
-            role: *role,
-            code: *code,
-        })
-        .collect();
-    popup(ctx, at, &parts);
 }
 
 /// Under the caret while it stays on the spot, else under the pointer once it has rested there.
@@ -67,56 +59,4 @@ fn place(ctx: &Ctx, app: &AppState, ui: &Ui, hovered: &Hovered) -> Option<(f32, 
     let asked = still.path == hovered.path && still.at == hovered.at;
     let rested = ctx.tick >= since + REST_MS && ui.session.pointed.as_ref() == Some(still);
     (asked && rested).then_some(below)
-}
-
-/// The diagnostics on the spot, worst first, then what the hover said, its code blocks as code.
-fn said(app: &AppState, hovered: &Hovered) -> Vec<(String, Role, bool)> {
-    let mut lines = Vec::new();
-    for found in covering(app, hovered) {
-        lines.push((found.message.clone(), role(found.severity), false));
-        let named: Vec<&str> = [found.source.as_deref(), found.code.as_deref()]
-            .into_iter()
-            .flatten()
-            .collect();
-        if !named.is_empty() {
-            lines.push((named.join(" · "), Role::Ghost, false));
-        }
-    }
-    let mut code = false;
-    let role = match hovered.told {
-        true => Role::Faint,
-        false => Role::Text,
-    };
-    for line in hovered.said.as_deref().unwrap_or_default().lines() {
-        if line.trim_start().starts_with("```") {
-            code = !code;
-            continue;
-        }
-        lines.push((line.to_string(), role, code));
-    }
-    lines
-}
-
-fn covering(app: &AppState, hovered: &Hovered) -> Vec<Diagnostic> {
-    let Some(worktree) = app.workspace.worktree.as_ref() else {
-        return Vec::new();
-    };
-    let mut found: Vec<Diagnostic> = app
-        .workspace
-        .servers
-        .diagnostics(worktree, &hovered.path)
-        .into_iter()
-        .filter(|one| one.start <= hovered.at && hovered.at <= one.end)
-        .collect();
-    found.sort_by_key(|one| one.severity);
-    found
-}
-
-fn role(severity: Severity) -> Role {
-    match severity {
-        Severity::Error => Role::Bad,
-        Severity::Warning => Role::Warn,
-        Severity::Information => Role::Working,
-        Severity::Hint => Role::Faint,
-    }
 }

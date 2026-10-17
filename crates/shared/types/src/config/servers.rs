@@ -18,6 +18,9 @@ pub struct LanguageServer {
     pub unset: Vec<String>,
     #[serde(default, skip_serializing_if = "Value::is_null")]
     pub settings: Value,
+    /// Directories under the worktree it is told about when they move, `*` for any one.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub watch: Vec<String>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub off: bool,
 }
@@ -31,15 +34,19 @@ impl LanguageServer {
             "completion": true,
             "schemaStore": { "enable": true },
         } });
+        let ty = Self::new(
+            "ty",
+            "python",
+            "ty",
+            &["server"],
+            &["VIRTUAL_ENV"],
+            Value::Null,
+        );
         vec![
-            Self::new(
-                "ty",
-                "python",
-                "ty",
-                &["server"],
-                &["VIRTUAL_ENV"],
-                Value::Null,
-            ),
+            Self {
+                watch: vec![".venv/lib/*/site-packages".into()],
+                ..ty
+            },
             Self::new(
                 "yaml-language-server",
                 "yaml",
@@ -67,6 +74,7 @@ impl LanguageServer {
             args: owned(args),
             unset: owned(unset),
             settings,
+            watch: Vec::new(),
             off: false,
         }
     }

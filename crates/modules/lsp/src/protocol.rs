@@ -18,7 +18,11 @@ pub(crate) fn initialize(root: &Path) -> Value {
         "workspaceFolders": [{ "uri": folder, "name": name.unwrap_or_default() }],
         "capabilities": {
             "general": { "positionEncodings": ["utf-32", "utf-16"] },
-            "workspace": { "configuration": true, "workspaceFolders": true },
+            "workspace": {
+                "configuration": true,
+                "workspaceFolders": true,
+                "didChangeWatchedFiles": { "dynamicRegistration": false },
+            },
             "textDocument": {
                 "synchronization": { "didSave": true },
                 "publishDiagnostics": {},

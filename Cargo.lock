@@ -1613,7 +1613,9 @@ version = "1.0.0-beta.1"
 dependencies = [
  "groove-exec",
  "groove-types",
+ "notify",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 

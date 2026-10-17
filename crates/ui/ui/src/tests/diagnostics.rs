@@ -178,3 +178,37 @@ fn a_file_head_and_its_tree_row_count_its_errors_and_warnings() {
     assert!(icons.contains(&groove_gfx::Icon::Cross), "an error's mark");
     assert!(texts.iter().any(|one| one == "1"), "{texts:?}");
 }
+
+#[test]
+fn the_file_s_tab_and_path_bar_count_its_errors_and_name_its_server() {
+    let mut app = diagnosed(Severity::Error);
+    let worktree = app.workspace.worktree.clone().expect("a worktree");
+    let key = ServerKey {
+        worktree,
+        dir: "/w".into(),
+        name: "ty".into(),
+    };
+    let opened = groove_controllers::workspace_service::Tell::Opened {
+        path: PATH.into(),
+        language: "python",
+        text: String::new(),
+    };
+    app.workspace.servers.tell(&key, opened);
+    let (icons, texts) = in_role(&app, Face::File, Role::Bad);
+    assert!(
+        icons
+            .iter()
+            .filter(|one| **one == groove_gfx::Icon::Cross)
+            .count()
+            >= 2,
+        "{icons:?}"
+    );
+    assert!(
+        texts.iter().filter(|one| *one == "1").count() >= 2,
+        "the tab and the path bar: {texts:?}"
+    );
+    let (icons, _) = in_role(&app, Face::File, Role::Working);
+    assert!(icons.contains(&groove_gfx::Icon::Dot), "ty is starting");
+    let (_, texts) = in_role(&app, Face::File, Role::Faint);
+    assert!(texts.iter().any(|one| one == "ty"), "{texts:?}");
+}
