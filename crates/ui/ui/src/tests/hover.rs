@@ -291,3 +291,35 @@ fn a_code_block_keeps_each_of_its_lines() {
         "a line each: {rows:?}"
     );
 }
+#[test]
+fn a_long_code_line_and_a_long_word_fold_inside_the_popup() {
+    let mut app = diagnosed(groove_types::Severity::Error);
+    let at = Caret::new(0, 0);
+    app.workspace.servers.asked(PATH, at, false);
+    let markdown = format!(
+        "```python\nx: dict[{}]\n```\n`{}`",
+        "str, ".repeat(60),
+        "Literal".repeat(40)
+    );
+    app.workspace.servers.answered(PATH, at, Some(markdown));
+    let mut ui = pointing_at(at);
+    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut drawn = metrics(1600, 1000, 1.0);
+    drawn.tick = 300;
+    let (frame, _) = view(&app, &ui, drawn, &mut Fonts::embedded());
+    let popup = frame.layers().last().expect("the popup's layer");
+    let panel = popup.quads.first().expect("the panel").rect;
+    assert!(panel.w <= 600.0, "as wide as the popup at most: {panel:?}");
+    let rows = |word: &str| {
+        let mut ys: Vec<u32> = popup
+            .texts
+            .iter()
+            .filter(|run| run.text.contains(word))
+            .map(|run| run.y as u32)
+            .collect();
+        ys.dedup();
+        ys.len()
+    };
+    assert!(rows("str") > 1, "the code line folds");
+    assert!(rows("Literal") > 1, "the word folds");
+}
