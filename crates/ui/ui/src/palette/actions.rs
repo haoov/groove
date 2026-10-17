@@ -117,9 +117,11 @@ fn diffing(app: &AppState) -> Vec<Entry> {
     if app.session.selected_worktree().is_none() {
         return Vec::new();
     }
+    let restart = Command::Workspace(workspace::Command::RestartServers);
     vec![
         act("Diff", "Inline view", Act::View(DiffView::Inline)),
         act("Diff", "Split view", Act::View(DiffView::Split)),
+        command("Code", "Restart the language servers", restart),
     ]
 }
 

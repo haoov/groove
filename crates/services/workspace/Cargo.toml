@@ -10,6 +10,7 @@ publish.workspace = true
 groove-diff = { path = "../../modules/diff" }
 groove-grep = { path = "../../modules/grep" }
 groove-git = { path = "../../modules/git" }
+groove-lsp = { path = "../../modules/lsp" }
 groove-text = { path = "../../modules/text" }
 groove-editor = { path = "../../modules/editor" }
 groove-types = { path = "../../shared/types" }

@@ -100,6 +100,7 @@ impl App {
         };
         self.ui.settle(&self.state);
         self.prepare(metrics);
+        groove_ui::input::land(&mut self.ui, &self.state, &self.hits, metrics);
         let Some(renderer) = &mut self.renderer else {
             return;
         };
@@ -108,8 +109,12 @@ impl App {
         self.hits = hits;
         self.showing();
         self.point();
-        if let Some(blame) = groove_ui::input::rest(&mut self.ui, &self.state, metrics.tick) {
-            dispatch(blame, &mut self.state, &self.services, &self.spawner);
+        let rested = [
+            groove_ui::input::rest(&mut self.ui, &self.state, metrics.tick),
+            groove_ui::input::hovering(&mut self.ui, &self.state, metrics.tick),
+        ];
+        for asked in rested.into_iter().flatten() {
+            dispatch(asked, &mut self.state, &self.services, &self.spawner);
         }
     }
 

@@ -176,9 +176,12 @@ impl App {
         self.point();
         let (x, y) = at;
         let moved = groove_ui::input::hover(&mut self.ui, &self.hits, x, y);
+        let pointed = self.metrics().is_some_and(|metrics| {
+            groove_ui::input::pointed(&mut self.ui, &self.state, &self.hits, metrics)
+        });
         if self.ui.pointing() {
             self.input(Input::Move { x, y });
-        } else if moved {
+        } else if moved || pointed {
             self.redraw();
         }
     }

@@ -101,7 +101,7 @@ pub(super) fn piece(whole: &Drawn, part: usize, cols: usize) -> Drawn {
         .collect();
     let clip = |(a, b): (usize, usize)| {
         let (a, b) = (a.max(from), b.min(to));
-        (a < b).then_some((a - from, b - from))
+        (a < b).then(|| (a - from, b - from))
     };
     Drawn {
         text: whole.text[start..end].to_string(),
@@ -117,14 +117,29 @@ pub(super) fn piece(whole: &Drawn, part: usize, cols: usize) -> Drawn {
             .map(|at| at - from),
         held: whole.held.and_then(|(a, b, through)| {
             let (a, b) = (a.max(from), b.min(to));
-            (a < b || (a == b && tail && through)).then_some((a - from, b - from, through && tail))
+            (a < b || (a == b && tail && through)).then(|| (a - from, b - from, through && tail))
         }),
         mark: whole.mark,
         found: whole.found.iter().copied().filter_map(clip).collect(),
         words: whole.words.iter().copied().filter_map(clip).collect(),
         standing: whole.standing.and_then(clip),
+        faults: within(&whole.faults, (from, to)),
         ..Drawn::default()
     }
+}
+
+/// The faults over columns `from` to `to`, counted from `from`.
+fn within(
+    faults: &[super::faults::Fault],
+    (from, to): (usize, usize),
+) -> Vec<super::faults::Fault> {
+    faults
+        .iter()
+        .filter_map(|(a, b, severity)| {
+            let (a, b) = ((*a).max(from), (*b).min(to));
+            (a < b).then(|| (a - from, b - from, *severity))
+        })
+        .collect()
 }
 
 /// The row the caret stands on, among the wrapped rows of the file view.

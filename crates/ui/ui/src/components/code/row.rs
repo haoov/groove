@@ -50,6 +50,7 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         read: line.read,
         part: line.part,
         counts: line.counts,
+        tally: line.tally,
         tile: line.tile.as_ref().map(|(tile, folds)| {
             let opens = folds
                 .clone()
@@ -63,6 +64,7 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         words: line.words,
         word: line.word,
         standing: line.standing,
+        faults: line.faults,
         noted: line.noted,
         blame,
     }

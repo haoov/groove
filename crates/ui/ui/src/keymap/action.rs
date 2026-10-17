@@ -31,6 +31,8 @@ pub enum Action {
     NewTerminal,
     Reload,
     Save,
+    Hover,
+    Complete,
     Undo,
     Redo,
     SelectAll,

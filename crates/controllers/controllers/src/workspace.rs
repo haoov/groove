@@ -1,17 +1,23 @@
 //! The `workspace` controller: one function per user action on the `workspace` service.
 
+mod asked;
 mod blame;
 mod commits;
+mod complete;
+mod definition;
 pub(crate) mod diff;
 mod editor;
 pub(crate) mod git;
 mod paths;
 mod search;
+mod servers;
 
 use crate::asker::Asker;
+pub(crate) use asked::Asked;
+pub use asked::stale;
 pub(crate) use commits::{due as revision_due, ended as revision_ended};
 pub(crate) use editor::copied;
-use groove_types::{DiffMode, Edit, Selection};
+use groove_types::{Caret, DiffMode, Edit, Selection};
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{close_file, copy, cut, edit_file, open_file, paste, save_file};
@@ -96,6 +102,20 @@ pub enum Command {
     },
     /// `workspace.blame`: who last changed each line of one file, uncommitted lines marked.
     Blame { path: String },
+    /// `workspace.restart_servers`: the worktree's language servers stopped and started again.
+    RestartServers,
+    /// `workspace.definition`: the open file's symbol at `at`, opened where it is defined.
+    Definition { path: String, at: Caret },
+    /// `workspace.hover`: what the language servers say of the symbol at one spot of the open file.
+    Hover {
+        path: String,
+        at: Caret,
+        caret: bool,
+    },
+    /// `workspace.complete`: what the language servers offer to type at the caret of the open file.
+    Complete,
+    /// `workspace.dismiss`: the completions offered at the caret put away.
+    Dismiss,
 }
 
 impl Command {
@@ -133,6 +153,11 @@ impl Command {
             Command::LeaveCommit => "workspace.leave_commit",
             Command::ShowRepo { .. } => "workspace.show_repo",
             Command::Blame { .. } => "workspace.blame",
+            Command::RestartServers => "workspace.restart_servers",
+            Command::Definition { .. } => "workspace.definition",
+            Command::Hover { .. } => "workspace.hover",
+            Command::Complete => "workspace.complete",
+            Command::Dismiss => "workspace.dismiss",
         }
     }
 }
@@ -201,55 +226,20 @@ pub fn dispatch(
         Command::ShowRepo { repo, target, sha } => {
             commits::revision(state, services, spawner, (repo, target), sha)
         }
+        other => read_of_file(state, spawner, other),
+    }
+}
+
+/// What the open file's surface asks of git and of the language servers.
+fn read_of_file(state: &mut AppState, spawner: &dyn Spawner, command: Command) {
+    match command {
         Command::Blame { path } => blame::blame(state, spawner, path),
-    }
-}
-
-/// What a read of the selected worktree is for; an answer that lands after it moved is dropped.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Asked {
-    pub worktree: groove_types::WorktreeId,
-    pub dir: std::path::PathBuf,
-    pub mode: DiffMode,
-    pub base: Option<String>,
-    pub commit: Option<String>,
-}
-
-impl Asked {
-    pub(crate) fn now(state: &AppState) -> Option<Self> {
-        let one = state.session.selected_worktree()?;
-        Some(Self {
-            worktree: one.id.clone(),
-            dir: one.dir(),
-            mode: state.workspace.mode,
-            base: one.base_ref.clone(),
-            commit: state.workspace.commit.as_ref().map(|at| at.sha.clone()),
-        })
-    }
-
-    /// Whether the selection is still the one this was read for.
-    pub(crate) fn holds(&self, state: &AppState) -> bool {
-        Self::now(state).as_ref() == Some(self)
-    }
-
-    /// The same, whatever commit the surface shows meanwhile.
-    pub(crate) fn holds_place(&self, state: &AppState) -> bool {
-        Self::now(state).is_some_and(|now| {
-            Self {
-                commit: None,
-                ..now
-            } == Self {
-                commit: None,
-                ..self.clone()
-            }
-        })
-    }
-}
-
-pub fn stale(state: &AppState) -> bool {
-    match state.session.selected_worktree().map(|one| one.id.clone()) {
-        Some(worktree) => !state.workspace.holds(&worktree),
-        None => false,
+        Command::RestartServers => servers::restart(state, spawner),
+        Command::Definition { path, at } => definition::definition(state, spawner, path, at),
+        Command::Hover { path, at, caret } => servers::hover(state, spawner, path, (at, caret)),
+        Command::Complete => complete::ask(state, spawner),
+        Command::Dismiss => state.workspace.servers.dismiss(),
+        _ => {}
     }
 }
 

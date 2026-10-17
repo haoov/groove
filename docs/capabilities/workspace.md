@@ -117,6 +117,39 @@ root and is refused when it escapes.
 - **An undo takes back a typing run**, not a character. A motion or a newline ends the
   run.
 
+**A language server runs per worktree and server, from the file that first needs it.**
+Opening a file of its language starts it in the worktree root; a save, an edit or a close
+never does. The config names the servers, or the defaults run: `ty` for Python, started
+without `VIRTUAL_ENV`, and `yaml-language-server` for YAML. A server that fails to start
+is said once and stays down; one that stops while up takes its diagnostics with it.
+Closing the worktree kills its servers. `a_python_file_opened_shows_what_its_server_finds`
+holds this end to end.
+
+- **The editor tells, the server never blocks it.** An open, an edit, a save and a close
+  queue on the server's writer; a keystroke sends the one range it changed, or the whole
+  text to a server that takes no ranges.
+- **Columns are characters on Groove's side**, whatever unit the server counts in.
+- **A server hears what moves under it.** The worktree's own files that the watcher sees,
+  and the directories its config watches, as ty's `.venv/lib/*/site-packages`, are told
+  in batches, so a `uv sync` needs no restart; the palette restarts the servers all the
+  same. `a_package_appearing_in_a_watched_directory_is_told_as_created` holds it.
+- **A diagnostic waves under what it covers, on the new side only**, in its severity's
+  colour; the line's number takes the worst one, and a file's head and row count its
+  errors and warnings. `split_marks_only_the_new_side` holds the side.
+- **What the servers say of a spot shows once the pointer rests on it**, after the quarter
+  second blame waits, or at once at the caret on `ctrl+k`. The diagnostics stand above the
+  hover, and the panel leaves with the pointer or the caret.
+  `a_rested_pointer_shows_the_diagnostic_over_what_the_hover_said` holds the order.
+- **A ctrl+click goes to the definition when the worktree holds it**: the file opens with
+  the caret on it, centred in the view. A place outside the worktree, or none, is said in
+  the popup at the spot, never in the feed, and opens nothing.
+  `a_definition_outside_the_worktree_is_said_at_the_spot_and_opens_nothing` holds it.
+- **Completion is asked as the user types**: a word character or a dot asks again, as
+  `ctrl+space` does, and any other edit puts the list away. An answer to an earlier ask
+  is dropped. The list under the caret keeps what holds the typed word's letters; the
+  arrows choose, `tab` types the choice over the word, `enter` stays a newline.
+  `down_chooses_the_next_and_tab_types_it_over_the_word` holds the keys.
+
 **Search** walks the worktree in parallel, reports in batches, caps what it returns, and
 stops when the next search starts. The path search covers the whole worktree, not only
 the diff.

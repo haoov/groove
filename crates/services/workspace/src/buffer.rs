@@ -30,6 +30,7 @@ impl State {
     /// A worktree gone, and every file it held open with it.
     pub fn forget(&mut self, worktree: &WorktreeId) {
         self.buffers.remove(worktree);
+        self.servers.forget(worktree);
     }
 
     /// One edit of the active file, its hunks moved along it at once. Returns the file when its text changed.

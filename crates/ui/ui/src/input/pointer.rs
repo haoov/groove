@@ -17,10 +17,10 @@ mod surface;
 
 pub(super) use menu::asked;
 pub(super) use sidebar::act_on;
-pub(super) use surface::middle;
+pub(super) use surface::{at, middle};
 
 use groove_controllers::{AppState, Command, delivery, task, workspace};
-use groove_types::{DiffView, Edit, Motion};
+use groove_types::DiffView;
 
 use self::board::{carried, opened_session, takes};
 pub(super) use self::board::{dropped, opened_from_board, reads as board_reads};
@@ -30,8 +30,8 @@ use self::header::{finishing, task_menu};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, twisty};
 use self::surface::{
-    at, blamed, closing, composed, folded, holds, in_files, jump, landed, lensed, reached, switch,
-    unfolded,
+    blamed, closing, composed, defined, extended, folded, in_files, jump, landed, lensed, reached,
+    switch, unfolded,
 };
 use super::selection;
 use crate::hit::{Hits, Target};
@@ -57,6 +57,7 @@ pub(super) fn press(
         Some(Target::ResourceEdge(label)) => resources::held(ui, app, hits, (label, x)),
         Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
         Some(target) if mods.ctrl && board::opens(&target) => opened_from_board(target, ui, false),
+        Some(Target::Code) if mods.ctrl => defined(ui, app, hits, metrics, (x, y)),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
@@ -77,30 +78,11 @@ pub(super) fn moved(
         Some(Held::Clicking(_) | Held::Selecting(_)) => {
             return selection::carried(ui, app, (x, y), hits, metrics);
         }
-        Some(Held::Text) => return extended(x, y, ui, app, hits, metrics),
+        Some(Held::Text) => return extended((x, y), ui, app, hits, metrics),
         Some(Held::Column(_)) => resources::dragged(ui, x, metrics),
         None => {}
     }
     Vec::new()
-}
-
-/// The pointer moved while it holds text of the open file: the selection carried to it.
-fn extended(
-    x: f32,
-    y: f32,
-    ui: &mut Ui,
-    app: &AppState,
-    hits: &Hits,
-    metrics: Metrics,
-) -> Vec<Command> {
-    let Some((path, caret)) = at(ui, app, hits, metrics, (x, y)) else {
-        return Vec::new();
-    };
-    let editing = crate::editor::Editing::keyed(app, ui);
-    match (holds(app, ui, &path), editing) {
-        (true, Some(editing)) => vec![editing.edit(Edit::Extend(Motion::To(caret)))],
-        _ => Vec::new(),
-    }
 }
 
 /// What was drawn under the point, acted on. Anywhere else closes the palette.

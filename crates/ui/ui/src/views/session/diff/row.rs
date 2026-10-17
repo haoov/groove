@@ -42,8 +42,9 @@ pub(super) struct Drawn {
     pub(super) read: bool,
     /// Which of its head's rows a head row is, and how many the head takes.
     pub(super) part: (usize, usize),
-    /// What a head row's file added and removed.
+    /// What a head row's file added and removed, and its errors and warnings.
     pub(super) counts: Option<(u32, u32)>,
+    pub(super) tally: Option<(u32, u32)>,
     /// A side of a split row with no line on it.
     pub(super) empty: bool,
     /// The file a head row names.
@@ -54,6 +55,7 @@ pub(super) struct Drawn {
     pub(super) words: Vec<(usize, usize)>,
     /// The one of them the search stands on.
     pub(super) standing: Option<(usize, usize)>,
+    pub(super) faults: Vec<super::faults::Fault>,
 }
 
 /// The rows of one view inside `window`: the open file, or every changed file in turn.
@@ -122,6 +124,7 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
         .of(doc, &editor.path, false, stamp, window.clone());
     let width = doc.indent().width();
     let hunked = editor.file.map(|file| &file.hunked);
+    let diagnosed = super::faults::of(app, &editor.path);
     window
         .map(|at| {
             let text = text_of(buffer, at);
@@ -147,6 +150,7 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                 ),
                 found: matched(ui, at, &text, width),
                 standing: standing(ui, at, &text, width),
+                faults: super::faults::on(&diagnosed, at, &text, width),
                 ..Drawn::default()
             }
         })

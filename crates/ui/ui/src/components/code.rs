@@ -3,17 +3,15 @@
 mod header;
 mod place;
 mod row;
+mod rows;
 
-use groove_gfx::{Color, Rect};
-use groove_types::Highlight;
+use groove_gfx::Color;
+use groove_types::{Highlight, Severity};
 
 pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
+pub use self::rows::{Rows, code};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, Tile, head_mark, head_of};
-
-use self::row::draw;
-use crate::ctx::Ctx;
-use groove_ui_kit::widgets::code::rule;
 
 /// The buttons a note's last row carries, and the note they act on.
 #[derive(Debug, Clone)]
@@ -46,8 +44,9 @@ pub struct Line<'a> {
     pub read: bool,
     /// Which of its head's rows a head row is, and how many the head takes.
     pub part: (usize, usize),
-    /// What a head row's file added and removed.
+    /// What a head row's file added and removed, and its errors and warnings.
     pub counts: Option<(u32, u32)>,
+    pub tally: Option<(u32, u32)>,
     /// A row the one above it already draws over: a head's later rows.
     pub covered: bool,
     /// A side of a split row with no line on it.
@@ -68,6 +67,8 @@ pub struct Line<'a> {
     pub word: Option<Color>,
     /// The one of them it stands on, drawn as a selection is.
     pub standing: Option<(usize, usize)>,
+    /// What a language server found, in columns of its text.
+    pub faults: &'a [(usize, usize, Severity)],
     /// One row of a note left on the line above it.
     pub said: Option<Noted<'a>>,
     /// The buttons under what a note says.
@@ -125,6 +126,7 @@ impl<'a> Line<'a> {
             read: false,
             part: (0, 1),
             counts: None,
+            tally: None,
             covered: false,
             empty: false,
             pad: None,
@@ -137,6 +139,7 @@ impl<'a> Line<'a> {
             words: &[],
             word: None,
             standing: None,
+            faults: &[],
             said: None,
             acting: None,
             noted: false,
@@ -212,6 +215,11 @@ impl<'a> Line<'a> {
         self
     }
 
+    pub fn tally(mut self, tally: Option<(u32, u32)>) -> Self {
+        self.tally = tally;
+        self
+    }
+
     pub fn gutters(mut self, gutters: &'a [&'a str]) -> Self {
         self.gutters = gutters;
         self
@@ -267,34 +275,9 @@ impl<'a> Line<'a> {
         self.standing = standing;
         self
     }
-}
 
-/// The rows a surface draws: the window it built, and the gutter they share.
-pub struct Rows<'a> {
-    pub lines: &'a [Line<'a>],
-    /// Where the first line sits among all the rows.
-    pub first: usize,
-    pub gutters: Gutters,
-    /// How far the text is scrolled sideways, its gutters left in place.
-    pub across: f32,
-}
-
-/// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
-pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect> {
-    let height = ctx.tokens.line;
-    let block = Block::of(ctx, rows.gutters);
-    let mut drawn = Vec::with_capacity(rows.lines.len());
-    ctx.clipped(rect, |ctx| {
-        let mut y = rect.y - scroll + rows.first as f32 * height;
-        for line in rows.lines {
-            let at = Rect::new(rect.x, y, rect.w, height);
-            draw(ctx, at, line, block, rows.across);
-            if line.numbered() {
-                rule(ctx, at, block);
-            }
-            drawn.push(at);
-            y += height;
-        }
-    });
-    drawn
+    pub fn faults(mut self, faults: &'a [(usize, usize, Severity)]) -> Self {
+        self.faults = faults;
+        self
+    }
 }

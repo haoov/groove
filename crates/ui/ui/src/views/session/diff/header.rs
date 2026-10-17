@@ -1,8 +1,9 @@
 //! The band above the rows: on the diff, the whole change and its views; on a file, its path.
 
 use groove_controllers::AppState;
+use groove_controllers::workspace_service::Up;
 use groove_gfx::{Edges, Rect};
-use groove_types::DiffView;
+use groove_types::{Config, DiffView, LanguageServer};
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -25,6 +26,12 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
     }
     if let Some(counts) = super::row::counted(app, path) {
         changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
+    }
+    for (name, up) in servers_of(app, path).into_iter().rev() {
+        server(ctx, &mut room, &name, up);
+    }
+    if let Some(tally) = super::faults::tally(app, path) {
+        widgets::faults(ctx, &mut room, tally);
     }
     let dirty = app
         .workspace
@@ -68,4 +75,44 @@ fn totals(ctx: &mut Ctx, mut room: Rect, app: &AppState) {
     };
     let md = ctx.tokens.md;
     Label::new(&said, ctx.styles.body(Role::Muted)).draw(ctx, room.pad(Edges::across(md, md)));
+}
+
+/// The servers of the open file's language that have started, and where each stands.
+fn servers_of(app: &AppState, path: &str) -> Vec<(String, Up)> {
+    let (Some(worktree), Some(open)) =
+        (app.workspace.worktree.as_ref(), app.workspace.buffer(path))
+    else {
+        return Vec::new();
+    };
+    let Some(language) = open.new.document().language() else {
+        return Vec::new();
+    };
+    let config = app.config.config.as_ref();
+    let named = config.map_or_else(LanguageServer::defaults, Config::servers);
+    let states = app.workspace.servers.states(worktree);
+    named
+        .into_iter()
+        .filter(|one| one.serves(language.id()))
+        .filter_map(|one| states.iter().find(|(name, _)| *name == one.name).cloned())
+        .collect()
+}
+
+/// A server's dot, in the colour of where it stands, then its name, from the right of `room`.
+fn server(ctx: &mut Ctx, room: &mut Rect, name: &str, up: Up) {
+    let role = match up {
+        Up::Ready => Role::Ok,
+        Up::Starting => Role::Working,
+        Up::Down => Role::Bad,
+    };
+    let style = ctx.styles.code(Role::Faint);
+    let (size, width) = (ctx.styles.small(role).size, ctx.measure(name, &style));
+    let wide = |width: f32| Spec::default().width(width);
+    let gaps = (wide(ctx.tokens.xs), wide(ctx.tokens.md));
+    let [rest, dot, _, label, _] = row_in(
+        *room,
+        [Spec::fill(), wide(size), gaps.0, wide(width), gaps.1],
+    );
+    *room = rest;
+    groove_ui_kit::widgets::icon(ctx, square(dot, size), Mark::Modified, role);
+    Label::new(name, style).draw(ctx, label);
 }
