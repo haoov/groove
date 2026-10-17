@@ -12,8 +12,9 @@ sees it at once. The user's file is `~/.config/groove/config.json`. Groove's own
 
 ## Setup
 
-**The environment check runs each time Settings opens**: git, claude, curl, glab and gh,
-each with its version, and the sign-in for claude, glab and gh. The claude login runs in
+**The environment check runs each time Settings opens**: git, claude, curl, glab, gh,
+kubectl, jq and the language servers ty and yaml-language-server, each with its version,
+and the sign-in for claude, glab and gh. The claude login runs in
 a terminal inside Setup and the check runs again when it exits.
 
 **The agent needs no MCP setup.** Each launch passes Groove's tool server through

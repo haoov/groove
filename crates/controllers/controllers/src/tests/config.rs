@@ -29,7 +29,17 @@ fn the_environment_check_lists_every_program_and_one_runs_at_a_time() {
     let names: Vec<_> = tools.iter().map(|one| one.name).collect();
     assert_eq!(
         names,
-        ["git", "claude", "curl", "glab", "gh", "kubectl", "jq"]
+        [
+            "git",
+            "claude",
+            "curl",
+            "glab",
+            "gh",
+            "kubectl",
+            "jq",
+            "ty",
+            "yaml-language-server"
+        ]
     );
     assert!(tools[0].found.is_some(), "git runs where the tests run");
 }

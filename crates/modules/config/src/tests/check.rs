@@ -12,6 +12,8 @@ fn a_version_is_the_number_each_program_prints_first() {
             "8.5.0",
         ),
         ("claude", "2.1.3 (Claude Code)\n", "2.1.3"),
+        ("ty", "ty 0.0.89\n", "0.0.89"),
+        ("yaml-language-server", "2.0.0\n", "2.0.0"),
         ("odd", "no number here\n", "no number here"),
     ];
     for (name, text, want) in printed {

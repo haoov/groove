@@ -20,7 +20,7 @@ enum Account {
 /// Every program the app runs; `claude` is the path the agent launches.
 pub async fn check(claude: &str) -> Vec<Tool> {
     const VERSION: &[&str] = &["--version"];
-    let (git, claude, curl, glab, gh, kubectl, jq) = tokio::join!(
+    let (git, claude, curl, glab, gh, kubectl, jq, ty, yaml) = tokio::join!(
         probe("git", "git", VERSION, Account::None),
         probe("claude", claude, VERSION, Account::Json),
         probe("curl", "curl", VERSION, Account::None),
@@ -33,6 +33,13 @@ pub async fn check(claude: &str) -> Vec<Tool> {
             Account::None
         ),
         probe("jq", "jq", VERSION, Account::None),
+        probe("ty", "ty", VERSION, Account::None),
+        probe(
+            "yaml-language-server",
+            "yaml-language-server",
+            VERSION,
+            Account::None
+        ),
     );
     vec![
         tool("git", "worktrees, diffs, commits", true, git),
@@ -42,6 +49,13 @@ pub async fn check(claude: &str) -> Vec<Tool> {
         tool("gh", "GitHub pull requests and CI", false, gh),
         tool("kubectl", "the agent's cluster reads", false, kubectl),
         tool("jq", "the agent's filters on a cluster read", false, jq),
+        tool("ty", "Python diagnostics, hover and completion", false, ty),
+        tool(
+            "yaml-language-server",
+            "YAML schemas, hover and completion",
+            false,
+            yaml,
+        ),
     ]
 }
 
