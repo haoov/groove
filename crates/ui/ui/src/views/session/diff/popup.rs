@@ -2,12 +2,15 @@
 
 mod said;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Hovered;
 use groove_gfx::Rect;
 use groove_types::Caret;
 use groove_ui_kit::base::tokens::REST_MS;
-use groove_ui_kit::widgets::popup;
+use groove_ui_kit::widgets::{Said, popup};
 
 use crate::ctx::Ctx;
 use crate::{Focus, Ui};
@@ -34,7 +37,7 @@ pub(crate) fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let Some(at) = place(ctx, app, ui, hovered) else {
         return;
     };
-    let said = said::said(app, hovered);
+    let said = said::said(app, ui, hovered);
     if !said.is_empty() {
         popup(ctx, at, &said);
     }
@@ -59,4 +62,27 @@ fn place(ctx: &Ctx, app: &AppState, ui: &Ui, hovered: &Hovered) -> Option<(f32, 
     let asked = still.path == hovered.path && still.at == hovered.at;
     let rested = ctx.tick >= since + REST_MS && ui.session.pointed.as_ref() == Some(still);
     (asked && rested).then_some(below)
+}
+
+/// The file and the answer the lines were laid out for.
+type Key = (String, String);
+
+/// The hover's lines as last laid out, kept while the answer and its file stay the same.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Spoken {
+    kept: RefCell<Option<(Key, Rc<Vec<Said>>)>>,
+}
+
+impl Spoken {
+    pub(super) fn of(&self, key: (&str, &str), build: impl FnOnce() -> Vec<Said>) -> Rc<Vec<Said>> {
+        let mut kept = self.kept.borrow_mut();
+        if let Some(((path, text), lines)) = kept.as_ref()
+            && (path.as_str(), text.as_str()) == key
+        {
+            return lines.clone();
+        }
+        let lines = Rc::new(build());
+        *kept = Some(((key.0.to_string(), key.1.to_string()), lines.clone()));
+        lines
+    }
 }

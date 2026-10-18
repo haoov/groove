@@ -32,6 +32,7 @@ mod palette_more;
 mod pasting;
 mod pending;
 mod perf;
+mod perf_servers;
 mod rail;
 mod regions;
 mod resources;

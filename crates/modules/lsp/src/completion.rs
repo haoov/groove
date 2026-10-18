@@ -35,11 +35,11 @@ fn item(found: &Value, path: &Path, documents: &Documents) -> Option<Completion>
         .unwrap_or_else(|| label.clone());
     let snippet = found.get("insertTextFormat").and_then(Value::as_u64) == Some(2);
     let range = edit.and_then(|edit| edit.get("range").or_else(|| edit.get("replace")));
-    let start = range.and_then(|range| range.get("start"));
+    let ends = range.and_then(|range| Some((range.get("start")?, range.get("end")?)));
     Some(Completion {
         detail: text("detail"),
         insert: if snippet { plain(&typed) } else { typed },
-        from: start.map(|start| documents.caret(path, start)),
+        range: ends.map(|(start, end)| (documents.caret(path, start), documents.caret(path, end))),
         filter: text("filterText").unwrap_or_else(|| label.clone()),
         sort: text("sortText").unwrap_or_else(|| label.clone()),
         label,

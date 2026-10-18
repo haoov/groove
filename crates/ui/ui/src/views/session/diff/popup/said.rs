@@ -9,7 +9,9 @@ use groove_ui_kit::markdown::blocks;
 use groove_ui_kit::markdown::parse::{Block, Kind};
 use groove_ui_kit::widgets::{Piece, Said};
 
-pub(super) fn said(app: &AppState, hovered: &Hovered) -> Vec<Said> {
+use crate::Ui;
+
+pub(super) fn said(app: &AppState, ui: &Ui, hovered: &Hovered) -> Vec<Said> {
     let mut out = Vec::new();
     for (at, found) in covering(app, hovered).into_iter().enumerate() {
         if at > 0 {
@@ -25,7 +27,10 @@ pub(super) fn said(app: &AppState, hovered: &Hovered) -> Vec<Said> {
         return out;
     }
     out.push(Said::Rule);
-    out.extend(markdown(&hovered.path, text));
+    let read = ui
+        .spoken
+        .of((&hovered.path, text), || markdown(&hovered.path, text));
+    out.extend(read.iter().cloned());
     out.push(Said::Rule);
     out.push(plain("ctrl+click: go to definition", Role::Ghost));
     out
@@ -130,9 +135,10 @@ fn covering(app: &AppState, hovered: &Hovered) -> Vec<Diagnostic> {
     let mut found: Vec<Diagnostic> = app
         .workspace
         .servers
-        .diagnostics(worktree, &hovered.path)
-        .into_iter()
+        .diagnostics_on(worktree, &hovered.path, hovered.at.line)
+        .iter()
         .filter(|one| one.start <= hovered.at && hovered.at <= one.end)
+        .cloned()
         .collect();
     found.sort_by_key(|one| one.severity);
     found

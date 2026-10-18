@@ -55,12 +55,16 @@ pub(crate) fn shown<'a>(app: &'a AppState, ui: &Ui) -> Option<Shown<'a>> {
     })
 }
 
-/// The edits that type the chosen item over what it replaces.
+/// The edits that type the chosen item over what it replaces, the caret's side of it included.
 pub(crate) fn accepted(shown: &Shown) -> Vec<Edit> {
     let item = shown.items[shown.chosen];
-    let from = item.from.unwrap_or(shown.word).min(shown.caret);
+    let (from, to) = item.range.unwrap_or((shown.word, shown.caret));
+    let (from, to) = (from.min(shown.caret), to.max(shown.caret));
     let mut edits = Vec::new();
-    if from != shown.caret {
+    if to != shown.caret {
+        edits.push(Edit::Move(Motion::To(to)));
+    }
+    if from != to {
         edits.push(Edit::Extend(Motion::To(from)));
     }
     edits.push(Edit::Insert(item.insert.clone()));

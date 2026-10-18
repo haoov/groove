@@ -32,6 +32,9 @@ pub(super) struct Laid {
 pub(super) fn rows<A: App>(ctx: &mut Ctx<'_, A>, said: &[Said], most: f32) -> Vec<Laid> {
     let mut out = Vec::new();
     for line in said {
+        if out.len() >= POPUP_LINES {
+            break;
+        }
         match line {
             Said::Rule | Said::Gap => out.push(Laid {
                 row: match line {
@@ -71,6 +74,9 @@ fn wrapped<A: App>(
         let fits = room(ctx, &style, most - lead);
         let words = piece.text.split_inclusive(' ');
         for word in words.flat_map(|word| cut(word, fits)) {
+            if out.len() >= POPUP_LINES {
+                break;
+            }
             let word = word.as_str();
             let wide = ctx.measure(word, &style);
             if width + wide > most && !row.is_empty() {

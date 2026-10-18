@@ -69,18 +69,40 @@ async fn a_completion_reads_a_list_its_edits_and_its_snippets() {
     assert_eq!(
         (
             found[0].insert.as_str(),
-            found[0].from,
+            found[0].range,
             found[0].sort.as_str()
         ),
         ("path", None, " 1")
     );
     assert_eq!(found[0].detail.as_deref(), Some("<module 'os.path'>"));
     assert_eq!(found[1].insert, "pathconf(path, )");
-    assert_eq!(found[1].from, Some(Caret::new(0, 3)));
+    assert_eq!(found[1].range, Some((Caret::new(0, 3), Caret::new(0, 5))));
 }
 
 #[test]
 fn a_snippet_types_its_placeholders_and_first_choices() {
     assert_eq!(plain("${1:on}: ${2|push,pull|}\\$x$0"), "on: push$x");
     assert_eq!(plain("f(${1:a${2:b}})"), "f(ab)");
+}
+
+#[tokio::test]
+#[ignore]
+async fn time_a_keystroke_on_a_big_document() {
+    let text: String = (0..20000)
+        .map(|at| format!("value_{at} = compute({at}, 'é')\n"))
+        .collect();
+    let (client, _fake) = incremental(&text).await;
+    let path = Path::new(PATH);
+    let mut now = text.clone();
+    let runs = 100;
+    let started = std::time::Instant::now();
+    for at in 0..runs {
+        now.insert(now.len() / 2, char::from(b'a' + (at % 26) as u8));
+        client.change(path, now.clone()).unwrap();
+    }
+    let each = started.elapsed() / runs;
+    #[allow(clippy::print_stdout)]
+    {
+        println!("{} bytes: {each:?} a keystroke", now.len());
+    }
 }

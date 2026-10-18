@@ -4,9 +4,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+mod found;
 mod offered;
 mod spot;
 
+use found::Found;
 pub use groove_lsp::{Client, Hooks, Launch, start};
 use groove_types::{Caret, Diagnostic, LanguageServer, Result, WorktreeId};
 pub use offered::{Offered, matching, word_start};
@@ -94,7 +96,7 @@ pub struct Servers {
     born: BTreeMap<ServerKey, u64>,
     starts: u64,
     /// Each file's diagnostics, by the server that found them.
-    found: BTreeMap<(WorktreeId, String), BTreeMap<String, Vec<Diagnostic>>>,
+    found: BTreeMap<(WorktreeId, String), Found>,
 }
 
 impl Servers {
@@ -156,12 +158,7 @@ impl Servers {
         if let Some(running) = self.running.get_mut(key) {
             *running = Running::Down;
         }
-        for ((worktree, _), by) in self.found.iter_mut() {
-            if worktree == &key.worktree {
-                by.remove(&key.name);
-            }
-        }
-        self.found.retain(|_, by| !by.is_empty());
+        self.drop_found(key);
     }
 
     /// Which start of `key` runs now.
@@ -234,30 +231,6 @@ impl Servers {
 
     pub fn is_down(&self, key: &ServerKey) -> bool {
         matches!(self.running.get(key), Some(Running::Down))
-    }
-
-    /// What `key` said of the file at `path`, which a path outside its directory never is.
-    pub fn diagnosed(&mut self, key: &ServerKey, path: &Path, found: Vec<Diagnostic>) {
-        let Ok(inside) = path.strip_prefix(&key.dir) else {
-            return;
-        };
-        let file = (key.worktree.clone(), inside.to_string_lossy().into_owned());
-        let by = self.found.entry(file).or_default();
-        match found.is_empty() {
-            true => by.remove(&key.name),
-            false => by.insert(key.name.clone(), found),
-        };
-        self.found.retain(|_, by| !by.is_empty());
-    }
-
-    /// Every server's diagnostics of one file, in reading order.
-    pub fn diagnostics(&self, worktree: &WorktreeId, path: &str) -> Vec<Diagnostic> {
-        let Some(by) = self.found.get(&(worktree.clone(), path.to_string())) else {
-            return Vec::new();
-        };
-        let mut all: Vec<Diagnostic> = by.values().flatten().cloned().collect();
-        all.sort_by_key(|one| (one.start, one.severity));
-        all
     }
 
     /// A worktree gone: its servers are killed, as dropping their clients does.

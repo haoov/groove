@@ -196,7 +196,7 @@ fn item(label: &str, sort: &str) -> Completion {
         label: label.into(),
         detail: None,
         insert: label.into(),
-        from: None,
+        range: None,
         filter: label.into(),
         sort: sort.into(),
     }
@@ -242,4 +242,32 @@ fn the_word_before_the_caret_starts_after_the_last_mark() {
     assert_eq!(word_start("os.pa", 5), 3);
     assert_eq!(word_start("x = é_b", 7), 4);
     assert_eq!(word_start("os.", 3), 3);
+}
+
+#[test]
+fn a_line_reads_only_what_covers_it_and_the_file_keeps_its_counts() {
+    let mut servers = Servers::default();
+    let one = key("/w");
+    let mut long = found("long", 2);
+    long.end = Caret::new(6, 0);
+    let mut warned = found("warned", 9);
+    warned.severity = Severity::Warning;
+    servers.diagnosed(
+        &one,
+        Path::new("/w/a.py"),
+        vec![found("early", 0), long, found("late", 8), warned],
+    );
+    let on = |line| -> Vec<String> {
+        let read = servers.diagnostics_on(&one.worktree, "a.py", line);
+        let covering = read
+            .iter()
+            .filter(|one| one.start.line <= line && line <= one.end.line);
+        covering.map(|one| one.message.clone()).collect()
+    };
+    assert_eq!(on(4), ["long"], "a range over several lines");
+    assert_eq!(on(8), ["late"]);
+    assert!(on(7).is_empty());
+    assert_eq!(servers.tally(&one.worktree, "a.py"), (3, 1));
+    servers.closed(&one);
+    assert_eq!(servers.tally(&one.worktree, "a.py"), (0, 0));
 }

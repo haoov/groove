@@ -18,7 +18,7 @@ fn item(label: &str) -> Completion {
         label: label.into(),
         detail: Some(format!("{label} detail")),
         insert: label.into(),
-        from: None,
+        range: None,
         filter: label.into(),
         sort: label.into(),
     }
@@ -118,4 +118,20 @@ fn ctrl_space_asks_what_the_servers_offer() {
         press(Key::Char(' '), ctrl, &mut on_file(), &app),
         vec![Command::Workspace(workspace::Command::Complete)]
     );
+}
+
+#[test]
+fn an_item_that_names_its_range_replaces_it_past_the_caret_too() {
+    let mut app = offered();
+    let asked = app.workspace.servers.offering(PATH, CARET);
+    let mut whole = item("None");
+    whole.range = Some((Caret::new(0, 4), Caret::new(0, 8)));
+    app.workspace.servers.offers(asked, vec![whole]);
+    let typed = press(Key::Tab, Modifiers::default(), &mut on_file(), &app);
+    let edits = [
+        Edit::Move(Motion::To(Caret::new(0, 8))),
+        Edit::Extend(Motion::To(Caret::new(0, 4))),
+        Edit::Insert("None".into()),
+    ];
+    assert_eq!(typed, edits.map(edit).to_vec());
 }

@@ -34,6 +34,7 @@ pub struct Ui {
     pub walked: views::session::files::walked::Walked,
     pub wrapping: views::session::diff::wrapping::Wrapping,
     pub narrowing: views::session::files::Narrowing,
+    pub spoken: views::session::diff::popup::Spoken,
 }
 
 /// What stands over the surface, one at a time.

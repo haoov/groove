@@ -12,7 +12,7 @@ use crate::tests::{full_app, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
-fn big(lines: usize) -> AppState {
+pub(super) fn big(lines: usize) -> AppState {
     let mut app = full_app();
     let worktree = app
         .session

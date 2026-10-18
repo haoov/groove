@@ -41,8 +41,8 @@ pub struct Completion {
     pub detail: Option<String>,
     /// What accepting it types, snippet marks taken out.
     pub insert: String,
-    /// Where the text it replaces starts; the word before the caret when the server names none.
-    pub from: Option<Caret>,
+    /// The text it replaces; the word before the caret when the server names none.
+    pub range: Option<(Caret, Caret)>,
     /// What the typed word is matched against.
     pub filter: String,
     pub sort: String,

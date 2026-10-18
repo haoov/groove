@@ -138,8 +138,8 @@ fn one(
     let (drawn, spans) = shown(&text, &spans, file.indent);
     let faults = match (side, line) {
         (Side::New, Some(line)) if !empty => {
-            let found = super::super::faults::of(app, &file.path);
-            super::super::faults::on(&found, line as usize, &text, file.indent)
+            let found = super::super::faults::of(app, &file.path, line as usize);
+            super::super::faults::on(found, line as usize, &text, file.indent)
         }
         _ => Vec::new(),
     };

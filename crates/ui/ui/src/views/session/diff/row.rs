@@ -124,7 +124,6 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
         .of(doc, &editor.path, false, stamp, window.clone());
     let width = doc.indent().width();
     let hunked = editor.file.map(|file| &file.hunked);
-    let diagnosed = super::faults::of(app, &editor.path);
     window
         .map(|at| {
             let text = text_of(buffer, at);
@@ -150,7 +149,12 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                 ),
                 found: matched(ui, at, &text, width),
                 standing: standing(ui, at, &text, width),
-                faults: super::faults::on(&diagnosed, at, &text, width),
+                faults: super::faults::on(
+                    super::faults::of(app, &editor.path, at),
+                    at,
+                    &text,
+                    width,
+                ),
                 ..Drawn::default()
             }
         })

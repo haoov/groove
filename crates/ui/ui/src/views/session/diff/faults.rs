@@ -6,12 +6,12 @@ use groove_types::{Diagnostic, Severity};
 
 pub(super) type Fault = (usize, usize, Severity);
 
-/// What the servers last said of `path` in the selected worktree.
-pub(crate) fn of(app: &AppState, path: &str) -> Vec<Diagnostic> {
+/// What the servers last said of `line` of `path` in the selected worktree.
+pub(crate) fn of<'a>(app: &'a AppState, path: &str, line: usize) -> &'a [Diagnostic] {
     let Some(worktree) = app.workspace.worktree.as_ref() else {
-        return Vec::new();
+        return &[];
     };
-    app.workspace.servers.diagnostics(worktree, path)
+    app.workspace.servers.diagnostics_on(worktree, path, line)
 }
 
 /// What they cover of `line`; one that covers nothing marks the character it stands on.
@@ -44,8 +44,7 @@ pub(super) fn on(found: &[Diagnostic], line: usize, text: &str, width: usize) ->
 
 /// How many errors and warnings the servers found in `path`; `None` when none.
 pub(crate) fn tally(app: &AppState, path: &str) -> Option<(u32, u32)> {
-    let found = of(app, path);
-    let count = |severity| found.iter().filter(|one| one.severity == severity).count() as u32;
-    let tally = (count(Severity::Error), count(Severity::Warning));
+    let worktree = app.workspace.worktree.as_ref()?;
+    let tally = app.workspace.servers.tally(worktree, path);
     (tally != (0, 0)).then_some(tally)
 }
