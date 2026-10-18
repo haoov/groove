@@ -49,8 +49,9 @@ a secret's data. Attaching or letting go of a cluster is a write, through the qu
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
 forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
-repos and worktrees; the agent's cluster reads; and the agent's turns, so the feed can say
-when it worked.
+repos and worktrees; the agent's cluster reads; each cluster write that lands, the user's or
+the agent's, as its target and its change; and the agent's turns, so the feed can say when
+it worked.
 
 **It does not hold the tools the agent ran on files.** A write or a shell command is the
 agent's status, which the rail shows live, not its history.

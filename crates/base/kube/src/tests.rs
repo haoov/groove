@@ -2,6 +2,7 @@ mod client;
 mod kubeconfig;
 mod logs;
 mod objects;
+mod patch;
 mod pool;
 mod quiet;
 mod table;

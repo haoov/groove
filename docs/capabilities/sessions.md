@@ -39,6 +39,10 @@ cluster, which replaces that context's namespaces; a namespace, which the agent 
 for, replaces a cluster held whole. The namespace panel picks what the list shows and
 holds nothing. The pairs stay with the session across restarts and go with it.
 
+**A write lands only where the session holds.** An object in a namespace needs that
+namespace or the whole cluster; an object outside the namespaces needs the whole cluster.
+Enforced by `a_session_on_one_namespace_writes_there_and_nowhere_else`.
+
 ## Maintenance tasks
 
 **The user marks a task as [maintenance](../glossary.md#maintenance-task) in Groove**, from the palette; nothing reads it off the

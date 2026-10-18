@@ -157,7 +157,7 @@ fn code_of(kind: TimelineKind) -> &'static str {
         | TimelineKind::MrClosed => "mr",
         TimelineKind::Review | TimelineKind::Note => "note",
         TimelineKind::RoutineRan | TimelineKind::RoutineEnded => "rtn",
-        TimelineKind::ClusterRead => "kube",
+        TimelineKind::ClusterRead | TimelineKind::ClusterWrite => "kube",
     }
 }
 
