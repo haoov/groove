@@ -7,6 +7,8 @@ use groove_types::{Found, ProviderId, Secret, Tool};
 use super::*;
 use crate::hit::Target;
 
+mod servers;
+
 pub(super) fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
     render(app, ui, window())
 }

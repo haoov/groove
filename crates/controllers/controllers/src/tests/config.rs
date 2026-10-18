@@ -29,17 +29,18 @@ fn the_environment_check_lists_every_program_and_one_runs_at_a_time() {
     let names: Vec<_> = tools.iter().map(|one| one.name).collect();
     assert_eq!(
         names,
-        [
-            "git",
-            "claude",
-            "curl",
-            "glab",
-            "gh",
-            "kubectl",
-            "jq",
-            "ty",
-            "yaml-language-server"
-        ]
+        ["git", "claude", "curl", "glab", "gh", "kubectl", "jq"]
+    );
+    let programs: Vec<&str> = state
+        .config
+        .servers
+        .iter()
+        .map(|(program, _)| program.as_str())
+        .collect();
+    assert_eq!(
+        programs,
+        ["ty", "yaml-language-server"],
+        "the programs the config's servers start"
     );
     assert!(tools[0].found.is_some(), "git runs where the tests run");
 }
@@ -188,4 +189,19 @@ fn a_sign_in_ended_and_asked_again_keeps_only_the_last_terminal() {
         &spawner,
     );
     assert!(state.config.login.is_none(), "and the user can end it");
+}
+
+#[test]
+fn a_server_switched_off_is_written_with_the_others_as_they_were() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let off = Command::SetPreference(Preference::Server(0, false));
+    dispatch(Cmd::Config(off), &mut state, &services, &spawner);
+    let servers = state
+        .config
+        .config
+        .as_ref()
+        .and_then(|config| config.language_servers.clone())
+        .expect("the defaults written out");
+    assert_eq!(servers.len(), 2);
+    assert!(servers[0].off && !servers[1].off, "ty off, yaml on");
 }

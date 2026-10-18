@@ -239,6 +239,13 @@ impl Servers {
         self.born.retain(|key, _| &key.worktree != worktree);
         self.found.retain(|(one, _), _| one != worktree);
     }
+
+    /// Every server killed and its diagnostics gone, in every worktree.
+    pub fn clear(&mut self) {
+        self.running.clear();
+        self.born.clear();
+        self.found.clear();
+    }
 }
 
 /// The servers of `language`, in the order the config names them.

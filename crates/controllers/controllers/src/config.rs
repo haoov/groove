@@ -248,6 +248,9 @@ fn set_preference(
     if !written(state, services, spawner, changed) {
         return;
     }
+    if let Preference::Server(..) = one {
+        crate::workspace::servers_reconfigured(state, spawner);
+    }
     if let Preference::Theme(theme) = one {
         let palette = groove_agent_service::palette(theme);
         state.agent.recolor(palette);

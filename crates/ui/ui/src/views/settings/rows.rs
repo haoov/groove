@@ -8,6 +8,7 @@ mod mapping;
 mod preferences;
 mod providers;
 mod routines;
+mod servers;
 mod setup;
 pub use setup::{gaps as source_gaps, left as setup_left, no_source};
 mod shared;
@@ -30,18 +31,20 @@ pub enum Section {
     Clusters,
     Agent,
     Appearance,
+    Servers,
     #[default]
     Preferences,
     Keymap,
 }
 
 impl Section {
-    pub const ALL: [Section; 7] = [
+    pub const ALL: [Section; 8] = [
         Section::Setup,
         Section::Providers,
         Section::Clusters,
         Section::Agent,
         Section::Appearance,
+        Section::Servers,
         Section::Preferences,
         Section::Keymap,
     ];
@@ -53,6 +56,7 @@ impl Section {
             Section::Clusters => "Clusters",
             Section::Agent => "Agent",
             Section::Appearance => "Appearance",
+            Section::Servers => "Language servers",
             Section::Preferences => "Preferences",
             Section::Keymap => "Keymap",
         }
@@ -209,6 +213,7 @@ pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
     out.extend(providers::providers(app, settings));
     out.extend(agent::agent(app, settings));
     out.extend(appearance::appearance(app));
+    out.extend(servers::servers(app));
     out.extend(preferences::preferences(app));
     out.extend(keymap::keymap(app, settings));
     out

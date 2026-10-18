@@ -18,6 +18,7 @@ pub use asked::stale;
 pub(crate) use commits::{due as revision_due, ended as revision_ended};
 pub(crate) use editor::copied;
 use groove_types::{Caret, DiffMode, Edit, Selection};
+pub(crate) use servers::{programs as server_programs, reconfigured as servers_reconfigured};
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{close_file, copy, cut, edit_file, open_file, paste, save_file};

@@ -119,6 +119,23 @@ pub(super) fn restart(state: &mut AppState, spawner: &dyn Spawner) {
     }
 }
 
+/// The programs the config's servers start, each once, in the order the config names them.
+pub(crate) fn programs(state: &AppState) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for one in configured(state) {
+        if !out.contains(&one.program) {
+            out.push(one.program);
+        }
+    }
+    out
+}
+
+/// The config's servers changed: every running one stops, and the files open start theirs again.
+pub(crate) fn reconfigured(state: &mut AppState, spawner: &dyn Spawner) {
+    state.workspace.servers.clear();
+    restart(state, spawner);
+}
+
 fn configured(state: &AppState) -> Vec<LanguageServer> {
     let config = state.config.config.as_ref();
     config.map_or_else(LanguageServer::defaults, Config::servers)

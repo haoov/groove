@@ -13,10 +13,13 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
     }
     state.config.checking = true;
     let home = state.env.home.clone();
+    let programs = crate::workspace::server_programs(state);
     spawner.spawn(Box::pin(async move {
         let claude = groove_config_service::claude_bin(&home).await;
         let tools = groove_config_service::check(&claude).await;
+        let versions = groove_config_service::versions(programs.clone()).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.config.servers = programs.into_iter().zip(versions).collect();
             apply(Event::Config(ConfigEvent::Checked(tools)), state)
         }) as Continuation
     }));

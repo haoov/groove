@@ -42,6 +42,8 @@ pub enum Preference {
     RoutineCap(u32),
     RoutinesPaused(bool),
     WrapCode(bool),
+    /// The language server at this place of the config's list, on or off.
+    Server(usize, bool),
 }
 
 /// A size is never NaN: it comes from the file's number or a step of it.
@@ -76,11 +78,18 @@ pub struct State {
     pub sign_in: u64,
     /// The last revision handed to a write.
     pub revision: u64,
+    /// What each language server's program printed as its version, `None` when it does not run.
+    pub servers: Vec<(String, Option<String>)>,
 }
 
 /// Every program the app runs, checked; `claude` is the path the agent launches.
 pub async fn check(claude: &str) -> Vec<Tool> {
     groove_config::check(claude).await
+}
+
+/// The version each server program prints, `None` for one that does not run.
+pub async fn versions(programs: Vec<String>) -> Vec<Option<String>> {
+    groove_config::versions(programs).await
 }
 
 /// The file under the app's config dir, read once at start.
@@ -157,6 +166,14 @@ impl State {
             Preference::RoutineCap(agents) => held.routine_cap = agents.max(1),
             Preference::RoutinesPaused(paused) => held.routines_paused = paused,
             Preference::WrapCode(on) => ui.wrap_code = on,
+            Preference::Server(at, on) => {
+                let held = config.language_servers.take();
+                let mut servers = held.unwrap_or_else(groove_types::LanguageServer::defaults);
+                if let Some(one) = servers.get_mut(at) {
+                    one.off = !on;
+                }
+                config.language_servers = Some(servers);
+            }
         }
         Some(config)
     }
