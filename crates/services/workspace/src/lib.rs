@@ -8,7 +8,7 @@ pub use groove_diff::{
 };
 pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};
-pub use groove_text::{Buffer, Colours, Language};
+pub use groove_text::{Block, Buffer, Colours, Language, Touched};
 use std::collections::BTreeMap;
 use std::ops::Range;
 

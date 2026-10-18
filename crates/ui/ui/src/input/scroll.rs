@@ -55,9 +55,11 @@ pub(super) fn scroll(
         Tab::Resources if ui.session.face() != crate::views::session::Face::File => {
             ui.wheeled(Scroller::Resources, pixels(tokens.row), hits)
         }
-        Tab::Resources | Tab::Diff | Tab::Files => {
-            coded(ui, hits, (pixels(tokens.line), delta.across(tokens.line)))
-        }
+        Tab::Resources | Tab::Diff | Tab::Files => coded(
+            ui,
+            hits,
+            (pixels(tokens.code_line), delta.across(tokens.code_line)),
+        ),
     }
     Vec::new()
 }

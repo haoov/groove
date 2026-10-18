@@ -304,7 +304,7 @@ fn a_click_on_the_second_line_of_the_message_lands_on_it() {
     let mut ui = sidebar();
     let hits = drawn(&app, &ui);
     let box_ = hits.rect_of(&Target::Message).expect("the box");
-    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
+    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
     let x = box_.x + window().cell.width * 2.0;
     let commands = handle(
         Input::Press {

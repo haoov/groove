@@ -3,7 +3,7 @@
 
 use groove_controllers::{AppState, Command, workspace};
 use groove_ui_kit::base::ctx::Metrics;
-use groove_ui_kit::base::tokens::REST_MS;
+use groove_ui_kit::base::tokens::{REST_MS, WORD_MS};
 
 use crate::Ui;
 use crate::hit::Hits;
@@ -25,16 +25,57 @@ pub fn rest(ui: &mut Ui, app: &AppState, tick: u64) -> Option<Command> {
     }))
 }
 
-/// How many milliseconds the caret or the pointer has yet to rest, the sooner of the two.
+/// How many milliseconds the caret or the pointer has yet to rest, the soonest of them.
 pub fn resting(ui: &Ui, tick: u64) -> Option<u64> {
-    let caret = ui.session.rest.as_ref().map(|(_, since)| *since);
-    let pointer = ui.session.pointer_rest.as_ref().map(|(_, since)| *since);
-    let left = |since: u64| (since + REST_MS).checked_sub(tick).filter(|left| *left > 0);
-    caret
-        .and_then(left)
+    let caret = ui.session.rest.as_ref().map(|(_, since)| since + REST_MS);
+    let pointer = ui
+        .session
+        .pointer_rest
+        .as_ref()
+        .map(|(_, since)| since + REST_MS);
+    let unread = ui.session.word.is_none();
+    let word = ui.session.word_rest.as_ref().filter(|_| unread);
+    let left = |due: u64| due.checked_sub(tick).filter(|left| *left > 0);
+    [caret, pointer, word.map(|(_, since)| since + WORD_MS)]
         .into_iter()
-        .chain(pointer.and_then(left))
+        .flatten()
+        .filter_map(left)
         .min()
+}
+
+/// The word the caret stands in, read once the caret has rested there.
+pub fn word(ui: &mut Ui, app: &AppState, tick: u64) {
+    let here = spot(ui, app).and_then(|_| {
+        let editor = crate::views::session::diff::edited(app, ui)?;
+        let at = editor.buffer.caret();
+        Some(Pointed {
+            path: editor.path.to_string(),
+            at,
+        })
+    });
+    if ui.session.word_rest.as_ref().map(|(at, _)| at) != here.as_ref() {
+        ui.session.word_rest = here.map(|at| (at, tick));
+        ui.session.word = None;
+        return;
+    }
+    let Some((at, since)) = ui.session.word_rest.as_ref() else {
+        return;
+    };
+    if tick >= since + WORD_MS && ui.session.word.is_none() {
+        ui.session.word = word_at(app, ui, at.at);
+    }
+}
+
+/// The run of word characters around `at` in the edited buffer.
+fn word_at(app: &AppState, ui: &Ui, at: groove_types::Caret) -> Option<String> {
+    let editor = crate::views::session::diff::edited(app, ui)?;
+    let line: Vec<char> = editor.buffer.line(at.line)?.chars().collect();
+    let part = |c: &char| c.is_alphanumeric() || *c == '_';
+    let column = at.column.min(line.len());
+    let before = line[..column].iter().rev().take_while(|c| part(c)).count();
+    let after = line[column..].iter().take_while(|c| part(c)).count();
+    let word: String = line[column - before..column + after].iter().collect();
+    (!word.is_empty()).then_some(word)
 }
 
 /// Where the pointer stands in an open file. True when it moved to another spot.

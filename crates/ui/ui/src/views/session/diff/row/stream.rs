@@ -145,6 +145,7 @@ fn one(
     };
     Drawn {
         faults,
+        outline: super::worded(ui, &text, file.indent),
         words: columns_in(file.words(at), &text, file.indent),
         found: matched(ui, on, &text, file.indent),
         standing: standing(ui, on, &text, file.indent),

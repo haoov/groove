@@ -4,6 +4,7 @@ use groove_gfx::{Color, Font, Palette, TextStyle, Weight};
 use groove_types::{Capture, ThemeName};
 
 mod diff;
+mod editor;
 
 use crate::base::tokens::{HATCH_ALPHA, SCRIM_ALPHA, SHADOW_ALPHA, Tokens};
 
@@ -150,6 +151,14 @@ impl Styles {
         }
     }
 
+    /// The editor's own text: light where the mono family has a light face, else regular.
+    pub fn source(&self, role: Role) -> TextStyle {
+        TextStyle {
+            weight: Weight::Light,
+            ..self.code(role)
+        }
+    }
+
     /// What a grammar's capture looks like.
     pub fn syntax(&self, capture: Capture) -> Color {
         let p = &self.palette;
@@ -167,13 +176,6 @@ impl Styles {
             Capture::Error => p.red,
             Capture::Warning => p.yellow,
         }
-    }
-
-    /// The band under what a caret holds: the accent a quarter into the ground.
-    pub fn held(&self) -> Color {
-        self.palette
-            .base
-            .mix(self.palette.rosewater, crate::base::tokens::HELD)
     }
 
     /// A role's colour dimmed to a ground, as a badge stands on.
@@ -254,13 +256,6 @@ impl Styles {
         self.palette
             .base
             .mix(self.palette.yellow, crate::base::tokens::NOTED)
-    }
-
-    /// Under a match a search found, as a selection is.
-    pub fn found(&self) -> Color {
-        self.palette
-            .base
-            .mix(self.palette.rosewater, crate::base::tokens::FOUND)
     }
 
     /// Under the match the search stands on.

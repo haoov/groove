@@ -185,7 +185,7 @@ fn the_match_stands_in_the_middle_of_the_rows_at_the_window_s_scale() {
         let input = crate::input::Input::Key { key, mods };
         crate::input::handle(input, &mut ui, &app, &hits, window);
     }
-    let line = window.tokens().line;
+    let line = window.tokens().code_line;
     let rows = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
     let middle = 60.5 * line - ui.session.scroll();
     assert!(

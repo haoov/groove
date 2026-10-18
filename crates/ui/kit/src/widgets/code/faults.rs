@@ -9,7 +9,7 @@ use crate::base::style::Role;
 use crate::widgets::wavy;
 
 pub(super) fn faulted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, code: &Code<'_, A::Target>) {
-    let style = ctx.styles.code(Role::Text);
+    let style = ctx.styles.source(Role::Text);
     for (from, to, severity) in code.faults {
         let start = upto(ctx, code.text, *from, &style);
         let end = upto(ctx, code.text, *to, &style);

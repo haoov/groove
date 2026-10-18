@@ -1,5 +1,6 @@
 //! A file as a document: its text, the syntax spans over it, and search.
 
+mod blocks;
 mod buffer;
 mod highlight;
 mod history;
@@ -13,13 +14,13 @@ mod words;
 #[cfg(test)]
 mod tests;
 
-use std::borrow::Cow;
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
 pub use crate::language::Language;
 use groove_types::{Caret, Highlight, Indent};
 use ropey::Rope;
 
+pub use blocks::Block;
 pub use buffer::{Buffer, Touched};
 pub use search::Found;
 pub use tabs::{column_of, display_of, expand, spans_of};

@@ -87,7 +87,7 @@ fn landing_on_a_definition_centres_it_once() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     land(&mut ui, &app, &hits, window());
     let rows = hits.rect_of(&Target::Code).expect("the rows");
-    let line = window().tokens().line;
+    let line = window().tokens().code_line;
     let middle = ui.session.scroll() + rows.h / 2.0;
     assert!(
         (middle - (200.0 * line + line / 2.0)).abs() <= line,

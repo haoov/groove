@@ -131,14 +131,14 @@ fn the_file_view_draws_the_whole_file_not_the_alignment() {
         inline.iter().any(|t| t.starts_with('\u{2026}')),
         "the diff elides the head: {inline:?}"
     );
-    let file = in_view(&long(), crate::views::session::Face::File);
+    let file = in_view(&super::many(25), crate::views::session::Face::File);
     assert!(
         !file.iter().any(|t| t.starts_with('\u{2026}')),
         "the file view elides nothing"
     );
     let numbers: Vec<&String> = file.iter().filter(|t| super::numeral(t)).collect();
     assert_eq!(numbers[..3], ["1", "2", "3"], "from the first line");
-    assert_eq!(numbers.len(), 30, "every line: {numbers:?}");
+    assert_eq!(numbers.len(), 25, "every line: {numbers:?}");
 }
 
 /// A Go file, whose own formatter writes tabs.
@@ -175,7 +175,7 @@ fn a_click_past_a_tab_lands_on_the_character_it_points_at() {
     let tokens = Tokens::new(1.0);
     let point = (
         chars.left + chars.advance * 4.0 + 1.0,
-        code.y + tokens.line + 1.0,
+        code.y + tokens.code_line + 1.0,
     );
     let commands = handle(
         Input::Press {

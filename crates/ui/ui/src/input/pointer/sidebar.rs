@@ -38,7 +38,7 @@ pub(super) fn note_at(
     {
         ui.session.unfolded.push(note.origin.clone());
     }
-    let height = metrics.tokens().line;
+    let height = metrics.tokens().code_line;
     let above = |row: usize| row.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH) as f32;
     let row = app.workspace.changes.row_of(&anchor.path, line as u32);
     if let Some(row) = row.filter(|_| ui.session.tab == crate::views::session::Tab::Diff) {

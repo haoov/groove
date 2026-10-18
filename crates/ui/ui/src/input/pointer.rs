@@ -168,6 +168,7 @@ fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> 
         Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
         Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => kept(ui),
+        Some(Target::Block(line)) => surface::fold(ui, app, line),
         _ => Vec::new(),
     }
 }

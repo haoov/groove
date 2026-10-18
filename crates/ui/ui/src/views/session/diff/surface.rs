@@ -14,7 +14,7 @@ use super::row::{Drawn, Side, count, drawn};
 use super::words::{Words, words_of};
 use crate::Ui;
 use crate::components::{
-    Acting, Gutters, Line, Noted, Rows, across_extent, chars_of, code, height, visible,
+    Acting, Gutters, Line, Noted, Outlined, Rows, across_extent, chars_of, code, height, visible,
 };
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -84,7 +84,7 @@ fn surface(
         said: said.as_ref(),
         heads: view != Face::Stream(DiffView::Split),
     };
-    let lines = edged(lines_of(ctx, app, held), inline, window.start);
+    let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, ui, view);
     let across = across_of(ctx, (app, ui), numbers, rect, &rows);
     if clickable {
@@ -118,7 +118,9 @@ fn across_of(
     rect: Rect,
     rows: &[Drawn],
 ) -> f32 {
-    let reach = match super::wrapping::wrap_of(app, ui).is_some() {
+    let wraps = super::wrapping::wrap_of(app, ui)
+        .is_some_and(|(_, cols)| cols < super::wrapping::UNWRAPPED);
+    let reach = match wraps {
         true => 0.0,
         false => across_extent(ctx, numbers, rect, rows.iter().map(|row| row.text.as_str())),
     };
@@ -206,14 +208,6 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .collect()
 }
 
-/// Each note row told whether it opens its card or closes it.
-fn edged<'a>(mut lines: Vec<Line<'a>>, inline: &Inline, first: usize) -> Vec<Line<'a>> {
-    for (at, line) in lines.iter_mut().enumerate() {
-        line.edges = inline.edges(first + at);
-    }
-    lines
-}
-
 /// A row of a note, from what it says.
 fn said(words: &Words, resolved: bool) -> Line<'_> {
     let noted = Noted {
@@ -264,7 +258,12 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
         .gutter(ctx.styles.gutter(row.kind))
         .empty(row.empty)
         .caret(row.caret)
-        .held(row.held);
+        .held(row.held)
+        .outline(Outlined {
+            occurs: &row.outline.occurs,
+            guides: &row.outline.guides,
+            fold: row.outline.fold,
+        });
     match ctx.styles.row_ground(row.kind) {
         Some(color) => line.ground(color),
         None => line,
@@ -287,5 +286,6 @@ pub(super) fn numbers(app: &AppState, ui: &Ui, view: Face) -> Gutters {
         },
         digits,
         marks: app.workspace.commit.is_none(),
+        folds: view == Face::File,
     }
 }

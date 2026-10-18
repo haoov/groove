@@ -48,6 +48,8 @@ pub const CLICK_SLOP: f32 = 4.0;
 
 /// How long the caret rests before its blame shows, and the pointer before its popup, in ms.
 pub const REST_MS: u64 = 250;
+/// How long the caret rests on a word before it and its occurrences are grounded, in ms.
+pub const WORD_MS: u64 = 125;
 /// The most lines a popup holds.
 pub const POPUP_LINES: usize = 14;
 /// The most rows the completion list shows at once.
@@ -75,8 +77,12 @@ pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
 
-/// How much of the accent stands in the band under a selection, and under a search match.
-pub const HELD: f32 = 0.15;
+/// How much of the raised ground stands under a selection and under the word at the caret.
+pub const HELD: f32 = 0.8;
+pub const OCCURS: f32 = 0.4;
+/// How much of the comment colour a scope's guide takes.
+pub const GUIDE: f32 = 0.55;
+/// How much of the accent stands under a search match.
 pub const FOUND: f32 = 0.25;
 
 /// Sizes in pixels, scaled to the window.
@@ -97,6 +103,8 @@ pub struct Tokens {
     pub sidebar: f32,
     /// One line of text, with its leading.
     pub line: f32,
+    /// One row of the code surface.
+    pub code_line: f32,
     /// One line of the feed, which holds two texts, and its own age column.
     pub feed_row: f32,
     pub feed_age: f32,
@@ -151,6 +159,7 @@ const ICON: f32 = LOGICAL.icon / LOGICAL.text;
 const ROW: f32 = LOGICAL.row / LOGICAL.text;
 const HEADER: f32 = LOGICAL.header / LOGICAL.text;
 const LINE: f32 = LOGICAL.line / LOGICAL.code;
+const CODE_LINE: f32 = LOGICAL.code_line / LOGICAL.code;
 const FEED_ROW: f32 = LOGICAL.feed_row / LOGICAL.text;
 const BAR: f32 = LOGICAL.bar / LOGICAL.text;
 const FEED_AGE: f32 = LOGICAL.feed_age / LOGICAL.text;
@@ -169,6 +178,7 @@ const LOGICAL: Tokens = Tokens {
     agent: 380.0,
     sidebar: 260.0,
     line: 18.0,
+    code_line: 21.0,
     feed_row: 34.0,
     feed_age: 30.0,
     bar: 36.0,
@@ -222,6 +232,7 @@ impl Tokens {
             agent: s(LOGICAL.agent),
             sidebar: s(LOGICAL.sidebar),
             line: row(LINE, code),
+            code_line: row(CODE_LINE, code),
             feed_row: row(FEED_ROW, text),
             bar: row(BAR, text),
             feed_age: of_text(FEED_AGE),

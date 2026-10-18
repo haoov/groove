@@ -236,6 +236,7 @@ fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Col
         ("raised", styles.raised()),
         ("action", styles.action()),
         ("held", styles.held()),
+        ("occurs", styles.occurs()),
         ("noted", styles.noted()),
         ("here", styles.here()),
         ("band", styles.band()),
@@ -285,7 +286,7 @@ fn contrast(one: groove_gfx::Color, two: groove_gfx::Color) -> f32 {
 }
 
 /// The grounds a line of code is drawn on, which its text must stand out from.
-const UNDER_CODE: [&str; 6] = ["held", "noted", "hover", "band", "deep", "ground"];
+const UNDER_CODE: [&str; 7] = ["held", "occurs", "noted", "hover", "band", "deep", "ground"];
 
 #[test]
 fn code_stays_readable_on_every_ground_it_is_drawn_on() {

@@ -65,7 +65,9 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
     let tokens = Tokens::new(1.0);
     let point = (
         code.x + tokens.sm + 1.0,
-        code.y + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32 + 1.0,
+        code.y
+            + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32
+            + 1.0,
     );
     let commands = handle(
         Input::Press {
@@ -97,7 +99,7 @@ fn a_click_on_a_removed_line_takes_no_caret() {
         Input::Press {
             x: code.x + tokens.sm + 1.0,
             y: code.y
-                + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32
+                + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32
                 + 1.0,
             mods: Default::default(),
         },
@@ -120,7 +122,7 @@ fn a_point_outside_the_rows_lands_nowhere() {
     let rect = Rect::new(0.0, 0.0, 100.0, 100.0);
     assert!(code_at(&tokens, chars, rect, (-1.0, 10.0)).is_none());
     let scrolled = Chars {
-        scroll: tokens.line,
+        scroll: tokens.code_line,
         ..chars
     };
     assert_eq!(
@@ -194,7 +196,7 @@ fn what_is_held_reads_apart_from_the_row_the_caret_is_on() {
     let rows = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.rect.h == tokens.line && quad.color == styles.here())
+        .filter(|quad| quad.rect.h == tokens.code_line && quad.color == styles.here())
         .count();
     assert_eq!(rows, 0, "the caret's row carries no ground of its own");
 }
@@ -227,7 +229,7 @@ fn changing_the_view_keeps_the_same_line_in_view() {
     let app = long();
     let mut ui = on_diff();
     ui.session.view = DiffView::Inline;
-    let height = Tokens::new(1.0).line;
+    let height = Tokens::new(1.0).code_line;
     ui.session.diff = height * 6.0;
     let (_, hits) = view_of(&app, &ui);
     let top = |ui: &Ui| {
@@ -278,7 +280,7 @@ fn a_wheel_notch_over_the_file_moves_one_code_line() {
     let tokens = Tokens::new(1.0);
     assert_eq!(
         ui.session.scroll(),
-        tokens.line,
+        tokens.code_line,
         "a code row, not a list row of {}",
         tokens.row
     );
@@ -294,7 +296,9 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
     let tokens = Tokens::new(1.0);
     let point = (
         code.x + tokens.sm + 1.0,
-        code.y + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32 + 1.0,
+        code.y
+            + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32
+            + 1.0,
     );
     let commands = handle(
         Input::Press {
@@ -320,7 +324,7 @@ fn the_files_tab_draws_from_where_it_is_scrolled() {
     let app = many(200);
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.file = Tokens::new(1.0).line * 50.0;
+    ui.session.file = Tokens::new(1.0).code_line * 50.0;
     let (frame, _) = view_of(&app, &ui);
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     let numbers: Vec<u32> = frame.layers()[0]

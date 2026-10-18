@@ -134,7 +134,7 @@ fn joined(runs: &mut Vec<(usize, usize, LineMark)>, (at, len, mark): (usize, usi
 
 /// What the surface shows, outlined over the column.
 fn lens(ctx: &mut Ctx, rect: Rect, per: f32, body: Rect, ui: &Ui) {
-    let line = ctx.tokens.line;
+    let line = ctx.tokens.code_line;
     let high = (body.h / line * per).min(rect.h).max(ctx.tokens.xs);
     let top = rect.y + ui.session.scroll() / line * per;
     let held = Rect::new(rect.x, top.min(rect.bottom() - high), rect.w, high);

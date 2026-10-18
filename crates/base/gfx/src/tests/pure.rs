@@ -171,3 +171,22 @@ fn text_with_a_paragraph_break_and_right_to_left_words_is_measured_as_one_line()
         assert!(width > 0.0, "{cut:?}");
     }
 }
+
+#[test]
+fn light_text_takes_lilex_s_light_face_and_regular_where_a_family_has_none() {
+    use glyphon::fontdb::{Family as Named, Query, Weight as Wanted};
+    let fonts = crate::Fonts::embedded();
+    let weight_of = |family: &str| {
+        let query = Query {
+            families: &[Named::Name(family)],
+            weight: Wanted::LIGHT,
+            ..Query::default()
+        };
+        let db = fonts.system.db();
+        db.query(&query)
+            .and_then(|id| db.face(id))
+            .map(|face| face.weight.0)
+    };
+    assert_eq!(weight_of("Lilex"), Some(300));
+    assert_eq!(weight_of("IBM Plex Mono"), Some(400));
+}

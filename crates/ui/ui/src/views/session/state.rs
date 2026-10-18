@@ -51,6 +51,11 @@ pub struct SessionUi {
     /// The spot of an open file the pointer stands on, and the one it last came to rest on.
     pub pointed: Option<crate::views::session::diff::Pointed>,
     pub pointer_rest: Option<(crate::views::session::diff::Pointed, u64)>,
+    /// Where the caret stood and since when, and the word it rests in once it has rested.
+    pub word_rest: Option<(crate::views::session::diff::Pointed, u64)>,
+    pub word: Option<String>,
+    /// The blocks folded in each file, by the line that opens them.
+    pub folds: std::collections::BTreeMap<String, crate::views::session::diff::blocks::Folds>,
     /// How far the overview is scrolled, in pixels.
     pub overview: f32,
     /// Which of the two views the stream is drawn in.

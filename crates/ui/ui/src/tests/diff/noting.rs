@@ -18,7 +18,7 @@ use crate::views::session::Noting;
 fn asked(app: &AppState, ui: &mut Ui, line: usize) {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let rect = hits.rect_of(&Target::Code).expect("the rows");
-    let y = rect.y + Tokens::new(1.0).line * line as f32 + 1.0;
+    let y = rect.y + Tokens::new(1.0).code_line * line as f32 + 1.0;
     handle(
         Input::Menu {
             x: rect.x + 200.0,
@@ -134,8 +134,8 @@ fn a_note_being_typed_takes_a_row_of_its_own() {
     ui.focus = crate::Focus::Workspace;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        rows + 6,
-        "its chips, its row, a rule, its buttons, and room above and below"
+        rows + 7,
+        "its chips, its row, a rule, its buttons, and room around the chips and under the buttons"
     );
 }
 

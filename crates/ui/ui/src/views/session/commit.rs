@@ -79,6 +79,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
                 cells: 0,
                 digits: 0,
                 marks: false,
+                folds: false,
             },
             across: 0.0,
         };
@@ -88,7 +89,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     if buffer.text().is_empty() && !composing {
         let [line, _] = column_in(
             box_,
-            [Spec::default().height(ctx.tokens.line), Spec::fill()],
+            [Spec::default().height(ctx.tokens.code_line), Spec::fill()],
         );
         Label::new("a message", ctx.styles.code(Role::Ghost)).draw(ctx, line);
     }

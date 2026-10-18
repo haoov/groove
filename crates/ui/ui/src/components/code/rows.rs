@@ -19,7 +19,7 @@ pub struct Rows<'a> {
 
 /// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
 pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect> {
-    let height = ctx.tokens.line;
+    let height = ctx.tokens.code_line;
     let block = Block::of(ctx, rows.gutters);
     let mut drawn = Vec::with_capacity(rows.lines.len());
     ctx.clipped(rect, |ctx| {

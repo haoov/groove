@@ -68,7 +68,7 @@ fn a_click_on_text_scrolled_across_lands_on_the_column_under_it() {
     let chars = hits.chars();
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let x = chars.left + ui.session.across() + advance * 2.0;
-    let y = code.y + Tokens::new(1.0).line * 10.0 + 1.0;
+    let y = code.y + Tokens::new(1.0).code_line * 10.0 + 1.0;
     let mods = Default::default();
     let commands = handle(Input::Press { x, y, mods }, &mut ui, &app, &hits, window());
     let wanted = Edit::Move(Motion::To(Caret::new(10, 12)));
@@ -89,7 +89,7 @@ fn a_caret_moved_off_the_view_brings_it_back() {
     to(&mut app, Caret::new(199, 400));
     crate::input::follow(&mut ui, &app, &hits, window());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let (line, advance) = (Tokens::new(1.0).line, hits.chars().advance);
+    let (line, advance) = (Tokens::new(1.0).code_line, hits.chars().advance);
     let row = 199.0 * line;
     assert_eq!(
         ui.session.scroll(),

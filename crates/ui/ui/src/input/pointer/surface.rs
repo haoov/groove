@@ -26,7 +26,7 @@ pub(super) fn switch(
     view: DiffView,
     (hits, metrics): (&Hits, Metrics),
 ) {
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let faces = (Face::Stream(ui.session.view), Face::Stream(view));
     ui.session.diff = diff::scrolled(app, ui, faces, (ui.session.diff, line), hits.wrap());
     ui.session.view = view;
@@ -81,7 +81,7 @@ pub(super) fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) ->
     let Some(head) = app.workspace.changes.head_of(path) else {
         return false;
     };
-    ui.session.diff = head as f32 * metrics.tokens().line;
+    ui.session.diff = head as f32 * metrics.tokens().code_line;
     true
 }
 
@@ -111,7 +111,7 @@ pub(super) fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: 
     if total == 0 {
         return;
     }
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let at = ((y - rect.y) / rect.h).clamp(0.0, 1.0) * total as f32 * line;
     let far = hits.extent(Scroller::Code);
     *ui.session.scroll_mut() = (at - rect.h / 2.0).clamp(0.0, far);
@@ -130,7 +130,7 @@ pub(super) fn reached(
     ui.focus = Focus::Workspace;
     ui.session.tab = Tab::Files;
     let above = one.line.saturating_sub(ABOVE_MATCH);
-    ui.session.file = above as f32 * metrics.tokens().line;
+    ui.session.file = above as f32 * metrics.tokens().code_line;
     ui.session.file_across = reaching(&one.text, &one.path, one.at.1, hits, metrics);
     let held = Selection {
         anchor: Caret::new(one.line, one.at.0),
@@ -157,7 +157,7 @@ pub(super) fn holds(app: &AppState, ui: &Ui, path: &str) -> bool {
 /// A file's rows hidden or shown again, with what stands above them held still.
 pub(super) fn folded(ui: &mut Ui, app: &AppState, metrics: Metrics, path: String) -> Vec<Command> {
     let changes = &app.workspace.changes;
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let top = first(line, ui.session.diff);
     if let (Some(head), Some(file)) = (changes.head_of(&path), changes.get(&path))
         && head < top
@@ -282,4 +282,16 @@ pub(super) fn defined(
         path,
         at,
     })]
+}
+
+/// The block a line of the open file opens, folded under it or shown again.
+pub(super) fn fold(ui: &mut Ui, app: &AppState, line: usize) -> Vec<Command> {
+    if let Some(open) = crate::views::session::diff::edited(app, ui) {
+        let folds = ui.session.folds.entry(open.path.to_string()).or_default();
+        folds.seen = open.buffer.revision();
+        if !folds.starts.remove(&line) {
+            folds.starts.insert(line);
+        }
+    }
+    Vec::new()
 }

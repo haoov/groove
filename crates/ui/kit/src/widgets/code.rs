@@ -2,6 +2,8 @@
 
 mod faults;
 mod gutter;
+mod head;
+mod outline;
 mod paint;
 
 use groove_gfx::{Color, Rect};
@@ -56,6 +58,27 @@ pub struct Code<'a, T> {
     pub faults: &'a [(usize, usize, Severity)],
     pub noted: bool,
     pub blame: Option<(&'a str, Option<T>)>,
+    pub outline: Outline<'a, T>,
+}
+
+/// What the editor draws about a line besides its text.
+pub struct Outline<'a, T> {
+    /// Where the word the caret rests in stands on this line, in columns of the text.
+    pub occurs: &'a [(usize, usize)],
+    /// The columns a scope's guide runs down.
+    pub guides: &'a [usize],
+    /// The block the line opens: whether it is folded, the lines it hides, what its caret does.
+    pub fold: Option<(bool, usize, T)>,
+}
+
+impl<T> Default for Outline<'_, T> {
+    fn default() -> Self {
+        Self {
+            occurs: &[],
+            guides: &[],
+            fold: None,
+        }
+    }
 }
 
 /// The row in `line`, its text scrolled `across` to the left.
@@ -67,7 +90,7 @@ pub fn draw<A: App>(
     across: f32,
 ) {
     if code.head {
-        return paint::head(ctx, line, code);
+        return head::head(ctx, line, code);
     }
     if code.banner {
         return paint::banner(ctx, line, code.text);

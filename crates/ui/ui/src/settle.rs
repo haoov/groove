@@ -29,6 +29,7 @@ impl Ui {
         self.session.composing &= self.session.commits();
         self.unfound();
         self.refound(app);
+        crate::views::session::diff::blocks::follow(self, app);
     }
 
     /// The find bar lets go of the keys on a tab change, and while no bar is drawn.

@@ -7,6 +7,7 @@ use crate::{Colours, Document, Settled};
 
 mod edits;
 mod motion;
+mod moves;
 mod stream;
 
 /// Lines `line..line + gone` of the text became `line..line + came`.
@@ -30,6 +31,9 @@ pub struct Buffer {
     parsed: u64,
     /// The lines each change of the edit under way replaced.
     touched: Vec<Touched>,
+    /// The lines each change replaced, by the revision it made; none before `forgot`.
+    moves: Vec<(u64, Touched)>,
+    forgot: u64,
 }
 
 impl std::fmt::Debug for Buffer {
@@ -59,6 +63,8 @@ impl Buffer {
             revision: 0,
             parsed: 0,
             touched: Vec::new(),
+            moves: Vec::new(),
+            forgot: 0,
         }
     }
 

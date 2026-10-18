@@ -31,6 +31,11 @@ impl Syntax {
         })
     }
 
+    /// The tree a view reads the structure from: a template's YAML layer, else the grammar's own.
+    pub(crate) fn tree(&self) -> &Tree {
+        self.yaml.as_ref().unwrap_or(&self.tree)
+    }
+
     /// Moves the trees' nodes along an edit, without parsing again.
     pub(crate) fn shift(&mut self, edit: InputEdit) {
         self.tree.edit(&edit);
@@ -52,8 +57,10 @@ impl Syntax {
 
     /// The lines the scopes holding `byte` begin on, outermost first.
     pub(crate) fn scopes(&self, byte: usize) -> Vec<usize> {
-        let tree = self.yaml.as_ref().unwrap_or(&self.tree);
-        let mut node = tree.root_node().descendant_for_byte_range(byte, byte);
+        let mut node = self
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(byte, byte);
         let mut lines = Vec::new();
         while let Some(here) = node {
             if self.language.is_scope(here.kind()) {

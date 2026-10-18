@@ -1,5 +1,6 @@
 //! What one row says: its text, its colours, its numbers and its mark.
 
+mod file;
 mod levels;
 mod stream;
 
@@ -9,6 +10,7 @@ use groove_controllers::AppState;
 use groove_controllers::workspace_service::{At, Buffer, Opened, display_of, shown};
 use groove_types::{Caret, Highlight, LineMark, RowKind};
 
+use self::file::whole;
 use self::stream::streamed;
 use crate::editor::{Editing, Editor};
 use crate::views::session::Face;
@@ -56,6 +58,15 @@ pub(super) struct Drawn {
     /// The one of them the search stands on.
     pub(super) standing: Option<(usize, usize)>,
     pub(super) faults: Vec<super::faults::Fault>,
+    pub(super) outline: Outline,
+}
+
+/// What the file view draws about a line besides its text, as the code widget's `Outlined` says.
+#[derive(Default, Clone)]
+pub(super) struct Outline {
+    pub(super) occurs: Vec<(usize, usize)>,
+    pub(super) guides: Vec<usize>,
+    pub(super) fold: Option<(bool, usize, usize)>,
 }
 
 /// The rows of one view inside `window`: the open file, or every changed file in turn.
@@ -91,74 +102,6 @@ pub(super) fn open(app: &AppState) -> Option<&Opened> {
 /// The buffer the editor reads: the one the keyboard edits.
 pub(crate) fn edited<'a>(app: &'a AppState, ui: &Ui) -> Option<Editor<'a>> {
     Editing::keyed(app, ui)?.editor(app)
-}
-
-/// The rows in `window`: the buffer's lines, or their pieces while the lines wrap.
-fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
-    let Some((starts, cols)) = super::wrapping::wrap_of(app, ui) else {
-        return lines(app, ui, window);
-    };
-    let first = super::wrapping::line_of(&starts, window.start).0;
-    let last = super::wrapping::line_of(&starts, window.end.saturating_sub(1)).0;
-    let rows = lines(app, ui, first..last + 1);
-    window
-        .filter_map(|row| {
-            let (line, part) = super::wrapping::line_of(&starts, row);
-            let whole = rows.get(line - first)?;
-            Some(super::wrapping::piece(whole, part, cols))
-        })
-        .collect()
-}
-
-/// The lines of the buffer as it is now, marked where the file's change touched them.
-fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
-    let Some(editor) = edited(app, ui) else {
-        return Vec::new();
-    };
-    let buffer = editor.buffer;
-    let caret = caret(ui, buffer);
-    let stamp = (editor.stamp, buffer.painted());
-    let doc = buffer.document();
-    let colours = ui
-        .painted
-        .of(doc, &editor.path, false, stamp, window.clone());
-    let width = doc.indent().width();
-    let hunked = editor.file.map(|file| &file.hunked);
-    window
-        .map(|at| {
-            let text = text_of(buffer, at);
-            let painted = match editor.levels {
-                Some(shape) => levels::spans(&text, shape),
-                None => colours.of(at).to_vec(),
-            };
-            let (drawn, spans) = shown(&text, &painted, width);
-            Drawn {
-                text: drawn,
-                spans,
-                gutters: vec![(at + 1).to_string()],
-                kind: RowKind::Context,
-                caret: caret
-                    .filter(|on| on.line == at)
-                    .map(|on| display_of(&text, on.column, width)),
-                held: held(buffer, ui, at),
-                mark: hunked.and_then(|one| one.marks.get(&(at as u32)).copied()),
-                words: columns_in(
-                    hunked.and_then(|one| one.words.new.get(&(at as u32))),
-                    &text,
-                    width,
-                ),
-                found: matched(ui, at, &text, width),
-                standing: standing(ui, at, &text, width),
-                faults: super::faults::on(
-                    super::faults::of(app, &editor.path, at),
-                    at,
-                    &text,
-                    width,
-                ),
-                ..Drawn::default()
-            }
-        })
-        .collect()
 }
 
 /// What a live search found on this row, in the columns it draws.
@@ -296,4 +239,34 @@ pub(super) fn counted(app: &AppState, path: &str) -> Option<(u32, u32)> {
         .iter()
         .find(|file| file.path == path)
         .map(|file| (file.added, file.deleted))
+}
+
+/// Where `word` stands whole in `text`, in the columns the row draws.
+pub(super) fn occurs(text: &str, word: &str, width: usize) -> Vec<(usize, usize)> {
+    let chars: Vec<char> = text.chars().collect();
+    let sought: Vec<char> = word.chars().collect();
+    if sought.is_empty() {
+        return Vec::new();
+    }
+    let part = |at: Option<&char>| at.is_some_and(|c| c.is_alphanumeric() || *c == '_');
+    let mut found = Vec::new();
+    for at in 0..chars.len().saturating_sub(sought.len() - 1) {
+        let whole = chars[at..].starts_with(&sought)
+            && !part(at.checked_sub(1).and_then(|before| chars.get(before)))
+            && !part(chars.get(at + sought.len()));
+        if whole {
+            let column = |at: usize| display_of(text, at, width);
+            found.push((column(at), column(at + sought.len())));
+        }
+    }
+    found
+}
+
+/// A diff row's outline: the word the caret rests in, wherever the row holds it.
+pub(super) fn worded(ui: &Ui, text: &str, width: usize) -> Outline {
+    let word = ui.session.word.as_deref();
+    Outline {
+        occurs: word.map_or_else(Vec::new, |word| occurs(text, word, width)),
+        ..Outline::default()
+    }
 }

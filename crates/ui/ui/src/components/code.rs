@@ -52,7 +52,6 @@ pub struct Line<'a> {
     /// A side of a split row with no line on it.
     pub empty: bool,
     pub pad: Option<Room>,
-    pub edges: (bool, bool), // a note row opening its card, closing it
     pub composed: Option<Composed>,
     /// The notes this line carries, and the resolved one a click on them opens.
     pub tile: Option<(Tile, Option<groove_types::NoteOrigin>)>,
@@ -77,6 +76,15 @@ pub struct Line<'a> {
     pub noted: bool,
     /// Who last changed the line, after its end, and the commit a click opens.
     pub blame: Option<(&'a str, Option<&'a str>)>,
+    pub outline: Outlined<'a>,
+}
+
+/// The word's occurrences, the scope guides and the block a line opens: folded, lines it hides, line.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Outlined<'a> {
+    pub occurs: &'a [(usize, usize)],
+    pub guides: &'a [usize],
+    pub fold: Option<(bool, usize, usize)>,
 }
 
 impl<'a> Line<'a> {
@@ -112,6 +120,11 @@ impl<'a> Line<'a> {
         }
     }
 
+    pub fn outline(mut self, outline: Outlined<'a>) -> Self {
+        self.outline = outline;
+        self
+    }
+
     pub fn new(text: &'a str) -> Self {
         Self {
             gutters: &[],
@@ -130,7 +143,6 @@ impl<'a> Line<'a> {
             covered: false,
             empty: false,
             pad: None,
-            edges: (false, false),
             composed: None,
             tile: None,
             caret: None,
@@ -144,6 +156,7 @@ impl<'a> Line<'a> {
             acting: None,
             noted: false,
             blame: None,
+            outline: Outlined::default(),
         }
     }
 

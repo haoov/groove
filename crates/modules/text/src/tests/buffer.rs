@@ -400,3 +400,26 @@ fn a_plain_buffer_opens_with_its_caret_at_the_end_and_nothing_to_undo() {
     edit(&mut buffer, &typed("!"));
     assert_eq!(text(&buffer), "one\ntwo!");
 }
+
+#[test]
+fn the_buffer_says_where_its_lines_went_since_a_revision() {
+    let mut buffer = buffer("a\nb\nc\n");
+    let seen = buffer.revision();
+    buffer.edit(&Edit::Newline);
+    buffer.edit(&Edit::Insert("x".into()));
+    let moves = buffer.moves_since(seen).expect("kept");
+    assert_eq!(
+        moves
+            .iter()
+            .map(|one| (one.line, one.gone, one.came))
+            .collect::<Vec<_>>(),
+        [(0, 1, 2), (1, 1, 1)],
+        "a line broken in two, then one typed in"
+    );
+    assert_eq!(buffer.moves_since(buffer.revision()), Some(Vec::new()));
+    assert_eq!(
+        buffer.moves_since(buffer.revision() + 1),
+        None,
+        "a later one is unknown"
+    );
+}

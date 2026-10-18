@@ -111,7 +111,7 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
         crate::views::session::diff::edited(app, ui).is_some_and(|one| one.path == hit.path);
     let row = Inline::of(app, ui, find.view, hits.wrap()).shifted(hit.row);
     let same = holds || find.view != Face::File;
-    *ui.session.scroll_mut() = centred(row, metrics.tokens().line, hits, same);
+    *ui.session.scroll_mut() = centred(row, metrics.tokens().code_line, hits, same);
     let Some(at) = hit.line.map(|line| Caret::new(line, hit.range.start)) else {
         return Vec::new();
     };

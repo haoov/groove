@@ -15,7 +15,7 @@ use groove_ui_kit::widgets::{Badge, Button, typed_line};
 /// One row of a note: its part of the card, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, code.edges);
+    card_row(ctx, card);
     let role = match said.resolved {
         true => Role::Faint,
         false => Role::Text,
@@ -86,14 +86,9 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
 }
 
 /// A row of room inside the card, a rule across it half way down when it parts two blocks.
-pub(super) fn padded(
-    ctx: &mut Ctx,
-    line: Rect,
-    room: Room,
-    (gutter, edges): (Block, (bool, bool)),
-) {
+pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, gutter: Block) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, edges);
+    card_row(ctx, card);
     if room == Room::Between {
         let half = card.h / 2.0;
         let lower = Rect::new(card.x, card.y + half, card.w, half);
@@ -131,14 +126,9 @@ fn by(ctx: &mut Ctx, card: Rect, said: Noted<'_>) -> f32 {
 }
 
 /// What a note offers, as buttons from the column its words start on.
-pub(super) fn acts(
-    ctx: &mut Ctx,
-    line: Rect,
-    acting: &Acting,
-    (gutter, edges): (Block, (bool, bool)),
-) {
+pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, edges);
+    card_row(ctx, card);
     let at = gutter.content(ctx, line);
     let mut room = Rect::new(
         at,

@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_types::Note;
 
-use super::{BETWEEN, Block, anchored, starts};
+use super::{BETWEEN, Block, UNDER, anchored, starts};
 use crate::views::session::Face;
 use crate::views::session::diff::wrap::wrapped;
 
@@ -23,7 +23,7 @@ pub(super) fn block(
     };
     let rows = match hidden {
         true => 0,
-        false => said.len().max(1) + BETWEEN + 1,
+        false => said.len().max(1) + BETWEEN + 1 + UNDER,
     };
     Some(Block {
         after,

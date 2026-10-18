@@ -21,7 +21,7 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let Some(rect) = hits.rect_of(&Target::Code) else {
         return;
     };
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let Some(row) = row_of(ui, app, hits, caret) else {
         return;
     };
@@ -47,7 +47,7 @@ pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let (Some(rect), Some(row)) = (hits.rect_of(&Target::Code), row_of(ui, app, hits, *at)) else {
         return;
     };
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     *ui.session.scroll_mut() = (row * line - (rect.h - line) / 2.0).max(0.0);
     sideways(ui, app, (hits, metrics), *at);
     (ui.session.centred, ui.session.followed) = (servers.landings, Some(*at));

@@ -44,7 +44,7 @@ fn the_scopes_above_the_first_row_stand_over_it() {
     let app = nested();
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    *ui.session.scroll_mut() = Tokens::new(1.0).line * 20.0;
+    *ui.session.scroll_mut() = Tokens::new(1.0).code_line * 20.0;
     let band = band(&app, &ui);
     for scope in ["mod one {", "impl Two {", "fn three() {"] {
         assert!(
@@ -67,7 +67,7 @@ fn the_stream_pins_the_file_it_stands_in() {
     let app = both();
     let mut ui = on_diff();
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
-    *ui.session.scroll_mut() = (head + HEAD_ROWS) as f32 * Tokens::new(1.0).line;
+    *ui.session.scroll_mut() = (head + HEAD_ROWS) as f32 * Tokens::new(1.0).code_line;
     let said = band(&app, &ui);
     assert!(said.contains("b.rs") && said.contains("src"), "{said}");
 }
@@ -76,7 +76,7 @@ fn the_stream_pins_the_file_it_stands_in() {
 fn the_pinned_head_stands_while_the_file_s_own_rows_pass_under_it() {
     let app = both();
     let mut ui = on_diff();
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     let bands: Vec<f32> = (1..6)
         .map(|row| {
             *ui.session.scroll_mut() = row as f32 * line;
@@ -95,7 +95,7 @@ fn a_scope_the_band_covers_is_pinned_at_once_and_not_a_scroll_later() {
     let app = nested();
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     *ui.session.scroll_mut() = 2.0 * line;
     let said = band(&app, &ui);
     assert!(
@@ -116,7 +116,7 @@ fn the_diff_names_the_file_by_its_path_the_whole_way_down() {
         ],
     );
     let mut ui = on_diff();
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     let (said, held): (Vec<String>, Vec<bool>) = (0..16)
         .map(|row| {
             *ui.session.scroll_mut() = row as f32 * line;
@@ -167,7 +167,7 @@ three
         ],
     );
     let mut ui = on_diff();
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
 
     for row in [head - 1, head, head + 1] {
@@ -196,7 +196,7 @@ fn a_scope_stands_over_the_rows_as_soon_as_its_line_leaves_the_top() {
     let app = nested();
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    *ui.session.scroll_mut() = Tokens::new(1.0).line / 3.0;
+    *ui.session.scroll_mut() = Tokens::new(1.0).code_line / 3.0;
     let said = band(&app, &ui);
     assert!(said.contains("mod one {"), "not a whole line later: {said}");
 }
@@ -205,7 +205,7 @@ fn a_scope_stands_over_the_rows_as_soon_as_its_line_leaves_the_top() {
 fn the_pinned_head_stands_two_rows_tall_over_a_shadow() {
     let app = both();
     let mut ui = on_diff();
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     *ui.session.scroll_mut() = line;
     let (frame, hits) = view_of(&app, &ui);
     let pinned = hits.rect_of(&Target::Pinned).expect("a pinned head");
@@ -223,7 +223,7 @@ fn the_pinned_head_stands_two_rows_tall_over_a_shadow() {
 fn the_next_head_pushes_the_pinned_one_out() {
     let app = both();
     let mut ui = on_diff();
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     let next = app.workspace.changes.head_of("src/b.rs").expect("the file");
     *ui.session.scroll_mut() = (next - 1) as f32 * line;
     let (_, hits) = view_of(&app, &ui);
