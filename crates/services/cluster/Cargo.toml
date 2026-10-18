@@ -1,6 +1,6 @@
 [package]
 name = "groove-cluster-service"
-description = "The cluster part of the app: the contexts found, their sign-in, and the watched objects"
+description = "The cluster part of the app: the contexts found, their sign-in, the watched objects, and the writes"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,6 +12,7 @@ groove-text = { path = "../../modules/text" }
 groove-contexts = { path = "../../modules/contexts" }
 groove-objects = { path = "../../modules/objects" }
 groove-types = { path = "../../shared/types" }
+serde_json.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

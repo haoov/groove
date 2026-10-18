@@ -13,6 +13,8 @@ pub enum Error {
     /// The resourceVersion a watch resumed from is gone: the list starts again.
     #[error("{context} no longer holds the version the watch resumed from")]
     Expired { context: String },
+    #[error("{context} holds a newer version of the object")]
+    Conflict { context: String },
     #[error("{context} did not answer: {detail}")]
     Unreachable { context: String, detail: String },
     #[error("{context} sent a watch event Groove cannot read: {detail}")]
@@ -49,6 +51,7 @@ impl Error {
     fn sorted(context: String, error: kube::Error) -> Self {
         match error {
             kube::Error::Api(status) if status.code == 410 => Error::Expired { context },
+            kube::Error::Api(status) if status.code == 409 => Error::Conflict { context },
             kube::Error::Api(status) if status.code == 401 => Error::Refused {
                 context,
                 detail: status.message,

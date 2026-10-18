@@ -176,7 +176,7 @@ fn seen(context: &str, line: &str) -> Result<Seen> {
 }
 
 /// The object without its `managedFields`, which nothing in Groove reads.
-fn bare(mut object: Value) -> Value {
+pub(crate) fn bare(mut object: Value) -> Value {
     if let Some(metadata) = object.get_mut("metadata").and_then(Value::as_object_mut) {
         metadata.remove("managedFields");
     }
