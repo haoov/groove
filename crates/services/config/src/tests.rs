@@ -92,6 +92,26 @@ fn a_source_turns_on_and_off_but_the_last_one_stays() {
 }
 
 #[test]
+fn the_first_source_turned_on_starts_the_config() {
+    let mut state = State::default();
+    let github = groove_types::GithubConfig::bare("github.com");
+    let config = state.set_source(Source::Github(Some(github))).unwrap();
+    assert!(config.github.is_some());
+    assert_eq!(
+        config.git.worktree_root,
+        crate::sources::FIRST_WORKTREE_ROOT
+    );
+    assert_eq!(config.preferences, groove_types::Preferences::default());
+}
+
+#[test]
+fn a_refused_change_before_the_first_run_starts_nothing() {
+    let mut state = State::default();
+    assert!(state.set_source(Source::Github(None)).is_err());
+    assert!(state.config.is_none());
+}
+
+#[test]
 fn the_poll_never_runs_faster_than_its_floor() {
     let mut state = with(13.0, 12.5);
     state.set(Preference::PollIntervalSecs(1));

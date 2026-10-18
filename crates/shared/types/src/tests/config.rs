@@ -69,3 +69,19 @@ fn a_file_naming_the_agent_font_reads_it_as_the_mono_font() {
     let ui: crate::UiConfig = serde_json::from_str(file).unwrap();
     assert_eq!(ui.mono_font_family, "Lilex");
 }
+
+#[test]
+fn a_name_alone_reads_as_a_list_of_one() {
+    let file = FILE
+        .replace(r#""ready": ["Ready"]"#, r#""ready": "Ready for sprint""#)
+        .replace(r#""high": ["P1"]"#, r#""high": "P1""#)
+        .replace(
+            r#""exclude_statuses": ["Done"]"#,
+            r#""exclude_statuses": "Done""#,
+        );
+    let config: Config = serde_json::from_str(&file).unwrap();
+    let notion = config.notion.expect("the source");
+    assert_eq!(notion.status_map.ready, ["Ready for sprint"]);
+    assert_eq!(notion.priority_map.high, ["P1"]);
+    assert_eq!(notion.filters.exclude_statuses, ["Done"]);
+}

@@ -236,8 +236,11 @@ impl EstimateUnit {
 /// Which status values mean what; the first of each is the one Groove writes.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct StatusMap {
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub ready: Vec<String>,
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub in_progress: Vec<String>,
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub done: Vec<String>,
 }
 
@@ -267,8 +270,11 @@ impl StatusMap {
 /// Which of the provider's priority values mean what.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PriorityMap {
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub high: Vec<String>,
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub medium: Vec<String>,
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub low: Vec<String>,
 }
 
@@ -286,5 +292,6 @@ impl PriorityMap {
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct FilterConfig {
+    #[serde(deserialize_with = "super::names::one_or_many")]
     pub exclude_statuses: Vec<String>,
 }

@@ -19,6 +19,8 @@ pub struct State {
     /// What the last scan found; `None` before the first one ends.
     pub found: Option<Vec<KubeContext>>,
     pub scanning: bool,
+    /// Why the last scan could not read the files; `None` once one does.
+    pub unread: Option<String>,
     /// A scan was begun once.
     pub scanned: bool,
     logins: Vec<(String, Login)>,
@@ -80,8 +82,8 @@ impl State {
 #[derive(Debug)]
 pub enum Event {
     Found(Vec<KubeContext>),
-    /// The scan could not read the files; what it found before stays.
-    Unread,
+    /// The scan could not read the files, and why; what it found before stays.
+    Unread(String),
     Checked {
         context: String,
         login: Login,
@@ -109,8 +111,12 @@ pub fn apply(state: &mut State, event: Event) {
         Event::Found(contexts) => {
             state.found = Some(contexts);
             state.scanning = false;
+            state.unread = None;
         }
-        Event::Unread => state.scanning = false,
+        Event::Unread(why) => {
+            state.scanning = false;
+            state.unread = Some(why);
+        }
         Event::Checked { context, login } => {
             if matches!(login, Login::SignedIn { .. }) {
                 state.store.signed_in(&context);

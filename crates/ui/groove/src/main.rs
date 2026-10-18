@@ -64,15 +64,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Every child gets the login shell's `PATH`, which a desktop launch lacks.
 fn login_path() -> std::io::Result<()> {
-    let Ok(shell) = std::env::var("SHELL") else {
-        return Ok(());
-    };
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    if let Some(path) = runtime.block_on(groove_exec::login::path(&shell)) {
-        groove_exec::login::adopt(path);
-    }
+    let shell = std::env::var("SHELL").ok();
+    let exported = shell.and_then(|shell| runtime.block_on(groove_exec::login::path(&shell)));
+    let path = exported.unwrap_or_else(|| std::env::var("PATH").unwrap_or_default());
+    groove_exec::login::adopt(groove_exec::login::with_installs(&path));
     Ok(())
 }
 

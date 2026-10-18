@@ -58,6 +58,7 @@ impl ApplicationHandler<Message> for App {
             Command::Delivery(groove_controllers::delivery::Command::ReviewQueue),
             Command::Agent(groove_controllers::agent::Command::ListSkills),
             Command::Config(groove_controllers::config::Command::CheckEnvironment),
+            Command::Cluster(groove_controllers::cluster::Command::ReadContexts),
         ] {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }

@@ -23,6 +23,32 @@ async fn path_reads_what_the_shell_exports() {
 }
 
 #[tokio::test]
+async fn path_falls_back_to_the_non_interactive_shell() {
+    let dir = std::env::temp_dir().join(format!("groove-login-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let shell = dir.join("shell");
+    let script = "#!/bin/sh\ncase \"$2\" in -i) exit 1;; esac\nPATH=/plain/bin\neval \"$3\"\n";
+    std::fs::write(&shell, script).unwrap();
+    std::process::Command::new("chmod")
+        .args(["+x", shell.to_str().unwrap()])
+        .status()
+        .unwrap();
+    let path = path(shell.to_str().unwrap()).await;
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(path.as_deref(), Some("/plain/bin"));
+}
+
+#[test]
+fn joined_adds_only_the_missing_dirs_at_the_end() {
+    let extra = ["/opt/homebrew/bin", "/usr/local/bin"];
+    assert_eq!(
+        joined("/usr/bin:/usr/local/bin", &extra),
+        "/usr/bin:/usr/local/bin:/opt/homebrew/bin"
+    );
+    assert_eq!(joined("", &extra), "/opt/homebrew/bin:/usr/local/bin");
+}
+
+#[tokio::test]
 async fn path_is_none_when_the_shell_is_missing() {
     assert_eq!(path("/nonexistent/shell").await, None);
 }

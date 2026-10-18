@@ -166,7 +166,10 @@ fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
                     }
                 }
                 Err(e) => {
-                    apply(Event::Cluster(ClusterEvent::Unread), state);
+                    apply(
+                        Event::Cluster(ClusterEvent::Unread(e.message.clone())),
+                        state,
+                    );
                     state.failed(e);
                     unscanned(spawner);
                 }
