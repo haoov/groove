@@ -1,6 +1,7 @@
 mod actions;
 mod agent;
 mod cluster;
+mod cluster_writes;
 mod config;
 mod deleting;
 mod delivery;

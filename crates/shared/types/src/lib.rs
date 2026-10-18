@@ -58,7 +58,7 @@ pub use cells::{cell_value, compare_cells};
 pub use chord::{Chord, Stroke};
 pub use cluster::{
     Attached, Builtin, KindHeading, KubeAuth, KubeContext, KubeKind, Login, ObjectRow, TableColumn,
-    WatchKey,
+    Target, WatchKey,
 };
 pub use config::{
     ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,

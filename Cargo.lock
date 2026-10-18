@@ -1367,6 +1367,7 @@ dependencies = [
  "groove-objects",
  "groove-text",
  "groove-types",
+ "serde_json",
  "tokio",
 ]
 

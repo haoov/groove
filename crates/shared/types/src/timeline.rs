@@ -22,11 +22,12 @@ pub enum TimelineKind {
     RoutineRan,
     RoutineEnded,
     ClusterRead,
+    ClusterWrite,
 }
 
 impl TimelineKind {
     /// Every kind, for a reader that walks them all.
-    pub const ALL: [TimelineKind; 18] = [
+    pub const ALL: [TimelineKind; 19] = [
         TimelineKind::TurnStart,
         TimelineKind::TurnEnd,
         TimelineKind::Commit,
@@ -45,6 +46,7 @@ impl TimelineKind {
         TimelineKind::RoutineRan,
         TimelineKind::RoutineEnded,
         TimelineKind::ClusterRead,
+        TimelineKind::ClusterWrite,
     ];
 
     pub fn label(self) -> &'static str {
@@ -67,6 +69,7 @@ impl TimelineKind {
             TimelineKind::RoutineRan => "routine ran",
             TimelineKind::RoutineEnded => "routine ended",
             TimelineKind::ClusterRead => "cluster read",
+            TimelineKind::ClusterWrite => "cluster write",
         }
     }
 
@@ -91,6 +94,7 @@ impl TimelineKind {
             TimelineKind::RoutineRan => "routine_ran",
             TimelineKind::RoutineEnded => "routine_ended",
             TimelineKind::ClusterRead => "cluster_read",
+            TimelineKind::ClusterWrite => "cluster_write",
         }
     }
 

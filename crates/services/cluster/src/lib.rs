@@ -1,8 +1,9 @@
-//! The cluster part of the app: the contexts found, their sign-in, and the watched objects.
+//! The cluster part of the app: the contexts found, their sign-in, the watched objects, and the writes.
 
 mod store;
 #[cfg(test)]
 mod tests;
+mod writes;
 
 use std::path::PathBuf;
 
@@ -12,6 +13,7 @@ pub use groove_contexts::paths;
 pub use groove_kubectl::{Answer, Checked, check as checked};
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
 pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls};
+pub use writes::{patch, writable};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]

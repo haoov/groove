@@ -52,7 +52,7 @@ impl Client {
 
 impl Kind {
     /// The path its objects are listed at: in one namespace, or across all of them.
-    pub(crate) fn path(&self, namespace: Option<&str>) -> String {
+    pub fn path(&self, namespace: Option<&str>) -> String {
         let base = match self.group.is_empty() {
             true => format!("/api/{}", self.version),
             false => format!("/apis/{}/{}", self.group, self.version),

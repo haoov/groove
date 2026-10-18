@@ -120,7 +120,7 @@ fn mark_of(kind: TimelineKind) -> Mark {
         TimelineKind::WorktreeAdded => Mark::Git,
         TimelineKind::WorktreeRemoved => Mark::Close,
         TimelineKind::RoutineRan | TimelineKind::RoutineEnded => Mark::Routine,
-        TimelineKind::ClusterRead => Mark::Cluster,
+        TimelineKind::ClusterRead | TimelineKind::ClusterWrite => Mark::Cluster,
     }
 }
 

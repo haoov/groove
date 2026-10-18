@@ -49,7 +49,8 @@ Groove does not know cannot be attached.
 
 **Each context has a configuration of its own**: a hue and read-only. A new context takes
 the first hue no other context holds. Read-only refuses every write to the context, the
-user's and the agent's, once cluster writes land.
+user's and the agent's, before any request leaves. Enforced by
+`a_read_only_context_refuses_the_patch_before_any_request`.
 Namespaces belong to the session that attaches the context, not to the context.
 
 **The kubeconfig is read again each time Settings opens**, and every added context is

@@ -1,6 +1,6 @@
 [package]
 name = "groove-objects"
-description = "A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched"
+description = "A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched, and patched"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

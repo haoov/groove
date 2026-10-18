@@ -3,12 +3,15 @@
 mod follows;
 mod logs;
 mod objects;
+mod writes;
 
 use groove_cluster_service::Event as ClusterEvent;
 use groove_cluster_service::Named;
-use groove_types::{Edit, FollowKey, LogKey, Timestamp, WatchKey};
+use groove_types::{Edit, FollowKey, LogKey, SessionId, Timestamp, WatchKey};
 
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
+
+pub use writes::Patched;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -46,6 +49,11 @@ pub enum Command {
     LogCopy { key: Box<LogKey> },
     /// `cluster.age`: the time cells of every row written again for `now`.
     Age { now: Timestamp },
+    /// `cluster.patch`: a merge patch stored on an object of a cluster the session may write to.
+    Patch {
+        session: SessionId,
+        patched: Box<Patched>,
+    },
 }
 
 impl Command {
@@ -68,6 +76,7 @@ impl Command {
             Command::FollowLogs { .. } => "cluster.follow_logs",
             Command::LogCaret { .. } => "cluster.log_caret",
             Command::LogCopy { .. } => "cluster.log_copy",
+            Command::Patch { .. } => "cluster.patch",
         }
     }
 }
@@ -109,6 +118,7 @@ pub fn dispatch(
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
         Command::Age { now } => state.cluster.store.age(now),
+        Command::Patch { session, patched } => writes::patch(state, spawner, session, *patched),
     }
 }
 

@@ -39,6 +39,10 @@ names one namespace; no namespace is the whole cluster, which replaces that cont
 namespaces; a namespace replaces a cluster held whole. The pairs stay with the session
 across restarts and go with it.
 
+**A write lands only where the session holds.** An object in a namespace needs that
+namespace or the whole cluster; an object outside the namespaces needs the whole cluster.
+Enforced by `a_session_on_one_namespace_writes_there_and_nowhere_else`.
+
 ## Overview
 
 One overview for task, explorer and review sessions: the task's properties, the repos

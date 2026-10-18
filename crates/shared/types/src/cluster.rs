@@ -42,6 +42,28 @@ pub struct Attached {
     pub namespace: Option<String>,
 }
 
+/// One object a write lands on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Target {
+    pub context: String,
+    pub kind: KubeKind,
+    /// None for a kind no namespace holds.
+    pub namespace: Option<String>,
+    pub name: String,
+    /// `scale`, `status`.
+    pub subresource: Option<String>,
+}
+
+impl Target {
+    /// `kind · paxone/deployments/api/scale`.
+    pub fn label(&self) -> String {
+        let mut parts: Vec<&str> = self.namespace.as_deref().into_iter().collect();
+        parts.extend([self.kind.plural.as_str(), self.name.as_str()]);
+        parts.extend(self.subresource.as_deref());
+        format!("{} · {}", self.context, parts.join("/"))
+    }
+}
+
 /// One kind a cluster serves at its preferred version.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KubeKind {
