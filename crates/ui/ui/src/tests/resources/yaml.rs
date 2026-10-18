@@ -240,3 +240,29 @@ fn a_search_matching_often_in_a_long_line_draws_at_once() {
     let took = started.elapsed();
     assert!(took.as_secs() < 5, "a frame took {took:?}");
 }
+
+#[test]
+fn the_word_the_caret_rests_in_is_grounded_in_the_yaml_too() {
+    let (mut app, mut ui) = opened();
+    lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
+    let (_, hits) = drawn(&app, &ui);
+    let yaml = Target::ResourceView(crate::views::session::resources::View::Yaml);
+    click(
+        hits.rect_of(&yaml).expect("the yaml view"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    ui.focus = crate::Focus::Workspace;
+    crate::input::word(&mut ui, &app, 0);
+    crate::input::word(&mut ui, &app, groove_ui_kit::base::tokens::WORD_MS);
+    let word = ui.session.word.clone().expect("the word at the caret");
+    let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), window().tokens());
+    let grounded = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.color == styles.occurs())
+        .count();
+    assert!(grounded > 0, "`{word}` grounded where it stands");
+}

@@ -45,7 +45,8 @@ pub fn resting(ui: &Ui, tick: u64) -> Option<u64> {
 
 /// The word the caret stands in, read once the caret has rested there.
 pub fn word(ui: &mut Ui, app: &AppState, tick: u64) {
-    let here = spot(ui, app).and_then(|_| {
+    let keyed = ui.focus == crate::Focus::Workspace && !ui.session.typing();
+    let here = keyed.then_some(()).and_then(|_| {
         let editor = crate::views::session::diff::edited(app, ui)?;
         let at = editor.buffer.caret();
         Some(Pointed {
