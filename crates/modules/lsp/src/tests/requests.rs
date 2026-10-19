@@ -101,3 +101,27 @@ async fn an_error_answer_fails_the_request_with_its_message() {
     let err = asking.await.unwrap().unwrap_err();
     assert!(err.message.contains("the file is not indexed yet"), "{err}");
 }
+
+#[tokio::test]
+async fn a_later_ask_cancels_the_one_still_unanswered() {
+    let (client, mut fake) = opened(Value::Null).await;
+    let client = std::sync::Arc::new(client);
+    let first = {
+        let client = client.clone();
+        tokio::spawn(async move { client.hover(Path::new(PATH), Caret::new(0, 0)).await })
+    };
+    let asked = fake.expect("textDocument/hover").await;
+    let second = {
+        let client = client.clone();
+        tokio::spawn(async move { client.hover(Path::new(PATH), Caret::new(0, 1)).await })
+    };
+    let cancelled = fake.expect("$/cancelRequest").await;
+    assert_eq!(cancelled["params"]["id"], asked["id"]);
+    assert!(
+        first.await.unwrap().is_err(),
+        "the replaced ask fails at once"
+    );
+    let later = fake.expect("textDocument/hover").await;
+    fake.answer(&later, Value::Null).await;
+    assert_eq!(second.await.unwrap().unwrap(), None);
+}

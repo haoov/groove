@@ -19,6 +19,8 @@ pub(crate) struct Link {
     outgoing: mpsc::UnboundedSender<Value>,
     pending: Mutex<HashMap<i64, oneshot::Sender<Answer>>>,
     next: AtomicI64,
+    /// The last request of each method a later one replaces.
+    latest: Mutex<HashMap<&'static str, i64>>,
 }
 
 impl Link {
@@ -27,11 +29,33 @@ impl Link {
             outgoing,
             pending: Mutex::new(HashMap::new()),
             next: AtomicI64::new(1),
+            latest: Mutex::new(HashMap::new()),
         }
     }
 
     pub(crate) async fn request(&self, method: &str, params: Value) -> Result<Value> {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
+        self.asked(id, method, params).await
+    }
+
+    /// A request that cancels the one of the same method still waiting, which then fails.
+    pub(crate) async fn request_latest(
+        &self,
+        method: &'static str,
+        params: Value,
+    ) -> Result<Value> {
+        let id = self.next.fetch_add(1, Ordering::Relaxed);
+        let before = lock(&self.latest).insert(method, id);
+        if let Some(before) = before
+            && let Some(waiting) = lock(&self.pending).remove(&before)
+        {
+            let _ = waiting.send(Err("replaced by a later request".into()));
+            self.notify("$/cancelRequest", json!({ "id": before }))?;
+        }
+        self.asked(id, method, params).await
+    }
+
+    async fn asked(&self, id: i64, method: &str, params: Value) -> Result<Value> {
         let (sender, answer) = oneshot::channel();
         lock(&self.pending).insert(id, sender);
         self.send(json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params }))?;

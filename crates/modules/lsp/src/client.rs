@@ -204,7 +204,8 @@ impl Client {
         }
     }
 
-    async fn ask(&self, method: &str, path: &Path, at: Caret) -> Result<Value> {
+    /// What the server says of `at`, cancelling its last ask of `method` still unanswered.
+    async fn ask(&self, method: &'static str, path: &Path, at: Caret) -> Result<Value> {
         let position = {
             let documents = lock(&self.documents);
             if !documents.is_open(path) {
@@ -214,7 +215,7 @@ impl Client {
         };
         let document = json!({ "uri": uri::of(path) });
         let params = json!({ "textDocument": document, "position": position });
-        self.link.request(method, params).await
+        self.link.request_latest(method, params).await
     }
 }
 
