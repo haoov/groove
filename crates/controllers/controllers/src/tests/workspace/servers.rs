@@ -276,3 +276,24 @@ fn a_word_character_typed_asks_for_completions_and_a_newline_puts_them_away() {
     dispatch(Cmd::Workspace(newline), &mut state, &services, &spawner);
     assert!(offered(&state).is_none());
 }
+
+#[test]
+fn a_worktree_come_back_to_opens_its_unsaved_files_on_their_servers_again() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    served(home.path(), &mut state, &services, &spawner);
+    let worktree = state.workspace.worktree.clone().expect("a worktree");
+    let typed = workspace::Command::Edit(Edit::Insert("z".into()));
+    dispatch(Cmd::Workspace(typed), &mut state, &services, &spawner);
+    state.workspace.servers.clear();
+    state.workspace.worktree = Some(WorktreeId::new("elsewhere"));
+    dispatch(
+        Cmd::Workspace(workspace::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    settled(&spawner, &services, &mut state, |s| {
+        !s.workspace.servers.states(&worktree).is_empty()
+    });
+}

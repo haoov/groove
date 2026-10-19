@@ -145,7 +145,7 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The stream read from disk; a worktree come back to rereads its clean buffers.
+/// The stream read from disk; a worktree come back to opens its buffers on their servers again.
 fn loaded(
     state: &mut AppState,
     spawner: &dyn Spawner,
@@ -156,10 +156,13 @@ fn loaded(
     ),
 ) {
     let back = !state.workspace.holds(&worktree);
-    state.workspace.loaded(worktree, files, read);
+    state.workspace.loaded(worktree.clone(), files, read);
     if back {
         let open = held(state);
         reopen(state, spawner, Head::Read, open);
+        for path in state.workspace.dirty() {
+            super::servers::opened(state, spawner, &worktree, &path);
+        }
     }
     for path in state.workspace.dirty() {
         derive(state, spawner, path);
