@@ -14,7 +14,7 @@ use crate::views::session::Face;
 pub(crate) type Starts = Rc<Vec<usize>>;
 
 /// What the starts were built for: the buffer's revision, its lines, the width, the file, the folds.
-type Key = (u64, usize, usize, String, Vec<(usize, usize)>);
+type Key = (u64, usize, usize, String, Rc<Vec<super::blocks::Block>>);
 
 /// The width a line is taken to have while lines do not wrap: wide enough for any.
 pub(crate) const UNWRAPPED: usize = 1 << 30;
@@ -48,13 +48,12 @@ pub(crate) fn wrap_of(app: &AppState, ui: &Ui) -> Option<(Starts, usize)> {
     let cols = if wraps { measured } else { UNWRAPPED };
     let editor = edited(app, ui)?;
     let buffer = editor.buffer;
-    let ranges = folded.iter().map(|one| (one.start, one.end)).collect();
     let key = (
         buffer.revision(),
         buffer.lines(),
         cols,
         editor.path.to_string(),
-        ranges,
+        folded.clone(),
     );
     let mut kept = ui.wrapping.kept.borrow_mut();
     if let Some((at, starts)) = kept.as_ref()
@@ -63,16 +62,22 @@ pub(crate) fn wrap_of(app: &AppState, ui: &Ui) -> Option<(Starts, usize)> {
         return Some((starts.clone(), cols));
     }
     let width = buffer.document().indent().width();
-    let mut starts = Vec::with_capacity(buffer.lines() + 1);
+    let lines = buffer.lines().max(1);
+    let hidden = super::blocks::hidden(&folded, lines);
+    let mut starts = Vec::with_capacity(lines + 1);
     let mut row = 0;
-    for line in 0..buffer.lines().max(1) {
+    for (line, hidden) in hidden.into_iter().enumerate() {
         starts.push(row);
-        if super::blocks::hides(&folded, line) {
-            continue;
-        }
-        let text = text_of(buffer, line);
-        let wide = display_of(&text, text.chars().count(), width);
-        row += wide.div_ceil(cols).max(1);
+        row += match (hidden, wraps) {
+            (true, _) => 0,
+            (false, false) => 1,
+            (false, true) => {
+                let text = text_of(buffer, line);
+                display_of(&text, text.chars().count(), width)
+                    .div_ceil(cols)
+                    .max(1)
+            }
+        };
     }
     starts.push(row);
     let starts = Rc::new(starts);

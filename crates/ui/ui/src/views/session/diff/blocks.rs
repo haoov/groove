@@ -2,10 +2,13 @@
 
 use std::cell::RefCell;
 use std::collections::BTreeSet;
+use std::ops::Range;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{Block, Touched};
+pub(crate) use groove_controllers::workspace_service::Block;
+use groove_controllers::workspace_service::Touched;
 
 use super::row::edited;
 use crate::Ui;
@@ -14,6 +17,9 @@ use crate::views::session::Face;
 /// The file and the revision the blocks were read for.
 type Key = (String, u64);
 
+/// The blocks, the caret's line and the folds the folded blocks were picked for.
+type Picked = (Arc<Vec<Block>>, usize, Folds);
+
 /// The blocks folded in one file, by the line that opens them, as of buffer revision `seen`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Folds {
@@ -21,17 +27,27 @@ pub struct Folds {
     pub starts: BTreeSet<usize>,
 }
 
-/// The blocks last read from the open file's tree, kept while it stays the same.
-#[derive(Debug, Default, Clone, PartialEq)]
+/// The blocks last read on this thread, and the folded ones last picked, kept while they hold.
+#[derive(Debug, Default, Clone)]
 pub struct Blocked {
-    kept: RefCell<Option<(Key, Rc<Vec<Block>>)>>,
+    kept: RefCell<Option<(Key, Arc<Vec<Block>>)>>,
+    picked: RefCell<Option<(Picked, Rc<Vec<Block>>)>>,
 }
 
-/// The file view's blocks, in line order.
-pub(crate) fn of(app: &AppState, ui: &Ui) -> Rc<Vec<Block>> {
+impl PartialEq for Blocked {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+/// The file view's blocks, in line order: the parse job's, else read here once a revision.
+pub(crate) fn of(app: &AppState, ui: &Ui) -> Arc<Vec<Block>> {
     let Some(editor) = edited(app, ui).filter(|_| ui.session.face() == Face::File) else {
-        return Rc::default();
+        return Arc::default();
     };
+    if let Some(blocks) = editor.buffer.blocks() {
+        return blocks;
+    }
     let key = (editor.path.to_string(), editor.buffer.revision());
     let mut kept = ui.blocked.kept.borrow_mut();
     if let Some((at, blocks)) = kept.as_ref()
@@ -39,43 +55,72 @@ pub(crate) fn of(app: &AppState, ui: &Ui) -> Rc<Vec<Block>> {
     {
         return blocks.clone();
     }
-    let blocks = Rc::new(editor.buffer.document().blocks());
+    let blocks = Arc::new(editor.buffer.document().blocks());
     *kept = Some((key, blocks.clone()));
     blocks
 }
 
-/// The blocks folded now: those the user folded, but for one the caret stands inside.
-pub(crate) fn folded(app: &AppState, ui: &Ui) -> Vec<Block> {
+/// The blocks folded now, in line order: those the user folded, but for one the caret stands inside.
+pub(crate) fn folded(app: &AppState, ui: &Ui) -> Rc<Vec<Block>> {
     let Some(editor) = edited(app, ui) else {
-        return Vec::new();
+        return Rc::default();
     };
     let Some(folds) = ui.session.folds.get(editor.path.as_ref()) else {
-        return Vec::new();
+        return Rc::default();
     };
+    let blocks = of(app, ui);
     let caret = editor.buffer.caret().line;
-    of(app, ui)
-        .iter()
-        .filter(|one| folds.starts.contains(&one.start))
-        .filter(|one| !(one.start < caret && caret <= one.end))
-        .copied()
-        .collect()
+    let mut picked = ui.blocked.picked.borrow_mut();
+    if let Some(((read, line, held), folded)) = picked.as_ref()
+        && Arc::ptr_eq(read, &blocks)
+        && (*line, held) == (caret, folds)
+    {
+        return folded.clone();
+    }
+    let folded: Rc<Vec<Block>> = Rc::new(
+        blocks
+            .iter()
+            .filter(|one| folds.starts.contains(&one.start))
+            .filter(|one| !(one.start < caret && caret <= one.end))
+            .copied()
+            .collect(),
+    );
+    *picked = Some(((blocks.clone(), caret, folds.clone()), folded.clone()));
+    folded
 }
 
-/// Whether `line` is one a fold hides.
-pub(crate) fn hides(folded: &[Block], line: usize) -> bool {
-    folded.iter().any(|one| one.start < line && line <= one.end)
+/// Whether each of `lines` lines is one a fold hides, `folded` in line order.
+pub(crate) fn hidden(folded: &[Block], lines: usize) -> Vec<bool> {
+    let mut out = vec![false; lines];
+    let mut until = 0;
+    for one in folded {
+        let from = (one.start + 1).max(until);
+        let to = (one.end + 1).min(lines);
+        out.iter_mut()
+            .take(to)
+            .skip(from)
+            .for_each(|line| *line = true);
+        until = until.max(to);
+    }
+    out
 }
 
-/// The guides down `line`: the indent of each block it stands inside.
-pub(crate) fn guides(blocks: &[Block], line: usize) -> Vec<usize> {
-    let mut columns: Vec<usize> = blocks
-        .iter()
-        .take_while(|one| one.start < line)
-        .filter(|one| line <= one.end)
-        .map(|one| one.column)
-        .collect();
-    columns.dedup();
-    columns
+/// The guides down each of `lines`: the indent of each block it stands inside.
+pub(crate) fn guides(blocks: &[Block], lines: Range<usize>) -> Vec<Vec<usize>> {
+    let mut out = vec![Vec::new(); lines.len()];
+    let near = blocks.iter().take_while(|one| one.start + 1 < lines.end);
+    for one in near.filter(|one| one.end >= lines.start) {
+        let (from, to) = (
+            (one.start + 1).max(lines.start),
+            (one.end + 1).min(lines.end),
+        );
+        for columns in &mut out[from - lines.start..to - lines.start] {
+            if columns.last() != Some(&one.column) {
+                columns.push(one.column);
+            }
+        }
+    }
+    out
 }
 
 /// The block `line` opens: whether it is folded, and how many lines it hides.

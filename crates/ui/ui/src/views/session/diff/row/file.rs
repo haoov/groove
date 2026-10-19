@@ -45,7 +45,9 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
     let width = doc.indent().width();
     let hunked = editor.file.map(|file| &file.hunked);
     let (blocks, folded) = (blocks::of(app, ui), blocks::folded(app, ui));
+    let guides = blocks::guides(&blocks, window.clone());
     let word = ui.session.word.as_deref();
+    let first = window.start;
     window
         .map(|at| {
             let text = text_of(buffer, at);
@@ -72,7 +74,8 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                 found: matched(ui, at, &text, width),
                 standing: standing(ui, at, &text, width),
                 faults: faulted(app, &editor.path, (at, &text, width)),
-                outline: outlined((&blocks, &folded), word, (at, &text, width)),
+                outline: outlined((&blocks, &folded), word, (at, &text, width))
+                    .guided(&guides[at - first]),
                 ..Drawn::default()
             }
         })
@@ -87,7 +90,7 @@ fn outlined(
 ) -> Outline {
     Outline {
         occurs: word.map_or_else(Vec::new, |word| occurs(text, word, width)),
-        guides: blocks::guides(blocks, at),
+        guides: Vec::new(),
         fold: blocks::opens(blocks, folded, at).map(|(shut, hides)| (shut, hides, at)),
     }
 }

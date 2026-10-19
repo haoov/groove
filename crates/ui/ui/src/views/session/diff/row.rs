@@ -69,6 +69,15 @@ pub(super) struct Outline {
     pub(super) fold: Option<(bool, usize, usize)>,
 }
 
+impl Outline {
+    fn guided(self, guides: &[usize]) -> Self {
+        Self {
+            guides: guides.to_vec(),
+            ..self
+        }
+    }
+}
+
 /// The rows of one view inside `window`: the open file, or every changed file in turn.
 pub(super) fn drawn(
     app: &AppState,
