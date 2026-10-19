@@ -194,7 +194,7 @@ fn a_sign_in_ended_and_asked_again_keeps_only_the_last_terminal() {
 #[test]
 fn a_server_switched_off_is_written_with_the_others_as_they_were() {
     let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    let off = Command::SetPreference(Preference::Server(0, false));
+    let off = Command::SetPreference(Preference::Server("ty".into(), false));
     dispatch(Cmd::Config(off), &mut state, &services, &spawner);
     let servers = state
         .config

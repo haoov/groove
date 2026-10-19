@@ -33,7 +33,7 @@ fn appearance_offers_every_mono_family_and_a_click_picks_one() {
     }
     let lilex = Preference::MonoFamily(FontFamily::Lilex);
     let at = hits
-        .rect_of(&Target::SetPreference(lilex))
+        .rect_of(&Target::SetPreference(lilex.clone()))
         .expect("lilex's word on the mono font");
     let asked = click(at, &mut ui, &app, &hits);
     let set = config::Command::SetPreference(lilex);
@@ -51,7 +51,7 @@ fn each_font_has_its_own_size_and_a_step_up_asks_for_one_point_more() {
     let at = app.config.terminal_size();
     let more = Preference::FontSize(Font::Terminal, at + 1.0);
     let plus = hits
-        .rect_of(&Target::SetPreference(more))
+        .rect_of(&Target::SetPreference(more.clone()))
         .expect("the terminal's +");
     let asked = click(plus, &mut ui, &app, &hits);
     assert_eq!(

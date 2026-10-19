@@ -11,16 +11,12 @@ use crate::hit::Target;
 pub(super) fn servers(app: &AppState) -> Vec<Row> {
     let config = app.config.config.as_ref();
     let servers = config.map_or_else(LanguageServer::defaults, Config::servers);
-    let rows = servers
-        .iter()
-        .enumerate()
-        .map(|(at, one)| server(app, at, one))
-        .collect();
+    let rows = servers.iter().map(|one| server(app, one)).collect();
     grouped("Servers", rows)
 }
 
 /// One server's row: its switch, then what it serves, its program and what the check found.
-fn server(app: &AppState, at: usize, one: &LanguageServer) -> Row {
+fn server(app: &AppState, one: &LanguageServer) -> Row {
     let on = !one.off;
     let found = app
         .config
@@ -40,7 +36,7 @@ fn server(app: &AppState, at: usize, one: &LanguageServer) -> Row {
     };
     let value = Value::Source {
         on,
-        target: Target::SetPreference(Preference::Server(at, !on)),
+        target: Target::SetPreference(Preference::Server(one.name.clone(), !on)),
         said: Some((format!("{serves} · {command} · {state}"), role)),
         act: None,
     };

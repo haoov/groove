@@ -21,9 +21,9 @@ fn each_server_says_what_it_serves_whether_it_runs_and_switches_off() {
     ] {
         assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
     }
-    let off = Target::SetPreference(Preference::Server(0, false));
+    let off = Target::SetPreference(Preference::Server("ty".into(), false));
     let switch = hits.rect_of(&off).expect("ty's switch");
     let asked = click(switch, &mut ui, &app, &hits);
-    let set = config::Command::SetPreference(Preference::Server(0, false));
+    let set = config::Command::SetPreference(Preference::Server("ty".into(), false));
     assert_eq!(asked, [Command::Config(set)]);
 }

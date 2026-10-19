@@ -244,7 +244,7 @@ fn set_preference(
     spawner: &dyn Spawner,
     one: Preference,
 ) {
-    let changed = state.config.set(one).cloned();
+    let changed = state.config.set(one.clone()).cloned();
     if !written(state, services, spawner, changed) {
         return;
     }

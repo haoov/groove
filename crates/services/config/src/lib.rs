@@ -26,7 +26,7 @@ const MAX_FONT: f32 = 32.0;
 const POLL_MIN: u64 = 10;
 
 /// One preference, as Settings changes it.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Preference {
     Theme(ThemeName),
     /// In points; the file keeps it inside what a font can read as.
@@ -42,8 +42,8 @@ pub enum Preference {
     RoutineCap(u32),
     RoutinesPaused(bool),
     WrapCode(bool),
-    /// The language server at this place of the config's list, on or off.
-    Server(usize, bool),
+    /// The language server of this name, on or off.
+    Server(String, bool),
 }
 
 /// A size is never NaN: it comes from the file's number or a step of it.
@@ -166,10 +166,10 @@ impl State {
             Preference::RoutineCap(agents) => held.routine_cap = agents.max(1),
             Preference::RoutinesPaused(paused) => held.routines_paused = paused,
             Preference::WrapCode(on) => ui.wrap_code = on,
-            Preference::Server(at, on) => {
+            Preference::Server(name, on) => {
                 let held = config.language_servers.take();
                 let mut servers = held.unwrap_or_else(groove_types::LanguageServer::defaults);
-                if let Some(one) = servers.get_mut(at) {
+                for one in servers.iter_mut().filter(|one| one.name == name) {
                     one.off = !on;
                 }
                 config.language_servers = Some(servers);

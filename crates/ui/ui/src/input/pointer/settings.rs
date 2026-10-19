@@ -115,7 +115,7 @@ fn chosen(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         }
         Target::Login => settings.typing = false,
         Target::SetPreference(one) => {
-            let set = config::Command::SetPreference(*one);
+            let set = config::Command::SetPreference(one.clone());
             return Some(vec![Command::Config(set)]);
         }
         _ => return None,
