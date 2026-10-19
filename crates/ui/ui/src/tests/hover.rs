@@ -323,3 +323,29 @@ fn a_long_code_line_and_a_long_word_fold_inside_the_popup() {
     assert!(rows("str") > 1, "the code line folds");
     assert!(rows("Literal") > 1, "the word folds");
 }
+
+#[test]
+fn the_popup_stands_over_the_focus_line() {
+    let mut app = diagnosed(groove_types::Severity::Error);
+    app.workspace.servers.asked(PATH, ON, false);
+    let mut ui = pointing_at(ON);
+    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut drawn = metrics(1600, 1000, 1.0);
+    drawn.tick = 300;
+    let (frame, _) = view(&app, &ui, drawn, &mut Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), drawn.tokens());
+    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
+    let line = |quads: &[groove_gfx::Quad]| quads.iter().any(|quad| quad.color == accent);
+    let layers = frame.layers();
+    let popup = &layers.last().expect("the popup's layer").quads;
+    assert!(
+        all_texts(&frame)
+            .iter()
+            .any(|one| one.contains("expected "))
+    );
+    assert!(!line(popup), "the focus line stays under the popup");
+    assert!(
+        layers.iter().any(|one| line(&one.quads)),
+        "the focus line is drawn"
+    );
+}

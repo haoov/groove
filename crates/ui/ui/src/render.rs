@@ -30,15 +30,15 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         } else {
             rail::draw(&mut ctx, app, ui);
             match ui.showing(app) {
-                Surface::Session => {
-                    session::draw(&mut ctx, app, ui);
-                    session::diff::popup::draw(&mut ctx, app, ui);
-                    session::diff::completion::draw(&mut ctx, app, ui);
-                }
+                Surface::Session => session::draw(&mut ctx, app, ui),
                 Surface::Board => board::draw(&mut ctx, app, ui),
             }
             splitter::draw(&mut ctx, ui.showing(app));
             focus::draw(&mut ctx, app, ui);
+            if ui.showing(app) == Surface::Session {
+                session::diff::popup::draw(&mut ctx, app, ui);
+                session::diff::completion::draw(&mut ctx, app, ui);
+            }
         }
         if let Some(menu) = ui.menu() {
             overlays::actions::draw(&mut ctx, menu);
