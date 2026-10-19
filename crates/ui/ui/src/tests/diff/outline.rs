@@ -182,3 +182,20 @@ fn the_word_at_the_caret_is_grounded_in_the_diff_too() {
         "the line removed, the line added, the return"
     );
 }
+
+#[test]
+fn the_word_is_read_again_when_the_text_changes_under_a_still_caret() {
+    let mut app = python();
+    let mut ui = on_file();
+    app.workspace
+        .edit(&Edit::Move(Motion::To(Caret::new(2, 8))));
+    crate::input::word(&mut ui, &app, 0);
+    crate::input::word(&mut ui, &app, WORD_MS);
+    assert_eq!(ui.session.word.as_deref(), Some("x"));
+    app.workspace.edit(&Edit::Insert("y".into()));
+    app.workspace.edit(&Edit::Move(Motion::Left));
+    crate::input::word(&mut ui, &app, 2 * WORD_MS);
+    assert_eq!(ui.session.word, None, "the old word lets go");
+    crate::input::word(&mut ui, &app, 3 * WORD_MS);
+    assert_eq!(ui.session.word.as_deref(), Some("yx"));
+}

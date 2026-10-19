@@ -51,8 +51,8 @@ pub struct SessionUi {
     /// The spot of an open file the pointer stands on, and the one it last came to rest on.
     pub pointed: Option<crate::views::session::diff::Pointed>,
     pub pointer_rest: Option<(crate::views::session::diff::Pointed, u64)>,
-    /// Where the caret stood and since when, and the word it rests in once it has rested.
-    pub word_rest: Option<(crate::views::session::diff::Pointed, u64)>,
+    /// Where the caret stood at which revision and since when, and the word once it rested.
+    pub word_rest: Option<((crate::views::session::diff::Pointed, u64), u64)>,
     pub word: Option<String>,
     /// The blocks folded in each file, by the line that opens them.
     pub folds: std::collections::BTreeMap<String, crate::views::session::diff::blocks::Folds>,

@@ -43,16 +43,17 @@ pub fn resting(ui: &Ui, tick: u64) -> Option<u64> {
         .min()
 }
 
-/// The word the caret stands in, read once the caret has rested there.
+/// The word the caret stands in, read once the caret and the text have rested.
 pub fn word(ui: &mut Ui, app: &AppState, tick: u64) {
     let keyed = ui.focus == crate::Focus::Workspace && !ui.session.typing();
     let here = keyed.then_some(()).and_then(|_| {
         let editor = crate::views::session::diff::edited(app, ui)?;
         let at = editor.buffer.caret();
-        Some(Pointed {
+        let spot = Pointed {
             path: editor.path.to_string(),
             at,
-        })
+        };
+        Some((spot, editor.buffer.revision()))
     });
     if ui.session.word_rest.as_ref().map(|(at, _)| at) != here.as_ref() {
         ui.session.word_rest = here.map(|at| (at, tick));
@@ -63,7 +64,7 @@ pub fn word(ui: &mut Ui, app: &AppState, tick: u64) {
         return;
     };
     if tick >= since + WORD_MS && ui.session.word.is_none() {
-        ui.session.word = word_at(app, ui, at.at);
+        ui.session.word = word_at(app, ui, at.0.at);
     }
 }
 
