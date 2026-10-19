@@ -1373,6 +1373,7 @@ dependencies = [
 name = "groove-config"
 version = "1.0.0-beta.2"
 dependencies = [
+ "futures-util",
  "groove-exec",
  "groove-types",
  "serde",

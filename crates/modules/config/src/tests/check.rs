@@ -36,3 +36,10 @@ async fn a_program_that_does_not_run_is_not_found() {
     let claude = tools.iter().find(|one| one.name == "claude").unwrap();
     assert!(claude.found.is_none() && claude.required && !claude.ready());
 }
+
+#[tokio::test]
+async fn the_server_programs_are_probed_together_one_missing_among_them() {
+    let programs = vec!["git".to_string(), "/nowhere/server".to_string()];
+    let found = crate::versions(programs).await;
+    assert!(found[0].is_some() && found[1].is_none(), "{found:?}");
+}

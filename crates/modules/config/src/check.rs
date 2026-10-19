@@ -47,12 +47,14 @@ pub async fn check(claude: &str) -> Vec<Tool> {
 
 /// The version each of `programs` prints, `None` for one that does not run.
 pub async fn versions(programs: Vec<String>) -> Vec<Option<String>> {
-    let mut found = Vec::new();
-    for program in &programs {
-        let one = probe(program, program, &["--version"], Account::None).await;
-        found.push(one.map(|one| one.version));
-    }
+    let probes = programs
+        .iter()
+        .map(|program| probe(program, program, &["--version"], Account::None));
+    let found = futures_util::future::join_all(probes).await;
     found
+        .into_iter()
+        .map(|one| one.map(|one| one.version))
+        .collect()
 }
 
 fn tool(name: &'static str, purpose: &'static str, required: bool, found: Option<Found>) -> Tool {
