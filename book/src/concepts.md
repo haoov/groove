@@ -35,6 +35,7 @@ disk. To remove a session, use Delete session in the palette.
 - **The agent pane**: the agent of the selected session.
 - **The workspace**: the Overview, Diff, Files and Kubernetes tabs.
 - **The sidebar**: the files and lists of the open tab.
+- **The terminals**: shells in the selected worktree. `alt+'` shows or hides them.
 
 `alt+1` to `alt+4` move to each pane. The [keymap](reference/keymap.md) lists all keys.
 
@@ -61,7 +62,7 @@ worktree, so their changes never mix.
 
 A note is a comment on lines of code. Right-click the code in the diff or the editor and
 choose **note**, or use "Add a note on the caret's line" in the palette. Groove keeps the
-notes with the session. You can post them to the MR.
+notes with the session until you post them to the MR. [Work a task](work.md) shows how.
 
 ## The agent
 

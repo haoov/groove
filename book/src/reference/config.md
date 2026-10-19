@@ -4,7 +4,8 @@ Groove reads `~/.config/groove/config.json`, or `$XDG_CONFIG_HOME/groove/config.
 Settings writes every change to it at once. You can also edit it by hand: keep it valid
 JSON. Groove keeps the file readable only by you, because it can hold a Notion token.
 
-Groove creates the file at the first launch. Every key has a default.
+Groove creates the file when you turn on your first task source. Every key has a
+default.
 
 ## `git`
 

@@ -2,25 +2,10 @@
 
 The first run takes three steps: install the tools, sign in, and connect a task source.
 
-## The config file
-
-Groove keeps its settings in `~/.config/groove/config.json`, or in
-`$XDG_CONFIG_HOME/groove/config.json`. At the first launch, Groove creates it with
-`~/groove` as the worktree root, the folder that holds your repos:
-
-- the clone of each repo goes under `~/groove/main`;
-- the worktrees of your sessions go under `~/groove/worktrees`.
-
-To use another folder, change `git.worktree_root` in the file. Settings writes every
-change to the file at once. You do not restart Groove.
-
-Groove keeps its state in `~/.local/share/groove/app.db` and its cache in
-`~/.cache/groove`. The `XDG_DATA_HOME` and `XDG_CACHE_HOME` variables move them.
-
 ## 1. Install the tools
 
-Open Settings with `alt+,`. When a required tool is missing or Claude is signed out,
-Groove opens the **Setup** section on its own.
+Open Settings with `alt+,`. Groove opens the **Setup** section on its own at the first
+run, and each time a required tool is missing or Claude is signed out.
 
 | Tool | Required | Groove uses it for |
 |---|---|---|
@@ -73,6 +58,26 @@ map both, Groove lists no task.
 
 Under status, give the database values that mean ready, in progress and done. Under
 priority, give the values that mean high, medium and low.
+
+## Where Groove keeps its files
+
+When you turn on your first task source, Groove creates its config file,
+`~/.config/groove/config.json`. It sets `~/groove` as the worktree root, the folder that
+holds your repos:
+
+- the clone of each repo goes under `~/groove/main`;
+- the worktrees of your sessions go under `~/groove/worktrees`.
+
+To use another folder, change `git.worktree_root` in the file. Settings writes every
+other change to the file at once. You do not restart Groove.
+
+| What | Where | Moved by |
+|---|---|---|
+| Settings | `~/.config/groove/` | `XDG_CONFIG_HOME` |
+| State: sessions, notes | `~/.local/share/groove/` | `XDG_DATA_HOME` |
+| Cache | `~/.cache/groove/` | `XDG_CACHE_HOME` |
+
+These paths are the same on macOS.
 
 ## Next
 

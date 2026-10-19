@@ -12,7 +12,9 @@ machine, review the changes and land them.
 1. [Install](install.md) Groove on Linux or macOS.
 2. Do the [first run](first-run.md): the config file, the tools, a task source.
 3. Learn the [concepts](concepts.md): sessions, worktrees, notes, the agent and asks.
-4. Connect [clusters](clusters.md) when your work touches Kubernetes.
+4. [Work a task](work.md) from the board to the merged MR.
+5. Connect [clusters](clusters.md) when your work touches Kubernetes.
+6. Share [skills and routines](skills.md) with your team.
 
 When something does not work, read [Troubleshooting](troubleshooting.md). The
 [Reference](reference/README.md) lists the config keys and the keymap.
