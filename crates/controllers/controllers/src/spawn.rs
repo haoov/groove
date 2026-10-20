@@ -65,7 +65,7 @@ struct Pending(Mutex<Vec<Continuation>>);
 
 impl Deliver for Pending {
     fn deliver(&self, continuation: Continuation) {
-        groove_types::lock(&self.0).push(continuation);
+        groove_workspace_service::lock(&self.0).push(continuation);
     }
 }
 
@@ -87,7 +87,7 @@ impl SyncSpawner {
 
     /// Applies every continuation that has arrived, in order.
     pub fn drain(&self, state: &mut AppState, services: &Services) {
-        let pending = std::mem::take(&mut *groove_types::lock(&self.pending.0));
+        let pending = std::mem::take(&mut *groove_workspace_service::lock(&self.pending.0));
         for continuation in pending {
             continuation(state, services, self);
         }
@@ -95,7 +95,7 @@ impl SyncSpawner {
 
     /// Whether no continuation waits to be applied.
     pub fn idle(&self) -> bool {
-        groove_types::lock(&self.pending.0).is_empty()
+        groove_workspace_service::lock(&self.pending.0).is_empty()
     }
 
     /// Lets detached work run for `long`, then applies what it delivered.

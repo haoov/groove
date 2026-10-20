@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 groove-exec = { path = "../../base/exec" }
+groove-sync = { path = "../../modules/sync" }
 groove-types = { path = "../../shared/types" }
 notify.workspace = true
 serde_json.workspace = true

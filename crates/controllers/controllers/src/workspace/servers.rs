@@ -10,7 +10,7 @@ use groove_workspace_service::{
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
-use groove_types::lock;
+use groove_workspace_service::lock;
 
 type Heard = Arc<Mutex<Vec<(PathBuf, Vec<Diagnostic>)>>>;
 

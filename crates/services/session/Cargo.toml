@@ -7,13 +7,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-groove-types = { path = "../../shared/types" }
-groove-timeline = { path = "../../modules/timeline" }
-groove-sessions = { path = "../../modules/sessions" }
-groove-worktree = { path = "../../modules/worktree" }
 groove-git = { path = "../../modules/git" }
-uuid.workspace = true
+groove-sessions = { path = "../../modules/sessions" }
+groove-sync = { path = "../../modules/sync" }
+groove-timeline = { path = "../../modules/timeline" }
+groove-types = { path = "../../shared/types" }
+groove-worktree = { path = "../../modules/worktree" }
 tokio = { workspace = true, features = ["sync"] }
+uuid.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

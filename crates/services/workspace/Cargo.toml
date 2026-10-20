@@ -8,11 +8,12 @@ publish.workspace = true
 
 [dependencies]
 groove-diff = { path = "../../modules/diff" }
-groove-grep = { path = "../../modules/grep" }
-groove-git = { path = "../../modules/git" }
-groove-lsp = { path = "../../modules/lsp" }
-groove-text = { path = "../../modules/text" }
 groove-editor = { path = "../../modules/editor" }
+groove-git = { path = "../../modules/git" }
+groove-grep = { path = "../../modules/grep" }
+groove-lsp = { path = "../../modules/lsp" }
+groove-sync = { path = "../../modules/sync" }
+groove-text = { path = "../../modules/text" }
 groove-types = { path = "../../shared/types" }
 groove-watch = { path = "../../modules/watch" }
 tokio = { workspace = true, features = ["sync"] }

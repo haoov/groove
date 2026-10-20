@@ -1,0 +1,16 @@
+[package]
+name = "groove-sync"
+description = "What the layers share to take turns: a lock no panic poisons, and a line of tasks run in order"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true

@@ -23,7 +23,7 @@ pub use groove_exec::pty::PtySpec;
 pub use groove_exec::{Error, Result};
 pub use groove_types::{AnsiPalette, Screen, ScreenCell};
 
-use groove_types::lock;
+use groove_sync::lock;
 use listener::Listener;
 use size::Size;
 use writer::Op;

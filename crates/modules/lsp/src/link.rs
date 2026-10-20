@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::time::Duration;
 
-pub(crate) use groove_types::lock;
+pub(crate) use groove_sync::lock;
 use groove_types::{Error, ErrorKind, Result};
 use serde_json::{Value, json};
 use tokio::sync::{mpsc, oneshot};

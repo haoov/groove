@@ -7,9 +7,10 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-groove-exec = { path = "../../base/exec" }
-groove-types = { path = "../../shared/types" }
 alacritty_terminal.workspace = true
+groove-exec = { path = "../../base/exec" }
+groove-sync = { path = "../../modules/sync" }
+groove-types = { path = "../../shared/types" }
 tokio = { workspace = true, features = ["rt"] }
 
 [lints]

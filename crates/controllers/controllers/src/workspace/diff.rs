@@ -10,7 +10,7 @@ use super::editor::{Head, derive, held, reopen};
 use super::stale;
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
-use groove_types::lock;
+use groove_workspace_service::lock;
 
 /// The rows on screen: the files near them that are not read yet take their colours.
 pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
