@@ -1,7 +1,7 @@
 //! The clusters each session holds, written off the main thread in the order they changed.
 
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use groove_types::{Attached, Error, SessionId, Timestamp};
 
@@ -23,24 +23,14 @@ pub(super) struct Held {
 impl Service {
     /// `writes` held for the next flush, after every change held before them.
     pub fn hold_clusters(&self, id: &SessionId, writes: Vec<ClusterWrite>) {
-        let mut held = self
-            .clusters
-            .held
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
+        let mut held = groove_types::lock(&self.clusters.held);
         held.extend(writes.into_iter().map(|one| (id.clone(), one)));
     }
 
     /// Every change held, written in order; the first failure.
     pub async fn flush_clusters(&self) -> Result<(), Error> {
         let _writing = self.clusters.writing.lock().await;
-        let held = std::mem::take(
-            &mut *self
-                .clusters
-                .held
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner),
-        );
+        let held = std::mem::take(&mut *groove_types::lock(&self.clusters.held));
         let mut flushed = Ok(());
         for (id, write) in held {
             let written = match &write {

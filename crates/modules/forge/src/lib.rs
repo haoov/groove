@@ -68,7 +68,7 @@ impl Remote {
     pub fn shared(host: &str) -> Result<std::sync::Arc<Self>> {
         static HELD: std::sync::Mutex<Vec<(String, std::sync::Arc<Remote>)>> =
             std::sync::Mutex::new(Vec::new());
-        let mut held = HELD.lock().unwrap_or_else(|e| e.into_inner());
+        let mut held = groove_types::lock(&HELD);
         if let Some((_, one)) = held.iter().find(|(at, _)| at == host) {
             return Ok(one.clone());
         }

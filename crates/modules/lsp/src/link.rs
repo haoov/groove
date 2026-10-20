@@ -1,10 +1,11 @@
 //! Messages out, and each request's answer matched back by its id.
 
 use std::collections::HashMap;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
+pub(crate) use groove_types::lock;
 use groove_types::{Error, ErrorKind, Result};
 use serde_json::{Value, json};
 use tokio::sync::{mpsc, oneshot};
@@ -104,10 +105,6 @@ impl Link {
     fn send(&self, message: Value) -> Result<()> {
         self.outgoing.send(message).map_err(|_| closed())
     }
-}
-
-pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 fn closed() -> Error {

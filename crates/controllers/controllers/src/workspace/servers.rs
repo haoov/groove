@@ -1,7 +1,7 @@
 //! The open files' language servers: told what the editor does, started on a file's first open.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use groove_types::{Caret, Config, Diagnostic, LanguageServer, WorktreeId};
 use groove_workspace_service::{
@@ -10,6 +10,7 @@ use groove_workspace_service::{
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
+use groove_types::lock;
 
 type Heard = Arc<Mutex<Vec<(PathBuf, Vec<Diagnostic>)>>>;
 
@@ -214,8 +215,4 @@ fn hooks(sink: Arc<dyn Deliver>, (key, epoch): (ServerKey, u64)) -> Hooks {
             ));
         }),
     }
-}
-
-fn lock<T>(held: &Mutex<T>) -> MutexGuard<'_, T> {
-    held.lock().unwrap_or_else(PoisonError::into_inner)
 }

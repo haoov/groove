@@ -1,7 +1,7 @@
 //! Reading the worktree: what changed, what is on screen, what a write to disk means.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use groove_types::{DiffMode, WorktreeId};
 use groove_workspace_service::{against, changes, files_in, hold, opens_in, painted};
@@ -10,6 +10,7 @@ use super::editor::{Head, derive, held, reopen};
 use super::stale;
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
+use groove_types::lock;
 
 /// The rows on screen: the files near them that are not read yet take their colours.
 pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
@@ -247,8 +248,4 @@ pub(super) fn reload(
         lock(&queue).extend(paths);
         once();
     }
-}
-
-fn lock(paths: &Mutex<Vec<PathBuf>>) -> std::sync::MutexGuard<'_, Vec<PathBuf>> {
-    paths.lock().unwrap_or_else(PoisonError::into_inner)
 }

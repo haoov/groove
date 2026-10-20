@@ -12,7 +12,7 @@ mod tests;
 
 use std::fmt;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use alacritty_terminal::event::EventListener;
 use alacritty_terminal::grid::{Dimensions, Scroll};
@@ -23,6 +23,7 @@ pub use groove_exec::pty::PtySpec;
 pub use groove_exec::{Error, Result};
 pub use groove_types::{AnsiPalette, Screen, ScreenCell};
 
+use groove_types::lock;
 use listener::Listener;
 use size::Size;
 use writer::Op;
@@ -280,9 +281,4 @@ fn report(button: u8, cell: (usize, usize), pressed: bool, sgr: bool) -> Vec<u8>
 fn x10(button: u8, col: usize, row: usize) -> Vec<u8> {
     let byte = |one: usize| 32u8.saturating_add(one.min(223) as u8);
     vec![0x1b, b'[', b'M', 32 + button, byte(col), byte(row)]
-}
-
-/// A poisoned lock still holds a usable grid.
-fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
