@@ -179,6 +179,13 @@ pub fn dispatch(
             repo,
             force,
         } => remove_repo(state, services, spawner, &session, &repo, force),
+        other => worktrees(other, state, services, spawner),
+    }
+}
+
+/// The worktree actions, the reads of the pool, then the clusters.
+fn worktrees(command: Command, state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    match command {
         Command::AddWorktree {
             session,
             repo,

@@ -59,10 +59,7 @@ fn surface(
     let code_rows = inline.code_window(window.clone());
     let rows = drawn(app, ui, view, side, code_rows.clone());
     let gutters = gutters_of(&rows);
-    let words: Vec<Words> = slots
-        .iter()
-        .map(|slot| words_of(app, ui, *slot, inline))
-        .collect();
+    let words = words_in(app, ui, &slots, inline);
     let said = super::blame::shown(ctx, app, ui, side != Side::Old);
     let held = Held {
         slots: &slots,
@@ -92,6 +89,14 @@ fn surface(
         let at = (numbers, view, side, rect);
         super::offers::marks(ctx, &drawn, &slots, &rows, code_rows.start, at);
     }
+}
+
+/// The words each slot of the window draws.
+fn words_in(app: &AppState, ui: &Ui, slots: &[Slot], inline: &Inline) -> Vec<Words> {
+    slots
+        .iter()
+        .map(|slot| words_of(app, ui, *slot, inline))
+        .collect()
 }
 
 /// How far the surface is scrolled down, inside what its `total` rows allow.

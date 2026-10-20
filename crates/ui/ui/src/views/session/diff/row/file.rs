@@ -1,9 +1,10 @@
 //! The file view's rows: the buffer's lines as they stand now, wrapped or folded.
 
 use std::ops::Range;
+use std::rc::Rc;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{Block, display_of};
+use groove_controllers::workspace_service::{Block, Colours, display_of};
 use groove_types::RowKind;
 
 use super::{
@@ -11,6 +12,7 @@ use super::{
     text_of,
 };
 use crate::Ui;
+use crate::editor::Editor;
 use crate::views::session::diff::blocks;
 
 /// The rows in `window`: the buffer's lines, or their pieces while the lines wrap.
@@ -37,11 +39,8 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
     };
     let buffer = editor.buffer;
     let caret = caret(ui, buffer);
-    let stamp = (editor.stamp, buffer.painted());
+    let colours = colours(ui, &editor, window.clone());
     let doc = buffer.document();
-    let colours = ui
-        .painted
-        .of(doc, &editor.path, false, stamp, window.clone());
     let width = doc.indent().width();
     let hunked = editor.file.map(|file| &file.hunked);
     let (blocks, folded) = (blocks::of(app, ui), blocks::folded(app, ui));
@@ -80,6 +79,13 @@ fn lines(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
             }
         })
         .collect()
+}
+
+/// The buffer's colours over `window`, kept while its text and paint stand.
+fn colours(ui: &Ui, editor: &Editor<'_>, window: Range<usize>) -> Rc<Colours> {
+    let stamp = (editor.stamp, editor.buffer.painted());
+    let doc = editor.buffer.document();
+    ui.painted.of(doc, &editor.path, false, stamp, window)
 }
 
 /// What the file view draws about line `at` besides its text.

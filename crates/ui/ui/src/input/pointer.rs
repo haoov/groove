@@ -142,11 +142,6 @@ fn acted(
         Some(Target::Message) => composing(ui, app, hits, metrics, point),
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(Target::LogHours(id)) => logging(id),
-        Some(Target::Finish(session)) => finishing(session),
-        Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
-        Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
-        Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
         Some(target @ (Target::Pane(_) | Target::Showing(_))) => paned(ui, target),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
@@ -155,6 +150,18 @@ fn acted(
         Some(target @ (Target::Dir(_) | Target::Group(_))) => twisty(ui, target),
         Some(target @ Target::Review(..)) => opened_from_board(target, ui, true),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
+        one => tasked(one, ui, app),
+    }
+}
+
+/// What the task and its MR are asked from the pages that show them.
+fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    match target {
+        Some(Target::LogHours(id)) => logging(id),
+        Some(Target::Finish(session)) => finishing(session),
+        Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
+        Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
+        Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
         one => staging(one, ui, app),
     }
 }

@@ -40,10 +40,7 @@ impl Pool {
             });
         }
         let point = fetched(&clone, repo, spec, &mut notes).await?;
-        let path = self
-            .layout
-            .worktree_dir(session.id.as_str(), &repo.project, &branch);
-        make_parent(&path)?;
+        let path = self.placed(session, repo, &branch)?;
         let adopted = cut(
             &clone,
             &path,
@@ -66,6 +63,15 @@ impl Pool {
             adopted,
             notes,
         })
+    }
+
+    /// Where the worktree goes, its parent made.
+    fn placed(&self, session: &Session, repo: &Repo, branch: &str) -> Result<std::path::PathBuf> {
+        let path = self
+            .layout
+            .worktree_dir(session.id.as_str(), &repo.project, branch);
+        make_parent(&path)?;
+        Ok(path)
     }
 
     /// The worktree as the database now holds it.
