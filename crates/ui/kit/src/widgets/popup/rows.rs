@@ -134,14 +134,7 @@ fn folded<A: App>(ctx: &mut Ctx<'_, A>, text: &str, spans: &[Highlight], most: f
     let mut start = 0;
     for piece in cut(text, room(ctx, &style, most)) {
         let end = start + piece.len();
-        let kept = spans.iter().filter_map(|one| {
-            let range = one.range.start.max(start)..one.range.end.min(end);
-            (range.start < range.end).then(|| Highlight {
-                range: range.start - start..range.end - start,
-                capture: one.capture,
-            })
-        });
-        let spans = kept.collect();
+        let spans = groove_types::spans_within(spans, start..end);
         let width = ctx.measure(&piece, &style).min(most);
         out.push(Laid {
             row: Row::Code { text: piece, spans },

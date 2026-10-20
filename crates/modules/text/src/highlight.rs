@@ -220,18 +220,3 @@ fn push(out: &mut Vec<Highlight>, at: &mut usize, over: usize, capture: Capture)
     });
     *at = over;
 }
-
-/// The spans inside `line`, moved to offsets from the line's own start.
-pub(crate) fn within(spans: &[Highlight], line: Range<usize>) -> Vec<Highlight> {
-    let first = spans.partition_point(|span| span.range.end <= line.start);
-    spans[first..]
-        .iter()
-        .take_while(|span| span.range.start < line.end)
-        .map(|span| Highlight {
-            range: span.range.start.max(line.start) - line.start
-                ..span.range.end.min(line.end) - line.start,
-            capture: span.capture,
-        })
-        .filter(|span| !span.range.is_empty())
-        .collect()
-}

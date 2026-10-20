@@ -166,7 +166,7 @@ impl Document {
             first,
             lines: (first..last)
                 .map(|at| match self.bytes_of(at) {
-                    Some(line) => highlight::within(&found, line),
+                    Some(line) => groove_types::spans_within(&found, line),
                     None => Vec::new(),
                 })
                 .collect(),

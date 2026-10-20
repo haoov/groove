@@ -97,7 +97,7 @@ pub use routine::{Action, Routine, RoutineKind, Trigger};
 pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use sought::{Sought, ranked, runs, sought, spans};
-pub use syntax::{Capture, Highlight};
+pub use syntax::{Capture, Highlight, spans_within};
 pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours};
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell, Selected};
 pub use time::{Day, Timestamp};

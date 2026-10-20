@@ -106,7 +106,7 @@ pub(super) fn piece(whole: &Drawn, part: usize, cols: usize) -> Drawn {
             .map_or(whole.text.len(), |(at, _)| at)
     };
     let (start, end) = (byte(from.min(chars)), byte(to.min(chars)));
-    let spans = spanned(&whole.spans, (start, end));
+    let spans = groove_types::spans_within(&whole.spans, start..end);
     let clip = |(a, b): (usize, usize)| {
         let (a, b) = (a.max(from), b.min(to));
         (a < b).then(|| (a - from, b - from))
@@ -135,21 +135,6 @@ pub(super) fn piece(whole: &Drawn, part: usize, cols: usize) -> Drawn {
         outline: outlined(&whole.outline, part, clip),
         ..Drawn::default()
     }
-}
-
-/// The spans over bytes `start` to `end`, counted from `start`.
-fn spanned(
-    spans: &[groove_types::Highlight],
-    (start, end): (usize, usize),
-) -> Vec<groove_types::Highlight> {
-    spans
-        .iter()
-        .filter(|one| one.range.end > start && one.range.start < end)
-        .map(|one| groove_types::Highlight {
-            range: one.range.start.max(start) - start..one.range.end.min(end) - start,
-            capture: one.capture,
-        })
-        .collect()
 }
 
 /// A piece's share of its line's outline: the occurrences it covers, the guides and fold on its first.
