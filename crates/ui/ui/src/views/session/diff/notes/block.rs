@@ -3,7 +3,8 @@
 use groove_controllers::AppState;
 use groove_types::Note;
 
-use super::{BETWEEN, Block, UNDER, anchored, starts};
+use super::{BETWEEN, Block, GAPS, Slot, UNDER, anchored, starts};
+use crate::components::Room;
 use crate::views::session::Face;
 use crate::views::session::diff::wrap::{Compacted, wrapped};
 
@@ -45,5 +46,39 @@ impl super::Inline {
     /// How many rows the note being typed takes.
     pub(crate) fn typed_rows(&self) -> usize {
         self.typed.len()
+    }
+}
+
+impl Block {
+    /// What one row of the block holds, counted from its first.
+    pub(super) fn slot(&self, row: usize) -> Slot {
+        if row + UNDER >= self.rows {
+            return Slot::Pad { room: Room::Gap };
+        }
+        let Some(at) = self.at else {
+            let typed = GAPS + 1;
+            return match row {
+                0 | 2 => Slot::Pad { room: Room::Gap },
+                1 => Slot::Chips,
+                row if row < typed + self.typing => Slot::Typed {
+                    row: row - typed,
+                    reply: false,
+                },
+                row if row == typed + self.typing => Slot::Pad {
+                    room: Room::Between,
+                },
+                _ => Slot::Footer { reply: false },
+            };
+        };
+        let said = self.said.len().max(1);
+        match row.checked_sub(said + BETWEEN) {
+            None if row < said => Slot::Note { at, row },
+            None => Slot::Pad {
+                room: Room::Between,
+            },
+            Some(row) if row < self.typing => Slot::Typed { row, reply: true },
+            Some(_) if self.typing > 0 => Slot::Footer { reply: true },
+            Some(_) => Slot::Acts { at },
+        }
     }
 }

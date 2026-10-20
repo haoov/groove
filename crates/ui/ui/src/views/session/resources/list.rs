@@ -3,22 +3,23 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Health, KubeKind, ObjectRow, WatchKey};
+use groove_types::{KubeKind, ObjectRow, WatchKey};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Cell, Column, Rows, Search, Shown, Sorted, Tab, Table, Text, Width};
+use groove_ui_kit::widgets::{Column, Rows, Search, Sorted, Tab, Table, Text, Width};
 
+mod cells;
 mod order;
 
 pub use order::Kept;
 pub(super) mod plan;
 
-use self::plan::{Plan, Reads, plan};
-use super::health::colour;
+use self::cells::{column, one};
+use self::plan::plan;
 use super::scope::{self, ResourcesUi};
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -231,62 +232,4 @@ fn listed(
     let (_, names) = scope::search(held);
     let laid = table.draw(ctx, body, |at| one(app, rows[at], (&plan, &names)));
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
-}
-
-fn one<'a>(
-    app: &AppState,
-    (key, row): (&'a WatchKey, &'a ObjectRow),
-    (plan, names): (&Plan, &[&str]),
-) -> Shown<'a, Target> {
-    let mut cells = Vec::new();
-    if plan.clusters {
-        let hue = app.config.cluster(&key.context).map(|one| one.hue);
-        cells.push(Cell::small(
-            key.context.as_str(),
-            hue.map_or(Role::Faint, Role::Hue),
-        ));
-    }
-    if plan.namespaces {
-        cells.push(Cell::small(
-            row.namespace.as_deref().unwrap_or_default(),
-            Role::Muted,
-        ));
-    }
-    let cell = |at: usize| row.cells.get(at).map(String::as_str).unwrap_or_default();
-    let ended = plan.shown.iter().zip(&plan.reads).any(|(at, reads)| {
-        *reads == Reads::Status && groove_types::status_health(cell(*at)) == Some(Health::Done)
-    });
-    for (place, (at, reads)) in plan.shown.iter().zip(&plan.reads).enumerate() {
-        let text = cell(*at);
-        let health = match reads {
-            Reads::Status => groove_types::status_health(text),
-            Reads::Ready if ended => Some(Health::Done),
-            Reads::Ready => groove_types::ready_health(text),
-            Reads::Plain | Reads::Time => None,
-        };
-        let role = match (place, health) {
-            (0, _) => Role::Text,
-            (_, Some(health)) => colour(health),
-            _ => Role::Muted,
-        };
-        let cell = match reads {
-            Reads::Time => Cell::small(text, role),
-            _ => Cell::body(text, role),
-        };
-        cells.push(match place {
-            0 => cell.lit(groove_types::spans(text, names)),
-            _ => cell,
-        });
-    }
-    Shown::row(cells).target(Target::ResourceRow(row.uid.clone()))
-}
-
-fn column<'a>(label: &'a str, width: Width<'a>) -> Column<'a, Target> {
-    Column {
-        label,
-        width,
-        end: false,
-        sort: Some(Target::ResourceSort(label.to_string())),
-        edge: Some(Target::ResourceEdge(label.to_string())),
-    }
 }

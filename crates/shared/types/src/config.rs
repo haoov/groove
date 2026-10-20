@@ -1,15 +1,14 @@
 mod clusters;
 mod names;
+mod properties;
 mod servers;
 mod sources;
 
 pub use clusters::{ClusterChange, ClusterConfig, Hue};
 pub use servers::LanguageServer;
 
-pub use sources::{
-    EstimateUnit, FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap,
-    PropertyNames, REDACTED, StatusMap,
-};
+pub use properties::{EstimateUnit, PriorityMap, PropertyNames, StatusMap};
+pub use sources::{FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, REDACTED};
 
 use std::collections::BTreeMap;
 
