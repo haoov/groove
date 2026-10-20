@@ -14,7 +14,7 @@ use super::row::{Drawn, Side, count, drawn};
 use super::words::{Words, words_of};
 use crate::Ui;
 use crate::components::{
-    Acting, Gutters, Line, Noted, Outlined, Rows, across_extent, chars_of, code, height, visible,
+    Acting, Gutters, Line, Noted, Outline, Rows, across_extent, chars_of, code, height, visible,
 };
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -259,7 +259,7 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
         .empty(row.empty)
         .caret(row.caret)
         .held(row.held)
-        .outline(Outlined {
+        .outline(Outline {
             occurs: &row.outline.occurs,
             guides: &row.outline.guides,
             fold: row.outline.fold,

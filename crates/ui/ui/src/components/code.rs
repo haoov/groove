@@ -11,7 +11,7 @@ use groove_types::{Highlight, Severity};
 pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
 pub use self::rows::{Rows, code};
-pub use groove_ui_kit::widgets::code::{Block, Gutters, Tile, head_mark, head_of};
+pub use groove_ui_kit::widgets::code::{Block, Gutters, Outline, Tile, head_mark, head_of};
 
 /// The buttons a note's last row carries, and the note they act on.
 #[derive(Debug, Clone)]
@@ -76,15 +76,8 @@ pub struct Line<'a> {
     pub noted: bool,
     /// Who last changed the line, after its end, and the commit a click opens.
     pub blame: Option<(&'a str, Option<&'a str>)>,
-    pub outline: Outlined<'a>,
-}
-
-/// The word's occurrences, the scope guides and the block a line opens: folded, lines it hides, line.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Outlined<'a> {
-    pub occurs: &'a [(usize, usize)],
-    pub guides: &'a [usize],
-    pub fold: Option<(bool, usize, usize)>,
+    /// Its fold names the line it opens.
+    pub outline: Outline<'a, usize>,
 }
 
 impl<'a> Line<'a> {
@@ -120,7 +113,7 @@ impl<'a> Line<'a> {
         }
     }
 
-    pub fn outline(mut self, outline: Outlined<'a>) -> Self {
+    pub fn outline(mut self, outline: Outline<'a, usize>) -> Self {
         self.outline = outline;
         self
     }
@@ -156,7 +149,7 @@ impl<'a> Line<'a> {
             acting: None,
             noted: false,
             blame: None,
-            outline: Outlined::default(),
+            outline: Outline::default(),
         }
     }
 

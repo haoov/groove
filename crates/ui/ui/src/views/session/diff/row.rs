@@ -61,7 +61,7 @@ pub(super) struct Drawn {
     pub(super) outline: Outline,
 }
 
-/// What the file view draws about a line besides its text, as the code widget's `Outlined` says.
+/// What the file view draws about a line besides its text, owned until the kit's `Outline` borrows it.
 #[derive(Default, Clone)]
 pub(super) struct Outline {
     pub(super) occurs: Vec<(usize, usize)>,
