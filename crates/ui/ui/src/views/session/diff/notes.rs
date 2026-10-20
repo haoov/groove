@@ -99,7 +99,12 @@ impl Inline {
             .filter(|(_, note)| !written(note, over))
             .filter_map(|(at, note)| {
                 let hidden = note.resolved && !ui.session.unfolded.contains(&note.origin);
-                block(app, (view, lines), (note, at, hidden), cols_of(cols))
+                block(
+                    app,
+                    (view, lines),
+                    (note, at, hidden),
+                    (cols_of(cols), &ui.compacted),
+                )
             })
             .collect();
         let answered = noting.and_then(|one| answering(app, one, (&mut blocks, typed.len())));

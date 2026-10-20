@@ -5,21 +5,21 @@ use groove_types::Note;
 
 use super::{BETWEEN, Block, UNDER, anchored, starts};
 use crate::views::session::Face;
-use crate::views::session::diff::wrap::wrapped;
+use crate::views::session::diff::wrap::{Compacted, wrapped};
 
 /// One note's block, on the rows of the file it is about; a hidden one takes none.
 pub(super) fn block(
     app: &AppState,
     (view, lines): (Face, Option<&[usize]>),
     (note, at, hidden): (&Note, usize, bool),
-    cols: usize,
+    (cols, compacted): (usize, &Compacted),
 ) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, (view, lines), anchor)?;
     let said = if hidden {
         Vec::new()
     } else {
-        wrapped(note, cols)
+        wrapped(note, cols, compacted)
     };
     let rows = match hidden {
         true => 0,
