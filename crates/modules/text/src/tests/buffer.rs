@@ -423,3 +423,14 @@ fn the_buffer_says_where_its_lines_went_since_a_revision() {
         "a later one is unknown"
     );
 }
+
+#[test]
+fn a_word_is_letters_digits_and_underscores_around_the_caret() {
+    use crate::{whole_words, word_around, word_start};
+    assert_eq!(word_start("os.pa", 5), 3);
+    assert_eq!(word_start("x = é_b", 7), 4);
+    assert_eq!(word_start("os.", 3), 3);
+    assert_eq!(word_around("self.cache[key]", 7).as_deref(), Some("cache"));
+    assert_eq!(word_around("a  b", 2), None);
+    assert_eq!(whole_words("x = ax + x_ x", "x"), vec![0..1, 12..13]);
+}

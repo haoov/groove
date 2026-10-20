@@ -71,13 +71,8 @@ pub fn word(ui: &mut Ui, app: &AppState, tick: u64) {
 /// The run of word characters around `at` in the edited buffer.
 fn word_at(app: &AppState, ui: &Ui, at: groove_types::Caret) -> Option<String> {
     let editor = crate::views::session::diff::edited(app, ui)?;
-    let line: Vec<char> = editor.buffer.line(at.line)?.chars().collect();
-    let part = |c: &char| c.is_alphanumeric() || *c == '_';
-    let column = at.column.min(line.len());
-    let before = line[..column].iter().rev().take_while(|c| part(c)).count();
-    let after = line[column..].iter().take_while(|c| part(c)).count();
-    let word: String = line[column - before..column + after].iter().collect();
-    (!word.is_empty()).then_some(word)
+    let line = editor.buffer.line(at.line)?;
+    groove_controllers::workspace_service::word_around(&line, at.column)
 }
 
 /// Where the pointer stands in an open file. True when it moved to another spot.

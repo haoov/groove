@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use groove_types::{Caret, Completion, Diagnostic, Error, LanguageServer, Severity, WorktreeId};
 
-use crate::{ServerKey, Servers, Tell, Telling, matching, serving, word_start};
+use crate::{ServerKey, Servers, Tell, Telling, matching, serving};
 
 fn key(dir: &str) -> ServerKey {
     ServerKey {
@@ -235,13 +235,6 @@ fn the_typed_word_keeps_what_holds_its_letters_those_it_begins_first() {
     assert_eq!(kept, ["PathLike", "path"]);
     assert_eq!(matching(&items, "px").len(), 0);
     assert_eq!(matching(&items, "").len(), 3);
-}
-
-#[test]
-fn the_word_before_the_caret_starts_after_the_last_mark() {
-    assert_eq!(word_start("os.pa", 5), 3);
-    assert_eq!(word_start("x = é_b", 7), 4);
-    assert_eq!(word_start("os.", 3), 3);
 }
 
 #[test]

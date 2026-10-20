@@ -252,23 +252,12 @@ pub(super) fn counted(app: &AppState, path: &str) -> Option<(u32, u32)> {
 
 /// Where `word` stands whole in `text`, in the columns the row draws.
 pub(super) fn occurs(text: &str, word: &str, width: usize) -> Vec<(usize, usize)> {
-    let chars: Vec<char> = text.chars().collect();
-    let sought: Vec<char> = word.chars().collect();
-    if sought.is_empty() {
-        return Vec::new();
-    }
-    let part = |at: Option<&char>| at.is_some_and(|c| c.is_alphanumeric() || *c == '_');
-    let mut found = Vec::new();
-    for at in 0..chars.len().saturating_sub(sought.len() - 1) {
-        let whole = chars[at..].starts_with(&sought)
-            && !part(at.checked_sub(1).and_then(|before| chars.get(before)))
-            && !part(chars.get(at + sought.len()));
-        if whole {
-            let column = |at: usize| display_of(text, at, width);
-            found.push((column(at), column(at + sought.len())));
-        }
-    }
+    let column = |at: usize| display_of(text, at, width);
+    let found = groove_controllers::workspace_service::whole_words(text, word);
     found
+        .into_iter()
+        .map(|at| (column(at.start), column(at.end)))
+        .collect()
 }
 
 /// A diff row's outline: the word the caret rests in, wherever the row holds it.

@@ -55,14 +55,3 @@ pub fn matching<'a>(items: &'a [Completion], typed: &str) -> Vec<&'a Completion>
     kept.sort_by(|a, b| (a.0, &a.1.sort, &a.1.label).cmp(&(b.0, &b.1.sort, &b.1.label)));
     kept.into_iter().map(|(_, one)| one).collect()
 }
-
-/// The column the word ending at `column` of `line` starts at.
-pub fn word_start(line: &str, column: usize) -> usize {
-    let before: Vec<char> = line.chars().take(column).collect();
-    let word = before
-        .iter()
-        .rev()
-        .take_while(|c| c.is_alphanumeric() || **c == '_')
-        .count();
-    before.len() - word
-}

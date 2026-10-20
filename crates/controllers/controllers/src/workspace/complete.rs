@@ -13,7 +13,7 @@ pub(super) fn after(state: &mut AppState, spawner: &dyn Spawner, edit: &Edit) {
         Edit::Insert(text) => {
             let mut chars = text.chars();
             let one = chars.next().filter(|_| chars.next().is_none());
-            one.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '.')
+            one.is_some_and(|c| groove_workspace_service::is_word(c) || c == '.')
         }
         Edit::Backspace => standing,
         _ => false,

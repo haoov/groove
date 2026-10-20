@@ -26,7 +26,7 @@ pub use buffer::{Buffer, Touched};
 pub use search::Found;
 pub use settle::Settled;
 pub use tabs::{column_of, display_of, expand, spans_of};
-pub use words::{Class, class};
+pub use words::{Class, class, is_word, whole_words, word_around, word_start};
 
 /// Above this a document keeps its text and gives up its colour.
 pub const MAX_HIGHLIGHT_BYTES: usize = 1 << 20;

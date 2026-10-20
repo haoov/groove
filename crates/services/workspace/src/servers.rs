@@ -11,7 +11,7 @@ mod spot;
 use found::Found;
 pub use groove_lsp::{Client, Hooks, Launch, start};
 use groove_types::{Caret, Diagnostic, LanguageServer, Result, WorktreeId};
-pub use offered::{Offered, matching, word_start};
+pub use offered::{Offered, matching};
 pub use spot::Hovered;
 
 /// One server: the worktree it serves, the directory it runs in, and its name.

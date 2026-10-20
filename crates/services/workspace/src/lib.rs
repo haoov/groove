@@ -8,7 +8,9 @@ pub use groove_diff::{
 };
 pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};
-pub use groove_text::{Block, Buffer, Colours, Language, Touched};
+pub use groove_text::{
+    Block, Buffer, Colours, Language, Touched, is_word, whole_words, word_around, word_start,
+};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
@@ -43,7 +45,7 @@ pub use revision::{Revision, Step};
 pub use rows::Way;
 pub use servers::{
     Client, Hooks, Hovered, Launch, Offered, ServerKey, Servers, Tell, Telling, Up, launch,
-    matching, serving, start, word_start,
+    matching, serving, start,
 };
 
 /// What the workspace holds for the selected worktree.
