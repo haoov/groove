@@ -55,15 +55,15 @@ fn caret() -> Cell<'static> {
 fn columns<'a>((caret, meter): (&'a Cell<'a>, &'a Cell<'a>)) -> Vec<Column<'a, Target>> {
     let fit = Width::FitBody;
     vec![
-        grouped::plain("", Width::FitCell(caret)),
-        grouped::plain("NAME", fit("init · statsd-exporter")),
-        grouped::plain("STATE", fit("waiting · CrashLoopBackOff")),
-        grouped::plain("READY", Width::Fit("✓")),
-        grouped::plain("RESTARTS", fit("14")),
-        grouped::plain("LAST ENDED", fit("Error · exit 137 · 59m")),
-        grouped::plain("CPU", Width::FitCell(meter)),
-        grouped::plain("MEMORY", Width::FitCell(meter)),
-        grouped::plain("", Width::Fill),
+        Column::plain("", Width::FitCell(caret)),
+        Column::plain("NAME", fit("init · statsd-exporter")),
+        Column::plain("STATE", fit("waiting · CrashLoopBackOff")),
+        Column::plain("READY", Width::Fit("✓")),
+        Column::plain("RESTARTS", fit("14")),
+        Column::plain("LAST ENDED", fit("Error · exit 137 · 59m")),
+        Column::plain("CPU", Width::FitCell(meter)),
+        Column::plain("MEMORY", Width::FitCell(meter)),
+        Column::plain("", Width::Fill),
     ]
 }
 

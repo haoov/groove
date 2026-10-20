@@ -1755,6 +1755,7 @@ dependencies = [
 name = "groove-skills"
 version = "1.0.0-beta.2"
 dependencies = [
+ "groove-sync",
  "groove-types",
  "serde_json",
  "tempfile",
@@ -1765,6 +1766,7 @@ dependencies = [
 name = "groove-sync"
 version = "1.0.0-beta.2"
 dependencies = [
+ "groove-types",
  "tokio",
 ]
 

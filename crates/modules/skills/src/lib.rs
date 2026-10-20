@@ -9,7 +9,7 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
-use groove_types::{Error, ErrorKind, Result, Skill};
+use groove_types::{Result, Skill};
 
 /// The plugin names, which are also the agent's own namespaces.
 pub const CORE: &str = "groove";
@@ -102,19 +102,19 @@ pub async fn sync(dirs: &Dirs) -> Result<()> {
 /// The `--plugin-dir` arguments for one launch. A plugin with no skill is left out.
 pub async fn plugin_dirs(dirs: &Dirs) -> Result<Vec<PathBuf>> {
     let dirs = dirs.clone();
-    off(move || Ok(disk::plugin_dirs(&dirs))).await
+    groove_sync::blocking(move || Ok(disk::plugin_dirs(&dirs))).await
 }
 
 /// Every skill the plugins offer: the core ones, the shared ones, then the user's own.
 pub async fn list(dirs: &Dirs) -> Result<Vec<Skill>> {
     let dirs = dirs.clone();
-    off(move || Ok(disk::list(&dirs))).await
+    groove_sync::blocking(move || Ok(disk::list(&dirs))).await
 }
 
 /// One skill's own `SKILL.md`, whichever plugin holds it.
 pub async fn read(dirs: &Dirs, id: &str) -> Result<String> {
     let (dirs, id) = (dirs.clone(), id.to_string());
-    off(move || disk::read(&dirs, &id)).await
+    groove_sync::blocking(move || disk::read(&dirs, &id)).await
 }
 
 /// One skill of the user's own written, taking the place of `instead_of` when it names one.
@@ -133,19 +133,12 @@ pub async fn delete(dirs: &Dirs, name: &str) -> Result<()> {
 /// The marketplace a shared repo is, read from `.claude-plugin/marketplace.json` at its root.
 pub async fn marketplace(repo: &Path) -> Result<Marketplace> {
     let repo = repo.to_path_buf();
-    off(move || shared::marketplace(&repo)).await
+    groove_sync::blocking(move || shared::marketplace(&repo)).await
 }
 
 async fn built<T: Send + 'static>(work: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
     let _one = BUILDING.lock().await;
-    off(work).await
-}
-
-async fn off<T: Send + 'static>(work: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
-    match tokio::task::spawn_blocking(work).await {
-        Ok(done) => done,
-        Err(e) => Err(Error::new(ErrorKind::Io, e.to_string())),
-    }
+    groove_sync::blocking(work).await
 }
 
 const NAMED: &str = "a name is lower case letters, digits and dashes";

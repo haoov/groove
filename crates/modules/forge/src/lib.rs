@@ -14,6 +14,14 @@ pub use gitlab::Gitlab;
 pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr, ReviewVerdict};
 
+/// The host a client of it names, and the API it talks to with `token`.
+fn reached(host: &str, token: Token) -> Result<(String, groove_http::Graphql<Token>)> {
+    Ok((
+        host.to_string(),
+        groove_http::Graphql::new(Forge::graphql(host), token)?,
+    ))
+}
+
 /// Every forge Groove speaks to.
 pub enum Remote {
     Github(Github),

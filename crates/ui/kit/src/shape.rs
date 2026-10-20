@@ -6,6 +6,22 @@ use crate::base::ctx::{App, Ctx};
 use crate::base::ground::Ground;
 
 /// A box of `size` with its top-left at `at`, moved back inside `within` where it would leave it.
+/// A slot `width` wide at one side of `room`, which gives it up and `gap` past it.
+pub fn stand(room: &mut Rect, width: f32, gap: f32, side: crate::widgets::Side) -> Rect {
+    match side {
+        crate::widgets::Side::Left => {
+            let slot = room.take_left(width);
+            room.take_left(gap);
+            slot
+        }
+        crate::widgets::Side::Right => {
+            let slot = room.take_right(width);
+            room.take_right(gap);
+            slot
+        }
+    }
+}
+
 pub fn kept_in(at: (f32, f32), (width, height): (f32, f32), within: Rect) -> Rect {
     let x = at.0.min(within.right() - width).max(within.x);
     let y = at.1.min(within.bottom() - height).max(within.y);

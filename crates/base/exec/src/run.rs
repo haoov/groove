@@ -40,24 +40,7 @@ impl Run {
         }
     }
 
-    pub fn args<I, S>(mut self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        self.args.extend(args.into_iter().map(Into::into));
-        self
-    }
-
-    pub fn cwd(mut self, dir: impl AsRef<Path>) -> Self {
-        self.cwd = Some(dir.as_ref().to_path_buf());
-        self
-    }
-
-    pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.env.push((key.into(), value.into()));
-        self
-    }
+    crate::described!();
 
     /// What the child reads on its standard input, which then closes.
     pub fn input(mut self, input: impl Into<Vec<u8>>) -> Self {
@@ -74,11 +57,6 @@ impl Run {
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
-    }
-
-    /// The command line with credentials redacted, for messages and logs.
-    pub fn describe(&self) -> String {
-        redact(&format!("{} {}", self.program, self.args.join(" ")))
     }
 
     /// Runs and returns the raw output, whatever the exit status.

@@ -78,10 +78,9 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     /// Stands at the left of `room`, which gives up its box and `gap`.
     pub fn left<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
-        let box_ = room.take_left(self.width(ctx));
-        room.take_left(gap);
-        self.draw(ctx, box_);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Left);
+        self.draw(ctx, slot);
+        slot
     }
 
     /// Stands at the right of `room`, which gives up its box and `gap`.
@@ -91,10 +90,9 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         room: &mut Rect,
         gap: f32,
     ) -> Rect {
-        let box_ = room.take_right(self.width(ctx));
-        room.take_right(gap);
-        self.draw(ctx, box_);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Right);
+        self.draw(ctx, slot);
+        slot
     }
 
     fn pad<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> f32 {

@@ -45,6 +45,19 @@ pub struct Column<'a, T> {
     pub edge: Option<T>,
 }
 
+impl<'a, T> Column<'a, T> {
+    /// A column that neither sorts nor drags, its text from the left.
+    pub fn plain(label: &'a str, width: Width<'a>) -> Self {
+        Self {
+            label,
+            width,
+            end: false,
+            sort: None,
+            edge: None,
+        }
+    }
+}
+
 /// Which column orders the rows, and which way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Sorted {

@@ -1,11 +1,11 @@
 //! A child piped for as long as it lives: its stdin, stdout and stderr held open, killed when dropped.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Stdio;
 
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 
-use crate::{Error, Result, redact};
+use crate::{Error, Result};
 
 pub struct Piped {
     program: String,
@@ -40,34 +40,12 @@ impl Piped {
         }
     }
 
-    pub fn args<I, S>(mut self, args: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        self.args.extend(args.into_iter().map(Into::into));
-        self
-    }
-
-    pub fn cwd(mut self, dir: impl AsRef<Path>) -> Self {
-        self.cwd = Some(dir.as_ref().to_path_buf());
-        self
-    }
-
-    pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.env.push((key.into(), value.into()));
-        self
-    }
+    crate::described!();
 
     /// A variable the child does not inherit.
     pub fn unset(mut self, key: impl Into<String>) -> Self {
         self.unset.push(key.into());
         self
-    }
-
-    /// The command line with credentials redacted, for messages and logs.
-    pub fn describe(&self) -> String {
-        redact(&format!("{} {}", self.program, self.args.join(" ")))
     }
 
     /// Starts the child with its three pipes open.

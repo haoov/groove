@@ -44,9 +44,8 @@ impl<'a, T: Clone + PartialEq> Toggle<'a, T> {
 
     /// Stands at the left of `room`, which gives up its box and `gap`.
     pub fn left<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
-        let box_ = self.draw(ctx, *room, room.x);
-        room.take_left(box_.w + gap);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Left);
+        self.draw(ctx, slot, slot.x)
     }
 
     /// Stands at the right of `room`, which gives up its box and `gap`.
@@ -56,10 +55,8 @@ impl<'a, T: Clone + PartialEq> Toggle<'a, T> {
         room: &mut Rect,
         gap: f32,
     ) -> Rect {
-        let width = self.width(ctx);
-        let box_ = self.draw(ctx, *room, room.right() - width);
-        room.take_right(box_.w + gap);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Right);
+        self.draw(ctx, slot, slot.x)
     }
 
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {

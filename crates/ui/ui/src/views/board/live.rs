@@ -32,13 +32,7 @@ pub(super) fn empty(ui: &Ui) -> &'static str {
 }
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &[&Living]) {
-    let columns = [Column {
-        label: "title",
-        width: Width::Fill,
-        end: false,
-        sort: None,
-        edge: None,
-    }];
+    let columns = [Column::plain("title", Width::Fill)];
     let tokens = ctx.tokens;
     let first = super::row::item(&tokens);
     let table = Table {
