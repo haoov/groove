@@ -1,5 +1,9 @@
 //! A note's words laid out on rows as wide as the surface gives them.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use groove_types::{Note, labelled};
 use groove_ui_kit::markdown::{Row, compact};
 
@@ -27,13 +31,41 @@ impl Default for Worded {
     }
 }
 
+/// How many laid-out comments the cache keeps before it starts again.
+const KEPT: usize = 4096;
+
+/// A comment's words laid out.
+type Laid = Rc<Vec<Row>>;
+
+/// Each comment's words laid out at a width, kept across frames.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Compacted {
+    kept: RefCell<HashMap<(String, usize), Laid>>,
+}
+
+impl Compacted {
+    fn of(&self, body: &str, cols: usize) -> Laid {
+        let mut kept = self.kept.borrow_mut();
+        if let Some(rows) = kept.get(&(body.to_string(), cols)) {
+            return rows.clone();
+        }
+        if kept.len() >= KEPT {
+            kept.clear();
+        }
+        let rows = Rc::new(compact(body, cols));
+        kept.insert((body.to_string(), cols), rows.clone());
+        rows
+    }
+}
+
 /// Every row a note takes: each comment's header, then its words as Markdown, its label off.
-pub(crate) fn wrapped(note: &Note, cols: usize) -> Vec<Worded> {
+pub(crate) fn wrapped(note: &Note, cols: usize, compacted: &Compacted) -> Vec<Worded> {
     let mut out = Vec::new();
     for (at, said) in note.said.iter().enumerate() {
         out.push(Worded::Head(at));
         let body = labelled(&said.body).map_or(said.body.as_str(), |one| one.rest);
-        out.extend(compact(body, cols).into_iter().map(Worded::Body));
+        let rows = compacted.of(body, cols);
+        out.extend(rows.iter().cloned().map(Worded::Body));
     }
     out
 }

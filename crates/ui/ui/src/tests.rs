@@ -7,6 +7,9 @@ mod board;
 mod budget;
 mod clusters;
 mod commit;
+mod completion;
+mod definition;
+mod diagnostics;
 mod diff;
 mod editing;
 mod feed;
@@ -16,6 +19,7 @@ mod finding;
 mod first_run;
 mod focus;
 mod frame;
+mod hover;
 mod keymap;
 mod manual;
 mod mapping;
@@ -28,6 +32,8 @@ mod palette_more;
 mod pasting;
 mod pending;
 mod perf;
+mod perf_editor;
+mod perf_servers;
 mod rail;
 mod regions;
 mod resources;
@@ -199,6 +205,35 @@ fn sidebar_ui() -> Ui {
     let mut ui = Ui::default();
     ui.session.tab = crate::views::session::Tab::Diff;
     ui.focus = crate::Focus::Sidebar;
+    ui
+}
+
+/// One frame drawn in the window: its bottom layer's texts, and its hits.
+fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
+    render(app, ui, window())
+}
+
+/// The targets one frame in the window drew.
+fn drawn_hits(app: &AppState, ui: &Ui) -> Hits {
+    drawn(app, ui).1
+}
+
+/// A click in the middle of a target a fresh frame draws.
+fn hit(target: &crate::hit::Target, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let hits = drawn_hits(app, ui);
+    let rect = hits
+        .rect_of(target)
+        .unwrap_or_else(|| panic!("{target:?} was drawn"));
+    click(rect, ui, app, &hits)
+}
+
+/// The workspace keyboard on the Files tab.
+fn on_file() -> Ui {
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    ui.session.tab = crate::views::session::Tab::Files;
     ui
 }
 

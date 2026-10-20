@@ -20,6 +20,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
         skills_off: Vec::new(),
         routines: Default::default(),
         clusters: Vec::new(),
+        language_servers: None,
     };
     State {
         config: Some(config),

@@ -7,7 +7,7 @@ use self::composer::composer;
 use self::note::{acts, note, padded};
 
 use groove_gfx::Rect;
-use groove_ui_kit::widgets::code::{self, Block, Code};
+use groove_ui_kit::widgets::code::{self, Block, Code, Outline};
 
 use super::Line;
 use crate::ctx::Ctx;
@@ -18,16 +18,16 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, ac
         return;
     }
     if let Some(composed) = code.composed.as_ref() {
-        return composer(ctx, line, composed, (gutter, code.edges));
+        return composer(ctx, line, composed, gutter);
     }
     if let Some(room) = code.pad {
-        return padded(ctx, line, room, (gutter, code.edges));
+        return padded(ctx, line, room, gutter);
     }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);
     }
     if let Some(acting) = code.acting.as_ref() {
-        return acts(ctx, line, acting, (gutter, code.edges));
+        return acts(ctx, line, acting, gutter);
     }
     code::draw(ctx, line, &painted(code), gutter, across);
 }
@@ -50,6 +50,7 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         read: line.read,
         part: line.part,
         counts: line.counts,
+        tally: line.tally,
         tile: line.tile.as_ref().map(|(tile, folds)| {
             let opens = folds
                 .clone()
@@ -63,7 +64,16 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         words: line.words,
         word: line.word,
         standing: line.standing,
+        faults: line.faults,
         noted: line.noted,
         blame,
+        outline: Outline {
+            occurs: line.outline.occurs,
+            guides: line.outline.guides,
+            fold: line
+                .outline
+                .fold
+                .map(|(folded, hides, at)| (folded, hides, Target::Block(at))),
+        },
     }
 }

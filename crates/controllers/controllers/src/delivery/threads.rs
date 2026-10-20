@@ -201,17 +201,27 @@ pub(crate) fn say_as(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if done.is_ok() {
-                    if typed.is_some_and(|typed| state.workspace.message.text() == typed) {
-                        state.workspace.message = groove_workspace_service::Buffer::default();
-                    }
-                    let (kind, at) = (TimelineKind::Review, &whose.worktree.id);
-                    crate::timeline::log(services, spawner, &whose.session, kind, say.label(), at);
-                    landed(state, services, spawner, &whose);
+                    spoke(state, services, spawner, (typed, &say, &whose));
                 }
                 asker.answer(state, done, || say.said().to_string());
             },
         ) as Continuation
     }));
+}
+
+/// The box emptied when it still holds what was said, the timeline told, the MR read again.
+fn spoke(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (typed, say, whose): (Option<String>, &Say, &Whose),
+) {
+    if typed.is_some_and(|typed| state.workspace.message.text() == typed) {
+        state.workspace.message = groove_workspace_service::Buffer::default();
+    }
+    let (kind, at) = (TimelineKind::Review, &whose.worktree.id);
+    crate::timeline::log(services, spawner, &whose.session, kind, say.label(), at);
+    landed(state, services, spawner, whose);
 }
 
 /// The session's notes read again, and its MR with them: a thread only the forge holds.

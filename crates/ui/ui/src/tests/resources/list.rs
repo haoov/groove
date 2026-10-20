@@ -7,7 +7,7 @@ use groove_types::{ObjectRow, SessionId, TableColumn};
 use super::{key, listing, on, row};
 use crate::Ui;
 use crate::hit::Target;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::tests::{click, window};
 
 /// Run with `cargo test --release -p groove-ui time_a_frame_of -- --ignored --nocapture`.

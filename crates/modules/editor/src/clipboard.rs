@@ -1,6 +1,6 @@
 //! What the editing surface copies through.
 
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use groove_types::{Error, ErrorKind, Result};
 
@@ -66,17 +66,11 @@ impl System {
 
 impl Held for System {
     fn read(&self) -> Option<String> {
-        self.held
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .get_text()
-            .ok()
+        groove_sync::lock(&self.held).get_text().ok()
     }
 
     fn write(&self, text: &str) -> Result<()> {
-        self.held
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
+        groove_sync::lock(&self.held)
             .set_text(text)
             .map_err(|e| failed("write the clipboard", &e))
     }
@@ -89,14 +83,11 @@ struct Memory {
 
 impl Held for Memory {
     fn read(&self) -> Option<String> {
-        self.held
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .clone()
+        groove_sync::lock(&self.held).clone()
     }
 
     fn write(&self, text: &str) -> Result<()> {
-        *self.held.lock().unwrap_or_else(PoisonError::into_inner) = Some(text.to_string());
+        *groove_sync::lock(&self.held) = Some(text.to_string());
         Ok(())
     }
 }

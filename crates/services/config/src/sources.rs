@@ -71,6 +71,7 @@ fn first() -> Config {
         skills_off: Vec::new(),
         routines: Default::default(),
         clusters: Vec::new(),
+        language_servers: None,
     }
 }
 

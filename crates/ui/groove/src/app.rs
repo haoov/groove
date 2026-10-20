@@ -1,8 +1,9 @@
 //! The window's state and what it does with it: draw, fit, point, dispatch.
 
 pub(crate) mod events;
+mod pace;
 
-use self::events::{CLOCK_S, FIT_MS};
+use self::events::FIT_MS;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -11,7 +12,7 @@ use groove_controllers::{
     AppState, Command, Env, Event, Services, TokioSpawner, agent, apply, dispatch, workspace,
 };
 use groove_gfx::{Family, Renderer, Size};
-use groove_types::{AttentionClass, Config, FontFamily, Panes, Timestamp};
+use groove_types::{Config, FontFamily, Panes, Timestamp};
 use groove_ui::input::Input;
 use groove_ui::{Cursor, Hits, Metrics, Split, Ui};
 use winit::keyboard::ModifiersState;
@@ -100,6 +101,8 @@ impl App {
         };
         self.ui.settle(&self.state);
         self.prepare(metrics);
+        groove_ui::input::land(&mut self.ui, &self.state, &self.hits, metrics);
+        groove_ui::input::word(&mut self.ui, &self.state, metrics.tick);
         let Some(renderer) = &mut self.renderer else {
             return;
         };
@@ -108,8 +111,12 @@ impl App {
         self.hits = hits;
         self.showing();
         self.point();
-        if let Some(blame) = groove_ui::input::rest(&mut self.ui, &self.state, metrics.tick) {
-            dispatch(blame, &mut self.state, &self.services, &self.spawner);
+        let rested = [
+            groove_ui::input::rest(&mut self.ui, &self.state, metrics.tick),
+            groove_ui::input::hovering(&mut self.ui, &self.state, metrics.tick),
+        ];
+        for asked in rested.into_iter().flatten() {
+            dispatch(asked, &mut self.state, &self.services, &self.spawner);
         }
     }
 
@@ -121,30 +128,6 @@ impl App {
         }
         let command = Command::Workspace(workspace::Command::Show { rows });
         dispatch(command, &mut self.state, &self.services, &self.spawner);
-    }
-
-    /// How long the window may sleep before it redraws itself.
-    fn pace(&self) -> Option<Duration> {
-        let moving = !self.state.pending.is_empty()
-            || self
-                .state
-                .agent
-                .agents
-                .iter()
-                .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving)
-            || groove_ui::spins(&self.state, &self.ui);
-        if moving {
-            return Some(Duration::from_millis(groove_ui::SPINNER_MS));
-        }
-        let tick = self.started.elapsed().as_millis() as u64;
-        if let Some(left) = groove_ui::input::resting(&self.ui, tick) {
-            return Some(Duration::from_millis(left));
-        }
-        let waiting =
-            !self.state.agent.agents.is_empty() || groove_controllers::delivery::polls(&self.state);
-        let clock = waiting.then(|| Duration::from_secs(CLOCK_S));
-        let aging = groove_ui::ages_due(&self.state, &self.ui).map(events::until);
-        clock.into_iter().chain(aging).min()
     }
 
     /// What the frame needs before it draws, throttled while a split is dragged.
@@ -191,13 +174,6 @@ impl App {
         self.watch();
         self.clock();
         self.redraw();
-    }
-
-    /// The clock on the task being worked, and the poll on the open MRs.
-    fn clock(&mut self) {
-        let now = groove_types::Timestamp::now();
-        groove_controllers::task::time::tick(&mut self.state, &self.services, &self.spawner, now);
-        groove_controllers::delivery::poll(&mut self.state, &self.services, &self.spawner, now);
     }
 
     fn metrics(&mut self) -> Option<Metrics> {

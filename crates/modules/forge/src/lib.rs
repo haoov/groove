@@ -14,6 +14,14 @@ pub use gitlab::Gitlab;
 pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr, ReviewVerdict};
 
+/// The host a client of it names, and the API it talks to with `token`.
+fn reached(host: &str, token: Token) -> Result<(String, groove_http::Graphql<Token>)> {
+    Ok((
+        host.to_string(),
+        groove_http::Graphql::new(Forge::graphql(host), token)?,
+    ))
+}
+
 /// Every forge Groove speaks to.
 pub enum Remote {
     Github(Github),
@@ -68,7 +76,7 @@ impl Remote {
     pub fn shared(host: &str) -> Result<std::sync::Arc<Self>> {
         static HELD: std::sync::Mutex<Vec<(String, std::sync::Arc<Remote>)>> =
             std::sync::Mutex::new(Vec::new());
-        let mut held = HELD.lock().unwrap_or_else(|e| e.into_inner());
+        let mut held = groove_sync::lock(&HELD);
         if let Some((_, one)) = held.iter().find(|(at, _)| at == host) {
             return Ok(one.clone());
         }

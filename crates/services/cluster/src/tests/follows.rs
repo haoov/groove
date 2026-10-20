@@ -1,17 +1,7 @@
-use groove_types::{FollowKey, KubeKind, Timestamp};
+use groove_types::{FollowKey, Timestamp};
 
+use super::pod_kind;
 use crate::Follows;
-
-fn pods() -> KubeKind {
-    KubeKind {
-        group: String::new(),
-        version: "v1".into(),
-        kind: "Pod".into(),
-        plural: "pods".into(),
-        namespaced: true,
-        watchable: true,
-    }
-}
 
 fn pod(name: &str) -> (String, String, String) {
     ("kind".into(), "paxone".into(), name.into())
@@ -20,7 +10,7 @@ fn pod(name: &str) -> (String, String, String) {
 #[test]
 fn a_pod_no_tab_reads_keeps_no_usage_and_its_namespace_no_revision() {
     let mut follows = Follows::default();
-    let key = FollowKey::named("kind", &pods(), Some("paxone"), "api-0");
+    let key = FollowKey::named("kind", &pod_kind(), Some("paxone"), "api-0");
     follows.lease(&key, "resource");
     follows.set_usage(pod("api-0"), None, Timestamp::new(0));
     follows.set_helm(pod("api"), Some(3));

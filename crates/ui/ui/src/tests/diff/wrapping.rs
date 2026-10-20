@@ -119,3 +119,45 @@ fn wrapping_turns_on_from_settings_or_the_palette() {
         crate::views::settings::rows::Value::Toggle { on: true, .. }
     ));
 }
+
+/// The wrapped file view scrolled to its end, where line 200 runs over several rows.
+fn at_the_end(app: &AppState, ui: &mut Ui) {
+    let _ = view(app, ui, window(), &mut Fonts::embedded());
+    *ui.session.scroll_mut() = f32::MAX;
+}
+
+#[test]
+fn a_diagnostic_on_a_wrapped_line_s_first_row_leaves_its_later_rows_alone() {
+    let (mut app, mut ui) = wrapping();
+    let worktree = app.workspace.worktree.clone().expect("a worktree");
+    let key = groove_controllers::workspace_service::ServerKey {
+        worktree,
+        dir: "/w".into(),
+        name: "ty".into(),
+    };
+    let found = groove_types::Diagnostic {
+        start: Caret::new(199, 0),
+        end: Caret::new(199, 2),
+        severity: groove_types::Severity::Error,
+        message: "first row".into(),
+        source: None,
+        code: None,
+    };
+    let at = std::path::Path::new("/w/src/lib.rs");
+    app.workspace.servers.diagnosed(&key, at, vec![found]);
+    at_the_end(&app, &mut ui);
+    let _ = view(&app, &ui, window(), &mut Fonts::embedded());
+}
+
+#[test]
+fn a_match_on_a_wrapped_line_s_first_row_leaves_its_later_rows_alone() {
+    let (app, mut ui) = wrapping();
+    at_the_end(&app, &mut ui);
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..Modifiers::default()
+    };
+    crate::tests::press(Key::Char('f'), ctrl, &mut ui, &app);
+    crate::tests::typed("abab", &mut ui, &app);
+    let _ = view(&app, &ui, window(), &mut Fonts::embedded());
+}

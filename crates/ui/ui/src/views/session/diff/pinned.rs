@@ -42,10 +42,10 @@ pub(super) fn draw(
         return;
     }
     let numbers: Vec<Vec<&str>> = pins.iter().map(|pin| vec![pin.number.as_str()]).collect();
-    let height = ctx.tokens.line * pins.len() as f32;
+    let height = ctx.tokens.code_line * pins.len() as f32;
     let named = pins.iter().find(|pin| pin.kind == Kind::Head);
     let pushed = named.and_then(|pin| pushed(ctx, (app, ui, inline), &pin.text, height));
-    let band = Rect::new(body.x, body.y + pushed.unwrap_or(0.0), body.w, height);
+    let band = groove_ui_kit::shape::band(body, pushed.unwrap_or(0.0), height);
     let ground = ctx.styles.raised();
     let read = named.is_some_and(|pin| super::row::is_read(app, &pin.text));
     let lines: Vec<Line<'_>> = pins
@@ -90,7 +90,7 @@ fn pushed(
     let changes = &app.workspace.changes;
     let head = changes.head_of(path)?;
     let (next, _, _) = changes.placed().find(|(start, _, _)| *start > head)?;
-    let top = inline.shifted(next) as f32 * ctx.tokens.line - ui.session.scroll();
+    let top = inline.shifted(next) as f32 * ctx.tokens.code_line - ui.session.scroll();
     Some((top - height).min(0.0))
 }
 
@@ -99,7 +99,7 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<
     if ui.session.face() == Face::File {
         return scoped(ctx, body, app, ui, inline);
     }
-    if first(ctx.tokens.line, ui.session.scroll()) == 0 {
+    if first(ctx.tokens.code_line, ui.session.scroll()) == 0 {
         return Vec::new();
     }
     file_under(ctx, app, ui, inline, HEAD_ROWS)
@@ -110,7 +110,7 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<
 /// The file of the row that stands `under` rows below the top of the surface.
 fn file_under(ctx: &Ctx, app: &AppState, ui: &Ui, inline: &Inline, under: usize) -> Option<String> {
     let rows = inline.total(super::row::count(app, ui, ui.session.face()));
-    let at = (first(ctx.tokens.line, ui.session.scroll()) + under).min(rows.saturating_sub(1));
+    let at = (first(ctx.tokens.code_line, ui.session.scroll()) + under).min(rows.saturating_sub(1));
     standing(app, inline.base(at))
 }
 
@@ -129,7 +129,7 @@ fn scoped(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Ve
     let Some(doc) = super::row::edited(app, ui).map(|one| one.buffer.document()) else {
         return Vec::new();
     };
-    let (line, scroll) = (ctx.tokens.line, ui.session.scroll());
+    let (line, scroll) = (ctx.tokens.code_line, ui.session.scroll());
     let last = inline.total(doc.lines().max(1)).saturating_sub(1);
     let mut held: Vec<usize> = Vec::new();
     for _ in 0..=PINNED_DEEP {
@@ -157,7 +157,7 @@ fn scoped(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Ve
 
 /// How many lines the surface will give up to what stands above it.
 fn room(ctx: &Ctx, body: Rect) -> usize {
-    ((body.h / PINNED_SHARE / ctx.tokens.line) as usize).max(1)
+    ((body.h / PINNED_SHARE / ctx.tokens.code_line) as usize).max(1)
 }
 
 /// The file of the row the top of the surface shows.

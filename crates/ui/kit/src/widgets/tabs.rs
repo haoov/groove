@@ -20,6 +20,8 @@ pub struct Tab<'a, T> {
     pub tight: bool,
     pub close: Option<(Mark, T)>,
     pub italic: bool,
+    /// The errors and warnings of the file it holds.
+    pub tally: Option<(u32, u32)>,
 }
 
 impl<'a, T: Clone + PartialEq> Tab<'a, T> {
@@ -34,6 +36,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             tight: false,
             close: None,
             italic: false,
+            tally: None,
         }
     }
 
@@ -63,6 +66,11 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         self
     }
 
+    pub fn tally(mut self, tally: Option<(u32, u32)>) -> Self {
+        self.tally = tally;
+        self
+    }
+
     pub fn close(mut self, mark: Mark, target: T) -> Self {
         self.close = Some((mark, target));
         self
@@ -70,10 +78,9 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     /// Stands at the left of `room`, which gives up its box and `gap`.
     pub fn left<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
-        let box_ = room.take_left(self.width(ctx));
-        room.take_left(gap);
-        self.draw(ctx, box_);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Left);
+        self.draw(ctx, slot);
+        slot
     }
 
     /// Stands at the right of `room`, which gives up its box and `gap`.
@@ -83,10 +90,9 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         room: &mut Rect,
         gap: f32,
     ) -> Rect {
-        let box_ = room.take_right(self.width(ctx));
-        room.take_right(gap);
-        self.draw(ctx, box_);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Right);
+        self.draw(ctx, slot);
+        slot
     }
 
     fn pad<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> f32 {
@@ -112,8 +118,11 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             Some(_) => ctx.tokens.small + ctx.tokens.sm * 2.0,
             None => 0.0,
         };
+        let tallied = self
+            .tally
+            .map_or(0.0, |tally| crate::widgets::faults_room(ctx, tally));
         let style = self.style(ctx);
-        ctx.measure(self.label, &style) + self.pad(ctx) * 2.0 + closing
+        ctx.measure(self.label, &style) + self.pad(ctx) * 2.0 + closing + tallied
     }
 
     /// The label is drawn whole: the tab is as wide as it.
@@ -131,9 +140,12 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         }
         let style = self.style(ctx);
         let pad = self.pad(ctx);
+        let mut end = box_;
         if let Some((mark, target)) = self.close {
-            let mut end = box_;
             Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
+        }
+        if let Some(tally) = self.tally {
+            crate::widgets::faults(ctx, &mut end, tally);
         }
         row(ctx, box_, pad, self.label, style);
     }

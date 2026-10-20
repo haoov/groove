@@ -22,7 +22,8 @@ pub use groove_types::Screen;
 
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
-pub use files::{Held, Turn};
+pub use files::Held;
+pub use groove_sync::Turn;
 pub use launch::{LaunchPaths, launch, palette};
 
 /// One session's agent. `terminal` is `None` when the launch failed.

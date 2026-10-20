@@ -7,9 +7,7 @@ use groove_types::{Found, ProviderId, Secret, Tool};
 use super::*;
 use crate::hit::Target;
 
-pub(super) fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
-    render(app, ui, window())
-}
+mod servers;
 
 /// The same, a lit label read back whole.
 pub(super) fn drawn_whole(app: &AppState, ui: &Ui) -> Vec<String> {

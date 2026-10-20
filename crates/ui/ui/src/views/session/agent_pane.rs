@@ -1,5 +1,4 @@
 use groove_controllers::AppState;
-use groove_gfx::Rect;
 use groove_types::AgentStatus;
 
 use crate::ctx::Ctx;
@@ -36,6 +35,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, focused: bool) {
 fn note(ctx: &mut Ctx, text: &str) {
     let style = ctx.styles.body(Role::Faint);
     let (pad, pane) = (ctx.tokens.md, ctx.app.layout.agent);
-    let rect = Rect::new(pane.x, pane.y + ctx.tokens.sm, pane.w, ctx.tokens.row);
+    let rect = groove_ui_kit::shape::band(pane, ctx.tokens.sm, ctx.tokens.row);
     row(ctx, rect, pad, text, style);
 }

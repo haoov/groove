@@ -77,17 +77,6 @@ pub(super) fn order<R>(rows: &mut [R], tab: &Opened, key: impl Fn(&R, &str) -> S
     });
 }
 
-/// A column that neither sorts nor drags.
-pub(super) fn plain<'a>(label: &'static str, width: Width<'a>) -> Column<'a, Target> {
-    Column {
-        label,
-        width,
-        end: false,
-        sort: None,
-        edge: None,
-    }
-}
-
 /// The table a row stands alone in, its header above it when `header`.
 pub(super) fn single<'a>(
     ctx: &Ctx,

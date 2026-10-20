@@ -4,7 +4,8 @@ use groove_controllers::cluster_service::{Event, apply};
 use groove_controllers::{AppState, Command, config};
 use groove_types::{ClusterChange, KubeAuth, KubeContext, Login};
 
-use super::settings::{drawn, opened};
+use super::drawn;
+use super::settings::opened;
 use super::*;
 use crate::hit::Target;
 use crate::views::settings::Section;

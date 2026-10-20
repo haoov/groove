@@ -50,16 +50,24 @@ pub(super) fn scroll(
         ui.wheeled(beside(ui), pixels(tokens.row), hits);
         return Vec::new();
     }
+    in_tab(ui, hits, delta, &tokens);
+    Vec::new()
+}
+
+/// The open tab's own column.
+fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
+    let pixels = |height: f32| delta.down(height);
     match ui.session.tab {
         Tab::Overview => ui.wheeled(Scroller::Overview, pixels(tokens.row), hits),
         Tab::Resources if ui.session.face() != crate::views::session::Face::File => {
             ui.wheeled(Scroller::Resources, pixels(tokens.row), hits)
         }
-        Tab::Resources | Tab::Diff | Tab::Files => {
-            coded(ui, hits, (pixels(tokens.line), delta.across(tokens.line)))
-        }
+        Tab::Resources | Tab::Diff | Tab::Files => coded(
+            ui,
+            hits,
+            (pixels(tokens.code_line), delta.across(tokens.code_line)),
+        ),
     }
-    Vec::new()
 }
 
 /// What the sidebar holds: the kinds on the Kubernetes tab, else the files.

@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use groove_types::{Config, Error, Panes};
 
@@ -25,7 +25,7 @@ struct Held {
 impl Keeper {
     /// `config` at `revision` held for the next flush, unless a later one is held or was tried.
     pub fn hold(&self, config_dir: &Path, config: Config, revision: u64) {
-        let mut held = self.held.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut held = groove_sync::lock(&self.held);
         let newest = held.config.as_ref().map_or(held.tried, |(_, _, at)| *at);
         if revision > newest {
             held.config = Some((config_dir.to_path_buf(), config, revision));
@@ -34,7 +34,7 @@ impl Keeper {
 
     /// `panes` held for the next flush, in place of any held before.
     pub fn hold_panes(&self, data_dir: &Path, panes: Panes) {
-        let mut held = self.held.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut held = groove_sync::lock(&self.held);
         held.panes = Some((data_dir.to_path_buf(), panes));
     }
 
@@ -45,7 +45,7 @@ impl Keeper {
 
     /// A config that failed to write, held again for the next flush unless a newer one is held.
     fn held_back(&self, failed: (PathBuf, Config, u64)) {
-        let mut held = self.held.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut held = groove_sync::lock(&self.held);
         if held.config.as_ref().is_none_or(|(_, _, at)| *at < failed.2) {
             held.config = Some(failed);
         }
@@ -54,11 +54,7 @@ impl Keeper {
     /// The last flush, at quit: an error too when a config tried before never reached the disk.
     pub async fn quit(&self) -> Result<(), Error> {
         self.flush().await?;
-        let tried = self
-            .held
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .tried;
+        let tried = groove_sync::lock(&self.held).tried;
         match tried > self.kept() {
             true => Err(Error::new(
                 groove_types::ErrorKind::Io,
@@ -72,7 +68,7 @@ impl Keeper {
     pub async fn flush(&self) -> Result<(), Error> {
         let _writing = self.writing.lock().await;
         let (config, panes) = {
-            let mut held = self.held.lock().unwrap_or_else(PoisonError::into_inner);
+            let mut held = groove_sync::lock(&self.held);
             if let Some((_, _, revision)) = &held.config {
                 held.tried = *revision;
             }

@@ -31,6 +31,11 @@ impl Syntax {
         })
     }
 
+    /// The tree a view reads the structure from: a template's YAML layer, else the grammar's own.
+    pub(crate) fn tree(&self) -> &Tree {
+        self.yaml.as_ref().unwrap_or(&self.tree)
+    }
+
     /// Moves the trees' nodes along an edit, without parsing again.
     pub(crate) fn shift(&mut self, edit: InputEdit) {
         self.tree.edit(&edit);
@@ -52,8 +57,10 @@ impl Syntax {
 
     /// The lines the scopes holding `byte` begin on, outermost first.
     pub(crate) fn scopes(&self, byte: usize) -> Vec<usize> {
-        let tree = self.yaml.as_ref().unwrap_or(&self.tree);
-        let mut node = tree.root_node().descendant_for_byte_range(byte, byte);
+        let mut node = self
+            .tree()
+            .root_node()
+            .descendant_for_byte_range(byte, byte);
         let mut lines = Vec::new();
         while let Some(here) = node {
             if self.language.is_scope(here.kind()) {
@@ -212,19 +219,4 @@ fn push(out: &mut Vec<Highlight>, at: &mut usize, over: usize, capture: Capture)
         capture,
     });
     *at = over;
-}
-
-/// The spans inside `line`, moved to offsets from the line's own start.
-pub(crate) fn within(spans: &[Highlight], line: Range<usize>) -> Vec<Highlight> {
-    let first = spans.partition_point(|span| span.range.end <= line.start);
-    spans[first..]
-        .iter()
-        .take_while(|span| span.range.start < line.end)
-        .map(|span| Highlight {
-            range: span.range.start.max(line.start) - line.start
-                ..span.range.end.min(line.end) - line.start,
-            capture: span.capture,
-        })
-        .filter(|span| !span.range.is_empty())
-        .collect()
 }

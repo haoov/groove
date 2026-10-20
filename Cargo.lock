@@ -1321,6 +1321,7 @@ dependencies = [
  "groove-approvals",
  "groove-hooks",
  "groove-mcp",
+ "groove-sync",
  "groove-terminal",
  "groove-tools",
  "groove-types",
@@ -1373,6 +1374,7 @@ dependencies = [
 name = "groove-config"
 version = "1.0.0-beta.2"
 dependencies = [
+ "futures-util",
  "groove-exec",
  "groove-types",
  "serde",
@@ -1388,6 +1390,7 @@ version = "1.0.0-beta.2"
 dependencies = [
  "groove-agent-launch",
  "groove-config",
+ "groove-sync",
  "groove-terminal",
  "groove-types",
  "tempfile",
@@ -1472,6 +1475,7 @@ name = "groove-editor"
 version = "1.0.0-beta.2"
 dependencies = [
  "arboard",
+ "groove-sync",
  "groove-types",
  "tempfile",
  "tokio",
@@ -1493,6 +1497,7 @@ name = "groove-forge"
 version = "1.0.0-beta.2"
 dependencies = [
  "groove-http",
+ "groove-sync",
  "groove-token",
  "groove-types",
  "serde_json",
@@ -1608,6 +1613,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-lsp"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-exec",
+ "groove-sync",
+ "groove-types",
+ "notify",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "groove-mcp"
 version = "1.0.0-beta.2"
 dependencies = [
@@ -1692,6 +1710,7 @@ version = "1.0.0-beta.2"
 dependencies = [
  "groove-git",
  "groove-sessions",
+ "groove-sync",
  "groove-timeline",
  "groove-types",
  "groove-worktree",
@@ -1736,9 +1755,18 @@ dependencies = [
 name = "groove-skills"
 version = "1.0.0-beta.2"
 dependencies = [
+ "groove-sync",
  "groove-types",
  "serde_json",
  "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "groove-sync"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-types",
  "tokio",
 ]
 
@@ -1761,6 +1789,7 @@ version = "1.0.0-beta.2"
 dependencies = [
  "alacritty_terminal",
  "groove-exec",
+ "groove-sync",
  "groove-types",
  "tokio",
 ]
@@ -1859,6 +1888,8 @@ dependencies = [
  "groove-editor",
  "groove-git",
  "groove-grep",
+ "groove-lsp",
+ "groove-sync",
  "groove-text",
  "groove-types",
  "groove-watch",

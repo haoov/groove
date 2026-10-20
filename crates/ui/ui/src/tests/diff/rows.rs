@@ -119,7 +119,7 @@ fn a_gap_reads_as_a_band_across_the_rows() {
         .find(|text| text.text.contains("lines"))
         .expect("the gap's own text")
         .y;
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     let rules = frame.layers()[0]
         .quads
         .iter()
@@ -196,7 +196,7 @@ fn a_gap_scrolled_half_out_keeps_its_arrows_inside_the_rows() {
         groove_ui_kit::base::mark::Mark::Down.shape(),
         Tokens::new(1.0).icon,
     );
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     let mut ui = on_diff();
     let mut above = Vec::new();
     for half in 0..80 {

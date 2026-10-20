@@ -1,7 +1,7 @@
 //! Reading the worktree: what changed, what is on screen, what a write to disk means.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 use groove_types::{DiffMode, WorktreeId};
 use groove_workspace_service::{against, changes, files_in, hold, opens_in, painted};
@@ -10,6 +10,7 @@ use super::editor::{Head, derive, held, reopen};
 use super::stale;
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
+use groove_workspace_service::lock;
 
 /// The rows on screen: the files near them that are not read yet take their colours.
 pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
@@ -79,6 +80,11 @@ pub(super) fn refresh(
     spawner: &dyn Spawner,
     paths: &[PathBuf],
 ) {
+    if let Some(worktree) = state.workspace.worktree.as_ref() {
+        for client in state.workspace.servers.up(worktree) {
+            client.moved(paths.to_vec());
+        }
+    }
     if groove_workspace_service::moved_git(paths) {
         crate::session::refresh_status(state, services, spawner);
         return reread(state, spawner);
@@ -140,7 +146,7 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The stream read from disk; a worktree come back to rereads its clean buffers.
+/// The stream read from disk; a worktree come back to opens its buffers on their servers again.
 fn loaded(
     state: &mut AppState,
     spawner: &dyn Spawner,
@@ -151,10 +157,13 @@ fn loaded(
     ),
 ) {
     let back = !state.workspace.holds(&worktree);
-    state.workspace.loaded(worktree, files, read);
+    state.workspace.loaded(worktree.clone(), files, read);
     if back {
         let open = held(state);
         reopen(state, spawner, Head::Read, open);
+        for path in state.workspace.dirty() {
+            super::servers::opened(state, spawner, &worktree, &path);
+        }
     }
     for path in state.workspace.dirty() {
         derive(state, spawner, path);
@@ -239,8 +248,4 @@ pub(super) fn reload(
         lock(&queue).extend(paths);
         once();
     }
-}
-
-fn lock(paths: &Mutex<Vec<PathBuf>>) -> std::sync::MutexGuard<'_, Vec<PathBuf>> {
-    paths.lock().unwrap_or_else(PoisonError::into_inner)
 }

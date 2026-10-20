@@ -27,7 +27,7 @@ const MONO: &str = "IBM Plex Mono";
 const JETBRAINS: &str = "JetBrainsMonoNL Nerd Font Mono";
 const LILEX: &str = "Lilex";
 
-const FACES: [&[u8]; 11] = [
+const FACES: [&[u8]; 12] = [
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Medium.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-SemiBold.ttf"),
@@ -37,6 +37,7 @@ const FACES: [&[u8]; 11] = [
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Bold.ttf"),
     include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Bold.ttf"),
+    include_bytes!("../../../../assets/fonts/Lilex-Light.ttf"),
     include_bytes!("../../../../assets/fonts/Lilex-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/Lilex-Bold.ttf"),
 ];
@@ -249,6 +250,7 @@ impl Default for Fonts {
 impl From<Weight> for glyphon::Weight {
     fn from(weight: Weight) -> Self {
         match weight {
+            Weight::Light => glyphon::Weight::LIGHT,
             Weight::Regular => glyphon::Weight::NORMAL,
             Weight::Medium => glyphon::Weight::MEDIUM,
             Weight::SemiBold => glyphon::Weight::SEMIBOLD,

@@ -1,19 +1,8 @@
 use wiremock::matchers::{header, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::tests::{file, token_context};
+use crate::tests::{file, pods, token_context};
 use crate::{Client, Kind, Narrowed, Seen};
-
-fn pods() -> Kind {
-    Kind {
-        group: String::new(),
-        version: "v1".into(),
-        kind: "Pod".into(),
-        plural: "pods".into(),
-        namespaced: true,
-        watchable: true,
-    }
-}
 
 fn pod(name: &str) -> serde_json::Value {
     serde_json::json!({ "metadata": { "name": name, "uid": name,

@@ -7,13 +7,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-agent-launch = { path = "../../modules/agent-launch" }
 groove-approvals = { path = "../../modules/approvals" }
+groove-hooks = { path = "../../modules/hooks" }
 groove-mcp = { path = "../../modules/mcp" }
+groove-sync = { path = "../../modules/sync" }
+groove-terminal = { path = "../../modules/terminal" }
 groove-tools = { path = "../../modules/tools" }
 groove-types = { path = "../../shared/types" }
-groove-terminal = { path = "../../modules/terminal" }
-groove-agent-launch = { path = "../../modules/agent-launch" }
-groove-hooks = { path = "../../modules/hooks" }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]

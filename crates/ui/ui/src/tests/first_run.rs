@@ -123,7 +123,7 @@ fn a_task_source_turns_on_and_off_by_its_toggle() {
     let app = checked(ready(), true);
     let mut ui = Ui::default();
     (ui.settings.open, ui.settings.section) = (true, Section::Providers);
-    let (texts, hits) = crate::tests::settings::drawn(&app, &ui);
+    let (texts, hits) = crate::tests::drawn(&app, &ui);
     let target = crate::hit::Target::SettingsTurnOn(groove_types::ProviderId::Notion);
     assert!(
         hits.rect_of(&target).is_some(),

@@ -5,7 +5,7 @@ mod delivery;
 pub mod worktree_row;
 
 pub use code::{
-    Acting, Block, Composed, Field, Gutters, Header, Line, Noted, Room, Rows, Tile, across_extent,
-    chars_of, code, code_at, first, head_mark, head_of, height, label_role, visible,
+    Acting, Block, Composed, Field, Gutters, Header, Line, Noted, Outline, Room, Rows, Tile,
+    across_extent, chars_of, code, code_at, first, head_mark, head_of, height, label_role, visible,
 };
 pub use delivery::{delivered, review_said, room_for};

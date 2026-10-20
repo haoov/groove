@@ -1,11 +1,13 @@
 //! A file as a document: its text, the syntax spans over it, and search.
 
+mod blocks;
 mod buffer;
 mod highlight;
 mod history;
 mod language;
 mod replay;
 mod search;
+mod settle;
 mod tabs;
 mod template;
 mod words;
@@ -13,17 +15,18 @@ mod words;
 #[cfg(test)]
 mod tests;
 
-use std::borrow::Cow;
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
-use crate::language::Language;
+pub use crate::language::Language;
 use groove_types::{Caret, Highlight, Indent};
 use ropey::Rope;
 
+pub use blocks::Block;
 pub use buffer::{Buffer, Touched};
 pub use search::Found;
+pub use settle::Settled;
 pub use tabs::{column_of, display_of, expand, spans_of};
-pub use words::{Class, class};
+pub use words::{Class, class, is_word, whole_words, word_around, word_start};
 
 /// Above this a document keeps its text and gives up its colour.
 pub const MAX_HIGHLIGHT_BYTES: usize = 1 << 20;
@@ -44,12 +47,6 @@ pub struct Document {
     /// The grammar's own tree. An edit moves its nodes; a parse makes it right.
     syntax: Option<highlight::Syntax>,
     edits: replay::Replay,
-}
-
-/// A tree parsed again for the text it belongs to.
-pub struct Settled {
-    syntax: Option<highlight::Syntax>,
-    seen: replay::Seen,
 }
 
 /// The colours over a range of lines, each at offsets from its own line's start.
@@ -169,7 +166,7 @@ impl Document {
             first,
             lines: (first..last)
                 .map(|at| match self.bytes_of(at) {
-                    Some(line) => highlight::within(&found, line),
+                    Some(line) => groove_types::spans_within(&found, line),
                     None => Vec::new(),
                 })
                 .collect(),
@@ -239,30 +236,6 @@ impl Document {
     /// The whole text, for a write or a re-read of its colours.
     pub fn text(&self) -> String {
         self.text.to_string()
-    }
-
-    /// A job's tree, moved along the edits made since it read the text; false when it read another.
-    pub fn install(&mut self, settled: Settled) -> bool {
-        let Some(later) = self.edits.since(settled.seen) else {
-            return false;
-        };
-        let mut syntax = settled.syntax;
-        if let Some(tree) = syntax.as_mut() {
-            later.iter().for_each(|edit| tree.shift(*edit));
-        }
-        self.syntax = syntax;
-        self.edits.trim(settled.seen);
-        true
-    }
-
-    /// The tree parsed again for the text it now holds, for a job to hand back.
-    pub fn settled(mut self) -> Settled {
-        let seen = self.edits.seen();
-        self.reparse();
-        Settled {
-            syntax: self.syntax,
-            seen,
-        }
     }
 
     /// The same, on this thread.

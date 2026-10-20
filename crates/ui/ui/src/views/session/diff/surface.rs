@@ -14,7 +14,7 @@ use super::row::{Drawn, Side, count, drawn};
 use super::words::{Words, words_of};
 use crate::Ui;
 use crate::components::{
-    Acting, Gutters, Line, Noted, Rows, across_extent, chars_of, code, height, visible,
+    Acting, Gutters, Line, Noted, Outline, Rows, across_extent, chars_of, code, height, visible,
 };
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -29,16 +29,7 @@ pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &
 
 /// The old side's rect and the new side's, a hairline between them.
 fn halves(ctx: &Ctx, body: Rect) -> (Rect, Rect) {
-    let thickness = ctx.tokens.hairline;
-    let half = ((body.w - thickness) / 2.0).floor();
-    let left = Rect::new(body.x, body.y, half, body.h);
-    let right = Rect::new(
-        left.right() + thickness,
-        body.y,
-        body.w - half - thickness,
-        body.h,
-    );
-    (left, right)
+    groove_ui_kit::shape::halves(body, ctx.tokens.hairline)
 }
 
 /// The old on the left, the new on the right, one alignment between them.
@@ -68,10 +59,7 @@ fn surface(
     let code_rows = inline.code_window(window.clone());
     let rows = drawn(app, ui, view, side, code_rows.clone());
     let gutters = gutters_of(&rows);
-    let words: Vec<Words> = slots
-        .iter()
-        .map(|slot| words_of(app, ui, *slot, inline))
-        .collect();
+    let words = words_in(app, ui, &slots, inline);
     let said = super::blame::shown(ctx, app, ui, side != Side::Old);
     let held = Held {
         slots: &slots,
@@ -84,7 +72,7 @@ fn surface(
         said: said.as_ref(),
         heads: view != Face::Stream(DiffView::Split),
     };
-    let lines = edged(lines_of(ctx, app, held), inline, window.start);
+    let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, ui, view);
     let across = across_of(ctx, (app, ui), numbers, rect, &rows);
     if clickable {
@@ -103,6 +91,14 @@ fn surface(
     }
 }
 
+/// The words each slot of the window draws.
+fn words_in(app: &AppState, ui: &Ui, slots: &[Slot], inline: &Inline) -> Vec<Words> {
+    slots
+        .iter()
+        .map(|slot| words_of(app, ui, *slot, inline))
+        .collect()
+}
+
 /// How far the surface is scrolled down, inside what its `total` rows allow.
 fn scroll_of(ctx: &mut Ctx, ui: &Ui, rect: Rect, total: usize) -> f32 {
     let extent = (height(ctx, total) - rect.h).max(0.0);
@@ -118,7 +114,9 @@ fn across_of(
     rect: Rect,
     rows: &[Drawn],
 ) -> f32 {
-    let reach = match super::wrapping::wrap_of(app, ui).is_some() {
+    let wraps = super::wrapping::wrap_of(app, ui)
+        .is_some_and(|(_, cols)| cols < super::wrapping::UNWRAPPED);
+    let reach = match wraps {
         true => 0.0,
         false => across_extent(ctx, numbers, rect, rows.iter().map(|row| row.text.as_str())),
     };
@@ -206,14 +204,6 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .collect()
 }
 
-/// Each note row told whether it opens its card or closes it.
-fn edged<'a>(mut lines: Vec<Line<'a>>, inline: &Inline, first: usize) -> Vec<Line<'a>> {
-    for (at, line) in lines.iter_mut().enumerate() {
-        line.edges = inline.edges(first + at);
-    }
-    lines
-}
-
 /// A row of a note, from what it says.
 fn said(words: &Words, resolved: bool) -> Line<'_> {
     let noted = Noted {
@@ -247,7 +237,8 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
             .folded(row.folded)
             .read(row.read)
             .part(row.part)
-            .counts(row.counts);
+            .counts(row.counts)
+            .tally(row.tally);
     }
     if let RowKind::Gap(_) = row.kind {
         return Line::banner(&row.text);
@@ -258,11 +249,17 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
         .words(&row.words, ctx.styles.word(row.kind, row.mark))
         .found(&row.found)
         .standing(row.standing)
+        .faults(&row.faults)
         .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
         .gutter(ctx.styles.gutter(row.kind))
         .empty(row.empty)
         .caret(row.caret)
-        .held(row.held);
+        .held(row.held)
+        .outline(Outline {
+            occurs: &row.outline.occurs,
+            guides: &row.outline.guides,
+            fold: row.outline.fold,
+        });
     match ctx.styles.row_ground(row.kind) {
         Some(color) => line.ground(color),
         None => line,
@@ -285,5 +282,6 @@ pub(super) fn numbers(app: &AppState, ui: &Ui, view: Face) -> Gutters {
         },
         digits,
         marks: app.workspace.commit.is_none(),
+        folds: view == Face::File,
     }
 }

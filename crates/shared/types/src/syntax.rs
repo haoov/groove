@@ -26,3 +26,18 @@ pub struct Highlight {
     pub range: Range<usize>,
     pub capture: Capture,
 }
+
+/// The spans inside `line`, in order, moved to offsets from the line's own start.
+pub fn spans_within(spans: &[Highlight], line: Range<usize>) -> Vec<Highlight> {
+    let first = spans.partition_point(|span| span.range.end <= line.start);
+    spans[first..]
+        .iter()
+        .take_while(|span| span.range.start < line.end)
+        .map(|span| Highlight {
+            range: span.range.start.max(line.start) - line.start
+                ..span.range.end.min(line.end) - line.start,
+            capture: span.capture,
+        })
+        .filter(|span| !span.range.is_empty())
+        .collect()
+}

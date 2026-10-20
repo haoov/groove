@@ -105,6 +105,7 @@ fn head(app: &AppState, file: &Aligned, row: usize) -> Drawn {
         read: is_read(app, &file.path),
         part: (at, HEAD_ROWS),
         counts: counted(app, &file.path),
+        tally: super::super::faults::tally(app, &file.path),
         file: Some(file.path.clone()),
         ..Drawn::default()
     }
@@ -135,7 +136,16 @@ fn one(
     };
     let spans = spans_of(colours, side, line);
     let (drawn, spans) = shown(&text, &spans, file.indent);
+    let faults = match (side, line) {
+        (Side::New, Some(line)) if !empty => {
+            let found = super::super::faults::of(app, &file.path, line as usize);
+            super::super::faults::on(found, line as usize, &text, file.indent)
+        }
+        _ => Vec::new(),
+    };
     Drawn {
+        faults,
+        outline: super::worded(ui, &text, file.indent),
         words: columns_in(file.words(at), &text, file.indent),
         found: matched(ui, on, &text, file.indent),
         standing: standing(ui, on, &text, file.indent),

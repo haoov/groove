@@ -1,6 +1,9 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
 mod blame;
+pub(crate) mod blocks;
+pub(crate) mod completion;
+pub(crate) mod faults;
 mod finder;
 mod header;
 mod heads;
@@ -9,6 +12,7 @@ mod notes;
 mod offers;
 pub(crate) mod painted;
 mod pinned;
+pub(crate) mod popup;
 mod row;
 mod scroll;
 mod surface;
@@ -32,6 +36,7 @@ pub use blame::Spot;
 pub(crate) use blame::{rested, spot};
 pub(crate) use map::total as rows_of;
 pub(crate) use notes::{Inline, noting_drawn};
+pub use popup::Pointed;
 pub(crate) use row::{edited, line_at, text_at};
 pub(crate) use scroll::scrolled;
 
@@ -86,7 +91,7 @@ fn standing(ctx: &Ctx, app: &AppState, ui: &Ui, inline: &Inline) -> String {
         let open = app.workspace.active();
         return open.map(|one| one.path.clone()).unwrap_or_default();
     }
-    let top = inline.base(first(ctx.tokens.line, ui.session.diff));
+    let top = inline.base(first(ctx.tokens.code_line, ui.session.diff));
     match app.workspace.changes.at(top) {
         Some(At::Head(file) | At::Row(file, _)) => file.path.clone(),
         None => String::new(),

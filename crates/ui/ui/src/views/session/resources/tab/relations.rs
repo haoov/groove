@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::Described;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::widgets::{Cell, Shown, Width};
+use groove_ui_kit::widgets::{Cell, Column, Shown, Width};
 
 use super::super::around::lineage;
 use super::super::opened::{Link, Opened};
@@ -114,10 +114,10 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), last: Option<&str>) {
     let caret = Cell::fold(true, Role::Ghost);
     let columns = [
-        grouped::plain("", Width::FitCell(&caret)),
-        grouped::plain("KIND", Width::Fit("secret")),
-        grouped::plain("NAME", Width::FitBody("paxone-worker-5d6b9c7f4")),
-        grouped::plain("STATUS", Width::Fill),
+        Column::plain("", Width::FitCell(&caret)),
+        Column::plain("KIND", Width::Fit("secret")),
+        Column::plain("NAME", Width::FitBody("paxone-worker-5d6b9c7f4")),
+        Column::plain("STATUS", Width::Fill),
     ];
     let one = match line {
         Line::Heading { title, count, shut } => {

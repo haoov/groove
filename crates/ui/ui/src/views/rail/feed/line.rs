@@ -3,6 +3,7 @@
 use groove_controllers::AppState;
 use groove_gfx::{Align, Edges, Rect};
 use groove_types::{SessionId, TimelineKind, Timestamp};
+use groove_ui_kit::shape::{from_bottom, from_left};
 
 use super::super::RunKey;
 use super::Line;
@@ -134,8 +135,7 @@ fn reachable(ctx: &mut Ctx, line: Rect, item: Item<'_>) {
 fn running(ctx: &mut Ctx, line: Rect, label: &str) {
     let (mut top, _) = halves(ctx, line);
     let size = ctx.tokens.small;
-    let slot = top.take_left(ctx.tokens.icon);
-    top.take_left(ctx.tokens.sm);
+    let slot = from_left(&mut top, ctx.tokens.icon, ctx.tokens.sm);
     let box_ = slot.align((size, size), Align::Center, Align::Center);
     groove_ui_kit::widgets::busy(ctx, box_, Role::Working);
     Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
@@ -145,17 +145,15 @@ fn running(ctx: &mut Ctx, line: Rect, label: &str) {
 fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>, count: usize) {
     let (mut top, mut under) = halves(ctx, line);
     let size = ctx.tokens.icon;
-    let slot = top.take_left(size);
-    top.take_left(ctx.tokens.sm);
-    under.take_left(size + ctx.tokens.sm);
+    let slot = from_left(&mut top, size, ctx.tokens.sm);
+    from_left(&mut under, size, ctx.tokens.sm);
     let mark_role = match said.role {
         Role::Bad => Role::Bad,
         _ => Role::Faint,
     };
     groove_ui_kit::widgets::icon(ctx, square(slot, size), said.mark, mark_role);
     let when = ago(said.at.age_at(ctx.now));
-    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut top, 0.0);
-    top.take_right(ctx.tokens.sm);
+    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut top, ctx.tokens.sm);
     Label::new(said.act, ctx.styles.strong(said.role)).left(ctx, &mut top, ctx.tokens.xs);
     if count > 1 {
         Label::new(&count.to_string(), ctx.styles.small(Role::Ghost)).draw(ctx, top);
@@ -168,16 +166,15 @@ fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>, count: usize) {
 /// One event of an open run: its subject under the act's column, its age on the right.
 fn under(ctx: &mut Ctx, line: Rect, at: Timestamp, subject: &str) {
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    room.take_left(ctx.tokens.icon + ctx.tokens.sm);
+    from_left(&mut room, ctx.tokens.icon, ctx.tokens.sm);
     let when = ago(at.age_at(ctx.now));
-    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, 0.0);
-    room.take_right(ctx.tokens.sm);
+    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, ctx.tokens.sm);
     Label::new(subject, ctx.styles.small(Role::Muted)).draw(ctx, room);
 }
 
 /// The line's two halves, inside its margins.
 fn halves(ctx: &Ctx, line: Rect) -> (Rect, Rect) {
     let mut top = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let under = top.take_bottom(line.h / 2.0);
+    let under = from_bottom(&mut top, line.h / 2.0, 0.0);
     (top, under)
 }

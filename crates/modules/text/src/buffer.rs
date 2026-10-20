@@ -7,6 +7,7 @@ use crate::{Colours, Document, Settled};
 
 mod edits;
 mod motion;
+mod moves;
 mod stream;
 
 /// Lines `line..line + gone` of the text became `line..line + came`.
@@ -30,6 +31,11 @@ pub struct Buffer {
     parsed: u64,
     /// The lines each change of the edit under way replaced.
     touched: Vec<Touched>,
+    /// The lines each change replaced, by the revision it made; none before `forgot`.
+    moves: Vec<(u64, Touched)>,
+    forgot: u64,
+    /// The blocks the last parse a job handed back found.
+    blocks: Option<std::sync::Arc<Vec<crate::Block>>>,
 }
 
 impl std::fmt::Debug for Buffer {
@@ -59,6 +65,9 @@ impl Buffer {
             revision: 0,
             parsed: 0,
             touched: Vec::new(),
+            moves: Vec::new(),
+            forgot: 0,
+            blocks: None,
         }
     }
 
@@ -153,9 +162,18 @@ impl Buffer {
 
     /// What a job settled for an earlier text, brought up to this one; false when it read another.
     pub fn settled(&mut self, settled: Settled) -> bool {
+        let blocks = settled.blocks.clone();
         let landed = self.doc.install(settled);
         self.parsed += u64::from(landed);
+        if landed {
+            self.blocks = Some(blocks);
+        }
         landed
+    }
+
+    /// The blocks of the last parse a job handed back; none before the first.
+    pub fn blocks(&self) -> Option<std::sync::Arc<Vec<crate::Block>>> {
+        self.blocks.clone()
     }
 
     /// Applies one edit. Returns the lines each of its changes replaced, in the order they came.

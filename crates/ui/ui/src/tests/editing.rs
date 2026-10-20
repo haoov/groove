@@ -138,7 +138,7 @@ fn a_drag_over_the_file_holds_more_of_it() {
     let mut ui = editing();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
+    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
     let point = (
         hits.chars().left + 1.0,
         code.y + line * groove_controllers::workspace_service::HEAD_ROWS as f32 + 1.0,
@@ -229,7 +229,7 @@ fn clicks(times: usize, apart: u64) -> Vec<Command> {
     let mut ui = editing();
     let (_, hits) = crate::view(&app, &ui, crate::tests::window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
+    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
     let point = (
         hits.chars().left + 1.0,
         code.y + line * groove_controllers::workspace_service::HEAD_ROWS as f32 + 1.0,

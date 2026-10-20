@@ -1,33 +1,12 @@
 //! A session's launch files and its start: a start asked while they are written runs once, after.
 
-use groove_session_service::Open;
-use groove_types::{Session, SessionId, SessionKind, SessionState, Timestamp};
+use groove_types::SessionId;
 
 use crate::tests::fixture::{self, until};
 use crate::{AppState, Services, SyncSpawner, dispatch};
 
 fn explorer() -> SessionId {
     SessionId::new("explorer-1")
-}
-
-/// The fixture with one open explorer and no agent.
-fn opened() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
-    let (home, spawner, services, mut state) = fixture::fresh();
-    state.session.open.push(Open {
-        session: Session {
-            id: explorer(),
-            title: "try".into(),
-            kind: SessionKind::Explorer,
-            created_at: Timestamp::new(0),
-        },
-        state: SessionState::default(),
-        repos: vec![],
-        worktrees: vec![],
-        status: Default::default(),
-        read: Default::default(),
-        clusters: vec![],
-    });
-    (home, spawner, services, state)
 }
 
 fn start(state: &mut AppState, services: &Services, spawner: &SyncSpawner) {
@@ -61,7 +40,7 @@ fn released(
 
 #[test]
 fn a_write_that_panics_still_lets_the_start_it_held_run() {
-    let (_home, spawner, services, mut state) = opened();
+    let (_home, spawner, services, mut state) = fixture::with_explorer();
     let write = async { panic!("the write broke") };
     crate::agent::rewrite(&mut state, &spawner, explorer(), write, released);
     start(&mut state, &services, &spawner);
@@ -71,7 +50,7 @@ fn a_write_that_panics_still_lets_the_start_it_held_run() {
 
 #[test]
 fn a_forget_asked_while_a_launch_writes_its_files_runs_after_it() {
-    let (home, spawner, services, mut state) = opened();
+    let (home, spawner, services, mut state) = fixture::with_explorer();
     let held = fixture::Held::over(&spawner);
     crate::agent::start(&mut state, &held, explorer(), (40, 6));
     crate::agent::forget(&mut state, &held, &explorer());
@@ -83,7 +62,7 @@ fn a_forget_asked_while_a_launch_writes_its_files_runs_after_it() {
 
 #[test]
 fn a_start_asked_while_a_forget_is_out_launches_once_after_it() {
-    let (home, spawner, services, mut state) = opened();
+    let (home, spawner, services, mut state) = fixture::with_explorer();
     crate::agent::forget(&mut state, &spawner, &explorer());
     start(&mut state, &services, &spawner);
     let prompt = home.path().join("data/agent-launch/explorer-1.prompt.md");
@@ -94,7 +73,7 @@ fn a_start_asked_while_a_forget_is_out_launches_once_after_it() {
 
 #[test]
 fn a_write_that_fails_still_lets_the_start_it_held_run() {
-    let (home, spawner, services, mut state) = opened();
+    let (home, spawner, services, mut state) = fixture::with_explorer();
     let dir = home.path().join("data/agent-launch");
     std::fs::create_dir_all(dir.parent().unwrap()).unwrap();
     std::fs::write(&dir, "not a directory").unwrap();

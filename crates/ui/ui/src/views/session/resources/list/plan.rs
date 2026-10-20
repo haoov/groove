@@ -27,14 +27,9 @@ pub(super) fn plan(app: &AppState, keys: &[WatchKey], rows: &[(&WatchKey, &Objec
     let namespaced = keys.iter().any(|key| key.kind.namespaced);
     let in_rows = rows.iter().filter_map(|(_, row)| row.namespace.as_deref());
     let namespaces = namespaced && distinct(in_rows) > 1;
-    let widest = |texts: &mut dyn Iterator<Item = &str>| {
-        let longest = texts.take(FITTED).max_by_key(|one| one.chars().count());
-        longest.unwrap_or_default().to_string()
-    };
     let cell = |at: usize| {
         widest(
-            &mut rows
-                .iter()
+            rows.iter()
                 .map(|(_, row)| row.cells.get(at).map_or("", String::as_str)),
         )
     };
@@ -42,13 +37,12 @@ pub(super) fn plan(app: &AppState, keys: &[WatchKey], rows: &[(&WatchKey, &Objec
     let mut samples = Vec::new();
     if clusters {
         labels.push("CLUSTER".to_string());
-        samples.push(widest(&mut keys.iter().map(|key| key.context.as_str())));
+        samples.push(widest(keys.iter().map(|key| key.context.as_str())));
     }
     if namespaces {
         labels.push("NAMESPACE".to_string());
         samples.push(widest(
-            &mut rows
-                .iter()
+            rows.iter()
                 .map(|(_, row)| row.namespace.as_deref().unwrap_or_default()),
         ));
     }
@@ -67,6 +61,12 @@ pub(super) fn plan(app: &AppState, keys: &[WatchKey], rows: &[(&WatchKey, &Objec
         labels,
         samples,
     }
+}
+
+/// The longest of the first texts, which a column is fitted to.
+fn widest<'a>(texts: impl Iterator<Item = &'a str>) -> String {
+    let longest = texts.take(FITTED).max_by_key(|one| one.chars().count());
+    longest.unwrap_or_default().to_string()
 }
 
 /// The columns of the first key whose list carries them.

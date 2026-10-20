@@ -11,7 +11,7 @@ use crate::{Losing, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, square};
+use groove_ui_kit::shape::{hoverable, square, stand};
 use groove_ui_kit::text::{Label, elide, lit_cut, row};
 use groove_ui_kit::widgets::{changes, folder};
 
@@ -46,6 +46,7 @@ pub(super) fn draw(
                 let reading = Reading {
                     open: open == Some(&file.path),
                     noted: super::noted(app, &file.path),
+                    tally: crate::views::session::diff::faults::tally(app, &file.path),
                 };
                 entry(ctx, line, file, *indent, reading, ui)
             }
@@ -99,6 +100,8 @@ fn path(ctx: &mut Ctx, line: Rect, text: &str, role: Role) {
 pub(super) struct Reading {
     pub open: bool,
     pub noted: bool,
+    /// The file's errors and warnings, as its servers last found them.
+    pub tally: Option<(u32, u32)>,
 }
 
 pub(super) fn entry(
@@ -130,13 +133,17 @@ pub(super) fn entry(
         true => offer(ctx, &mut room, file),
         false => counts(ctx, &mut room, file),
     }
+    if let Some(tally) = reading.tally {
+        groove_ui_kit::widgets::faults(ctx, &mut room, tally);
+    }
+    let right = groove_ui_kit::widgets::Side::Right;
     if reading.noted {
-        room.take_right(sm);
         let size = ctx.tokens.small;
-        let mark = square(room.take_right(size), size);
+        stand(&mut room, sm, 0.0, right);
+        let mark = square(stand(&mut room, size, 0.0, right), size);
         groove_ui_kit::widgets::icon(ctx, mark, Mark::Note, Role::Faint);
     }
-    room.take_right(sm);
+    stand(&mut room, sm, 0.0, right);
     named(ctx, room, file, ui.session.bar.path.text());
 }
 

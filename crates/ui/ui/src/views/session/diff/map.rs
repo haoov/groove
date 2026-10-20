@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Aligned;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{LineMark, RowKind};
 
 use super::notes::Inline;
@@ -60,9 +60,9 @@ fn run(inline: &Inline, start: usize, shown: usize) -> (usize, usize) {
 /// A file already read: its own ground, and none of its marks.
 fn read(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize)) {
     let (start, shown) = at;
-    let top = rect.y + start as f32 * per;
     let high = (shown as f32 * per).max(ctx.tokens.hairline);
-    groove_ui_kit::shape::ground(ctx, Rect::new(rect.x, top, rect.w, high), Ground::Hover);
+    let read = groove_ui_kit::shape::band(rect, start as f32 * per, high);
+    groove_ui_kit::shape::ground(ctx, read, Ground::Hover);
 }
 
 /// The open file alone: what the change did to each of its lines.
@@ -90,9 +90,9 @@ fn band(
     start: usize,
 ) {
     let (top, high) = at;
-    let y = rect.y + top as f32 * per;
     let height = (high as f32 * per).max(ctx.tokens.hairline);
-    groove_ui_kit::shape::ground(ctx, Rect::new(rect.x, y, rect.w, height), Ground::Work);
+    let shown = groove_ui_kit::shape::band(rect, top as f32 * per, height);
+    groove_ui_kit::shape::ground(ctx, shown, Ground::Work);
     if high == 0 {
         return;
     }
@@ -104,9 +104,9 @@ fn band(
 /// One run of lines the change touched, inset from the column's edges.
 fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: LineMark) {
     let inset = ctx.tokens.xs;
-    let y = rect.y + at as f32 * per;
     let high = (run as f32 * per).max(ctx.tokens.hairline);
-    let run = Rect::new(rect.x + inset, y, rect.w - inset * 2.0, high);
+    let run =
+        groove_ui_kit::shape::band(rect, at as f32 * per, high).pad(Edges::across(inset, inset));
     groove_ui_kit::shape::ground(ctx, run, Ground::Mark(mark));
 }
 
@@ -134,9 +134,9 @@ fn joined(runs: &mut Vec<(usize, usize, LineMark)>, (at, len, mark): (usize, usi
 
 /// What the surface shows, outlined over the column.
 fn lens(ctx: &mut Ctx, rect: Rect, per: f32, body: Rect, ui: &Ui) {
-    let line = ctx.tokens.line;
+    let line = ctx.tokens.code_line;
     let high = (body.h / line * per).min(rect.h).max(ctx.tokens.xs);
-    let top = rect.y + ui.session.scroll() / line * per;
-    let held = Rect::new(rect.x, top.min(rect.bottom() - high), rect.w, high);
+    let top = ui.session.scroll() / line * per;
+    let held = groove_ui_kit::shape::band(rect, top.min(rect.h - high), high);
     Panel::default().border(ctx.styles.lens()).draw(ctx, held);
 }

@@ -8,6 +8,17 @@ mod table;
 
 use std::path::{Path, PathBuf};
 
+pub(crate) fn pods() -> crate::Kind {
+    crate::Kind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Pod".into(),
+        plural: "pods".into(),
+        namespaced: true,
+        watchable: true,
+    }
+}
+
 pub(crate) fn file(dir: &Path, name: &str, yaml: &str) -> PathBuf {
     let path = dir.join(name);
     std::fs::write(&path, yaml).expect("a kubeconfig written");

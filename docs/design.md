@@ -50,6 +50,15 @@ the rail only as its attention count.
   lands along the line, and nothing scrolls sideways. A note wraps in its card and while it
   is typed. Without wrap, the diff and the editor scroll sideways to keep the caret in view.
   Enforced by `down_steps_along_a_wrapped_line_before_the_next_one`.
+- **The editor shows each scope's shape.** A block the syntax tree opens takes a guide down
+  its indent, in the comment colour, and a caret in the column after the line numbers. A
+  click on the caret folds the block under its line, which then says how many lines it
+  hides; a fold the caret stands inside stays open, and a fold follows its block as lines
+  come and go above it.
+  Enforced by `a_click_on_a_block_s_caret_folds_it_under_its_line_and_says_how_much_it_hides`.
+- **The word the caret rests in is grounded with every occurrence on screen**, after 125 ms.
+  A selection takes a neutral ground, brighter than theirs; a search match keeps the accent.
+  Enforced by `the_word_the_caret_rests_in_is_grounded_wherever_it_stands`.
 
 ## Limits
 
@@ -399,11 +408,12 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 
 | Section | Rows |
 |---|---|
-| Setup | environment check — git, gh, glab, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
+| Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: IBM Plex Sans · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
+| Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |
 | Keymap | every action with its chords; a chord is rebound by pressing it |
 

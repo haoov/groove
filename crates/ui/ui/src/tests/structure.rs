@@ -146,31 +146,6 @@ fn a_view_draws_through_the_context() {
     );
 }
 
-/// The view files that keep fixed math: list rows and cell grids inside the box they get,
-/// and the grab bands that straddle a boundary.
-const KEPT_BY_HAND: [&str; 20] = [
-    "views/splitter.rs",
-    "views/board/plan.rs",
-    "components/delivery.rs",
-    "views/rail/item.rs",
-    "views/rail/feed/line.rs",
-    "views/board/row.rs",
-    "views/session/files/rows.rs",
-    "views/session/files/explorer.rs",
-    "views/session/files/results.rs",
-    "views/session/files/commits.rs",
-    "views/session/diff/offers.rs",
-    "views/session/diff/surface.rs",
-    "views/session/diff/surface/measure.rs",
-    "views/session/diff/map.rs",
-    "views/session/diff/pinned.rs",
-    "views/session/agent_pane.rs",
-    "views/session/manual.rs",
-    "components/code.rs",
-    "components/code/row/note.rs",
-    "components/code/row/composer.rs",
-];
-
 /// What cuts a rect or places a box by hand.
 const CUTS: [&str; 10] = [
     "take_left(",
@@ -195,7 +170,7 @@ fn a_view_lays_out_through_the_kit() {
     let mut offenders = Vec::new();
     for (path, text) in sources() {
         let view = path.starts_with("views/") || path.starts_with("components/");
-        if !view || KEPT_BY_HAND.contains(&path.as_str()) {
+        if !view {
             continue;
         }
         for (at, line) in code_lines(&text) {
@@ -235,6 +210,7 @@ fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Col
         ("raised", styles.raised()),
         ("action", styles.action()),
         ("held", styles.held()),
+        ("occurs", styles.occurs()),
         ("noted", styles.noted()),
         ("here", styles.here()),
         ("band", styles.band()),
@@ -284,7 +260,7 @@ fn contrast(one: groove_gfx::Color, two: groove_gfx::Color) -> f32 {
 }
 
 /// The grounds a line of code is drawn on, which its text must stand out from.
-const UNDER_CODE: [&str; 6] = ["held", "noted", "hover", "band", "deep", "ground"];
+const UNDER_CODE: [&str; 7] = ["held", "occurs", "noted", "hover", "band", "deep", "ground"];
 
 #[test]
 fn code_stays_readable_on_every_ground_it_is_drawn_on() {

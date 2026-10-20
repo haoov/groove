@@ -8,7 +8,7 @@ use super::fixture::{base, crashing, lands, link, opened, runs, unfold, unfold_e
 use super::{kind, pods};
 use crate::Ui;
 use crate::hit::Target;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::tests::{click, window};
 
 /// The texts drawn on a wide screen, where the tab's columns have their room.

@@ -9,7 +9,7 @@ use super::fixture::{crashing, lands, link, opened};
 use super::{kind, pods};
 use crate::Ui;
 use crate::hit::Target;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::tests::{click, window};
 use crate::views::session::resources::Link;
 

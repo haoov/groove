@@ -1,4 +1,4 @@
-//! The file view's lines wrapped to its width.
+//! The file view's lines wrapped to its width, and a folded block's lines taking no row.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -13,8 +13,11 @@ use crate::views::session::Face;
 /// The first row of each line, then the row past the last.
 pub(crate) type Starts = Rc<Vec<usize>>;
 
-/// What the starts were built for: the buffer's revision, its lines, the width, the file.
-type Key = (u64, usize, usize, String);
+/// What the starts were built for: the buffer's revision, its lines, the width, the file, the folds.
+type Key = (u64, usize, usize, String, Rc<Vec<super::blocks::Block>>);
+
+/// The width a line is taken to have while lines do not wrap: wide enough for any.
+pub(crate) const UNWRAPPED: usize = 1 << 30;
 
 /// The lines' starts last built, what they were built for, and the width the last frame gave.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -34,12 +37,15 @@ impl Wrapping {
     }
 }
 
-/// The file view's wrap, while wrapping is on and the view has been measured.
+/// The file view's rows, while its lines wrap or a block is folded; `UNWRAPPED` when they do not wrap.
 pub(crate) fn wrap_of(app: &AppState, ui: &Ui) -> Option<(Starts, usize)> {
-    let cols = ui.wrapping.cols();
-    if !app.config.wrap_code() || ui.session.face() != Face::File || cols == 0 {
+    let measured = ui.wrapping.cols();
+    let wraps = app.config.wrap_code() && measured > 0;
+    let folded = super::blocks::folded(app, ui);
+    if ui.session.face() != Face::File || (!wraps && folded.is_empty()) {
         return None;
     }
+    let cols = if wraps { measured } else { UNWRAPPED };
     let editor = edited(app, ui)?;
     let buffer = editor.buffer;
     let key = (
@@ -47,6 +53,7 @@ pub(crate) fn wrap_of(app: &AppState, ui: &Ui) -> Option<(Starts, usize)> {
         buffer.lines(),
         cols,
         editor.path.to_string(),
+        folded.clone(),
     );
     let mut kept = ui.wrapping.kept.borrow_mut();
     if let Some((at, starts)) = kept.as_ref()
@@ -55,13 +62,22 @@ pub(crate) fn wrap_of(app: &AppState, ui: &Ui) -> Option<(Starts, usize)> {
         return Some((starts.clone(), cols));
     }
     let width = buffer.document().indent().width();
-    let mut starts = Vec::with_capacity(buffer.lines() + 1);
+    let lines = buffer.lines().max(1);
+    let hidden = super::blocks::hidden(&folded, lines);
+    let mut starts = Vec::with_capacity(lines + 1);
     let mut row = 0;
-    for line in 0..buffer.lines().max(1) {
+    for (line, hidden) in hidden.into_iter().enumerate() {
         starts.push(row);
-        let text = text_of(buffer, line);
-        let wide = display_of(&text, text.chars().count(), width);
-        row += wide.div_ceil(cols).max(1);
+        row += match (hidden, wraps) {
+            (true, _) => 0,
+            (false, false) => 1,
+            (false, true) => {
+                let text = text_of(buffer, line);
+                display_of(&text, text.chars().count(), width)
+                    .div_ceil(cols)
+                    .max(1)
+            }
+        };
     }
     starts.push(row);
     let starts = Rc::new(starts);
@@ -90,18 +106,10 @@ pub(super) fn piece(whole: &Drawn, part: usize, cols: usize) -> Drawn {
             .map_or(whole.text.len(), |(at, _)| at)
     };
     let (start, end) = (byte(from.min(chars)), byte(to.min(chars)));
-    let spans = whole
-        .spans
-        .iter()
-        .filter(|one| one.range.end > start && one.range.start < end)
-        .map(|one| groove_types::Highlight {
-            range: one.range.start.max(start) - start..one.range.end.min(end) - start,
-            capture: one.capture,
-        })
-        .collect();
+    let spans = groove_types::spans_within(&whole.spans, start..end);
     let clip = |(a, b): (usize, usize)| {
         let (a, b) = (a.max(from), b.min(to));
-        (a < b).then_some((a - from, b - from))
+        (a < b).then(|| (a - from, b - from))
     };
     Drawn {
         text: whole.text[start..end].to_string(),
@@ -117,14 +125,46 @@ pub(super) fn piece(whole: &Drawn, part: usize, cols: usize) -> Drawn {
             .map(|at| at - from),
         held: whole.held.and_then(|(a, b, through)| {
             let (a, b) = (a.max(from), b.min(to));
-            (a < b || (a == b && tail && through)).then_some((a - from, b - from, through && tail))
+            (a < b || (a == b && tail && through)).then(|| (a - from, b - from, through && tail))
         }),
         mark: whole.mark,
         found: whole.found.iter().copied().filter_map(clip).collect(),
         words: whole.words.iter().copied().filter_map(clip).collect(),
         standing: whole.standing.and_then(clip),
+        faults: within(&whole.faults, (from, to)),
+        outline: outlined(&whole.outline, part, clip),
         ..Drawn::default()
     }
+}
+
+/// A piece's share of its line's outline: the occurrences it covers, the guides and fold on its first.
+fn outlined(
+    whole: &super::row::Outline,
+    part: usize,
+    clip: impl Fn((usize, usize)) -> Option<(usize, usize)>,
+) -> super::row::Outline {
+    super::row::Outline {
+        occurs: whole.occurs.iter().copied().filter_map(clip).collect(),
+        guides: match part {
+            0 => whole.guides.clone(),
+            _ => Vec::new(),
+        },
+        fold: whole.fold.filter(|_| part == 0),
+    }
+}
+
+/// The faults over columns `from` to `to`, counted from `from`.
+fn within(
+    faults: &[super::faults::Fault],
+    (from, to): (usize, usize),
+) -> Vec<super::faults::Fault> {
+    faults
+        .iter()
+        .filter_map(|(a, b, severity)| {
+            let (a, b) = ((*a).max(from), (*b).min(to));
+            (a < b).then(|| (a - from, b - from, *severity))
+        })
+        .collect()
 }
 
 /// The row the caret stands on, among the wrapped rows of the file view.

@@ -64,8 +64,9 @@ pub(crate) enum Slot {
 
 /// The rows of room the composer keeps around its label chips, one above and one below.
 const GAPS: usize = 2;
-/// The row that rules off what a note says from what it offers.
+/// The row that rules off what a note says from what it offers, and the room under its buttons.
 const BETWEEN: usize = 1;
+const UNDER: usize = 1;
 
 /// Where the notes stand among the rows of one view.
 #[derive(Default)]
@@ -98,7 +99,12 @@ impl Inline {
             .filter(|(_, note)| !written(note, over))
             .filter_map(|(at, note)| {
                 let hidden = note.resolved && !ui.session.unfolded.contains(&note.origin);
-                block(app, (view, lines), (note, at, hidden), cols_of(cols))
+                block(
+                    app,
+                    (view, lines),
+                    (note, at, hidden),
+                    (cols_of(cols), &ui.compacted),
+                )
             })
             .collect();
         let answered = noting.and_then(|one| answering(app, one, (&mut blocks, typed.len())));
@@ -109,7 +115,7 @@ impl Inline {
             blocks.push(Block {
                 after,
                 from: anchored(app, (view, lines), &starts(&noting.anchor)).unwrap_or(after),
-                rows: GAPS + 1 + typing + BETWEEN + 1,
+                rows: GAPS + 1 + typing + BETWEEN + 1 + UNDER,
                 at: None,
                 acts: false,
                 typing,
@@ -142,19 +148,6 @@ impl Inline {
     /// The row of the view a surface row belongs to; a note row belongs to its line.
     pub(crate) fn base(&self, row: usize) -> usize {
         self.found(row).1
-    }
-
-    /// Whether a row opens its note's card, and whether it closes it.
-    pub(crate) fn edges(&self, row: usize) -> (bool, bool) {
-        let mut shift = 0;
-        for block in &self.blocks {
-            let start = block.after + 1 + shift;
-            if row >= start && row < start + block.rows {
-                return (row == start, row + 1 == start + block.rows);
-            }
-            shift += block.rows;
-        }
-        (false, false)
     }
 
     /// What the row holds, and the row of the view it belongs to.
@@ -213,37 +206,6 @@ impl Inline {
             });
         }
         bounds.unwrap_or(0..0)
-    }
-}
-
-impl Block {
-    /// What one row of the block holds, counted from its first.
-    fn slot(&self, row: usize) -> Slot {
-        let Some(at) = self.at else {
-            let typed = GAPS + 1;
-            return match row {
-                0 | 2 => Slot::Pad { room: Room::Gap },
-                1 => Slot::Chips,
-                row if row < typed + self.typing => Slot::Typed {
-                    row: row - typed,
-                    reply: false,
-                },
-                row if row == typed + self.typing => Slot::Pad {
-                    room: Room::Between,
-                },
-                _ => Slot::Footer { reply: false },
-            };
-        };
-        let said = self.said.len().max(1);
-        match row.checked_sub(said + BETWEEN) {
-            None if row < said => Slot::Note { at, row },
-            None => Slot::Pad {
-                room: Room::Between,
-            },
-            Some(row) if row < self.typing => Slot::Typed { row, reply: true },
-            Some(_) if self.typing > 0 => Slot::Footer { reply: true },
-            Some(_) => Slot::Acts { at },
-        }
     }
 }
 

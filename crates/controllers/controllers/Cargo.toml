@@ -7,17 +7,17 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-groove-types = { path = "../../shared/types" }
-groove-task-service = { path = "../../services/task" }
-groove-session-service = { path = "../../services/session" }
-groove-workspace-service = { path = "../../services/workspace" }
-groove-delivery-service = { path = "../../services/delivery" }
 groove-agent-service = { path = "../../services/agent" }
-groove-routine-service = { path = "../../services/routine" }
-groove-skill-service = { path = "../../services/skill" }
-groove-shell-service = { path = "../../services/shell" }
-groove-config-service = { path = "../../services/config" }
 groove-cluster-service = { path = "../../services/cluster" }
+groove-config-service = { path = "../../services/config" }
+groove-delivery-service = { path = "../../services/delivery" }
+groove-routine-service = { path = "../../services/routine" }
+groove-session-service = { path = "../../services/session" }
+groove-shell-service = { path = "../../services/shell" }
+groove-skill-service = { path = "../../services/skill" }
+groove-task-service = { path = "../../services/task" }
+groove-types = { path = "../../shared/types" }
+groove-workspace-service = { path = "../../services/workspace" }
 serde_json.workspace = true
 tokio.workspace = true
 

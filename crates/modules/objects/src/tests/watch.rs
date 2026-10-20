@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use groove_types::{KubeKind, WatchKey};
+use groove_types::WatchKey;
 use wiremock::matchers::{path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -28,14 +28,7 @@ contexts:
 fn pods() -> WatchKey {
     WatchKey {
         context: "kind".into(),
-        kind: KubeKind {
-            group: String::new(),
-            version: "v1".into(),
-            kind: "Pod".into(),
-            plural: "pods".into(),
-            namespaced: true,
-            watchable: true,
-        },
+        kind: super::pods(),
         namespace: Some("paxone".into()),
         selector: None,
     }

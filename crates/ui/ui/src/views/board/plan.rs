@@ -64,15 +64,10 @@ fn is_divider(line: &Line<'_>) -> bool {
 pub(super) fn divider(ctx: &mut Ctx, line: Rect) {
     let style = ctx.styles.heading(Role::Ghost);
     let pad = ctx.tokens.md;
-    let from = line.x + pad * 2.0 + ctx.measure(LATER, &style);
+    let from = pad * 2.0 + ctx.measure(LATER, &style);
     row(ctx, line, pad, LATER, style);
-    let rule = Rect::new(
-        from,
-        line.y + (line.h / 2.0).floor(),
-        (line.right() - pad - from).max(0.0),
-        ctx.tokens.hairline,
-    );
-    groove_ui_kit::shape::top_rule(ctx, rule, ctx.styles.line());
+    let rule = groove_ui_kit::shape::strip(line, from, line.w - pad - from);
+    groove_ui_kit::shape::mid_rule(ctx, rule, ctx.styles.line());
 }
 
 /// The rule where a dragged row would land, over the rows it moves between.
@@ -86,8 +81,7 @@ pub(super) fn dragging(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         return;
     };
     let thick = ctx.tokens.hairline * 2.0;
-    let y = body.y - scroll + edge - thick / 2.0;
-    let bar = Rect::new(body.x, y, body.w, thick);
+    let bar = groove_ui_kit::shape::band(body, edge - scroll - thick / 2.0, thick);
     groove_ui_kit::shape::ground(ctx, bar, Ground::Solid(Role::Working));
 }
 

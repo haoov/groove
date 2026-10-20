@@ -42,8 +42,20 @@ pub struct SessionUi {
     pub file_across: f32,
     /// The caret the file view last scrolled to.
     pub followed: Option<groove_types::Caret>,
+    /// The landing of a definition the view last centred on.
+    pub centred: u64,
+    /// The completion ask the list's chosen row belongs to, and that row.
+    pub chosen: (u64, usize),
     /// The line the caret rests on, and the frame tick it came to rest at.
     pub rest: Option<(crate::views::session::diff::Spot, u64)>,
+    /// The spot of an open file the pointer stands on, and the one it last came to rest on.
+    pub pointed: Option<crate::views::session::diff::Pointed>,
+    pub pointer_rest: Option<(crate::views::session::diff::Pointed, u64)>,
+    /// Where the caret stood at which revision and since when, and the word once it rested.
+    pub word_rest: Option<((crate::views::session::diff::Pointed, u64), u64)>,
+    pub word: Option<String>,
+    /// The blocks folded in each file, by the line that opens them.
+    pub folds: std::collections::BTreeMap<String, crate::views::session::diff::blocks::Folds>,
     /// How far the overview is scrolled, in pixels.
     pub overview: f32,
     /// Which of the two views the stream is drawn in.

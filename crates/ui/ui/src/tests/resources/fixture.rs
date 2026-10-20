@@ -8,7 +8,7 @@ use super::{kind, listing, pods};
 use crate::Ui;
 use crate::hit::Target;
 use crate::tests::click;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::views::session::resources::Link;
 
 pub(super) fn base(uid: &str, name: &str) -> Described {

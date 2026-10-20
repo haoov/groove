@@ -53,6 +53,26 @@ pub fn fresh() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
     (home, spawner, services, state)
 }
 
+/// `fresh` with one explorer, `explorer-1`, open in memory and no agent.
+pub fn with_explorer() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
+    let (home, spawner, services, mut state) = fresh();
+    state.session.open.push(groove_session_service::Open {
+        session: groove_types::Session {
+            id: groove_types::SessionId::new("explorer-1"),
+            title: "try".into(),
+            kind: groove_types::SessionKind::Explorer,
+            created_at: groove_types::Timestamp::new(0),
+        },
+        state: groove_types::SessionState::default(),
+        repos: vec![],
+        worktrees: vec![],
+        status: Default::default(),
+        read: Default::default(),
+        clusters: vec![],
+    });
+    (home, spawner, services, state)
+}
+
 /// A temp directory by its real path: macOS's `/var` is a link a child's `pwd` resolves.
 pub fn home() -> tempfile::TempDir {
     let tmp = std::env::temp_dir().canonicalize().unwrap();

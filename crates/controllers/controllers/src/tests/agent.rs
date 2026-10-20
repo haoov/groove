@@ -1,33 +1,8 @@
-use groove_session_service::Open;
-use groove_types::{AgentStatus, Session, SessionId, SessionKind, SessionState, Timestamp};
+use groove_types::{AgentStatus, SessionId};
 
 use crate::agent::Command;
+use crate::dispatch;
 use crate::tests::fixture::{self, until};
-use crate::{AppState, SyncSpawner, dispatch};
-
-fn explorer() -> Session {
-    Session {
-        id: SessionId::new("explorer-1"),
-        title: "try".into(),
-        kind: SessionKind::Explorer,
-        created_at: Timestamp::new(0),
-    }
-}
-
-/// The fixture with one open explorer.
-fn opened() -> (tempfile::TempDir, SyncSpawner, crate::Services, AppState) {
-    let (home, spawner, services, mut state) = fixture::fresh();
-    state.session.open.push(Open {
-        session: explorer(),
-        state: SessionState::default(),
-        repos: vec![],
-        worktrees: vec![],
-        status: Default::default(),
-        read: Default::default(),
-        clusters: vec![],
-    });
-    (home, spawner, services, state)
-}
 
 fn agent_cmd(command: Command) -> crate::Command {
     crate::Command::Agent(command)
@@ -35,7 +10,7 @@ fn agent_cmd(command: Command) -> crate::Command {
 
 #[test]
 fn start_send_and_exit_travel_through_the_loop() {
-    let (home, spawner, services, mut state) = opened();
+    let (home, spawner, services, mut state) = fixture::with_explorer();
     let id = SessionId::new("explorer-1");
 
     dispatch(
@@ -96,7 +71,7 @@ fn start_send_and_exit_travel_through_the_loop() {
 
 #[test]
 fn resize_reaches_the_terminal_and_end_forgets_it() {
-    let (_home, spawner, services, mut state) = opened();
+    let (_home, spawner, services, mut state) = fixture::with_explorer();
     let id = SessionId::new("explorer-1");
     dispatch(
         agent_cmd(Command::Start {
@@ -145,7 +120,7 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
 
 #[test]
 fn a_start_for_an_unknown_session_does_nothing() {
-    let (_home, spawner, services, mut state) = opened();
+    let (_home, spawner, services, mut state) = fixture::with_explorer();
     let id = SessionId::new("nope");
     dispatch(
         agent_cmd(Command::Start {

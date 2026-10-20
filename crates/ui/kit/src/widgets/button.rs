@@ -159,9 +159,8 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
 
     /// Stands at the left of `room`, which gives up its box and `gap`.
     pub fn left<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
-        let box_ = self.draw(ctx, *room, room.x);
-        room.take_left(box_.w + gap);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Left);
+        self.draw(ctx, slot, slot.x)
     }
 
     /// Stands at the right of `room`, which gives up its box and `gap`.
@@ -171,11 +170,8 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
         room: &mut Rect,
         gap: f32,
     ) -> Rect {
-        let style = self.style(ctx);
-        let width = self.content(ctx, &style) + ctx.tokens.sm * 2.0;
-        let box_ = self.draw(ctx, *room, room.right() - width);
-        room.take_right(box_.w + gap);
-        box_
+        let slot = crate::shape::stand(room, self.width(ctx), gap, crate::widgets::Side::Right);
+        self.draw(ctx, slot, slot.x)
     }
 
     fn lit_now<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> bool {

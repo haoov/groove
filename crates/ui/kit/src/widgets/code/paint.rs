@@ -3,10 +3,9 @@
 use groove_gfx::{Align, Color, Edges, Rect, TextStyle};
 
 use super::gutter::tiled;
-use super::{Block, Code, head_mark};
+use super::{Block, Code};
 use crate::base::ctx::{App, Ctx};
 use crate::base::ground::Ground;
-use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::ruled;
 use crate::text::{Label, row};
@@ -48,6 +47,7 @@ pub(super) fn coded<A: App>(
         ctx.quad(edge, mark);
     }
     numbers(ctx, line, code, gutter);
+    super::outline::caret(ctx, line, code, gutter);
     let at = gutter.content(ctx, line);
     let room = line.pad(Edges::across(at - line.x, 0.0));
     let rect = Rect {
@@ -63,6 +63,8 @@ pub(super) fn coded<A: App>(
 
 /// What lies over a line's ground, inside its text's room: shades, text, caret, blame.
 fn over<A: App>(ctx: &mut Ctx<'_, A>, (rect, room): (Rect, Rect), code: &Code<'_, A::Target>) {
+    super::outline::guides(ctx, rect, code);
+    super::outline::occurs(ctx, rect, code);
     if let Some(color) = code.word {
         for (from, to) in code.words {
             shade(ctx, rect, code.text, (*from, *to), color);
@@ -78,6 +80,8 @@ fn over<A: App>(ctx: &mut Ctx<'_, A>, (rect, room): (Rect, Rect), code: &Code<'_
         marked(ctx, rect, code.text, at, true);
     }
     text(ctx, rect, code);
+    super::outline::hidden(ctx, rect, code);
+    super::faults::faulted(ctx, rect, code);
     if let Some(column) = code.caret {
         caret(ctx, rect, code.text, column);
     }
@@ -93,7 +97,7 @@ fn blamed<A: App>(
     text: &str,
     (said, sha): (&str, Option<A::Target>),
 ) {
-    let mut style = ctx.styles.code(Role::Text);
+    let mut style = ctx.styles.source(Role::Text);
     let end = ctx.measure(text, &style);
     style.color = ctx.styles.syntax(groove_types::Capture::Comment);
     let x = rect.x + end + ctx.tokens.lg;
@@ -123,6 +127,9 @@ fn numbers<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>,
     if let Some((_, color)) = code.gutter {
         style.color = color;
     }
+    if let Some(color) = super::faults::worst(ctx, code) {
+        style.color = color;
+    }
     if let Some((tile, opens)) = code.tile.as_ref() {
         tiled(ctx, gutter.marked(ctx, line), *tile, opens.clone());
     }
@@ -144,7 +151,7 @@ fn here<A: App>(ctx: &mut Ctx<'_, A>, line: Rect) {
 /// A caret's band under the text, run past the line's end when the selection carries on.
 fn holding<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, held: (usize, usize, bool)) {
     let (from, to, through) = held;
-    let style = ctx.styles.code(Role::Text);
+    let style = ctx.styles.source(Role::Text);
     let start = upto(ctx, text, from, &style);
     let mut end = upto(ctx, text, to, &style);
     if through {
@@ -171,14 +178,19 @@ fn marked<A: App>(
 
 /// A band of `color` under the columns `at` covers.
 fn shade<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, at: (usize, usize), color: Color) {
-    let style = ctx.styles.code(Role::Text);
+    let style = ctx.styles.source(Role::Text);
     let start = upto(ctx, text, at.0, &style);
     let end = upto(ctx, text, at.1, &style);
     text_band(ctx, rect, (start, end), color);
 }
 
 /// How wide the first `column` characters are; ASCII by the code font's advance, unshaped.
-fn upto<A: App>(ctx: &mut Ctx<'_, A>, text: &str, column: usize, style: &TextStyle) -> f32 {
+pub(super) fn upto<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    text: &str,
+    column: usize,
+    style: &TextStyle,
+) -> f32 {
     let before: String = text.chars().take(column).collect();
     match before.is_ascii() {
         true => before.len() as f32 * ctx.advance,
@@ -188,7 +200,7 @@ fn upto<A: App>(ctx: &mut Ctx<'_, A>, text: &str, column: usize, style: &TextSty
 
 /// The caret: a bar at the column, placed through the text before it.
 fn caret<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, column: usize) {
-    let style = ctx.styles.code(Role::Text);
+    let style = ctx.styles.source(Role::Text);
     let at = rect.x + upto(ctx, text, column, &style);
     let color = ctx.styles.caret();
     caret_bar(ctx, at, rect, color);
@@ -206,51 +218,9 @@ pub(super) fn banner<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, text: &str) {
     );
 }
 
-/// A file's head, whole, drawn from whichever of its rows `line` is.
-pub(super) fn head<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>) {
-    let whole = super::head_of(line, code.part);
-    let role = match code.read {
-        true => Role::Faint,
-        false => Role::Text,
-    };
-    let (ground, rule) = (ctx.styles.band(), ctx.styles.line());
-    ctx.quad(whole, ground);
-    ruled(ctx, whole, rule);
-    let (xs, size) = (ctx.tokens.xs, ctx.tokens.icon);
-    let mut room = whole.pad(Edges::across(xs, 0.0));
-    crate::widgets::caret(ctx, &mut room, (!code.folded, size), Role::Faint);
-    room.take_right(ctx.tokens.md + size);
-    if let Some(counts) = code.counts {
-        crate::widgets::changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
-    }
-    let (folder, name) = match code.text.rsplit_once('/') {
-        Some((folder, name)) => (folder, name),
-        None => ("", code.text),
-    };
-    let named = Label::new(name, ctx.styles.file_head(role)).draw(ctx, room);
-    room.take_left(named.w + ctx.tokens.sm);
-    Label::new(folder, ctx.styles.body(Role::Faint))
-        .cut_start()
-        .draw(ctx, room);
-    box_(ctx, head_mark(ctx, whole), code.read);
-}
-
-/// The box that says whether a file is read, ticked once it is.
-fn box_<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, read: bool) {
-    let square = rect.pad(Edges::all(ctx.tokens.xs / 2.0));
-    let role = match read {
-        true => Role::Text,
-        false => Role::Faint,
-    };
-    ctx.border(square, ctx.styles.color(role));
-    if read {
-        ctx.icon(rect, Mark::Read, 0, ctx.styles.color(role));
-    }
-}
-
 /// The line's text, in the pieces its spans cut it into.
 fn text<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, code: &Code<'_, A::Target>) {
-    let plain = ctx.styles.code(Role::Text);
+    let plain = ctx.styles.source(Role::Text);
     if code.spans.is_empty() {
         return row(ctx, rect, 0.0, code.text, plain);
     }

@@ -15,6 +15,8 @@ pub struct Gutters {
     pub digits: usize,
     /// A column before the numbers for the marks a line carries.
     pub marks: bool,
+    /// A column after the numbers for the caret that folds a block.
+    pub folds: bool,
 }
 
 /// The gutter block, measured once for the surface.
@@ -24,6 +26,8 @@ pub struct Block {
     pub width: f32,
     /// The marks' column, before the numbers; none when the surface has no marks.
     pub mark: f32,
+    /// The folds' column, after the numbers; none when the surface folds nothing.
+    pub fold: f32,
 }
 
 impl Block {
@@ -35,6 +39,10 @@ impl Block {
             width: ctx.measure(&widest, &numbers),
             mark: match gutters.marks {
                 true => ctx.tokens.icon + ctx.tokens.xs,
+                false => 0.0,
+            },
+            fold: match gutters.folds {
+                true => ctx.tokens.small + ctx.tokens.sm,
                 false => 0.0,
             },
         }
@@ -69,7 +77,13 @@ impl Block {
         }
         let small = ctx.tokens.sm;
         let block = (self.width + small) * self.cells as f32;
-        rect.x + small + self.mark + block + ctx.tokens.md
+        rect.x + small + self.mark + block + self.fold + ctx.tokens.md
+    }
+
+    /// Where a line's fold caret stands, between its numbers and the rule.
+    pub fn folding<A: App>(&self, ctx: &Ctx<'_, A>, line: Rect) -> Rect {
+        let x = self.numbers_end(ctx, line) + ctx.tokens.sm;
+        Rect::new(x, line.y, ctx.tokens.small, line.h)
     }
 }
 

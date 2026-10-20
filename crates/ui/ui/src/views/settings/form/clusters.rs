@@ -65,16 +65,6 @@ fn quiet(ctx: &mut Ctx, rect: Rect, said: &str) {
     Label::new(said, ctx.styles.body(Role::Ghost)).draw(ctx, line);
 }
 
-fn column<'a>(label: &'a str, width: Width<'a>) -> Column<'a, Target> {
-    Column {
-        label,
-        width,
-        end: false,
-        sort: None,
-        edge: None,
-    }
-}
-
 fn table<'a>(columns: &'a [Column<'a, Target>], count: usize, line: f32) -> Table<'a, Target> {
     Table {
         columns,
@@ -96,15 +86,15 @@ fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
     let contexts = widest(ctx, label, added.iter().map(|one| one.context.clone()));
     let sample = Cell::label(contexts, Role::Text);
     let columns = [
-        column("", Width::Fit("")),
-        column("context", Width::FitCell(&sample)),
-        column("read-only", Width::Fit("read-only")),
-        column(
+        Column::plain("", Width::Fit("")),
+        Column::plain("context", Width::FitCell(&sample)),
+        Column::plain("read-only", Width::Fit("read-only")),
+        Column::plain(
             "login",
             Width::Fit("sign-in refused · log in from a terminal"),
         ),
-        column("", Width::Fit("remove")),
-        column("", Width::Fill),
+        Column::plain("", Width::Fit("remove")),
+        Column::plain("", Width::Fill),
     ];
     let line = ctx.tokens.row + ctx.tokens.sm;
     let table = table(&columns, added.len(), line);
@@ -166,10 +156,10 @@ fn unknown(ctx: &mut Ctx, rect: Rect, rest: &[&KubeContext]) {
     let contexts = widest(ctx, small, rest.iter().map(|one| one.name.clone()));
     let servers = widest(ctx, small, rest.iter().filter_map(|one| one.server.clone()));
     let columns = [
-        column("context", Width::Fit(&contexts)),
-        column("server", Width::Fit(&servers)),
-        column("", Width::Fit("add")),
-        column("", Width::Fill),
+        Column::plain("context", Width::Fit(&contexts)),
+        Column::plain("server", Width::Fit(&servers)),
+        Column::plain("", Width::Fit("add")),
+        Column::plain("", Width::Fill),
     ];
     let line = ctx.tokens.row + ctx.tokens.sm;
     let table = table(&columns, rest.len(), line);

@@ -30,7 +30,7 @@ pub fn chars_of(
 
 /// The rows `rect` has room for at `scroll`, among `total`.
 pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize> {
-    let height = ctx.tokens.line;
+    let height = ctx.tokens.code_line;
     let first = first(height, scroll).min(total);
     let shown = (rect.h / height).ceil() as usize + 1;
     first..(first + shown).min(total)
@@ -38,7 +38,7 @@ pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize>
 
 /// How tall the rows stand together.
 pub fn height(ctx: &Ctx, lines: usize) -> f32 {
-    ctx.tokens.line * lines as f32
+    ctx.tokens.code_line * lines as f32
 }
 
 /// How far the widest of `texts` runs past the room its text has in `rect`.
@@ -64,7 +64,7 @@ pub fn code_at(
     if !rect.contains(point.0, point.1) {
         return None;
     }
-    let row = ((point.1 - rect.y + chars.scroll) / tokens.line)
+    let row = ((point.1 - rect.y + chars.scroll) / tokens.code_line)
         .floor()
         .max(0.0);
     let column = ((point.0 - chars.left) / chars.advance.max(1.0))

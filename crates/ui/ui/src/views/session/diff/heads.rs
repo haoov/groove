@@ -12,7 +12,6 @@ use crate::ctx::Ctx;
 
 /// Every head in view across `body`, over the two sides that leave their rows to it.
 pub(super) fn across(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) {
-    let changes = &app.workspace.changes;
     let total = inline.total(count(app, ui, ui.session.face()));
     let scroll = ui
         .session
@@ -23,29 +22,13 @@ pub(super) fn across(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline:
     let lines: Vec<Line<'_>> = window
         .clone()
         .enumerate()
-        .map(|(on, row)| {
-            let Slot::Code(at) = inline.slot(row) else {
-                return Line::covered();
-            };
-            let Some(At::Head(file)) = changes.at(at) else {
-                return Line::covered();
-            };
-            let part = changes.head_of(&file.path).map_or(0, |head| at - head);
-            if part > 0 && on > 0 {
-                return Line::covered();
-            }
-            named.push((on, part, file.path.as_str()));
-            Line::head(&file.path)
-                .folded(changes.is_folded(&file.path))
-                .read(is_read(app, &file.path))
-                .part((part, HEAD_ROWS))
-                .counts(counted(app, &file.path))
-        })
+        .map(|(on, row)| head(app, inline.slot(row), on, &mut named))
         .collect();
     let gutters = Gutters {
         cells: 0,
         digits: 1,
         marks: false,
+        folds: false,
     };
     let rows = Rows {
         lines: &lines,
@@ -59,4 +42,30 @@ pub(super) fn across(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline:
             super::offers::head_hits(ctx, head_of(drawn[on], (part, HEAD_ROWS)), path);
         }
     });
+}
+
+/// The head a row of the window draws, named once at its first row on screen; else nothing.
+fn head<'a>(
+    app: &'a AppState,
+    slot: Slot,
+    on: usize,
+    named: &mut Vec<(usize, usize, &'a str)>,
+) -> Line<'a> {
+    let changes = &app.workspace.changes;
+    let Slot::Code(at) = slot else {
+        return Line::covered();
+    };
+    let Some(At::Head(file)) = changes.at(at) else {
+        return Line::covered();
+    };
+    let part = changes.head_of(&file.path).map_or(0, |head| at - head);
+    if part > 0 && on > 0 {
+        return Line::covered();
+    }
+    named.push((on, part, file.path.as_str()));
+    Line::head(&file.path)
+        .folded(changes.is_folded(&file.path))
+        .read(is_read(app, &file.path))
+        .part((part, HEAD_ROWS))
+        .counts(counted(app, &file.path))
 }

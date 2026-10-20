@@ -25,21 +25,11 @@ const CHIPS: [&str; 7] = [
 const DECORATIONS: [&str; 2] = ["blocking", "non-blocking"];
 
 /// A row of the composer: the lines and the chips to pick, or the hint and its buttons.
-pub(super) fn composer(
-    ctx: &mut Ctx,
-    line: Rect,
-    composed: &Composed,
-    (gutter, edges): (Block, (bool, bool)),
-) {
+pub(super) fn composer(ctx: &mut Ctx, line: Rect, composed: &Composed, gutter: Block) {
     let card = slotted(ctx, line, gutter);
-    card_row(ctx, card, edges);
+    card_row(ctx, card);
     let at = gutter.content(ctx, line);
-    let mut room = Rect::new(
-        at,
-        line.y,
-        (card.right() - ctx.tokens.sm - at).max(0.0),
-        line.h,
-    );
+    let mut room = groove_ui_kit::shape::span(line, at, card.right() - ctx.tokens.sm - at);
     match composed {
         Composed::Chips { lines, label } => {
             let faint = ctx.styles.small(Role::Faint);
@@ -101,5 +91,5 @@ fn chip(ctx: &mut Ctx, (line, room): (Rect, &mut Rect), badge: Badge<'_>, asked:
     }
     let box_ = badge.at(ctx, line, room.x);
     ctx.hit(box_, Target::Compose(asked));
-    room.take_left(box_.w + gap);
+    groove_ui_kit::shape::stand(room, box_.w, gap, groove_ui_kit::widgets::Side::Left);
 }

@@ -9,7 +9,7 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
-pub use check::check;
+pub use check::{check, versions};
 pub use error::{Error, Result};
 use groove_types::Config;
 

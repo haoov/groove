@@ -211,3 +211,26 @@ fn a_parse_of_another_document_does_not_land() {
     let other = Document::new("src/lib.rs", "fn one() {}\n");
     assert!(!doc.install(other.settled()));
 }
+
+#[test]
+fn a_block_folds_what_is_indented_under_its_opening_line() {
+    let python = "class A:\n    def f(self):\n        x = (\n            1\n        )\n\n        return x\n\nb = 2\n";
+    let doc = Document::new("a.py", python);
+    let blocks: Vec<(usize, usize, usize)> = doc
+        .blocks()
+        .iter()
+        .map(|one| (one.start, one.end, one.column))
+        .collect();
+    assert_eq!(
+        blocks,
+        [(0, 6, 0), (1, 6, 4), (2, 3, 8)],
+        "the paren stays shown"
+    );
+    let rust = "fn one() {\n    let x = 1;\n}\n";
+    let rust = Document::new("a.rs", rust).blocks();
+    assert_eq!(
+        (rust[0].start, rust[0].end),
+        (0, 1),
+        "the brace stays shown"
+    );
+}

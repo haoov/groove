@@ -12,6 +12,7 @@ mod cluster;
 mod config;
 mod delivery;
 mod described;
+mod diagnostic;
 mod diff;
 mod editing;
 mod environment;
@@ -61,13 +62,15 @@ pub use cluster::{
 };
 pub use config::{
     ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,
-    GitConfig, GithubConfig, GithubView, Hue, NotionConfig, NotionView, Preferences, PriorityMap,
-    PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap, ThemeName, UiConfig,
+    GitConfig, GithubConfig, GithubView, Hue, LanguageServer, NotionConfig, NotionView,
+    Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap,
+    ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use described::{
     Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage, Used,
 };
+pub use diagnostic::{Completion, Diagnostic, Location, Severity};
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
     Row, RowKind, TEXT_MAX_BYTES, is_sha, short_sha, subject_of,
@@ -94,7 +97,7 @@ pub use routine::{Action, Routine, RoutineKind, Trigger};
 pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use sought::{Sought, ranked, runs, sought, spans};
-pub use syntax::{Capture, Highlight};
+pub use syntax::{Capture, Highlight, spans_within};
 pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours};
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell, Selected};
 pub use time::{Day, Timestamp};

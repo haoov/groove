@@ -5,11 +5,11 @@ use glyphon::{
 };
 
 mod areas;
+mod pushed;
 mod recent;
 
-use self::areas::{area, mark, rasterize, shape_glyph};
-use crate::fonts::{CellSize, Face, one_paragraph};
-use crate::frame::IconDraw;
+use self::areas::{area, mark, rasterize};
+use crate::fonts::{Face, one_paragraph};
 use crate::icons::Icons;
 use crate::{Color, Fonts, Rect, Result, Size, TextRun};
 
@@ -179,55 +179,6 @@ impl TextPass {
             .or_default()
             .insert(run.text.as_str().into(), at);
         at
-    }
-
-    pub fn push_icon(&mut self, layer: usize, draw: &IconDraw) {
-        let glyph = CustomGlyph {
-            id: draw.icon.glyph_id(draw.turn),
-            left: draw.rect.x,
-            top: draw.rect.y,
-            width: draw.rect.w,
-            height: draw.rect.h,
-            color: Some(draw.color.glyphon()),
-            snap_to_physical_pixel: true,
-            metadata: 0,
-        };
-        self.icons[layer].push(IconArea {
-            glyph: [glyph],
-            clip: draw.clip,
-        });
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn push_glyph(
-        &mut self,
-        layer: usize,
-        fonts: &mut Fonts,
-        ch: char,
-        bold: bool,
-        size: f32,
-        cell: CellSize,
-        x: f32,
-        y: f32,
-        color: Color,
-        clip: Rect,
-    ) {
-        let key = GlyphKey {
-            ch,
-            bold,
-            size: size.to_bits(),
-        };
-        if let std::collections::hash_map::Entry::Vacant(slot) = self.glyphs.entry(key) {
-            slot.insert(shape_glyph(fonts, ch, bold, size, cell));
-            self.shaped += 1;
-        }
-        self.placements[layer].push(Placement {
-            key,
-            x,
-            y,
-            color,
-            clip,
-        });
     }
 
     pub fn prepare(

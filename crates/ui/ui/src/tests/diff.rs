@@ -5,6 +5,7 @@ mod gaps;
 mod header;
 mod notes;
 mod noting;
+mod outline;
 mod pinned;
 mod pointer;
 mod prose;

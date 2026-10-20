@@ -2,6 +2,7 @@
 
 mod composer;
 mod noted;
+mod tabs;
 
 pub(super) use composer::composing;
 pub(super) use noted::noted;
@@ -18,6 +19,8 @@ use crate::views::session::{Face, Tab, diff};
 use crate::{Click, Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::ABOVE_MATCH;
+pub(crate) use tabs::middle;
+pub(super) use tabs::{closing, in_files};
 
 /// Changes the view, keeping the line at the top of the old one in view.
 pub(super) fn switch(
@@ -26,7 +29,7 @@ pub(super) fn switch(
     view: DiffView,
     (hits, metrics): (&Hits, Metrics),
 ) {
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let faces = (Face::Stream(ui.session.view), Face::Stream(view));
     ui.session.diff = diff::scrolled(app, ui, faces, (ui.session.diff, line), hits.wrap());
     ui.session.view = view;
@@ -81,25 +84,8 @@ pub(super) fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) ->
     let Some(head) = app.workspace.changes.head_of(path) else {
         return false;
     };
-    ui.session.diff = head as f32 * metrics.tokens().line;
+    ui.session.diff = head as f32 * metrics.tokens().code_line;
     true
-}
-
-/// The file active in the Files tab, from its top when it was not already.
-pub(super) fn in_files(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
-    ui.session.tab = Tab::Files;
-    if app.workspace.active().is_none_or(|one| one.path != path) {
-        ui.session.file = 0.0;
-        ui.session.file_across = 0.0;
-    }
-    let twice = ui.clicked.is_some_and(|click| click.count >= 2);
-    let keep = twice.then(|| workspace::Command::KeepFile { path: path.clone() });
-    let open = workspace::Command::OpenFile { path, at: None };
-    [Some(open), keep]
-        .into_iter()
-        .flatten()
-        .map(Command::Workspace)
-        .collect()
 }
 
 /// The lens dragged to the pointer, holding the rows around where it points.
@@ -111,7 +97,7 @@ pub(super) fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: 
     if total == 0 {
         return;
     }
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let at = ((y - rect.y) / rect.h).clamp(0.0, 1.0) * total as f32 * line;
     let far = hits.extent(Scroller::Code);
     *ui.session.scroll_mut() = (at - rect.h / 2.0).clamp(0.0, far);
@@ -130,7 +116,7 @@ pub(super) fn reached(
     ui.focus = Focus::Workspace;
     ui.session.tab = Tab::Files;
     let above = one.line.saturating_sub(ABOVE_MATCH);
-    ui.session.file = above as f32 * metrics.tokens().line;
+    ui.session.file = above as f32 * metrics.tokens().code_line;
     ui.session.file_across = reaching(&one.text, &one.path, one.at.1, hits, metrics);
     let held = Selection {
         anchor: Caret::new(one.line, one.at.0),
@@ -157,7 +143,7 @@ pub(super) fn holds(app: &AppState, ui: &Ui, path: &str) -> bool {
 /// A file's rows hidden or shown again, with what stands above them held still.
 pub(super) fn folded(ui: &mut Ui, app: &AppState, metrics: Metrics, path: String) -> Vec<Command> {
     let changes = &app.workspace.changes;
-    let line = metrics.tokens().line;
+    let line = metrics.tokens().code_line;
     let top = first(line, ui.session.diff);
     if let (Some(head), Some(file)) = (changes.head_of(&path), changes.get(&path))
         && head < top
@@ -178,7 +164,7 @@ pub(super) fn row_at(hits: &Hits, metrics: Metrics, point: (f32, f32)) -> Option
 }
 
 /// The file a click in the rows points at, and where the caret lands in it.
-pub(super) fn at(
+pub(in crate::input) fn at(
     ui: &Ui,
     app: &AppState,
     hits: &Hits,
@@ -222,26 +208,52 @@ pub(super) fn composed(
     )))]
 }
 
-/// The middle button on a file's tab closes it, as its cross does.
-pub(crate) fn middle(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
-    if ui.overlay.is_some() {
+/// The pointer moved while it holds text of the open file: the selection carried to it.
+pub(super) fn extended(
+    (x, y): (f32, f32),
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
+    let Some((path, caret)) = at(ui, app, hits, metrics, (x, y)) else {
         return Vec::new();
-    }
-    match hits.at(x, y) {
-        Some(Target::OpenTab(path) | Target::CloseTab(path)) => closing(ui, app, path),
+    };
+    let editing = crate::editor::Editing::keyed(app, ui);
+    match (holds(app, ui, &path), editing) {
+        (true, Some(editing)) => vec![editing.edit(Edit::Extend(Motion::To(caret)))],
         _ => Vec::new(),
     }
 }
 
-/// A tab closed, or the question first when its file owes the disk.
-pub(super) fn closing(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
-    let owes = app
-        .workspace
-        .buffer(&path)
-        .is_some_and(|one| one.new.dirty());
-    if owes {
-        ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Tab(path)));
+/// A ctrl+click on the open file's code: where the symbol under the pointer is defined.
+pub(super) fn defined(
+    ui: &Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+    point: (f32, f32),
+) -> Vec<Command> {
+    let Some((path, at)) = at(ui, app, hits, metrics, point) else {
+        return Vec::new();
+    };
+    if app.workspace.buffer(&path).is_none() {
         return Vec::new();
     }
-    vec![Command::Workspace(workspace::Command::CloseFile { path })]
+    vec![Command::Workspace(workspace::Command::Definition {
+        path,
+        at,
+    })]
+}
+
+/// The block a line of the open file opens, folded under it or shown again.
+pub(super) fn fold(ui: &mut Ui, app: &AppState, line: usize) -> Vec<Command> {
+    if let Some(open) = crate::views::session::diff::edited(app, ui) {
+        let folds = ui.session.folds.entry(open.path.to_string()).or_default();
+        folds.seen = open.buffer.revision();
+        if !folds.starts.remove(&line) {
+            folds.starts.insert(line);
+        }
+    }
+    Vec::new()
 }

@@ -24,12 +24,10 @@ pub fn delivered(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery)
     let style = ctx.styles.small(if hovered { Role::Text } else { role });
     let name = mr.named();
     let width = ctx.measure(&name, &style);
-    let link = Rect::new(x, line.y, width, line.h);
+    let link = groove_ui_kit::shape::span(line, x, width);
     row(ctx, link, 0.0, &name, style);
     if hovered {
-        let under = link.y + (link.h + style.size) / 2.0;
-        let rule = Rect::new(x, under, width, ctx.tokens.hairline);
-        groove_ui_kit::shape::top_rule(ctx, rule, style.color);
+        groove_ui_kit::shape::underline(ctx, link, style.size, style.color);
     }
     ctx.hit(link, target);
     let mut at = x + width + ctx.tokens.sm;

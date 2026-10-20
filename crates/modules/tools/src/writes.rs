@@ -78,54 +78,59 @@ fn git() -> Vec<Tool> {
 }
 
 fn repos() -> Vec<Tool> {
-    vec![
-        write(
-            does("add_task_repo", "add a repo", &["repo"]),
-            "Attach a repo to your task and make its worktree. The repo must already be \
+    vec![add_repo(), add_worktree()]
+}
+
+fn add_repo() -> Tool {
+    write(
+        does("add_task_repo", "add a repo", &["repo"]),
+        "Attach a repo to your task and make its worktree. The repo must already be \
              cloned locally — call list_repos first; this tool cannot clone.",
-            takes(
-                &["repo"],
-                vec![
-                    (
-                        "repo",
-                        text("Slug (group/path/project) or project name from list_repos."),
-                    ),
-                    task(),
-                    (
-                        "branch",
-                        text("Branch for the new worktree. Defaults to the task branch."),
-                    ),
-                    ("target_branch", text(TARGET_BRANCH)),
-                ],
-            ),
+        takes(
+            &["repo"],
+            vec![
+                (
+                    "repo",
+                    text("Slug (group/path/project) or project name from list_repos."),
+                ),
+                task(),
+                (
+                    "branch",
+                    text("Branch for the new worktree. Defaults to the task branch."),
+                ),
+                ("target_branch", text(TARGET_BRANCH)),
+            ],
         ),
-        write(
-            does("add_task_worktree", "add a worktree", &["branch"]),
-            "Check out ANOTHER branch of a repo your task already has, as a second worktree \
+    )
+}
+
+fn add_worktree() -> Tool {
+    write(
+        does("add_task_worktree", "add a worktree", &["branch"]),
+        "Check out ANOTHER branch of a repo your task already has, as a second worktree \
              beside the first. Use add_task_repo for a repo the task does not have yet.",
-            takes(
-                &["branch"],
-                vec![
-                    (
-                        "branch",
-                        text(
-                            "Must differ from the ones already checked out; include the task \
+        takes(
+            &["branch"],
+            vec![
+                (
+                    "branch",
+                    text(
+                        "Must differ from the ones already checked out; include the task \
                               id so it stays traceable.",
-                        ),
                     ),
-                    (
-                        "repo",
-                        text(
-                            "Project name from get_active_task. Only needed where the \
+                ),
+                (
+                    "repo",
+                    text(
+                        "Project name from get_active_task. Only needed where the \
                                    task has more than one repo.",
-                        ),
                     ),
-                    task(),
-                    ("target_branch", text(TARGET_BRANCH)),
-                ],
-            ),
+                ),
+                task(),
+                ("target_branch", text(TARGET_BRANCH)),
+            ],
         ),
-    ]
+    )
 }
 
 /// What the user's own skills take.

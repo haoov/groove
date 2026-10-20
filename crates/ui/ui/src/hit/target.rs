@@ -221,6 +221,8 @@ pub enum Target {
     Read(String),
     /// The row a file starts on, which folds it.
     Head(String),
+    /// The caret that folds the block a line of the open file opens.
+    Block(usize),
     /// The lines a gap hides, and which end gives them up.
     Gap {
         row: usize,

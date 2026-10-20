@@ -12,7 +12,7 @@ use crate::tests::{full_app, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
-fn big(lines: usize) -> AppState {
+pub(super) fn big(lines: usize) -> AppState {
     let mut app = full_app();
     let worktree = app
         .session
@@ -277,7 +277,8 @@ fn time_a_frame_over_several_files() {
             let typing = started.elapsed() / runs;
             let started = Instant::now();
             for at in 0..runs {
-                ui.session.diff = at as f32 * groove_ui_kit::base::tokens::Tokens::new(1.0).line;
+                ui.session.diff =
+                    at as f32 * groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
                 let (frame, _) = view(&app, &ui, window(), renderer.fonts());
                 renderer.render(&frame).expect("rendered");
             }

@@ -140,10 +140,13 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
     match value {
         Value::Text { text, mono } => written(ctx, room, text, *mono),
         Value::Toggle { on, flip } => {
-            let toggle = groove_ui_kit::widgets::Toggle::new(*on, Target::SetPreference(*flip));
+            let toggle =
+                groove_ui_kit::widgets::Toggle::new(*on, Target::SetPreference(flip.clone()));
             toggle.left(ctx, &mut room, sm);
         }
-        Value::Count { shown, less, more } => stepped(ctx, room, shown, (*less, *more)),
+        Value::Count { shown, less, more } => {
+            stepped(ctx, room, shown, (less.clone(), more.clone()))
+        }
         Value::State { shown, role, act } => {
             Label::new(shown, ctx.styles.body(*role)).left(ctx, &mut room, sm);
             if let Some((word, target)) = act {
@@ -164,7 +167,7 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         Value::Choice(options) => {
             let each = options
                 .iter()
-                .map(|(word, held, pick)| (*word, *held, Target::SetPreference(*pick)));
+                .map(|(word, held, pick)| (*word, *held, Target::SetPreference(pick.clone())));
             held_words(ctx, room, each, Role::Muted);
         }
         Value::Skill {

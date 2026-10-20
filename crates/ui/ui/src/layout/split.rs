@@ -61,7 +61,7 @@ impl Default for Split {
             rail: tokens.rail,
             agent: tokens.agent,
             sidebar: tokens.sidebar,
-            commit: tokens.row + tokens.line * MESSAGE_LINES as f32,
+            commit: tokens.row + tokens.code_line * MESSAGE_LINES as f32,
             feed: FEED_MIN * 2.0,
             manual: MANUAL_TALL,
         }

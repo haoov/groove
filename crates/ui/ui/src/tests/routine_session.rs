@@ -4,9 +4,9 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::{SessionId, SessionKind};
 
-use crate::hit::{Hits, Target};
+use crate::hit::Target;
 use crate::layout::{Edge, Layout};
-use crate::tests::{full_app, handle, open, render, window};
+use crate::tests::{drawn, full_app, handle, open, window};
 use crate::{Surface, Ui, view};
 
 /// The full app with a routine's session beside the explorers, on disk too.
@@ -25,10 +25,6 @@ fn routed() -> AppState {
         });
     app.session.open.push(digest);
     app
-}
-
-fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
-    render(app, ui, window())
 }
 
 #[test]

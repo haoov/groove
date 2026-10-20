@@ -12,6 +12,8 @@ fn a_version_is_the_number_each_program_prints_first() {
             "8.5.0",
         ),
         ("claude", "2.1.3 (Claude Code)\n", "2.1.3"),
+        ("ty", "ty 0.0.89\n", "0.0.89"),
+        ("yaml-language-server", "2.0.0\n", "2.0.0"),
         ("odd", "no number here\n", "no number here"),
     ];
     for (name, text, want) in printed {
@@ -33,4 +35,11 @@ async fn a_program_that_does_not_run_is_not_found() {
     let tools = crate::check("/nowhere/claude").await;
     let claude = tools.iter().find(|one| one.name == "claude").unwrap();
     assert!(claude.found.is_none() && claude.required && !claude.ready());
+}
+
+#[tokio::test]
+async fn the_server_programs_are_probed_together_one_missing_among_them() {
+    let programs = vec!["git".to_string(), "/nowhere/server".to_string()];
+    let found = crate::versions(programs).await;
+    assert!(found[0].is_some() && found[1].is_none(), "{found:?}");
 }

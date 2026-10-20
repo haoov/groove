@@ -9,7 +9,7 @@ const QUEUE_MAX: i64 = 50;
 
 use groove_http::Graphql;
 use groove_token::Token;
-use groove_types::{Forge, Repo};
+use groove_types::Repo;
 
 use crate::{Error, Result, Snapshot, pages};
 
@@ -26,10 +26,8 @@ impl Github {
 
     /// The same, called with a token of your own.
     pub fn with_token(host: &str, token: Token) -> Result<Self> {
-        Ok(Self {
-            host: host.to_string(),
-            api: Graphql::new(Forge::graphql(host), token)?,
-        })
+        let (host, api) = crate::reached(host, token)?;
+        Ok(Self { host, api })
     }
 
     /// The open MR this branch is the source of, when the host has one.

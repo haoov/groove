@@ -3,27 +3,28 @@
 use groove_controllers::AppState;
 use groove_types::Note;
 
-use super::{BETWEEN, Block, anchored, starts};
+use super::{BETWEEN, Block, GAPS, Slot, UNDER, anchored, starts};
+use crate::components::Room;
 use crate::views::session::Face;
-use crate::views::session::diff::wrap::wrapped;
+use crate::views::session::diff::wrap::{Compacted, wrapped};
 
 /// One note's block, on the rows of the file it is about; a hidden one takes none.
 pub(super) fn block(
     app: &AppState,
     (view, lines): (Face, Option<&[usize]>),
     (note, at, hidden): (&Note, usize, bool),
-    cols: usize,
+    (cols, compacted): (usize, &Compacted),
 ) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, (view, lines), anchor)?;
     let said = if hidden {
         Vec::new()
     } else {
-        wrapped(note, cols)
+        wrapped(note, cols, compacted)
     };
     let rows = match hidden {
         true => 0,
-        false => said.len().max(1) + BETWEEN + 1,
+        false => said.len().max(1) + BETWEEN + 1 + UNDER,
     };
     Some(Block {
         after,
@@ -45,5 +46,39 @@ impl super::Inline {
     /// How many rows the note being typed takes.
     pub(crate) fn typed_rows(&self) -> usize {
         self.typed.len()
+    }
+}
+
+impl Block {
+    /// What one row of the block holds, counted from its first.
+    pub(super) fn slot(&self, row: usize) -> Slot {
+        if row + UNDER >= self.rows {
+            return Slot::Pad { room: Room::Gap };
+        }
+        let Some(at) = self.at else {
+            let typed = GAPS + 1;
+            return match row {
+                0 | 2 => Slot::Pad { room: Room::Gap },
+                1 => Slot::Chips,
+                row if row < typed + self.typing => Slot::Typed {
+                    row: row - typed,
+                    reply: false,
+                },
+                row if row == typed + self.typing => Slot::Pad {
+                    room: Room::Between,
+                },
+                _ => Slot::Footer { reply: false },
+            };
+        };
+        let said = self.said.len().max(1);
+        match row.checked_sub(said + BETWEEN) {
+            None if row < said => Slot::Note { at, row },
+            None => Slot::Pad {
+                room: Room::Between,
+            },
+            Some(row) if row < self.typing => Slot::Typed { row, reply: true },
+            Some(_) if self.typing > 0 => Slot::Footer { reply: true },
+            Some(_) => Slot::Acts { at },
+        }
     }
 }

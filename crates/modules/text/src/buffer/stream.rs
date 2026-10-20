@@ -31,5 +31,6 @@ impl Buffer {
             };
         }
         self.revision += 1;
+        self.forgot = self.revision;
     }
 }

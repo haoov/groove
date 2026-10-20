@@ -50,7 +50,9 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
     let tokens = Tokens::new(1.0);
     let point = (
         hits.chars().left + 1.0,
-        code.y + tokens.line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32 + 1.0,
+        code.y
+            + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32
+            + 1.0,
     );
     let commands = handle(
         Input::Press {
@@ -87,7 +89,7 @@ fn a_file_in_the_sidebar_scrolls_the_surface_to_where_it_starts() {
         .changes
         .head_of("src/b.rs")
         .expect("the second file");
-    assert_eq!(ui.session.diff, head as f32 * Tokens::new(1.0).line);
+    assert_eq!(ui.session.diff, head as f32 * Tokens::new(1.0).code_line);
 }
 
 #[test]
@@ -95,7 +97,7 @@ fn the_header_names_the_file_the_surface_stands_in() {
     let app = both();
     let mut ui = on_diff();
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
-    ui.session.diff = head as f32 * Tokens::new(1.0).line;
+    ui.session.diff = head as f32 * Tokens::new(1.0).code_line;
     let drawn = texts(&app, &ui);
     assert!(drawn.iter().any(|text| text.ends_with("b.rs")), "{drawn:?}");
 }
@@ -246,7 +248,7 @@ fn busy() -> AppState {
 fn folding_from_the_pinned_head_lands_on_the_file_it_shut() {
     let app = busy();
     let mut ui = on_diff();
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     ui.session.diff = line * 20.0;
     let (_, hits) = view_of(&app, &ui);
     let band = hits.rect_of(&Target::Pinned).expect("the band stands");
@@ -365,7 +367,7 @@ fn a_file_head_says_it_can_be_clicked() {
     let head = hits
         .rect_of(&Target::Head("src/a.rs".into()))
         .expect("the head takes the pointer");
-    let line = Tokens::new(1.0).line;
+    let line = Tokens::new(1.0).code_line;
     assert_eq!(head.h, line * HEAD_ROWS as f32, "a head takes two rows");
     let inside = (head.x + head.w / 2.0, head.y + head.h / 2.0);
     assert_eq!(
