@@ -5,10 +5,8 @@ use groove_gfx::Rect;
 use super::paint::upto;
 use super::{Block, Code};
 use crate::base::ctx::{App, Ctx};
-use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::text::Label;
-use crate::widgets::{fold_turn, text_band};
+use crate::widgets::text_band;
 
 /// The guides down the line's indent, under its text, in the comment colour.
 pub(super) fn guides<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, code: &Code<'_, A::Target>) {
@@ -41,10 +39,8 @@ pub(super) fn caret<A: App>(
         return;
     };
     let room = gutter.folding(ctx, line);
-    let size = ctx.tokens.small;
-    let box_ = crate::shape::box_in(room, room.x, size);
-    let color = ctx.styles.color(Role::Faint);
-    ctx.icon(box_, Mark::Down, fold_turn(!folded), color);
+    let mut slot = room;
+    crate::widgets::caret(ctx, &mut slot, (!folded, ctx.tokens.small), Role::Faint);
     ctx.hit(room, target.clone());
 }
 
@@ -59,16 +55,5 @@ pub(super) fn hidden<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, code: &Code<'_, A
         1 => "⋯ 1 line".to_string(),
         many => format!("⋯ {many} lines"),
     };
-    let label = Label::new(&said, ctx.styles.small(Role::Faint));
-    let pad = ctx.tokens.xs;
-    let wide = label.width(ctx) + pad * 2.0;
-    let tall = ctx.tokens.line - pad;
-    let chip = Rect::new(
-        end + ctx.tokens.md,
-        rect.y + (rect.h - tall) / 2.0,
-        wide,
-        tall,
-    );
-    ctx.rounded(chip, ctx.styles.hover(), ctx.tokens.round);
-    label.draw(ctx, Rect::new(chip.x + pad, rect.y, wide, rect.h));
+    crate::widgets::Badge::new(&said, Role::Faint).at(ctx, rect, end + ctx.tokens.md);
 }
