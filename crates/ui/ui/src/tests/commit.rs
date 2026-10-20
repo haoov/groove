@@ -9,7 +9,7 @@ use groove_types::{FileDiff, FileStatus};
 
 use crate::hit::Target;
 use crate::input::{Input, handle};
-use crate::tests::{full_app, render, window};
+use crate::tests::{drawn_hits, full_app, hit, render, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -41,36 +41,12 @@ fn sidebar() -> Ui {
     ui
 }
 
-/// The targets the sidebar drew, with the pointer wherever `hover` says.
-fn drawn(app: &AppState, ui: &Ui) -> crate::hit::Hits {
-    view(app, ui, window(), &mut Fonts::embedded()).1
-}
-
-/// A click in the middle of a target the last frame drew.
-fn hit(target: &Target, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let hits = drawn(app, ui);
-    let rect = hits
-        .rect_of(target)
-        .unwrap_or_else(|| panic!("{target:?} was drawn"));
-    handle(
-        Input::Press {
-            x: rect.x + rect.w / 2.0,
-            y: rect.y + rect.h / 2.0,
-            mods: Default::default(),
-        },
-        ui,
-        app,
-        &hits,
-        window(),
-    )
-}
-
 #[test]
 fn the_box_takes_the_message_once_it_is_clicked() {
     let app = listed(&[file("a.txt", true)]);
     let mut ui = sidebar();
     assert!(
-        drawn(&app, &ui).rect_of(&Target::Message).is_some(),
+        drawn_hits(&app, &ui).rect_of(&Target::Message).is_some(),
         "the box is there before it is written in"
     );
     hit(&Target::Message, &mut ui, &app);
@@ -123,14 +99,14 @@ fn nothing_commits_an_empty_message() {
     let mut app = listed(&[file("a.txt", true)]);
     let mut ui = sidebar();
     assert!(
-        drawn(&app, &ui).rect_of(&Target::Do).is_none(),
+        drawn_hits(&app, &ui).rect_of(&Target::Do).is_none(),
         "there is nothing to commit yet"
     );
     app.workspace
         .message
         .edit(&groove_types::Edit::Insert("fix(a): it".into()));
     assert!(
-        drawn(&app, &ui).rect_of(&Target::Do).is_some(),
+        drawn_hits(&app, &ui).rect_of(&Target::Do).is_some(),
         "and now there is"
     );
     let asked = hit(&Target::Do, &mut ui, &app);
@@ -166,7 +142,7 @@ fn the_box_offers_the_worktree_s_own_actions() {
             review: false
         }
     );
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     for at in 0..crate::views::overlays::actions::WORKTREE.len() {
         assert!(
             hits.rect_of(&Target::MenuRow(at)).is_some(),
@@ -196,7 +172,7 @@ fn discarding_everything_is_asked_in_the_box_before_it_is_done() {
     assert!(taken.is_empty(), "nothing is thrown away on the spot");
     assert_eq!(ui.losing(), Some(&crate::Losing::Everything));
     assert!(
-        drawn(&app, &ui).rect_of(&Target::Do).is_none(),
+        drawn_hits(&app, &ui).rect_of(&Target::Do).is_none(),
         "the box is the question now"
     );
 
@@ -217,7 +193,7 @@ fn keeping_everything_asks_nothing_of_git() {
 
 /// The one action the box offers now.
 fn offered(app: &AppState, ui: &Ui) -> Option<Command> {
-    let _ = drawn(app, ui);
+    let _ = drawn_hits(app, ui);
     crate::views::session::commit::primary(app)
 }
 
@@ -246,7 +222,7 @@ fn the_box_offers_what_the_worktree_most_wants_doing() {
 fn only_one_action_is_a_button_and_the_caret_holds_the_rest() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     assert!(hits.rect_of(&Target::Actions).is_some(), "the caret");
     let word = hits.rect_of(&Target::Do);
     assert!(word.is_none(), "with nothing staged there is nothing to do");
@@ -255,7 +231,7 @@ fn only_one_action_is_a_button_and_the_caret_holds_the_rest() {
     with.workspace
         .message
         .edit(&groove_types::Edit::Insert("fix(a): it".into()));
-    let hits = drawn(&with, &ui);
+    let hits = drawn_hits(&with, &ui);
     assert!(hits.rect_of(&Target::Do).is_some(), "the word acts");
     assert!(
         hits.rect_of(&Target::Actions).is_some(),
@@ -272,7 +248,7 @@ fn a_click_in_the_message_puts_the_caret_where_it_landed() {
         .message
         .edit(&groove_types::Edit::Insert("fix(a): it\nthe body".into()));
     let mut ui = sidebar();
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     let box_ = hits.rect_of(&Target::Message).expect("the box");
     let cell = window().cell;
     let point = (box_.x + cell.width * 4.0, box_.y + cell.height / 2.0);
@@ -303,7 +279,7 @@ fn a_click_on_the_second_line_of_the_message_lands_on_it() {
         .message
         .edit(&groove_types::Edit::Insert("fix(a): it\nthe body".into()));
     let mut ui = sidebar();
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     let box_ = hits.rect_of(&Target::Message).expect("the box");
     let line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
     let x = box_.x + window().cell.width * 2.0;

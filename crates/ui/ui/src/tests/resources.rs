@@ -5,7 +5,7 @@ use groove_controllers::cluster_service::Batch;
 use groove_controllers::{AppState, Command};
 use groove_types::{Attached, KubeKind, ObjectRow, SessionId, TableColumn, WatchKey};
 
-use super::settings::drawn;
+use super::drawn;
 use super::*;
 use crate::hit::Target;
 use crate::views::session::Tab;

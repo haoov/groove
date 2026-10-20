@@ -7,25 +7,15 @@ use groove_types::{Caret, Selection};
 use super::diagnostics::{PATH, diagnosed};
 use crate::hit::Target;
 use crate::input::{Input, Modifiers, handle, land};
-use crate::tests::{all_texts, full_app, set_face, shows, window};
-use crate::views::session::Face;
+use crate::tests::{all_texts, full_app, on_file, shows, window};
+use crate::view;
 use crate::views::session::diff::Pointed;
-use crate::{Focus, Ui, view};
 
 const CTRL: Modifiers = Modifiers {
     ctrl: true,
     shift: false,
     alt: false,
 };
-
-fn on_file() -> Ui {
-    let mut ui = Ui {
-        focus: Focus::Workspace,
-        ..Ui::default()
-    };
-    set_face(&mut ui, Face::File);
-    ui
-}
 
 #[test]
 fn ctrl_click_asks_where_the_symbol_under_the_pointer_is_defined() {

@@ -8,7 +8,7 @@ use super::fixture::{crashing, lands, link, opened};
 use super::{clustered, key, on, pods};
 use crate::hit::Target;
 use crate::tests::click;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::views::session::Tab;
 
 #[test]

@@ -8,9 +8,9 @@ use groove_ui_kit::base::tokens::{Tokens, WORD_MS};
 
 use super::{row_texts, with_files};
 use crate::hit::Target;
-use crate::tests::{click, shows, window};
+use crate::tests::{click, on_file, shows, window};
 use crate::views::session::Tab;
-use crate::{Focus, Ui, view};
+use crate::{Ui, view};
 
 const SOURCE: &str = "class A:\n    def f(self):\n        x = 1\n        return x\n\nb = A()\n";
 
@@ -18,15 +18,6 @@ fn python() -> AppState {
     let mut app = with_files();
     shows(&mut app, "src/a.py", SOURCE, SOURCE);
     app
-}
-
-fn on_file() -> Ui {
-    let mut ui = Ui {
-        focus: Focus::Workspace,
-        ..Ui::default()
-    };
-    ui.session.tab = Tab::Files;
-    ui
 }
 
 /// The quads of the rows drawn in `color`.

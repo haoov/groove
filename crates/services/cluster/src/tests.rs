@@ -94,17 +94,21 @@ async fn a_sign_in_wakes_the_parked_streams_of_its_context() {
     assert_eq!(*failed.lock().expect("the count"), 2);
 }
 
+pub(crate) fn pod_kind() -> groove_types::KubeKind {
+    groove_types::KubeKind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Pod".into(),
+        plural: "pods".into(),
+        namespaced: true,
+        watchable: true,
+    }
+}
+
 fn pods(namespace: &str) -> groove_types::WatchKey {
     groove_types::WatchKey {
         context: "kind".into(),
-        kind: groove_types::KubeKind {
-            group: String::new(),
-            version: "v1".into(),
-            kind: "Pod".into(),
-            plural: "pods".into(),
-            namespaced: true,
-            watchable: true,
-        },
+        kind: pod_kind(),
         namespace: Some(namespace.into()),
         selector: None,
     }

@@ -7,7 +7,7 @@ use super::fixture::{crashing, lands, link, opened, runs, wheel};
 use super::pods;
 use crate::Ui;
 use crate::hit::Target;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::tests::{click, window};
 
 #[test]

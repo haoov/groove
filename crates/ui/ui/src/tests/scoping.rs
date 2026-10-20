@@ -6,7 +6,7 @@ use groove_types::{Attached, SessionId};
 
 use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
-use crate::tests::settings::drawn;
+use crate::tests::drawn;
 use crate::tests::{CTRL_SHIFT, click, full_app, press, typed};
 use crate::views::session::resources::{ScopeLine, scope_lines};
 use crate::{Overlay, Ui};

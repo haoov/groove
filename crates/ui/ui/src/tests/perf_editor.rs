@@ -8,9 +8,8 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::{Caret, Edit, Motion};
 
-use crate::tests::{full_app, shows, window};
-use crate::views::session::Tab;
-use crate::{Focus, Ui, view};
+use crate::tests::{full_app, on_file, shows, window};
+use crate::{Ui, view};
 
 /// `classes` classes of a method each, six lines a class.
 fn python(classes: usize) -> AppState {
@@ -22,15 +21,6 @@ fn python(classes: usize) -> AppState {
     let mut app = full_app();
     shows(&mut app, "src/a.py", &body, &body);
     app
-}
-
-fn on_file() -> Ui {
-    let mut ui = Ui {
-        focus: Focus::Workspace,
-        ..Ui::default()
-    };
-    ui.session.tab = Tab::Files;
-    ui
 }
 
 /// One frame after the parse job landed, the mean of `runs`, each after `edit`, which is not timed.

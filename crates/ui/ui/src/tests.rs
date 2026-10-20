@@ -208,6 +208,35 @@ fn sidebar_ui() -> Ui {
     ui
 }
 
+/// One frame drawn in the window: its bottom layer's texts, and its hits.
+fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
+    render(app, ui, window())
+}
+
+/// The targets one frame in the window drew.
+fn drawn_hits(app: &AppState, ui: &Ui) -> Hits {
+    drawn(app, ui).1
+}
+
+/// A click in the middle of a target a fresh frame draws.
+fn hit(target: &crate::hit::Target, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let hits = drawn_hits(app, ui);
+    let rect = hits
+        .rect_of(target)
+        .unwrap_or_else(|| panic!("{target:?} was drawn"));
+    click(rect, ui, app, &hits)
+}
+
+/// The workspace keyboard on the Files tab.
+fn on_file() -> Ui {
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    ui.session.tab = crate::views::session::Tab::Files;
+    ui
+}
+
 fn window() -> Metrics {
     metrics(WINDOW.0, WINDOW.1, 1.0)
 }

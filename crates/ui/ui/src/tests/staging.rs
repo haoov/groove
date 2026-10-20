@@ -6,7 +6,7 @@ use groove_types::{FileDiff, FileStatus};
 
 use crate::hit::Target;
 use crate::input::{Input, handle};
-use crate::tests::{full_app, window};
+use crate::tests::{drawn_hits, full_app, hit, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -38,42 +38,18 @@ fn sidebar() -> Ui {
     ui
 }
 
-/// The targets the sidebar drew, with the pointer wherever `hover` says.
-fn drawn(app: &AppState, ui: &Ui) -> crate::hit::Hits {
-    view(app, ui, window(), &mut Fonts::embedded()).1
-}
-
-/// A click in the middle of a target the last frame drew.
-fn hit(target: &Target, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let hits = drawn(app, ui);
-    let rect = hits
-        .rect_of(target)
-        .unwrap_or_else(|| panic!("{target:?} was drawn"));
-    handle(
-        Input::Press {
-            x: rect.x + rect.w / 2.0,
-            y: rect.y + rect.h / 2.0,
-            mods: Default::default(),
-        },
-        ui,
-        app,
-        &hits,
-        window(),
-    )
-}
-
 #[test]
 fn a_row_offers_the_index_only_while_the_pointer_is_on_it() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
     let stage = Target::Stage("a.txt".into());
     assert!(
-        drawn(&app, &ui).rect_of(&stage).is_none(),
+        drawn_hits(&app, &ui).rect_of(&stage).is_none(),
         "nothing is offered to a pointer that is elsewhere"
     );
     ui.hover = Some(Target::File("a.txt".into()));
     assert!(
-        drawn(&app, &ui).rect_of(&stage).is_some(),
+        drawn_hits(&app, &ui).rect_of(&stage).is_some(),
         "and stage appears on the row the pointer is on"
     );
 }
@@ -83,7 +59,7 @@ fn a_staged_row_offers_the_way_back_out() {
     let app = listed(&[file("a.txt", true)]);
     let mut ui = sidebar();
     ui.hover = Some(Target::File("a.txt".into()));
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     assert!(hits.rect_of(&Target::Unstage("a.txt".into())).is_some());
     assert!(hits.rect_of(&Target::Stage("a.txt".into())).is_none());
 }
@@ -94,7 +70,7 @@ fn the_offer_stays_while_the_pointer_is_on_the_offer_itself() {
     let mut ui = sidebar();
     ui.hover = Some(Target::Stage("a.txt".into()));
     assert!(
-        drawn(&app, &ui)
+        drawn_hits(&app, &ui)
             .rect_of(&Target::Stage("a.txt".into()))
             .is_some(),
         "or it would go as the pointer reached it"
@@ -119,7 +95,7 @@ fn clicking_the_offer_asks_for_the_index() {
 fn the_right_button_opens_a_row_s_actions_and_a_click_closes_them() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     let row = hits
         .rect_of(&Target::File("a.txt".into()))
         .expect("a row is drawn");
@@ -137,7 +113,7 @@ fn the_right_button_opens_a_row_s_actions_and_a_click_closes_them() {
     let menu = ui.menu().cloned().expect("the actions are open");
     assert_eq!(menu.of, crate::Of::File("a.txt".into()));
     assert!(
-        drawn(&app, &ui).rect_of(&Target::MenuRow(0)).is_some(),
+        drawn_hits(&app, &ui).rect_of(&Target::MenuRow(0)).is_some(),
         "and drawn"
     );
 
@@ -156,7 +132,7 @@ fn the_row_asks_before_a_change_is_thrown_away() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
     ui.overlay = Some(crate::Overlay::Losing(crate::Losing::File("a.txt".into())));
-    let hits = drawn(&app, &ui);
+    let hits = drawn_hits(&app, &ui);
     assert!(
         hits.rect_of(&Target::File("a.txt".into())).is_none(),
         "the row is the question now, not the file"

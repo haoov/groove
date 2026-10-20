@@ -1,23 +1,13 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use groove_types::{FollowKey, KubeKind};
+use groove_types::FollowKey;
 use wiremock::matchers::{path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use super::pods;
 use super::watch::kubeconfig;
 use crate::{Change, Followed, Stop, follow};
-
-fn pods() -> KubeKind {
-    KubeKind {
-        group: String::new(),
-        version: "v1".into(),
-        kind: "Pod".into(),
-        plural: "pods".into(),
-        namespaced: true,
-        watchable: true,
-    }
-}
 
 fn pod(uid: &str, phase: &str) -> serde_json::Value {
     serde_json::json!({ "metadata": { "name": "api-0", "uid": uid, "namespace": "paxone",

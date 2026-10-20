@@ -4,7 +4,8 @@ use groove_controllers::config_service::{Font, Preference};
 use groove_controllers::{Command, config};
 use groove_types::{FontFamily, ThemeName};
 
-use super::settings::{drawn, opened};
+use super::drawn;
+use super::settings::opened;
 use super::*;
 use crate::hit::Target;
 

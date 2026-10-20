@@ -6,9 +6,8 @@ use groove_types::{Caret, Completion, Edit, Motion};
 
 use super::diagnostics::{PATH, diagnosed};
 use crate::input::{Key, Modifiers};
-use crate::tests::{metrics, press, set_face};
-use crate::views::session::Face;
-use crate::{Focus, Ui, view};
+use crate::tests::{metrics, on_file, press};
+use crate::{Ui, view};
 
 /// After `No` of `x = None`.
 const CARET: Caret = Caret { line: 0, column: 6 };
@@ -32,15 +31,6 @@ fn offered() -> AppState {
     let items = ["None", "NotImplemented", "abs"].map(item).to_vec();
     app.workspace.servers.offers(asked, items);
     app
-}
-
-fn on_file() -> Ui {
-    let mut ui = Ui {
-        focus: Focus::Workspace,
-        ..Ui::default()
-    };
-    set_face(&mut ui, Face::File);
-    ui
 }
 
 /// The texts of the frame's top layer.
