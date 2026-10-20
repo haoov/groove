@@ -264,3 +264,25 @@ fn a_line_reads_only_what_covers_it_and_the_file_keeps_its_counts() {
     servers.closed(&one);
     assert_eq!(servers.tally(&one.worktree, "a.py"), (0, 0));
 }
+
+#[test]
+fn a_word_typed_asks_for_an_offer_and_another_edit_puts_it_away() {
+    use crate::Offering;
+    use groove_types::Edit;
+    let mut servers = Servers::default();
+    assert_eq!(servers.after(&Edit::Insert("x".into())), Offering::Ask);
+    assert_eq!(servers.after(&Edit::Insert(".".into())), Offering::Ask);
+    assert_eq!(
+        servers.after(&Edit::Backspace),
+        Offering::Keep,
+        "no offer to narrow"
+    );
+    servers.offering("a.py", Caret::new(0, 1));
+    assert_eq!(servers.after(&Edit::Backspace), Offering::Ask);
+    assert_eq!(servers.after(&Edit::Newline), Offering::Dismiss);
+    assert_eq!(
+        servers.after(&Edit::Insert("xy".into())),
+        Offering::Dismiss,
+        "a paste"
+    );
+}

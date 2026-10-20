@@ -1,27 +1,17 @@
 //! What the language servers offer to type at the caret, asked again as the user types.
 
 use groove_types::Edit;
+use groove_workspace_service::Offering;
 
 use super::servers::clients_of;
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// A word character or a dot typed asks again, as a backspace does while an offer stands;
-/// any other edit puts the offer away.
+/// What an edit does to the offer at the caret.
 pub(super) fn after(state: &mut AppState, spawner: &dyn Spawner, edit: &Edit) {
-    let standing = state.workspace.servers.offered.is_some();
-    let typing = match edit {
-        Edit::Insert(text) => {
-            let mut chars = text.chars();
-            let one = chars.next().filter(|_| chars.next().is_none());
-            one.is_some_and(|c| groove_workspace_service::is_word(c) || c == '.')
-        }
-        Edit::Backspace => standing,
-        _ => false,
-    };
-    match typing {
-        true => ask(state, spawner),
-        false if standing => state.workspace.servers.dismiss(),
-        false => {}
+    match state.workspace.servers.after(edit) {
+        Offering::Ask => ask(state, spawner),
+        Offering::Dismiss => state.workspace.servers.dismiss(),
+        Offering::Keep => {}
     }
 }
 

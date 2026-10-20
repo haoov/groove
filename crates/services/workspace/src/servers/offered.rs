@@ -1,6 +1,6 @@
 //! What the servers offer to type at the caret, and the word an offer replaces.
 
-use groove_types::{Caret, Completion};
+use groove_types::{Caret, Completion, Edit};
 
 use super::Servers;
 
@@ -14,7 +14,34 @@ pub struct Offered {
     pub items: Vec<Completion>,
 }
 
+/// What an edit does to the offer at the caret.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Offering {
+    Ask,
+    Dismiss,
+    Keep,
+}
+
 impl Servers {
+    /// A word character, a dot, or a backspace while an offer stands asks again; any other edit puts it away.
+    pub fn after(&self, edit: &Edit) -> Offering {
+        let standing = self.offered.is_some();
+        let typing = match edit {
+            Edit::Insert(text) => {
+                let mut chars = text.chars();
+                let one = chars.next().filter(|_| chars.next().is_none());
+                one.is_some_and(|c| groove_text::is_word(c) || c == '.')
+            }
+            Edit::Backspace => standing,
+            _ => false,
+        };
+        match (typing, standing) {
+            (true, _) => Offering::Ask,
+            (false, true) => Offering::Dismiss,
+            (false, false) => Offering::Keep,
+        }
+    }
+
     /// A completion asked at `at`; the items of the last ask on the file stand until it answers.
     pub fn offering(&mut self, path: &str, at: Caret) -> u64 {
         self.asks += 1;

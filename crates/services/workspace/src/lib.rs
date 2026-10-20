@@ -44,8 +44,8 @@ pub use read::{
 pub use revision::{Revision, Step};
 pub use rows::Way;
 pub use servers::{
-    Client, Hooks, Hovered, Launch, Offered, ServerKey, Servers, Tell, Telling, Up, launch,
-    matching, serving, start,
+    Client, Hooks, Hovered, Launch, Offered, Offering, ServerKey, Servers, Tell, Telling, Up,
+    launch, matching, serving, start,
 };
 
 /// What the workspace holds for the selected worktree.
