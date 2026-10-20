@@ -22,6 +22,70 @@ pub fn stand(room: &mut Rect, width: f32, gap: f32, side: crate::widgets::Side) 
     }
 }
 
+/// The first `size` of `room` from its left, `room` giving it up and `gap` after it.
+pub fn from_left(room: &mut Rect, size: f32, gap: f32) -> Rect {
+    stand(room, size, gap, crate::widgets::Side::Left)
+}
+
+/// The same from its right.
+pub fn from_right(room: &mut Rect, size: f32, gap: f32) -> Rect {
+    stand(room, size, gap, crate::widgets::Side::Right)
+}
+
+/// The first `size` of `room` from its top, `room` giving it up and `gap` under it.
+pub fn from_top(room: &mut Rect, size: f32, gap: f32) -> Rect {
+    let slot = room.take_top(size);
+    room.take_top(gap);
+    slot
+}
+
+/// The same from its bottom.
+pub fn from_bottom(room: &mut Rect, size: f32, gap: f32) -> Rect {
+    let slot = room.take_bottom(size);
+    room.take_bottom(gap);
+    slot
+}
+
+/// A band across `rect`, `top` below its top and `height` tall.
+pub fn band(rect: Rect, top: f32, height: f32) -> Rect {
+    Rect::new(rect.x, rect.y + top, rect.w, height)
+}
+
+/// A strip down `rect`, `left` from its left and `width` wide.
+pub fn strip(rect: Rect, left: f32, width: f32) -> Rect {
+    Rect::new(rect.x + left, rect.y, width.max(0.0), rect.h)
+}
+
+/// The part of `line` from `x`, `width` wide.
+pub fn span(line: Rect, x: f32, width: f32) -> Rect {
+    Rect::new(x, line.y, width.max(0.0), line.h)
+}
+
+/// How far `x` stands into `rect` from its left.
+pub fn inset_of(rect: Rect, x: f32) -> f32 {
+    x - rect.x
+}
+
+/// `body`'s left half and its right one, `gap` between them, the left rounded down.
+pub fn halves(body: Rect, gap: f32) -> (Rect, Rect) {
+    let half = ((body.w - gap) / 2.0).floor();
+    let left = Rect::new(body.x, body.y, half, body.h);
+    let right = Rect::new(left.right() + gap, body.y, body.w - half - gap, body.h);
+    (left, right)
+}
+
+/// A hairline across the middle of `rect`.
+pub fn mid_rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    let y = rect.y + (rect.h / 2.0).floor();
+    ctx.quad(Rect::new(rect.x, y, rect.w, ctx.tokens.hairline), color);
+}
+
+/// A hairline under text of `size` drawn centred down `rect`.
+pub fn underline<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, size: f32, color: Color) {
+    let under = rect.y + (rect.h + size) / 2.0;
+    ctx.quad(Rect::new(rect.x, under, rect.w, ctx.tokens.hairline), color);
+}
+
 pub fn kept_in(at: (f32, f32), (width, height): (f32, f32), within: Rect) -> Rect {
     let x = at.0.min(within.right() - width).max(within.x);
     let y = at.1.min(within.bottom() - height).max(within.y);

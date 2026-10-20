@@ -174,7 +174,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     let style = ctx.styles.code(Role::Text);
     let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
-    let held = Rect::new(line.x, line.y, room + at, line.h);
+    let held = groove_ui_kit::shape::span(line, line.x, room + at);
     row(ctx, held, at, naming.field.text(), style);
     caret_after(ctx, held, at, naming.field.before(), style);
 }

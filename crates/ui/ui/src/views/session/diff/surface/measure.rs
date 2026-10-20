@@ -44,7 +44,7 @@ pub(in crate::views::session::diff) fn note_cols(
     let note = boxes.leaf(Spec::default().grow(1.0));
     let by = boxes.leaf(Spec::default().width(each * NOTE_BY));
     let pad = Edges {
-        left: text - rect.x,
+        left: groove_ui_kit::shape::inset_of(rect, text),
         right: ctx.tokens.md,
         ..Edges::default()
     };

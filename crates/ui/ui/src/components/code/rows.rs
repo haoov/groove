@@ -25,7 +25,7 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
     ctx.clipped(rect, |ctx| {
         let mut y = rect.y - scroll + rows.first as f32 * height;
         for line in rows.lines {
-            let at = Rect::new(rect.x, y, rect.w, height);
+            let at = groove_ui_kit::shape::band(rect, y - rect.y, height);
             draw(ctx, at, line, block, rows.across);
             if line.numbered() {
                 rule(ctx, at, block);

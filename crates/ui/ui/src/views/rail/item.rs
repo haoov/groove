@@ -9,7 +9,9 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{after_mark, hairline, square};
+use groove_ui_kit::shape::{
+    after_mark, band, from_left, from_right, from_top, hairline, inset_of, square,
+};
 use groove_ui_kit::text::{Label, ago};
 use groove_ui_kit::widgets::{Button, lead};
 
@@ -35,10 +37,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     }
     let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = rect;
-    body.take_top(sm);
-    let head = body.take_top(ctx.tokens.line);
-    body.take_top(xs);
-    let under = body.take_top(head.h);
+    from_top(&mut body, 0.0, sm);
+    let head = from_top(&mut body, ctx.tokens.line, xs);
+    let under = from_top(&mut body, head.h, 0.0);
 
     let mut room = head.pad(Edges::across(md, md));
     waited(ctx, app, &mut room, id);
@@ -98,7 +99,8 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
         n => format!("{} · +{}", asks_to(&ask.op), n - 1),
     };
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
-    let mut under = Rect::new(room.x, line.bottom(), line.right() - room.x, ctx.tokens.row);
+    let mut under =
+        band(line, line.h, ctx.tokens.row).pad(Edges::across(inset_of(line, room.x), 0.0));
     for (label, target) in [
         ("Approve", Target::Approve(ask.id.clone())),
         ("Review", Target::Examine(ask.id.clone())),
@@ -124,7 +126,7 @@ fn run(ctx: &mut Ctx, app: &AppState, line: Rect, id: &SessionId, routine: &str)
 fn waited(ctx: &mut Ctx, app: &AppState, room: &mut Rect, id: &SessionId) {
     let sm = ctx.tokens.sm;
     let Some(activity) = app.agent.activity(id) else {
-        room.take_right(sm);
+        from_right(room, 0.0, sm);
         return;
     };
     let text = ago(activity.changed_at.age_at(ctx.now));
@@ -137,8 +139,7 @@ fn state(ctx: &mut Ctx, app: &AppState, rect: Rect, open: &Open) {
     let style = ctx.styles.small(role);
     let mut room = rect.pad(Edges::across(after_mark(ctx, ctx.tokens.md), 0.0));
     if role == Role::Working {
-        let box_ = square(room.take_left(style.size), style.size);
-        room.take_left(ctx.tokens.xs);
+        let box_ = square(from_left(&mut room, style.size, ctx.tokens.xs), style.size);
         groove_ui_kit::widgets::busy(ctx, box_, role);
     }
     Label::new(&label, style).draw(ctx, room);

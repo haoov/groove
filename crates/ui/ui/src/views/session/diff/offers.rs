@@ -1,5 +1,6 @@
 //! What a row offers the pointer: a file to fold, a gap to open.
 
+use groove_gfx::Align;
 use groove_gfx::Rect;
 use groove_types::{DiffView, RowKind};
 
@@ -76,12 +77,7 @@ fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: Face
             Way::Up => Mark::UPWARDS,
             _ => 0,
         };
-        let mark = Rect::new(
-            at.x + (at.w - size) / 2.0,
-            at.y + (at.h - size) / 2.0,
-            size,
-            size,
-        );
+        let mark = at.align((size, size), Align::Center, Align::Center);
         groove_ui_kit::widgets::turned(ctx, mark, Mark::Down, turn, Role::Ghost);
         ctx.hit(at, Target::Gap { row, way });
     }
@@ -97,8 +93,7 @@ fn ways(ctx: &mut Ctx, line: Rect, gutters: Gutters, view: Face, side: Side) -> 
         (Face::Stream(DiffView::Split), Side::Old) => vec![(first, Way::Down)],
         (Face::Stream(DiffView::Split), Side::New) => vec![(first, Way::Up)],
         _ => {
-            let half = Rect::new(first.x, first.y, first.w / 2.0, first.h);
-            let other = Rect::new(half.right(), first.y, first.w / 2.0, first.h);
+            let (half, other) = groove_ui_kit::shape::halves(first, 0.0);
             vec![(half, Way::Down), (other, Way::Up)]
         }
     }

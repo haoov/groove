@@ -29,16 +29,7 @@ pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &
 
 /// The old side's rect and the new side's, a hairline between them.
 fn halves(ctx: &Ctx, body: Rect) -> (Rect, Rect) {
-    let thickness = ctx.tokens.hairline;
-    let half = ((body.w - thickness) / 2.0).floor();
-    let left = Rect::new(body.x, body.y, half, body.h);
-    let right = Rect::new(
-        left.right() + thickness,
-        body.y,
-        body.w - half - thickness,
-        body.h,
-    );
-    (left, right)
+    groove_ui_kit::shape::halves(body, ctx.tokens.hairline)
 }
 
 /// The old on the left, the new on the right, one alignment between them.

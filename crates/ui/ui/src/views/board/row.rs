@@ -3,6 +3,7 @@
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::{Priority, Task};
+use groove_ui_kit::shape::{from_right, from_top, span};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -55,7 +56,7 @@ pub fn card(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
 pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
     hoverable(ctx, rect, Target::Task(task.short_id.clone()));
     let mut rest = rect;
-    let line = rest.take_top(item(&ctx.tokens));
+    let line = from_top(&mut rest, item(&ctx.tokens), 0.0);
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     handle(ctx, &mut room, task);
     let start = room.x;
@@ -65,7 +66,7 @@ pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
     if !under(app, &Line::Task(task)) {
         return;
     }
-    let under = rest.take_top(ctx.tokens.line);
+    let under = from_top(&mut rest, ctx.tokens.line, 0.0);
     let x = placed(ctx, under, start, task);
     let x = worth(ctx, under, x, task);
     if !reasons.is_empty() {
@@ -90,7 +91,7 @@ fn placed(ctx: &mut Ctx, line: Rect, x: f32, task: &Task) -> f32 {
     let room = line.right() - x - ctx.tokens.md - badge;
     let project = groove_ui_kit::text::elide(ctx, project, &style, room);
     let wide = ctx.measure(&project, &style);
-    Label::new(&project, style).draw(ctx, Rect::new(x, line.y, wide, line.h));
+    Label::new(&project, style).draw(ctx, span(line, x, wide));
     x + wide + ctx.tokens.sm
 }
 
@@ -115,7 +116,7 @@ fn badge(task: &Task) -> Option<Badge<'static>> {
 
 /// A row's right-hand text, at the right of `room`.
 pub(super) fn aside(ctx: &mut Ctx, room: &mut Rect, text: &str) {
-    room.take_right(ctx.tokens.md);
+    from_right(room, ctx.tokens.md, 0.0);
     if !text.is_empty() {
         Label::new(text, ctx.styles.small(Role::Faint)).right(ctx, room, 0.0);
     }
@@ -123,7 +124,7 @@ pub(super) fn aside(ctx: &mut Ctx, room: &mut Rect, text: &str) {
 
 /// A row's title, a gap short of its right-hand text.
 pub(super) fn named(ctx: &mut Ctx, mut room: Rect, title: &str) {
-    room.take_right(ctx.tokens.sm);
+    from_right(&mut room, ctx.tokens.sm, 0.0);
     Label::new(title, ctx.styles.label(Role::Text)).draw(ctx, room);
 }
 

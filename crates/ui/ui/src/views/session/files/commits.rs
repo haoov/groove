@@ -19,7 +19,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let log = &app.workspace.log;
     if log.is_empty() {
         let style = ctx.styles.small(Role::Faint);
-        let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
+        let line = groove_ui_kit::shape::band(body, 0.0, ctx.tokens.row);
         return row(ctx, line, ctx.tokens.md, said(app), style);
     }
     let height = ctx.tokens.row;

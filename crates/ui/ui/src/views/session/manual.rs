@@ -4,6 +4,7 @@ use groove_controllers::AppState;
 use groove_controllers::shell_service::{Shell, Shells};
 use groove_gfx::{Edges, Rect};
 use groove_types::SessionId;
+use groove_ui_kit::shape::{from_bottom, from_top};
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -23,7 +24,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line());
     let shells = app.shell.shells(session);
     let mut body = rect;
-    bar(ctx, body.take_top(ctx.tokens.bar), ui, shells);
+    bar(ctx, from_top(&mut body, ctx.tokens.bar, 0.0), ui, shells);
     if !ui.session.manual {
         return;
     }
@@ -85,7 +86,8 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, (name, id): (&str, u64), selected: bool) 
 fn grid(ctx: &mut Ctx, pane: Rect, shell: &Shell, (focused, closable): (bool, bool)) {
     groove_ui_kit::shape::ground(ctx, pane, Ground::Deep);
     ctx.hit(pane, Target::Shell(shell.id));
-    let origin = (pane.x + ctx.tokens.sm, pane.y + ctx.tokens.sm);
+    let inner = pane.pad(Edges::all(ctx.tokens.sm));
+    let origin = (inner.x, inner.y);
     match (&shell.terminal, &shell.failed) {
         (Some(terminal), _) => screen(ctx, pane, origin, (&terminal.screen(), focused)),
         (None, Some(why)) => said(ctx, pane, why),
@@ -93,14 +95,14 @@ fn grid(ctx: &mut Ctx, pane: Rect, shell: &Shell, (focused, closable): (bool, bo
     }
     if let Some(code) = shell.exited {
         let mut foot = pane;
-        let line = foot.take_bottom(ctx.tokens.row);
+        let line = from_bottom(&mut foot, ctx.tokens.row, 0.0);
         let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         let words = format!("exited {code}");
         Label::new(&words, ctx.styles.small(Role::Faint)).draw(ctx, room);
     }
     if closable {
         let mut corner = pane;
-        let top = corner.take_top(ctx.tokens.row);
+        let top = from_top(&mut corner, ctx.tokens.row, 0.0);
         let mut room = top.pad(Edges::across(0.0, ctx.tokens.xs));
         ctx.layer();
         let close = Button::icon(Mark::Close, 0, Target::ShellClose(shell.id), Role::Faint);
@@ -110,6 +112,6 @@ fn grid(ctx: &mut Ctx, pane: Rect, shell: &Shell, (focused, closable): (bool, bo
 
 fn said(ctx: &mut Ctx, pane: Rect, text: &str) {
     let mut room = pane.pad(Edges::all(ctx.tokens.md));
-    let line = room.take_top(ctx.tokens.row);
+    let line = from_top(&mut room, ctx.tokens.row, 0.0);
     Label::new(text, ctx.styles.body(Role::Faint)).draw(ctx, line);
 }

@@ -1,6 +1,6 @@
 //! The column boundaries, drawn by nothing, there for the pointer to find.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::Surface;
 use crate::ctx::Ctx;
@@ -35,7 +35,7 @@ fn shown(surface: Surface) -> &'static [Edge] {
 /// The band to grab a boundary by, or nothing when its column is folded.
 fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
     let (grab, window) = (ctx.tokens.grab, ctx.window);
-    let upright = |x: f32| Rect::new(x - grab / 2.0, 0.0, grab, window.h);
+    let upright = |x: f32| groove_ui_kit::shape::strip(window, x - grab / 2.0, grab);
     let aside = ctx.app.layout.sidebar;
     match edge {
         Edge::Rail => Some(upright(ctx.app.layout.rail.right())),
@@ -45,17 +45,17 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
         Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x)),
         Edge::Commit => (!aside.is_empty() && !ctx.app.layout.commit.is_empty()).then(|| {
             let top = ctx.app.layout.commit.y;
-            Rect::new(aside.x, top - grab / 2.0, aside.w, grab)
+            groove_ui_kit::shape::band(aside, top - aside.y - grab / 2.0, grab)
         }),
         Edge::Manual => {
             let manual = ctx.app.layout.manual;
             let open = manual.h > ctx.tokens.bar;
-            open.then(|| Rect::new(manual.x, manual.y - grab / 2.0, manual.w, grab))
+            open.then(|| groove_ui_kit::shape::band(manual, -grab / 2.0, grab))
         }
         Edge::Feed => {
             let feed = ctx.app.layout.feed;
-            let rail = feed.w - ctx.tokens.hairline;
-            Some(Rect::new(feed.x, feed.y - grab / 2.0, rail, grab))
+            let rail = Edges::across(0.0, ctx.tokens.hairline);
+            Some(groove_ui_kit::shape::band(feed, -grab / 2.0, grab).pad(rail))
         }
     }
 }
