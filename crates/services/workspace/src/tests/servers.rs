@@ -286,3 +286,26 @@ fn a_word_typed_asks_for_an_offer_and_another_edit_puts_it_away() {
         "a paste"
     );
 }
+
+#[test]
+fn a_definition_opens_inside_the_worktree_and_is_said_outside_it() {
+    use crate::{Landing, landing};
+    use groove_types::Location;
+    let at = |path: &str| Location {
+        path: path.into(),
+        start: Caret::new(2, 4),
+        end: Caret::new(2, 5),
+    };
+    let dir = Path::new("/w");
+    assert_eq!(
+        landing(dir, &[at("/w/src/a.py")]),
+        Landing::Open("src/a.py".into(), Caret::new(2, 4))
+    );
+    assert!(
+        matches!(landing(dir, &[at("/lib/b.py")]), Landing::Said(said) if said.contains("/lib/b.py"))
+    );
+    assert_eq!(
+        landing(dir, &[]),
+        Landing::Said("No definition here".into())
+    );
+}

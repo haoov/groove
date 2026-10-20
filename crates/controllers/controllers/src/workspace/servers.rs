@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use groove_types::{Caret, Config, Diagnostic, Error, ErrorKind, LanguageServer, WorktreeId};
+use groove_types::{Caret, Config, Diagnostic, LanguageServer, WorktreeId};
 use groove_workspace_service::{
     Client, Hooks, Language, ServerKey, Tell, Telling, launch, serving, start,
 };
@@ -182,22 +182,10 @@ fn begin(spawner: &dyn Spawner, (key, epoch): (ServerKey, u64), server: &Languag
         let client = start(launch, hooks).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = state.workspace.servers.started(&key, client) {
-                state.failed(unstarted(&key.name, e));
+                state.failed(e);
             }
         }) as Continuation
     }));
-}
-
-/// Why a server did not start; one not installed says how to get it.
-fn unstarted(name: &str, e: Error) -> Error {
-    let said = match e.kind {
-        ErrorKind::NotFound => format!(
-            "{name} is not installed: {}. Install it, or set its program under `language_servers` in the config.",
-            e.message
-        ),
-        _ => format!("{name} did not start: {}", e.message),
-    };
-    Error::new(e.kind, said)
 }
 
 /// Diagnostics batched to one continuation in flight; a close delivered as it comes.

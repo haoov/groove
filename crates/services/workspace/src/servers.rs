@@ -12,7 +12,7 @@ use found::Found;
 pub use groove_lsp::{Client, Hooks, Launch, start};
 use groove_types::{Caret, Diagnostic, LanguageServer, Result, WorktreeId};
 pub use offered::{Offered, Offering, matching};
-pub use spot::Hovered;
+pub use spot::{Hovered, Landing, landing, none_up};
 
 /// One server: the worktree it serves, the directory it runs in, and its name.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -130,7 +130,7 @@ impl Servers {
         }
     }
 
-    /// What a start came to: the server is told what waited, or is down.
+    /// What a start came to: the server is told what waited, or is down and says why.
     pub fn started(&mut self, key: &ServerKey, client: Result<Client>) -> Result<()> {
         let Some(Running::Starting(queued)) = self.running.remove(key) else {
             return Ok(());
@@ -139,7 +139,7 @@ impl Servers {
             Ok(client) => Arc::new(client),
             Err(e) => {
                 self.running.insert(key.clone(), Running::Down);
-                return Err(e);
+                return Err(spot::unstarted(&key.name, e));
             }
         };
         let told = queued

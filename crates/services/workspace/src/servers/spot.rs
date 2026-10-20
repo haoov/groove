@@ -1,6 +1,8 @@
 //! The one spot of a file the popup speaks of, and where the last definition landed.
 
-use groove_types::Caret;
+use std::path::Path;
+
+use groove_types::{Caret, Error, ErrorKind, Location};
 
 use super::Servers;
 
@@ -52,4 +54,42 @@ impl Servers {
             hovered.said = said;
         }
     }
+}
+
+/// Where a definition asked from a spot leads: a place of the worktree, or what to say there.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Landing {
+    Open(String, Caret),
+    Said(String),
+}
+
+/// The first of `found` as a place under `dir`, or why it opens nothing.
+pub fn landing(dir: &Path, found: &[Location]) -> Landing {
+    let Some(first) = found.first() else {
+        return Landing::Said("No definition here".into());
+    };
+    match first.path.strip_prefix(dir) {
+        Ok(inside) => Landing::Open(inside.to_string_lossy().into_owned(), first.start),
+        Err(_) => Landing::Said(format!(
+            "Defined outside the worktree, in {}. Groove opens worktree paths only.",
+            first.path.display()
+        )),
+    }
+}
+
+/// What a definition says when no server of `path` is up.
+pub fn none_up(path: &str) -> String {
+    format!("No language server is up for {path}")
+}
+
+/// Why a server did not start; one not installed says how to get it.
+pub(super) fn unstarted(name: &str, e: Error) -> Error {
+    let said = match e.kind {
+        ErrorKind::NotFound => format!(
+            "{name} is not installed: {}. Install it, or set its program under `language_servers` in the config.",
+            e.message
+        ),
+        _ => format!("{name} did not start: {}", e.message),
+    };
+    Error::new(e.kind, said)
 }
