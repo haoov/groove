@@ -53,20 +53,12 @@ impl Document {
 
     /// Each line's indent in display columns, `None` for a blank one, and whether it closes a bracket.
     fn shape(&self) -> Vec<(Option<usize>, bool)> {
-        let width = self.indent().width().max(1);
+        let width = self.indent().width();
         let lines = self.text.lines().take(self.lines());
         lines
-            .map(|line| {
-                let mut column = 0;
-                for c in line.chars() {
-                    match c {
-                        ' ' => column += 1,
-                        '\t' => column += width - column % width,
-                        '\n' | '\r' => return (None, false),
-                        _ => return (Some(column), matches!(c, '}' | ')' | ']')),
-                    }
-                }
-                (None, false)
+            .map(|line| match crate::tabs::indent_of(line.chars(), width) {
+                Some((column, first)) => (Some(column), matches!(first, '}' | ')' | ']')),
+                None => (None, false),
             })
             .collect()
     }

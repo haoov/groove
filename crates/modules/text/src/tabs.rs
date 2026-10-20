@@ -86,6 +86,20 @@ fn byte_of(line: &str, byte: usize, width: usize) -> usize {
 }
 
 /// How many columns a tab at `column` runs out to.
+/// The drawn column a line's text starts at, and its first character; none for a blank line.
+pub(crate) fn indent_of(line: impl Iterator<Item = char>, width: usize) -> Option<(usize, char)> {
+    let mut column = 0;
+    for c in line {
+        match c {
+            ' ' => column += 1,
+            '\t' => column += stop(column, width),
+            '\n' | '\r' => return None,
+            _ => return Some((column, c)),
+        }
+    }
+    None
+}
+
 fn stop(column: usize, width: usize) -> usize {
     let width = width.max(1);
     width - column % width
