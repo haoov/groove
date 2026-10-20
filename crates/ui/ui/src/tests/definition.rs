@@ -1,5 +1,4 @@
-//! Where a symbol is defined: asked by a ctrl+click, landed on in the middle of the view,
-//! or said at the spot when it cannot open.
+//! A ctrl+click lands on the definition in the middle of the view, or says why at the spot.
 
 use groove_controllers::{Command, workspace};
 use groove_gfx::Fonts;

@@ -31,8 +31,7 @@ pub struct Launch {
     pub unset: Vec<String>,
     pub root: PathBuf,
     pub settings: Value,
-    /// Directories under `root` watched for the server, `*` for any one, as
-    /// `.venv/lib/*/site-packages`.
+    /// Directories under `root` watched for the server, as `.venv/lib/*/site-packages`.
     pub watch: Vec<String>,
 }
 

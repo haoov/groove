@@ -1,5 +1,4 @@
-//! Where the symbol at a spot of the open file is defined: opened there when the worktree
-//! holds it, said at the spot when it does not.
+//! Where the symbol at a spot of the open file is defined: opened there, or said at the spot.
 
 use std::path::Path;
 

@@ -9,9 +9,7 @@ use groove_types::{LanguageServer, Severity, WorktreeId};
 use super::*;
 use crate::AppState;
 
-/// Answers `initialize`, then one diagnostic on columns 4 to 8 of each file opened. A
-/// definition lands on line 3, column 5 of the same file, or outside once `.outside` exists.
-/// A completion offers `xenon` and `xylophone`.
+/// Flags columns 4 to 8, defines at 3:5 or outside once `.outside` exists, completes two words.
 const FAKE_SERVER: &str = r#"#!/bin/sh
 send() { printf 'Content-Length: %s\r\n\r\n%s' "${#1}" "$1"; }
 next() {

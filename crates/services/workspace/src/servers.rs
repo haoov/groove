@@ -100,8 +100,7 @@ pub struct Servers {
 }
 
 impl Servers {
-    /// Tells `key` what the editor did, or queues it while the server starts. Only an open
-    /// starts one, a server that is down included.
+    /// Tells `key` what the editor did, or queues it while the server starts; only an open starts one.
     pub fn tell(&mut self, key: &ServerKey, told: Tell) -> Telling {
         match self.running.get_mut(key) {
             Some(Running::Ready(client)) => {

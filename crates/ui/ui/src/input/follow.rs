@@ -29,8 +29,7 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     sideways(ui, app, (hits, metrics), caret);
 }
 
-/// Centres the view on a definition the open file just landed on, once a landing; from the
-/// diff, on the file tab when the change does not show that file.
+/// Centres the view once on the definition just landed on, in the file tab when the diff lacks it.
 pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let servers = &app.workspace.servers;
     let Some((path, at)) = servers.landed.as_ref() else {

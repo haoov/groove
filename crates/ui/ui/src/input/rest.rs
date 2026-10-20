@@ -1,5 +1,4 @@
-//! The caret resting on a line, and the pointer on a spot of the open file: when each came to
-//! rest, and what it then asks for.
+//! When the caret and the pointer came to rest on the open file, and what each then asks for.
 
 use groove_controllers::{AppState, Command, workspace};
 use groove_ui_kit::base::ctx::Metrics;

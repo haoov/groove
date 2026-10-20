@@ -36,8 +36,7 @@ pub(super) fn said(app: &AppState, ui: &Ui, hovered: &Hovered) -> Vec<Said> {
     out
 }
 
-/// A diagnostic: its first line as its title in its colour, every other line as plain text,
-/// then who found it.
+/// A diagnostic: its first line as a coloured title, the rest as plain text, then its source.
 fn diagnosed(found: &Diagnostic) -> Vec<Said> {
     let mut lines = found.message.lines().filter(|line| !line.trim().is_empty());
     let title = lines.next().unwrap_or_default();

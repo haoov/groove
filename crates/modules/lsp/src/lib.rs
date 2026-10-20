@@ -1,6 +1,5 @@
-//! A language server over stdio: the documents Groove opens on it, the diagnostics it
-//! publishes, and the definitions, hover and completions it answers. Columns are characters on this
-//! side of the module, whatever unit the server counts in.
+//! A language server over stdio: its documents, diagnostics, definitions, hover and completions.
+//! Columns are characters here, whatever unit the server counts in.
 
 mod client;
 mod completion;
