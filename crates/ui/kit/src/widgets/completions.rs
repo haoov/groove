@@ -6,6 +6,7 @@ use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::base::tokens::COMPLETION_ROWS;
 use crate::text::row;
+use crate::widgets::menu::{listed, row_of};
 use crate::widgets::{Corner, panel_at};
 
 /// One row of the list.
@@ -42,20 +43,11 @@ pub fn completions<A: App>(
     let size = (wide, ctx.tokens.row * shown as f32);
     let rect = panel_at(ctx, at, Corner::TopLeft, size, ctx.styles.line());
     for (index, one) in window.iter().enumerate() {
-        let y = rect.y + ctx.tokens.row * index as f32;
-        let line = Rect::new(rect.x, y, rect.w, ctx.tokens.row);
-        if first + index == chosen {
-            ctx.quad(line, ctx.styles.raised());
-        }
-        row(
-            ctx,
-            Rect::new(line.x, y, line.w - pad, line.h),
-            pad,
-            one.label,
-            label,
-        );
+        let line = row_of(ctx, rect, index);
+        let ground = (first + index == chosen).then(|| ctx.styles.raised());
+        listed(ctx, (line, pad), (one.label, label), ground);
         let x = rect.x + pad + labels + gap;
-        let room = Rect::new(x, y, (rect.right() - pad - x).max(0.0), line.h);
+        let room = Rect::new(x, line.y, (rect.right() - pad - x).max(0.0), line.h);
         row(ctx, room, 0.0, one.detail, detail);
     }
     Some(rect)

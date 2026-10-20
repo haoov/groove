@@ -1,6 +1,6 @@
 //! The panel a menu opens: a row per action, as wide as the widest of them.
 
-use groove_gfx::{Color, Rect};
+use groove_gfx::{Color, Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
@@ -31,20 +31,32 @@ pub fn menu<A: App>(
     let (band, round) = (ctx.styles.band(), ctx.tokens.round);
     ctx.rounded(box_, band, round);
     for (index, label) in labels.iter().enumerate() {
-        let line = Rect::new(
-            box_.x,
-            box_.y + ctx.tokens.row * index as f32,
-            width,
-            ctx.tokens.row,
-        );
-        if ctx.hovered(&target(index)) {
-            ctx.rounded(line, ctx.styles.hover(), round);
-        }
+        let line = row_of(ctx, box_, index);
         let style = ctx
             .styles
             .body(roles.get(index).copied().unwrap_or(Role::Text));
-        row(ctx, line, ctx.tokens.md, label, style);
+        let ground = ctx.hovered(&target(index)).then(|| ctx.styles.hover());
+        listed(ctx, (line, ctx.tokens.md), (label, style), ground);
         ctx.hit(line, target(index));
     }
     ctx.ring(box_, border, round, 1.0);
+}
+
+/// Row `index` of a panel's list of rows.
+pub(crate) fn row_of<A: App>(ctx: &Ctx<'_, A>, panel: Rect, index: usize) -> Rect {
+    let tall = ctx.tokens.row;
+    Rect::new(panel.x, panel.y + tall * index as f32, panel.w, tall)
+}
+
+/// One row of a panel's list: its ground when it stands out, then its label from `pad`.
+pub(crate) fn listed<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    (line, pad): (Rect, f32),
+    (label, style): (&str, TextStyle),
+    ground: Option<Color>,
+) {
+    if let Some(ground) = ground {
+        ctx.rounded(line, ground, ctx.tokens.round);
+    }
+    row(ctx, line, pad, label, style);
 }
