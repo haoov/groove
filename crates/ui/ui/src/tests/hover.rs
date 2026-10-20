@@ -5,25 +5,29 @@ use groove_gfx::Fonts;
 use groove_types::Caret;
 
 use super::diagnostics::{PATH, diagnosed};
+use crate::hit::Target;
 use crate::input::{Key, Modifiers, hovering};
-use crate::tests::{all_texts, metrics, press, set_face};
+use crate::tests::{all_texts, metrics, on_file, press, set_face};
 use crate::views::session::Face;
-use crate::views::session::diff::Pointed;
-use crate::{Focus, Ui, view};
+use crate::{Focus, Metrics, Ui, view};
 
 const ON: Caret = Caret { line: 0, column: 5 };
 
-fn pointing_at(at: Caret) -> Ui {
-    let mut ui = Ui {
-        focus: Focus::Workspace,
-        ..Ui::default()
-    };
-    set_face(&mut ui, Face::File);
-    ui.session.pointed = Some(Pointed {
-        path: PATH.into(),
-        at,
-    });
+fn pointing_at(app: &AppState, at: Caret) -> Ui {
+    let mut ui = on_file();
+    moved_to(&mut ui, app, at, metrics(1600, 1000, 1.0));
     ui
+}
+
+/// The pointer moved onto `at` of the open file, as the window's loop reads it.
+pub(super) fn moved_to(ui: &mut Ui, app: &AppState, at: Caret, drawn: Metrics) {
+    let (_, hits) = view(app, ui, drawn, &mut Fonts::embedded());
+    let rows = hits.rect_of(&Target::Code).expect("the rows");
+    let chars = hits.chars();
+    let line = drawn.tokens().code_line;
+    let x = chars.left + (at.column as f32 + 0.5) * chars.advance;
+    crate::input::hover(ui, &hits, x, rows.y + (at.line as f32 + 0.5) * line);
+    crate::input::pointed(ui, app, &hits, drawn);
 }
 
 /// What the frame says at `tick`, every layer.
@@ -37,7 +41,7 @@ fn said(app: &AppState, ui: &Ui, tick: u64) -> String {
 #[test]
 fn the_pointer_asks_once_it_has_rested_and_never_twice() {
     let mut app = diagnosed(groove_types::Severity::Error);
-    let mut ui = pointing_at(ON);
+    let mut ui = pointing_at(&app, ON);
     assert_eq!(hovering(&mut ui, &app, 1000), None, "it comes to rest");
     assert_eq!(hovering(&mut ui, &app, 1100), None, "not yet");
     let asked = hovering(&mut ui, &app, 1250);
@@ -59,8 +63,8 @@ fn a_rested_pointer_shows_the_diagnostic_over_what_the_hover_said() {
     app.workspace
         .servers
         .answered(PATH, ON, Some(markdown.into()));
-    let mut ui = pointing_at(ON);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut ui = pointing_at(&app, ON);
+    hovering(&mut ui, &app, 0);
     let shown = said(&app, &ui, 300);
     let message = shown.find("expected ").expect("the diagnostic");
     let hover = shown.find("The absence of a value.").expect("the hover");
@@ -74,14 +78,11 @@ fn a_rested_pointer_shows_the_diagnostic_over_what_the_hover_said() {
 fn the_popup_waits_for_the_rest_and_leaves_with_the_pointer() {
     let mut app = diagnosed(groove_types::Severity::Error);
     app.workspace.servers.asked(PATH, ON, false);
-    let mut ui = pointing_at(ON);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 1000));
+    let mut ui = pointing_at(&app, ON);
+    hovering(&mut ui, &app, 1000);
     assert!(!said(&app, &ui, 1100).contains("expected "), "too soon");
     assert!(said(&app, &ui, 1300).contains("expected "));
-    ui.session.pointed = Some(Pointed {
-        path: PATH.into(),
-        at: Caret::new(0, 0),
-    });
+    moved_to(&mut ui, &app, Caret::new(0, 0), metrics(1600, 1000, 1.0));
     assert!(!said(&app, &ui, 1400).contains("expected "), "moved off");
 }
 
@@ -130,8 +131,8 @@ fn a_popup_asked_at_the_caret_stands_while_the_caret_does() {
 
 /// The popup's texts with the colour each is drawn in, the pointer rested on `ON`.
 fn runs(app: &AppState) -> Vec<(String, groove_gfx::Color, f32)> {
-    let mut ui = pointing_at(ON);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut ui = pointing_at(app, ON);
+    hovering(&mut ui, app, 0);
     let mut at = metrics(1600, 1000, 1.0);
     at.tick = 300;
     let (frame, _) = view(app, &ui, at, &mut Fonts::embedded());
@@ -251,8 +252,8 @@ fn a_code_block_stands_on_its_own_ground_in_the_panel() {
     app.workspace.servers.asked(PATH, ON, false);
     let said = "```python\ndef put(self) -> None\n```";
     app.workspace.servers.answered(PATH, ON, Some(said.into()));
-    let mut ui = pointing_at(ON);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut ui = pointing_at(&app, ON);
+    hovering(&mut ui, &app, 0);
     let mut at = metrics(1600, 1000, 1.0);
     at.tick = 300;
     let (frame, _) = view(&app, &ui, at, &mut Fonts::embedded());
@@ -272,8 +273,8 @@ fn a_code_block_keeps_each_of_its_lines() {
     app.workspace
         .servers
         .answered(PATH, at, Some(markdown.into()));
-    let mut ui = pointing_at(at);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut ui = pointing_at(&app, at);
+    hovering(&mut ui, &app, 0);
     let mut drawn = metrics(1600, 1000, 1.0);
     drawn.tick = 300;
     let (frame, _) = view(&app, &ui, drawn, &mut Fonts::embedded());
@@ -302,8 +303,8 @@ fn a_long_code_line_and_a_long_word_fold_inside_the_popup() {
         "Literal".repeat(40)
     );
     app.workspace.servers.answered(PATH, at, Some(markdown));
-    let mut ui = pointing_at(at);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut ui = pointing_at(&app, at);
+    hovering(&mut ui, &app, 0);
     let mut drawn = metrics(1600, 1000, 1.0);
     drawn.tick = 300;
     let (frame, _) = view(&app, &ui, drawn, &mut Fonts::embedded());
@@ -328,8 +329,8 @@ fn a_long_code_line_and_a_long_word_fold_inside_the_popup() {
 fn the_popup_stands_over_the_focus_line() {
     let mut app = diagnosed(groove_types::Severity::Error);
     app.workspace.servers.asked(PATH, ON, false);
-    let mut ui = pointing_at(ON);
-    ui.session.pointer_rest = ui.session.pointed.clone().map(|at| (at, 0));
+    let mut ui = pointing_at(&app, ON);
+    hovering(&mut ui, &app, 0);
     let mut drawn = metrics(1600, 1000, 1.0);
     drawn.tick = 300;
     let (frame, _) = view(&app, &ui, drawn, &mut Fonts::embedded());

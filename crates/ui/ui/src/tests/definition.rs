@@ -5,11 +5,11 @@ use groove_gfx::Fonts;
 use groove_types::{Caret, Selection};
 
 use super::diagnostics::{PATH, diagnosed};
+use super::hover::moved_to;
 use crate::hit::Target;
 use crate::input::{Input, Modifiers, handle, land};
 use crate::tests::{all_texts, full_app, on_file, shows, window};
 use crate::view;
-use crate::views::session::diff::Pointed;
 
 const CTRL: Modifiers = Modifiers {
     ctrl: true,
@@ -44,17 +44,14 @@ fn a_definition_that_cannot_open_is_said_where_the_pointer_stands() {
     let said = "Defined outside the worktree, in /lib.py. Groove opens worktree paths only.";
     app.workspace.servers.told(PATH, at, said.into());
     let mut ui = on_file();
-    ui.session.pointed = Some(Pointed {
-        path: PATH.into(),
-        at,
-    });
+    moved_to(&mut ui, &app, at, window());
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(
         all_texts(&frame)
             .iter()
             .any(|one| one.contains("outside the worktree"))
     );
-    ui.session.pointed = None;
+    moved_to(&mut ui, &app, Caret::new(0, 0), window());
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(
         !all_texts(&frame)

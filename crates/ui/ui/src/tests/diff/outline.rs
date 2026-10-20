@@ -8,7 +8,7 @@ use groove_ui_kit::base::tokens::{Tokens, WORD_MS};
 
 use super::{row_texts, with_files};
 use crate::hit::Target;
-use crate::tests::{click, on_file, shows, window};
+use crate::tests::{click, hit, on_file, shows, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -130,12 +130,7 @@ fn the_word_the_caret_rests_in_is_grounded_wherever_it_stands() {
 fn a_fold_follows_its_block_when_lines_come_or_go_above_it() {
     let mut app = python();
     let mut ui = on_file();
-    ui.session
-        .folds
-        .entry("src/a.py".into())
-        .or_default()
-        .starts
-        .insert(1);
+    hit(&Target::Block(1), &mut ui, &app);
     app.workspace
         .edit(&Edit::Move(Motion::To(Caret::new(0, 0))));
     app.workspace.edit(&Edit::Newline);
@@ -163,9 +158,10 @@ fn the_word_at_the_caret_is_grounded_in_the_diff_too() {
     );
     let mut ui = on_file();
     ui.session.tab = Tab::Diff;
-    ui.session.word = Some("x".into());
     app.workspace
         .edit(&Edit::Move(Motion::To(Caret::new(2, 8))));
+    crate::input::word(&mut ui, &app, 0);
+    crate::input::word(&mut ui, &app, WORD_MS);
     let grounded = painted(&app, &ui, Styles::occurs);
     assert_eq!(
         grounded.len(),
