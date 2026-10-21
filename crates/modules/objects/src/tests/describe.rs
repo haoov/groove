@@ -4,22 +4,22 @@ use crate::describe;
 
 fn crashing() -> serde_json::Value {
     serde_json::json!({
-        "metadata": { "name": "worker-0", "namespace": "paxone", "uid": "u1",
+        "metadata": { "name": "worker-0", "namespace": "shop", "uid": "u1",
             "creationTimestamp": "2026-10-08T10:01:00Z",
             "labels": { "app": "worker" }, "annotations": { "checksum/config": "abc" },
             "ownerReferences": [{ "apiVersion": "apps/v1", "kind": "ReplicaSet", "name": "worker-5d6b9c7f4" }] },
         "spec": {
-            "nodeName": "gra9-node-2", "serviceAccountName": "paxone", "priority": 0,
+            "nodeName": "node-2", "serviceAccountName": "shop", "priority": 0,
             "imagePullSecrets": [{ "name": "registry" }],
             "volumes": [
-                { "name": "tls", "secret": { "secretName": "paxone-tls" } },
+                { "name": "tls", "secret": { "secretName": "shop-tls" } },
                 { "name": "kube-api-access-x", "projected": { "sources": [{ "configMap": { "name": "kube-root-ca.crt" } }] } }
             ],
             "initContainers": [{ "name": "migrate", "image": "backend:4.21.3" }],
             "containers": [{ "name": "worker", "image": "backend:4.21.3",
                 "ports": [{ "name": "http", "containerPort": 8080 }],
-                "env": [{ "name": "DB", "valueFrom": { "secretKeyRef": { "name": "paxone-db-legacy", "key": "url" } } }],
-                "envFrom": [{ "configMapRef": { "name": "paxone-env" } }],
+                "env": [{ "name": "DB", "valueFrom": { "secretKeyRef": { "name": "shop-db-legacy", "key": "url" } } }],
+                "envFrom": [{ "configMapRef": { "name": "shop-env" } }],
                 "livenessProbe": { "httpGet": { "path": "/healthz", "port": 8080 }, "periodSeconds": 10 },
                 "volumeMounts": [{ "name": "tls", "mountPath": "/etc/tls", "readOnly": true },
                                  { "name": "kube-api-access-x", "mountPath": "/var/run/secrets" }],
@@ -43,7 +43,7 @@ fn a_crashing_pod_reads_as_its_tab_draws_it() {
     let pod = describe("Pod", &crashing(), true);
     assert_eq!(
         (pod.name.as_str(), pod.namespace.as_deref()),
-        ("worker-0", Some("paxone"))
+        ("worker-0", Some("shop"))
     );
     assert_eq!(pod.owners[0].group(), "apps");
     assert_eq!(pod.owners[0].kind, "ReplicaSet");
@@ -60,10 +60,10 @@ fn a_crashing_pod_reads_as_its_tab_draws_it() {
     assert_eq!(
         uses,
         [
-            read("sa", "paxone", "service account"),
-            read("secret", "paxone-tls", "mounted /etc/tls"),
-            read("cm", "paxone-env", "env worker"),
-            read("secret", "paxone-db-legacy", "env worker"),
+            read("sa", "shop", "service account"),
+            read("secret", "shop-tls", "mounted /etc/tls"),
+            read("cm", "shop-env", "env worker"),
+            read("secret", "shop-db-legacy", "env worker"),
             read("secret", "registry", "image pull"),
         ]
     );
@@ -131,7 +131,7 @@ fn a_whole_object_reads_as_yaml_and_a_part_read_has_none() {
     assert!(
         describe("Pod", &crashing(), true)
             .yaml
-            .contains("nodeName: gra9-node-2")
+            .contains("nodeName: node-2")
     );
     assert!(describe("Pod", &crashing(), false).yaml.is_empty());
 }

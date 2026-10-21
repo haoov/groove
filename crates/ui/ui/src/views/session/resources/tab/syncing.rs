@@ -21,7 +21,7 @@ use crate::hit::Target;
 const COLUMNS: [Columned; 4] = [
     ("STATE", "✓"),
     ("KIND", "persistentvolumeclaim"),
-    ("NAME", "pythie-cayzn-config-manager"),
+    ("NAME", "billing-eu-config-manager"),
     ("STATUS", ""),
 ];
 

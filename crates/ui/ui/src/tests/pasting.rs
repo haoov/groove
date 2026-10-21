@@ -13,7 +13,7 @@ fn paste(text: &str, ui: &mut Ui, app: &groove_controllers::AppState) -> Vec<Com
     handle(Input::Paste(text.into()), ui, app, &hits, window())
 }
 
-const URL: &str = "git@gitlab.example.com:g/mayo.git";
+const URL: &str = "git@gitlab.example.com:g/kiwi.git";
 
 #[test]
 fn the_palette_takes_what_is_pasted_into_it() {
@@ -33,7 +33,7 @@ fn the_palette_takes_what_is_pasted_into_it() {
     paste("/second", &mut ui, &app);
     assert_eq!(
         ui.palette().map(|one| one.query.text()),
-        Some("git@gitlab.example.com:g/mayo.git/second"),
+        Some("git@gitlab.example.com:g/kiwi.git/second"),
         "and a second paste follows the first"
     );
 }

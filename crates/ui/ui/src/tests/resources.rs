@@ -67,7 +67,7 @@ pub(super) fn row(name: &str, namespace: &str, status: &str) -> ObjectRow {
     }
 }
 
-/// The session holds staging on `paxone` and `cnpg`; each context's kinds known, two lists landed.
+/// The session holds staging on `shop` and `cnpg`; each context's kinds known, two lists landed.
 pub(super) fn listing() -> (AppState, Ui) {
     let mut app = full_app();
     let config = r#"{ "git": { "worktree_root": "~/code" } }"#;
@@ -77,7 +77,7 @@ pub(super) fn listing() -> (AppState, Ui) {
         .session
         .get_mut(&SessionId::new("a"))
         .expect("the fixture's session");
-    open.clusters = vec![on("staging", Some("paxone")), on("staging", Some("cnpg"))];
+    open.clusters = vec![on("staging", Some("shop")), on("staging", Some("cnpg"))];
     let kinds = vec![
         pods(),
         kind("apps", "Deployment", "deployments", true),
@@ -95,10 +95,10 @@ pub(super) fn listing() -> (AppState, Ui) {
         .collect::<Vec<_>>();
     let lists = [
         (
-            "paxone",
+            "shop",
             vec![
-                row("api-0", "paxone", "Running"),
-                row("worker-0", "paxone", "CrashLoopBackOff"),
+                row("api-0", "shop", "Running"),
+                row("worker-0", "shop", "CrashLoopBackOff"),
             ],
         ),
         ("cnpg", vec![row("cnpg-1", "cnpg", "Running")]),
@@ -134,7 +134,7 @@ fn the_list_tab_names_the_kind_and_its_count_over_rows_told_apart_by_namespace()
         "NAMESPACE",
         "NAME",
         "STATUS",
-        "paxone",
+        "shop",
         "cnpg",
         "worker-0",
         "CrashLoopBackOff",
@@ -263,7 +263,7 @@ fn clicked_in(app: &AppState, ui: &mut Ui) {
 #[test]
 fn a_failing_watch_says_the_list_is_not_live_over_the_rows_it_holds() {
     let (mut app, ui) = listing();
-    let key = key("staging", Some("paxone"));
+    let key = key("staging", Some("shop"));
     app.cluster
         .store
         .apply(&key, Batch::Failed("406 Not Acceptable".into()));

@@ -5,7 +5,7 @@ use crate::{CAP, Logged, Logs, Streaming};
 fn worker() -> LogKey {
     LogKey {
         context: "staging".into(),
-        namespace: "paxone".into(),
+        namespace: "shop".into(),
         pod: "api-0".into(),
         source: LogSource::Container("worker".into()),
         previous: false,

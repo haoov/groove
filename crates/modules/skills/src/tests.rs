@@ -113,7 +113,7 @@ fn a_skill_says_which_kinds_offer_it() {
     sync(&dirs).expect("both plugins");
     let skills = list(&dirs);
     let review = SessionKind::Review {
-        project: "g/mayo".into(),
+        project: "g/kiwi".into(),
         iid: 7,
     };
     let task = SessionKind::Task {

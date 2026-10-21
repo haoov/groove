@@ -29,7 +29,7 @@ async fn an_explorer_s_worktree_lands_under_the_task_on_the_task_s_branch_and_ca
         .unwrap();
     let (_, branch, path) = relocated.moves().next().unwrap();
     let (branch, path) = (branch.to_string(), path);
-    assert!(path.contains("worktrees/gh-g-7/mayo/"), "{path}");
+    assert!(path.contains("worktrees/gh-g-7/kiwi/"), "{path}");
     let head = sh(
         std::path::Path::new(&path),
         &["rev-parse", "--abbrev-ref", "HEAD"],

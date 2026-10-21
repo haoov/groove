@@ -63,7 +63,7 @@ fn a_check_replaces_the_last_login_of_its_context_only() {
         },
     );
     assert_eq!(state.login("hub"), Some(&signed_in));
-    assert_eq!(state.login("elpis"), None);
+    assert_eq!(state.login("lab"), None);
     assert!(!state.checking("hub"));
 }
 
@@ -72,12 +72,9 @@ async fn a_sign_in_wakes_the_parked_streams_of_its_context() {
     let mut state = State::default();
     let failed = std::sync::Arc::new(std::sync::Mutex::new(0));
     let counted = failed.clone();
-    let stop = state
-        .store
-        .lease(&pods("paxone"), "tab")
-        .expect("a watcher");
+    let stop = state.store.lease(&pods("shop"), "tab").expect("a watcher");
     let paths = vec!["/nonexistent/kubeconfig".into()];
-    let running = tokio::spawn(crate::watcher(paths, pods("paxone"), stop, move |batch| {
+    let running = tokio::spawn(crate::watcher(paths, pods("shop"), stop, move |batch| {
         if matches!(batch, crate::Batch::Failed(_)) {
             *counted.lock().expect("the count") += 1;
         }
@@ -118,7 +115,7 @@ fn row(uid: &str, name: &str, status: &str) -> groove_types::ObjectRow {
     groove_types::ObjectRow {
         uid: uid.into(),
         name: name.into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         version: "1".into(),
         cells: vec![name.into(), status.into()],
         aging: Vec::new(),
@@ -128,7 +125,7 @@ fn row(uid: &str, name: &str, status: &str) -> groove_types::ObjectRow {
 #[test]
 fn a_watcher_starts_for_its_first_reader_and_is_unread_once_its_last_lets_go() {
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     assert!(
         store.lease(&key, "list").is_some(),
         "the first reader starts it"
@@ -156,7 +153,7 @@ fn a_watcher_starts_for_its_first_reader_and_is_unread_once_its_last_lets_go() {
 fn rows_stand_by_name_and_each_change_lands_in_its_place() {
     use crate::{Batch, Delta};
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     let rows = vec![row("a", "api", "Running"), row("b", "worker", "Running")];
     store.apply(
@@ -204,7 +201,7 @@ fn rows_stand_by_name_and_each_change_lands_in_its_place() {
 fn a_row_made_again_under_its_name_outlives_the_late_gone_of_the_one_before() {
     use crate::{Batch, Delta};
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     store.apply(
         &key,
@@ -246,7 +243,7 @@ fn time_a_reset_of_30k_rows_then_batches_of_500_changes_and_an_age_tick() {
         )
     };
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     let rows: Vec<_> = (0..30_000).rev().map(named).collect();
     let started = Instant::now();
@@ -278,7 +275,7 @@ fn time_a_reset_of_30k_rows_then_batches_of_500_changes_and_an_age_tick() {
 fn a_failure_outlasts_a_relist_and_ends_once_a_watch_is_open() {
     use crate::Batch;
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     store.apply(&key, Batch::Failed("watch refused".into()));
     store.apply(
@@ -304,7 +301,7 @@ fn a_row_with_an_age_is_due_at_once_and_each_tick_writes_it_and_waits_for_its_ne
     use crate::{Batch, Delta};
     use groove_types::{Aging, Timestamp};
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     let aged = |name: &str| groove_types::ObjectRow {
         aging: vec![Aging {
@@ -352,7 +349,7 @@ fn a_row_with_an_age_is_due_at_once_and_each_tick_writes_it_and_waits_for_its_ne
 fn a_row_born_and_changed_in_one_batch_stands_once_as_it_last_read() {
     use crate::{Batch, Delta};
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     let rows = vec![row("a", "api", "Running")];
     store.apply(
@@ -381,7 +378,7 @@ fn a_row_born_and_changed_in_one_batch_stands_once_as_it_last_read() {
 fn a_row_born_gone_and_born_again_in_one_batch_stands_once() {
     use crate::{Batch, Delta};
     let mut store = crate::Store::default();
-    let key = pods("paxone");
+    let key = pods("shop");
     store.lease(&key, "list");
     let columns = Vec::new();
     store.apply(

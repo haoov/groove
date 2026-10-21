@@ -9,14 +9,14 @@ use crate::{Command as Cmd, SyncSpawner, dispatch, session};
 fn asked() -> ReviewMr {
     ReviewMr {
         forge: Forge::Gitlab,
-        project: "g/mayo".into(),
+        project: "g/kiwi".into(),
         iid: 7,
         title: "fix: the parser".into(),
         author: "someone".into(),
         source_branch: "release/1.0".into(),
         target_branch: "main".into(),
         draft: false,
-        web_url: "https://gitlab.example.com/g/mayo/-/merge_requests/7".into(),
+        web_url: "https://gitlab.example.com/g/kiwi/-/merge_requests/7".into(),
         updated_at: Timestamp::new(0),
         local_path: None,
         approved: false,
@@ -27,7 +27,7 @@ fn asked() -> ReviewMr {
 fn opened(state: &mut crate::AppState, services: &crate::Services, spawner: &SyncSpawner) {
     dispatch(
         Cmd::Session(session::Command::OpenReview {
-            project: "g/mayo".into(),
+            project: "g/kiwi".into(),
             iid: 7,
         }),
         state,
@@ -52,7 +52,7 @@ fn a_review_opens_a_session_of_its_own_on_the_mrs_branch() {
     state.delivery.reviews = vec![asked()];
 
     opened(&mut state, &services, &spawner);
-    let id = SessionId::new("review-g-mayo-7");
+    let id = SessionId::new("review-g-kiwi-7");
     until(&spawner, &services, &mut state, |s| {
         s.session
             .get(&id)
@@ -65,7 +65,7 @@ fn a_review_opens_a_session_of_its_own_on_the_mrs_branch() {
     assert_eq!(
         open.session.kind,
         SessionKind::Review {
-            project: "g/mayo".into(),
+            project: "g/kiwi".into(),
             iid: 7
         }
     );
@@ -99,7 +99,7 @@ fn opening_the_same_review_again_selects_the_session_it_already_has() {
     });
     state.delivery.reviews = vec![asked()];
     opened(&mut state, &services, &spawner);
-    let id = SessionId::new("review-g-mayo-7");
+    let id = SessionId::new("review-g-kiwi-7");
     until(&spawner, &services, &mut state, |s| {
         s.session
             .get(&id)
@@ -132,7 +132,7 @@ fn a_review_takes_the_clone_the_pool_holds_without_listing_it_first() {
     assert!(state.session.pool.is_empty(), "nothing has listed it yet");
 
     opened(&mut state, &services, &spawner);
-    let id = SessionId::new("review-g-mayo-7");
+    let id = SessionId::new("review-g-kiwi-7");
     until(&spawner, &services, &mut state, |s| {
         s.session
             .get(&id)
@@ -151,7 +151,7 @@ fn a_review_opens_on_the_whole_change_and_a_task_on_what_is_uncommitted() {
     state.delivery.reviews = vec![asked()];
 
     opened(&mut state, &services, &spawner);
-    let id = SessionId::new("review-g-mayo-7");
+    let id = SessionId::new("review-g-kiwi-7");
     until(&spawner, &services, &mut state, |s| {
         s.session
             .get(&id)

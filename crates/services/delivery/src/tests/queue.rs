@@ -34,11 +34,11 @@ fn every_host_the_pool_knows_is_asked_once_whichever_forge_it_carries() {
     let pool = vec![
         pooled("github.com/acme/groove", "/pool/groove"),
         pooled("github.com/acme/other", "/pool/other"),
-        pooled("gitlab.wiremind.io/devops/charts", "/pool/charts"),
+        pooled("gitlab.example.com/devops/charts", "/pool/charts"),
     ];
     assert_eq!(
         hosts(&pool),
-        ["github.com", "gitlab.wiremind.io"],
+        ["github.com", "gitlab.example.com"],
         "each host once, both forges"
     );
 }

@@ -73,9 +73,9 @@ fn draw_rail(frame: &mut Frame, theme: &Theme, scale: f32, rect: Rect) {
     );
     let row = ROW * scale;
     let sessions = [
-        ("TASKS2-4244 · paxone cnpg", "working", P.blue),
-        ("TASKS2-4138 · rbac v2", "asks", P.peach),
-        ("review !812 · overwhelm", "idle", P.overlay0),
+        ("TASK-4244 · shop cnpg", "working", P.blue),
+        ("TASK-4138 · rbac v2", "asks", P.peach),
+        ("review !812 · orchard", "idle", P.overlay0),
         ("explorer · gfx probe", "exited", P.overlay0),
     ];
     for (i, (title, status, color)) in sessions.iter().enumerate() {
@@ -127,7 +127,7 @@ fn draw_header(frame: &mut Frame, theme: &Theme, scale: f32, rect: Rect) {
         P.surface0,
     );
     frame.text(
-        "TASKS2-4244 · paxone-staging-gite CNPG migration",
+        "TASK-4244 · shop-staging CNPG migration",
         rect.x + 12.0 * scale,
         rect.y,
         rect.h,

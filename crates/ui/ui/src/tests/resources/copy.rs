@@ -61,15 +61,15 @@ fn a_click_on_a_link_copies_it_and_a_ctrl_click_opens_its_object() {
     lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
     let node = Link {
         namespace: None,
-        ..link("gra9-node-2", nodes)
+        ..link("node-2", nodes)
     };
     let opens = crate::views::session::resources::Opens::Object(node.clone());
-    let target = Target::ResourceCopy("gra9-node-2".into(), Some(Box::new(opens)));
+    let target = Target::ResourceCopy("node-2".into(), Some(Box::new(opens)));
     let (_, hits) = drawn(&app, &ui);
     let at = hits.rect_of(&target).expect("the node copies");
     let asked = click(at, &mut ui, &app, &hits);
     let copy = Cluster::CopyValue {
-        text: "gra9-node-2".into(),
+        text: "node-2".into(),
     };
     assert_eq!(asked, [Command::Cluster(copy)]);
     assert_eq!(

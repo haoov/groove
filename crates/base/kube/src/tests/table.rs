@@ -8,7 +8,7 @@ fn row(uid: &str, name: &str, status: &str) -> serde_json::Value {
     serde_json::json!({
         "cells": [name, "1/1", status, 0],
         "object": { "metadata": {
-            "uid": uid, "name": name, "namespace": "paxone", "resourceVersion": "7",
+            "uid": uid, "name": name, "namespace": "shop", "resourceVersion": "7",
             "creationTimestamp": "2026-10-07T10:00:00Z",
             "managedFields": [{ "manager": "kubelet" }]
         } }
@@ -41,7 +41,7 @@ async fn client(server: &MockServer) -> (tempfile::TempDir, Client) {
 async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
-        .and(path("/api/v1/namespaces/paxone/pods"))
+        .and(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("labelSelector", "app=api"))
         .and(query_param("includeObject", "Metadata"))
         .and(query_param("resourceVersion", "0"))
@@ -56,7 +56,7 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
     let kind = pods();
     let query = Query {
         kind: &kind,
-        namespace: Some("paxone"),
+        namespace: Some("shop"),
         selector: Some("app=api"),
         whole: false,
     };
@@ -80,7 +80,7 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
     let one = Row {
         uid: "u1".into(),
         name: "api-0".into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         version: "7".into(),
         created: Some("2026-10-07T10:00:00Z".into()),
         cells: vec!["api-0".into(), "1/1".into(), "Running".into(), "0".into()],
@@ -100,14 +100,14 @@ async fn a_watch_reads_each_event_as_the_change_it_makes_and_a_410_as_expired() 
             "rows": [{ "cells": ["", "0/0", "", 0], "object": { "kind": "PartialObjectMetadata", "metadata": { "resourceVersion": "51" } } }] } }),
     ];
     let body: String = lines.iter().map(|one| format!("{one}\n")).collect();
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("watch", "1"))
         .and(query_param("resourceVersion", "42"))
         .respond_with(ResponseTemplate::new(200).set_body_string(body))
         .mount(&server)
         .await;
     let gone = serde_json::json!({ "kind": "Status", "code": 410, "message": "too old", "reason": "Expired" });
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("resourceVersion", "1"))
         .respond_with(ResponseTemplate::new(410).set_body_json(gone))
         .mount(&server)
@@ -116,7 +116,7 @@ async fn a_watch_reads_each_event_as_the_change_it_makes_and_a_410_as_expired() 
     let kind = pods();
     let query = Query {
         kind: &kind,
-        namespace: Some("paxone"),
+        namespace: Some("shop"),
         selector: None,
         whole: false,
     };
@@ -147,7 +147,7 @@ fn a_cluster_wide_kind_or_no_namespace_lists_across_the_cluster() {
         plural: "nodes".into(),
         ..pods()
     };
-    assert_eq!(nodes.path(Some("paxone")), "/api/v1/nodes");
+    assert_eq!(nodes.path(Some("shop")), "/api/v1/nodes");
     let deployments = Kind {
         group: "apps".into(),
         plural: "deployments".into(),
@@ -203,7 +203,7 @@ async fn a_watch_line_it_cannot_read_says_why_instead_of_a_status_0() {
         "{}\n",
         serde_json::json!({ "type": "ADDED", "object": { "rows": "none" } })
     );
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .respond_with(ResponseTemplate::new(200).set_body_string(body))
         .mount(&server)
         .await;
@@ -211,7 +211,7 @@ async fn a_watch_line_it_cannot_read_says_why_instead_of_a_status_0() {
     let kind = pods();
     let query = Query {
         kind: &kind,
-        namespace: Some("paxone"),
+        namespace: Some("shop"),
         selector: None,
         whole: false,
     };

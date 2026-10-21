@@ -218,7 +218,7 @@ fn a_diagnostic_s_title_takes_its_colour_and_its_details_and_source_follow_plain
         dir: "/w".into(),
         name: "ty".into(),
     };
-    let message = "Cannot resolve imported module `pythie`\ninfo: Searched in the following paths\ninfo: Make sure your environment is configured";
+    let message = "Cannot resolve imported module `billing`\ninfo: Searched in the following paths\ninfo: Make sure your environment is configured";
     let found = groove_types::Diagnostic {
         start: ON,
         end: ON,

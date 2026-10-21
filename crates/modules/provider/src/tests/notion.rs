@@ -52,7 +52,7 @@ fn page() -> serde_json::Value {
         "id": "1f2e3d4c",
         "url": "https://notion.so/1f2e3d4c",
         "properties": {
-            "ID": { "type": "unique_id", "unique_id": { "prefix": "TASKS2", "number": 4244 } },
+            "ID": { "type": "unique_id", "unique_id": { "prefix": "TASK", "number": 4244 } },
             "Name": { "type": "title", "title": [{ "plain_text": "Migrate the database" }] },
             "State": { "type": "status", "status": { "name": "Doing" } },
             "Priority": { "type": "select", "select": { "name": "P1" } },
@@ -113,7 +113,7 @@ async fn a_page_reads_as_a_task_through_the_mapping() {
     let (_server, notion) = source(reply).await;
     let tasks = notion.list().await.expect("the query answers");
     let task = tasks.first().expect("one task");
-    assert_eq!(task.short_id, "TASKS2-4244");
+    assert_eq!(task.short_id, "TASK-4244");
     assert_eq!(task.title, "Migrate the database");
     assert_eq!(task.status, "Doing");
     assert_eq!(task.intent, Some(StatusIntent::InProgress));
@@ -183,7 +183,7 @@ async fn a_read_brings_the_page_and_its_blocks_as_text() {
     let host = format!("http://{}", server.address());
     let notion = Notion::at(&host, config()).expect("a client");
     let read = notion.fetch(&key()).await.expect("the page answers");
-    assert_eq!(read.task.short_id, "TASKS2-4244");
+    assert_eq!(read.task.short_id, "TASK-4244");
     assert_eq!(
         read.body,
         "The runbook.\n\n- stop the writes\n- [x] take a backup"

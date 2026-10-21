@@ -26,7 +26,7 @@ fn a_context_removed_from_groove_is_neither_discovered_nor_watched() {
         .session
         .get_mut(&SessionId::new("a"))
         .expect("the session");
-    open.clusters.push(on("gone", Some("paxone")));
+    open.clusters.push(on("gone", Some("shop")));
     assert!(clustered(&app, &ui).is_empty(), "no discovery of gone");
     app.cluster.store.set_kinds("gone", vec![pods()]);
     assert!(clustered(&app, &ui).is_empty(), "no watcher on gone");
@@ -35,7 +35,7 @@ fn a_context_removed_from_groove_is_neither_discovered_nor_watched() {
         .open(crate::views::session::resources::Link {
             context: "gone".into(),
             kind: pods(),
-            namespace: Some("paxone".into()),
+            namespace: Some("shop".into()),
             name: "api-0".into(),
         });
     let asked = clustered(&app, &ui);

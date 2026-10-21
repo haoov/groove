@@ -96,7 +96,7 @@ fn a_key_names_one_object_only_by_its_name_field() {
         namespaced: true,
         watchable: true,
     };
-    let named = crate::FollowKey::named("kind", &pods, Some("paxone"), "api-0");
+    let named = crate::FollowKey::named("kind", &pods, Some("shop"), "api-0");
     assert_eq!(named.named_one(), Some("api-0"));
     let events = crate::FollowKey {
         fields: Some("involvedObject.uid=u1".into()),

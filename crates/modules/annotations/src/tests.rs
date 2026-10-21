@@ -30,7 +30,7 @@ fn note(path: &str, start: u32, end: u32) -> New {
         start_line: start,
         end_line: end,
         content: "issue: this leaks".to_string(),
-        author: "rsabbah".to_string(),
+        author: "alice".to_string(),
     }
 }
 

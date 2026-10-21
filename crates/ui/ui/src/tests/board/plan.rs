@@ -184,7 +184,7 @@ fn a_task_s_priority_takes_its_level_s_colour() {
 #[test]
 fn a_task_up_next_wears_the_mark_of_its_source() {
     let mut app = full_app();
-    let mut notion = task("TASKS2-1", "from notion", "notion-page");
+    let mut notion = task("TASK-1", "from notion", "notion-page");
     notion.provider = groove_types::ProviderId::Notion;
     app.task.tasks = vec![task("gh-a-b-1", "from github", "github.com/a/b#1"), notion];
     let (ui, _) = on_board(&app);

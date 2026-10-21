@@ -2,7 +2,7 @@
 
 use super::*;
 
-const URL: &str = "https://gitlab.example.com/g/mayo.git";
+const URL: &str = "https://gitlab.example.com/g/kiwi.git";
 
 fn until_revision_ends(
     state: &mut crate::AppState,
@@ -67,7 +67,7 @@ fn a_repo_the_session_lacks_is_added_from_the_pool_and_selected() {
     until_revision_ends(&mut state, &services, &spawner, show);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let selected = state.session.selected_worktree().expect("a worktree");
-    assert_eq!(selected.repo.as_str(), "gitlab.example.com/g/mayo");
+    assert_eq!(selected.repo.as_str(), "gitlab.example.com/g/kiwi");
     assert_eq!(
         selected.base_ref.as_deref(),
         Some("release/1.0"),
@@ -103,7 +103,7 @@ fn a_revision_asked_in_one_session_is_dropped_once_another_is_selected() {
     let before = worktree(&mut state, &services, &spawner);
     state.workspace.revision = Some(groove_workspace_service::Revision {
         session: groove_types::SessionId::new("elsewhere"),
-        slug: "gitlab.example.com/g/mayo".into(),
+        slug: "gitlab.example.com/g/kiwi".into(),
         sha: Some("0123456789abcdef0123456789abcdef01234567".into()),
         reading: false,
     });

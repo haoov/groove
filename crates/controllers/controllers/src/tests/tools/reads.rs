@@ -22,7 +22,7 @@ fn the_active_task_is_the_session_the_call_came_from() {
     );
     let said = said(&answer);
     assert_eq!(said["session"]["id"], id.as_str());
-    assert_eq!(said["session"]["title"], "try mayo");
+    assert_eq!(said["session"]["title"], "try kiwi");
     assert_eq!(said["repos"].as_array().unwrap().len(), 1);
     let worktrees = said["worktrees"].as_array().unwrap();
     assert_eq!(worktrees.len(), 1);

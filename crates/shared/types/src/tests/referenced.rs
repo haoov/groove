@@ -9,7 +9,7 @@ const ID: &str = "1f2e3d4c5b6a7980aabbccddeeff0011";
 #[test]
 fn a_notion_url_names_the_page_it_ends_on() {
     for text in [
-        format!("https://www.notion.so/wiremind/Harden-Groove-{ID}"),
+        format!("https://www.notion.so/acme/Harden-Groove-{ID}"),
         format!("https://www.notion.so/{ID}?pvs=4"),
         "1f2e3d4c-5b6a-7980-aabb-ccddeeff0011".to_string(),
         ID.to_string(),
@@ -49,8 +49,7 @@ fn a_reference_that_names_nothing_is_refused() {
 
 #[test]
 fn a_link_to_a_block_or_a_comment_names_its_page_or_its_issue() {
-    let block =
-        format!("https://www.notion.so/wiremind/Page-{ID}#aabbccddeeff00112233445566778899");
+    let block = format!("https://www.notion.so/acme/Page-{ID}#aabbccddeeff00112233445566778899");
     assert_eq!(
         referenced(&block).expect(&block),
         TaskKey::Notion { page_id: ID.into() }

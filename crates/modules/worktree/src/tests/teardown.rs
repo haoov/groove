@@ -33,7 +33,7 @@ async fn close_refuses_lost_work_then_removes_dir_row_branch_and_empty_parents()
     assert_eq!(closed.id, wt.id);
     assert!(!path.exists());
     let session_dir = fx.root.path().join("worktrees/explorer-ab12cd34");
-    assert!(!session_dir.join("mayo").exists(), "empty parents go");
+    assert!(!session_dir.join("kiwi").exists(), "empty parents go");
     assert!(session_dir.exists(), "the session dir stays");
     assert!(
         fx.pool

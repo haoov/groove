@@ -85,7 +85,7 @@ pub struct PodPart {
     pub uses: Vec<Used>,
 }
 
-/// An object the pod reads: `secret paxone-tls`, and how: `mounted /etc/tls`, `env worker`.
+/// An object the pod reads: `secret shop-tls`, and how: `mounted /etc/tls`, `env worker`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Used {
     pub tag: String,

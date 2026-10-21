@@ -128,7 +128,7 @@ fn chrome_matches_golden() {
     frame.quad(Rect::new(0.0, 0.0, 320.0, 28.0), p.mantle);
     frame.quad(Rect::new(0.0, 28.0, 320.0, 1.0), p.surface0);
     frame.text(
-        "TASKS2-4244 · paxone cnpg",
+        "TASK-4244 · shop cnpg",
         8.0,
         0.0,
         28.0,

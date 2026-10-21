@@ -11,7 +11,7 @@ use crate::{Logged, Stop, logs};
 fn worker(range: LogRange) -> LogKey {
     LogKey {
         context: "kind".into(),
-        namespace: "paxone".into(),
+        namespace: "shop".into(),
         pod: "api-0".into(),
         source: LogSource::Container("worker".into()),
         previous: false,
@@ -22,7 +22,7 @@ fn worker(range: LogRange) -> LogKey {
 #[tokio::test]
 async fn a_stream_that_ends_opens_again_from_its_last_second_and_drops_the_lines_it_had() {
     let server = MockServer::start().await;
-    let log = "/api/v1/namespaces/paxone/pods/api-0/log";
+    let log = "/api/v1/namespaces/shop/pods/api-0/log";
     Mock::given(path(log))
         .and(query_param("sinceSeconds", "300"))
         .respond_with(
@@ -69,7 +69,7 @@ async fn a_stream_that_ends_opens_again_from_its_last_second_and_drops_the_lines
 #[tokio::test]
 async fn a_stream_that_ends_with_nothing_new_waits_longer_each_time() {
     let server = MockServer::start().await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods/api-0/log"))
+    Mock::given(path("/api/v1/namespaces/shop/pods/api-0/log"))
         .respond_with(ResponseTemplate::new(200).set_body_string(""))
         .mount(&server)
         .await;

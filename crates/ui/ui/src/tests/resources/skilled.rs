@@ -40,13 +40,13 @@ fn skilled(app: &mut AppState) {
     ];
 }
 
-const API_0: &str = "context: staging, namespace: paxone, kind: Pod (pods), name: api-0";
+const API_0: &str = "context: staging, namespace: shop, kind: Pod (pods), name: api-0";
 
 #[test]
 fn a_resource_row_offers_the_skills_of_its_kind_sent_with_the_resource() {
     let (mut app, mut ui) = listing();
     skilled(&mut app);
-    let row = Target::ResourceRow("paxone/api-0".into());
+    let row = Target::ResourceRow("shop/api-0".into());
     let Some(Of::Skills { offered, .. }) = menu_on(&app, &mut ui, &row) else {
         panic!("a skills menu");
     };
@@ -74,6 +74,6 @@ fn an_object_tab_offers_the_same() {
 fn a_resource_no_skill_acts_on_opens_no_menu() {
     let (mut app, mut ui) = listing();
     app.skill.skills = vec![skill("save-task", &[])];
-    let row = Target::ResourceRow("paxone/api-0".into());
+    let row = Target::ResourceRow("shop/api-0".into());
     assert!(menu_on(&app, &mut ui, &row).is_none());
 }

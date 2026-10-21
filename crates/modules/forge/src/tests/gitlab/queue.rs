@@ -5,7 +5,7 @@ use super::*;
 #[tokio::test]
 async fn the_review_queue_reads_the_mrs_asked_of_this_user() {
     let reply = serde_json::json!({ "data": { "currentUser": {
-        "username": "rsabbah",
+        "username": "alice",
         "reviewRequestedMergeRequests": { "nodes": [{
             "iid": "12",
             "title": "feat: a thing",
@@ -17,7 +17,7 @@ async fn the_review_queue_reads_the_mrs_asked_of_this_user() {
             "approved": false,
             "author": { "username": "someone" },
             "reviewers": { "nodes": [{
-                "username": "rsabbah", "mergeRequestInteraction": { "reviewState": "REVIEWED" }
+                "username": "alice", "mergeRequestInteraction": { "reviewState": "REVIEWED" }
             }]},
             "project": { "fullPath": "g/p" }
         }]}
@@ -43,12 +43,12 @@ fn approved_by_another(mine: &str) -> serde_json::Value {
         "author": { "username": "someone" },
         "reviewers": { "nodes": [
             { "username": "other", "mergeRequestInteraction": { "reviewState": "APPROVED" } },
-            { "username": "rsabbah", "mergeRequestInteraction": { "reviewState": mine } }
+            { "username": "alice", "mergeRequestInteraction": { "reviewState": mine } }
         ]},
         "project": { "fullPath": "g/p" }
     });
     serde_json::json!({ "data": { "currentUser": {
-        "username": "rsabbah",
+        "username": "alice",
         "reviewRequestedMergeRequests": { "nodes": [node] }
     }}})
 }

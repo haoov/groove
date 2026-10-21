@@ -31,7 +31,7 @@ pub(super) fn listed() -> (AppState, Ui) {
     let key = WatchKey {
         context: "staging".into(),
         kind: applications(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         selector: None,
     };
     let names = [
@@ -50,13 +50,13 @@ pub(super) fn listed() -> (AppState, Ui) {
         })
         .to_vec();
     let row = |name: &str, sync: &str, health: &str| ObjectRow {
-        uid: format!("paxone/{name}"),
+        uid: format!("shop/{name}"),
         name: name.into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         version: "1".into(),
         cells: [
             name,
-            "data-science",
+            "analytics",
             sync,
             health,
             "auto · prune · heal",
@@ -67,8 +67,8 @@ pub(super) fn listed() -> (AppState, Ui) {
         aging: Vec::new(),
     };
     let rows = vec![
-        row("pythie-acc", "OutOfSync", "Degraded"),
-        row("pythie-prod", "Synced", "Healthy"),
+        row("billing-acc", "OutOfSync", "Degraded"),
+        row("billing-prod", "Synced", "Healthy"),
     ];
     app.cluster.store.lease(&key, "resources");
     app.cluster
@@ -90,8 +90,8 @@ pub(super) fn failing() -> Described {
         failed: vec![SyncedResource {
             group: "batch".into(),
             kind: "Job".into(),
-            name: "pythie-migrate".into(),
-            namespace: Some("paxone".into()),
+            name: "billing-migrate".into(),
+            namespace: Some("shop".into()),
             status: "Synced".into(),
             message: "Job has reached the specified backoff limit".into(),
             hook: true,
@@ -101,11 +101,11 @@ pub(super) fn failing() -> Described {
         applied: Vec::new(),
     };
     let part = AppPart {
-        project: "data-science".into(),
+        project: "analytics".into(),
         sync: "OutOfSync".into(),
         health: "Degraded".into(),
         sources: vec![AppSource {
-            repo: "https://gitlab.wiremind.io/pythie-cayzn-deploy.git".into(),
+            repo: "https://gitlab.example.com/billing-eu-deploy.git".into(),
             path: Some("envs/acc".into()),
             chart: None,
             target: "main".into(),
@@ -117,7 +117,7 @@ pub(super) fn failing() -> Described {
         destination: Destination {
             server: Some("https://10.0.0.1:6443".into()),
             name: None,
-            namespace: Some("pythie-acc".into()),
+            namespace: Some("billing-acc".into()),
         },
         automated: Some((true, true)),
         operation: Some(operation),
@@ -125,9 +125,9 @@ pub(super) fn failing() -> Described {
         resources: Vec::new(),
     };
     Described {
-        uid: "paxone/pythie-acc".into(),
-        name: "pythie-acc".into(),
-        namespace: Some("paxone".into()),
+        uid: "shop/billing-acc".into(),
+        name: "billing-acc".into(),
+        namespace: Some("shop".into()),
         labels: Vec::new(),
         annotations: Vec::new(),
         created: None,
@@ -150,7 +150,7 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
         "SYNC STATUS",
         "HEALTH STATUS",
         "AUTO-SYNC",
-        "pythie-acc",
+        "billing-acc",
         "auto · prune · heal",
     ] {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
@@ -169,14 +169,14 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
     let metrics = crate::tests::metrics(1920, 1080, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let row = hits
-        .rect_of(&Target::ResourceRow("paxone/pythie-acc".into()))
+        .rect_of(&Target::ResourceRow("shop/billing-acc".into()))
         .expect("its row");
     click(row, &mut ui, &app, &hits);
     let link = Link {
         context: "staging".into(),
         kind: applications(),
-        namespace: Some("paxone".into()),
-        name: "pythie-acc".into(),
+        namespace: Some("shop".into()),
+        name: "billing-acc".into(),
     };
     app.cluster.store.follows.lease(&link.key(), "resource");
     app.cluster
@@ -190,11 +190,11 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
         "Degraded",
         "OPERATION · last sync",
         "✗ Sync failed",
-        "pythie-migrate",
+        "billing-migrate",
         "auto · prune · heal",
         "SOURCES · 1",
-        "pythie-cayzn-deploy · envs/acc",
-        "gitlab.wiremind.io/pythie-cayzn-deploy",
+        "billing-eu-deploy · envs/acc",
+        "gitlab.example.com/billing-eu-deploy",
         "e9f8a7b",
     ] {
         assert!(texts.contains(&shown), "{shown}: {texts:?}");
@@ -221,7 +221,7 @@ fn a_failed_resource_name_that_fits_at_the_small_size_stands_whole_at_the_body_s
     let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let row = hits
-        .rect_of(&Target::ResourceRow("paxone/pythie-acc".into()))
+        .rect_of(&Target::ResourceRow("shop/billing-acc".into()))
         .expect("its row");
     click(row, &mut ui, &app, &hits);
     let name = "FailedCreatePodSandBoxAgain";

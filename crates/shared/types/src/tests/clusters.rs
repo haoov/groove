@@ -2,7 +2,7 @@ use crate::{ClusterConfig, Config, Hue};
 
 #[test]
 fn a_context_added_takes_the_first_free_hue() {
-    let added = ClusterConfig::new("ovh-hub", &[Hue::Sapphire]);
+    let added = ClusterConfig::new("eu-hub", &[Hue::Sapphire]);
     assert_eq!(added.hue, Hue::Mauve);
 }
 
@@ -110,8 +110,8 @@ fn ages_and_counts_order_by_value_and_words_as_text() {
 #[test]
 fn a_fuzzy_query_keeps_a_name_holding_its_characters_in_their_order() {
     use crate::fuzzy;
-    assert!(fuzzy("pythie-cayzn-staging-flair", "pyth-ca-st-fla"));
-    assert!(fuzzy("PYTHIE", "pyt"));
-    assert!(!fuzzy("pythie-cayzn-staging-flair", "fla-pyth"));
+    assert!(fuzzy("billing-eu-staging-blue", "bil-eu-st-blu"));
+    assert!(fuzzy("BILLING", "bil"));
+    assert!(!fuzzy("billing-eu-staging-blue", "blu-bil"));
     assert!(fuzzy("anything", ""));
 }

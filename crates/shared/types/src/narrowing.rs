@@ -14,7 +14,7 @@ pub fn score(hay: &str, query: &str) -> Option<usize> {
         .sum()
 }
 
-/// Every character of `query` in `hay`, in order, case aside: `pyth-ca` keeps `pythie-cayzn`.
+/// Every character of `query` in `hay`, in order, case aside: `bil-eu` keeps `billing-eu`.
 pub fn fuzzy(hay: &str, query: &str) -> bool {
     if hay.is_ascii() && query.is_ascii() {
         let mut hay = hay.bytes().map(|one| one.to_ascii_lowercase());

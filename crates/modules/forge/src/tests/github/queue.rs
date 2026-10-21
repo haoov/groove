@@ -57,13 +57,13 @@ async fn a_review_asked_again_of_the_viewer_shows_as_requested_over_an_approval(
     let mut nine = asked(9, "2026-09-20T08:00:00Z", serde_json::json!("APPROVED"));
     nine["latestReviews"] = serde_json::json!({ "nodes": [
         { "state": "APPROVED", "author": { "login": "other" } },
-        { "state": "COMMENTED", "author": { "login": "rsabbah" } }
+        { "state": "COMMENTED", "author": { "login": "alice" } }
     ]});
     nine["reviewRequests"] = serde_json::json!({ "nodes": [
-        { "requestedReviewer": { "login": "rsabbah" } }
+        { "requestedReviewer": { "login": "alice" } }
     ]});
     let reply = serde_json::json!({ "data": {
-        "viewer": { "login": "rsabbah" },
+        "viewer": { "login": "alice" },
         "search": { "nodes": [nine] }
     }});
     let (_server, github) = github(reply).await;

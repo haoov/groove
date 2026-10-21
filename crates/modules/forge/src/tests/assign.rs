@@ -15,7 +15,7 @@ fn proposed() -> Proposed<'static> {
 #[tokio::test]
 async fn a_gitlab_mr_opened_is_assigned_to_its_author() {
     let reply = serde_json::json!({ "data": {
-        "currentUser": { "username": "rsabbah" },
+        "currentUser": { "username": "alice" },
         "mergeRequestCreate": { "errors": [], "mergeRequest": lab::mr("opened") },
         "mergeRequestSetAssignees": { "errors": [] }
     }});
@@ -37,7 +37,7 @@ async fn a_gitlab_mr_opened_is_assigned_to_its_author() {
                 .is_some_and(|q| q.contains("SetAssignees"))
         })
         .expect("the MR is assigned");
-    assert_eq!(assigned["variables"]["who"], serde_json::json!(["rsabbah"]));
+    assert_eq!(assigned["variables"]["who"], serde_json::json!(["alice"]));
     assert_eq!(assigned["variables"]["iid"], "7");
 }
 

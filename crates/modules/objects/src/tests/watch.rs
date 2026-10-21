@@ -29,7 +29,7 @@ fn pods() -> WatchKey {
     WatchKey {
         context: "kind".into(),
         kind: super::pods(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         selector: None,
     }
 }
@@ -39,7 +39,7 @@ fn table(rows: &[(&str, &str)], version: &str) -> serde_json::Value {
         .iter()
         .map(|(uid, name)| {
             serde_json::json!({ "cells": [name], "object": { "metadata": {
-            "uid": uid, "name": name, "namespace": "paxone", "resourceVersion": version } } })
+            "uid": uid, "name": name, "namespace": "shop", "resourceVersion": version } } })
         })
         .collect();
     serde_json::json!({ "kind": "Table", "metadata": { "resourceVersion": version },
@@ -70,7 +70,7 @@ async fn batches_for(server: &MockServer, long: Duration) -> Vec<Batch> {
 async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() {
     let server = MockServer::start().await;
     let list = table(&[("u3", "api-2"), ("u1", "api-0")], "42");
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("limit", "5000"))
         .respond_with(ResponseTemplate::new(200).set_body_json(list))
         .mount(&server)
@@ -80,7 +80,7 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
         serde_json::json!({ "type": "DELETED", "object": table(&[("u1", "api-0")], "44") }),
     ];
     let body: String = events.iter().map(|one| format!("{one}\n")).collect();
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("watch", "1"))
         .respond_with(ResponseTemplate::new(200).set_body_string(body))
         .mount(&server)
@@ -120,13 +120,13 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
 #[tokio::test]
 async fn an_expired_version_lists_again_from_the_start_after_a_pause() {
     let server = MockServer::start().await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("limit", "5000"))
         .respond_with(ResponseTemplate::new(200).set_body_json(table(&[("u1", "api-0")], "42")))
         .mount(&server)
         .await;
     let gone = serde_json::json!({ "kind": "Status", "code": 410, "message": "too old" });
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("watch", "1"))
         .respond_with(ResponseTemplate::new(410).set_body_json(gone))
         .mount(&server)
@@ -150,17 +150,17 @@ async fn a_first_list_shows_its_first_page_at_once_and_adds_the_next_as_they_com
     let server = MockServer::start().await;
     let mut first = table(&[("u1", "api-0")], "42");
     first["metadata"]["continue"] = serde_json::json!("page-2");
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("resourceVersion", "0"))
         .respond_with(ResponseTemplate::new(200).set_body_json(first))
         .mount(&server)
         .await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("continue", "page-2"))
         .respond_with(ResponseTemplate::new(200).set_body_json(table(&[("u2", "api-1")], "42")))
         .mount(&server)
         .await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("watch", "1"))
         .respond_with(ResponseTemplate::new(200).set_body_string(""))
         .mount(&server)
@@ -224,7 +224,7 @@ async fn a_forbidden_list_is_not_asked_again_every_few_seconds() {
     let server = MockServer::start().await;
     let status = serde_json::json!({ "kind": "Status", "apiVersion": "v1", "status": "Failure",
         "message": "pods is forbidden", "reason": "Forbidden", "code": 403 });
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .respond_with(ResponseTemplate::new(403).set_body_json(status))
         .mount(&server)
         .await;

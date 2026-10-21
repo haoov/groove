@@ -19,7 +19,7 @@ fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
     let body = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
         .body(groove_ui_kit::base::style::Role::Text)
         .size;
-    for shown in ["gra9-node-2", "Ready"] {
+    for shown in ["node-2", "Ready"] {
         let one = texts.clone().find(|one| one.text == shown);
         assert!(
             one.is_none_or(|one| one.style.size == body),
@@ -50,7 +50,7 @@ const DESCRIBED: [&str; 20] = [
     "waiting · CrashLoopBackOff",
     "worker",
     "14",
-    "gra9-node-2",
+    "node-2",
     "CONDITIONS",
     "SUMMARY",
     "RELATIONS · 2",
@@ -58,7 +58,7 @@ const DESCRIBED: [&str; 20] = [
     "worker-5d6b",
     "2/3 ready",
     "uses",
-    "paxone-db-legacy",
+    "shop-db-legacy",
     "env worker",
     "BackOff",
     "×187",
@@ -82,7 +82,7 @@ fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them()
         .collect();
     let fields: Vec<Option<&str>> = follows.iter().map(|one| one.fields.as_deref()).collect();
     assert!(
-        fields.contains(&Some("involvedObject.uid=paxone/api-0")),
+        fields.contains(&Some("involvedObject.uid=shop/api-0")),
         "{fields:?}"
     );
     assert!(
@@ -95,19 +95,19 @@ fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them()
     );
     let pod = (
         "staging".to_string(),
-        "paxone".to_string(),
+        "shop".to_string(),
         "api-0".to_string(),
     );
     assert!(asked.contains(&Command::Cluster(Cluster::Usage { pod: pod.clone() })));
     let release = (
         "staging".to_string(),
-        "paxone".to_string(),
-        "paxone-staging".to_string(),
+        "shop".to_string(),
+        "shop-staging".to_string(),
     );
     assert!(asked.contains(&Command::Cluster(Cluster::HelmRevision { release })));
 
     let events = FollowKey {
-        fields: Some("involvedObject.uid=paxone/api-0".into()),
+        fields: Some("involvedObject.uid=shop/api-0".into()),
         ..follows[1].clone()
     };
     let backoff = EventRow {
@@ -196,7 +196,7 @@ fn the_wheel_scrolls_the_one_described_column() {
         .collect();
     lands(&mut app, &key, vec![tall]);
     let events = FollowKey {
-        fields: Some("involvedObject.uid=paxone/api-0".into()),
+        fields: Some("involvedObject.uid=shop/api-0".into()),
         kind: kind("", "Event", "events", true),
         ..key.clone()
     };
@@ -300,9 +300,9 @@ fn behind_an_object_s_tab_the_list_lets_its_watchers_go_and_its_ages_rest() {
             lead: None,
             turn: Timestamp::default(),
         }],
-        ..super::row("young", "paxone", "Running")
+        ..super::row("young", "shop", "Running")
     };
-    let listed = super::key("staging", Some("paxone"));
+    let listed = super::key("staging", Some("shop"));
     let put = Batch::Changes(vec![Delta::Put(young)]);
     app.cluster.store.apply(&listed, put);
     let now = Timestamp::new(1_179);
@@ -325,7 +325,7 @@ fn an_event_reason_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
     let key = link("api-0", pods()).key();
     lands(&mut app, &key, vec![crashing()]);
     let events = FollowKey {
-        fields: Some("involvedObject.uid=paxone/api-0".into()),
+        fields: Some("involvedObject.uid=shop/api-0".into()),
         kind: kind("", "Event", "events", true),
         ..key.clone()
     };
@@ -353,7 +353,7 @@ fn the_list_search_lets_go_of_the_keys_once_a_tab_shows() {
     ui.session.resources.typing = true;
     let (_, hits) = drawn(&app, &ui);
     let row = hits
-        .rect_of(&Target::ResourceRow("paxone/api-0".into()))
+        .rect_of(&Target::ResourceRow("shop/api-0".into()))
         .expect("api-0's row");
     click(row, &mut ui, &app, &hits);
     assert!(ui.session.resources.tab().is_some(), "the tab shows");

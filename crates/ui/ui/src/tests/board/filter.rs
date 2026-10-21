@@ -230,7 +230,7 @@ fn a_live_item_answers_for_the_task_its_session_works() {
 #[test]
 fn a_source_can_be_named_and_the_other_one_s_tasks_go() {
     let mut app = full_app();
-    let mut notion = task("TASKS2-1", "from notion", "1f2e3d4c");
+    let mut notion = task("TASK-1", "from notion", "1f2e3d4c");
     notion.provider = groove_types::ProviderId::Notion;
     app.task.tasks = vec![task("gh-a-b-1", "from github", "github.com/a/b#1"), notion];
     let mut ui = Ui {

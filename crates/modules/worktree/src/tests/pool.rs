@@ -9,8 +9,8 @@ async fn the_pool_lists_registers_and_resolves() {
     assert_eq!(clones[0].slug, SLUG);
     assert_eq!(clones[0].path, fx.clone);
 
-    assert_eq!(Pool::resolve("mayo", &clones).unwrap().slug, SLUG);
-    assert_eq!(Pool::resolve("devops/mayo", &clones).unwrap().slug, SLUG);
+    assert_eq!(Pool::resolve("kiwi", &clones).unwrap().slug, SLUG);
+    assert_eq!(Pool::resolve("devops/kiwi", &clones).unwrap().slug, SLUG);
     assert_eq!(Pool::resolve(SLUG, &clones).unwrap().slug, SLUG);
     assert!(
         matches!(Pool::resolve("ayo", &clones), Err(Error::UnknownRepo(_))),
@@ -18,12 +18,12 @@ async fn the_pool_lists_registers_and_resolves() {
     );
 
     let twin = PoolEntry {
-        slug: "github.com/other/mayo".into(),
+        slug: "github.com/other/kiwi".into(),
         path: fx.root.path().join("x"),
     };
     let both = vec![clones[0].clone(), twin];
     assert!(matches!(
-        Pool::resolve("mayo", &both),
+        Pool::resolve("kiwi", &both),
         Err(Error::AmbiguousRepo { .. })
     ));
 
@@ -35,7 +35,7 @@ async fn the_pool_lists_registers_and_resolves() {
             repo.group_path.as_str(),
             repo.project.as_str()
         ),
-        ("gitlab.example.com", "wiremind/devops", "mayo")
+        ("gitlab.example.com", "acme/devops", "kiwi")
     );
     assert_eq!(fx.pool.repo(&repo.id).await.unwrap(), repo);
     assert_eq!(

@@ -9,7 +9,7 @@ fn a_followed_object_lands_changes_and_goes_with_its_last_reader() {
     let described = |uid: &str, name: &str| Described {
         uid: uid.into(),
         name: name.into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         labels: Vec::new(),
         annotations: Vec::new(),
         created: None,
@@ -22,7 +22,7 @@ fn a_followed_object_lands_changes_and_goes_with_its_last_reader() {
         yaml: "".into(),
     };
     let mut store = crate::Store::default();
-    let key = FollowKey::named("kind", &pods("paxone").kind, Some("paxone"), "api-0");
+    let key = FollowKey::named("kind", &pods("shop").kind, Some("shop"), "api-0");
     assert!(store.follows.lease(&key, "tab").is_some());
     assert!(
         store.follows.lease(&key, "tab").is_none(),
@@ -55,7 +55,7 @@ fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
     let described = |yaml: &str| Described {
         uid: "u1".into(),
         name: "api-0".into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         labels: Vec::new(),
         annotations: Vec::new(),
         created: None,
@@ -68,7 +68,7 @@ fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
         yaml: yaml.into(),
     };
     let mut store = crate::Store::default();
-    let key = FollowKey::named("kind", &pods("paxone").kind, Some("paxone"), "api-0");
+    let key = FollowKey::named("kind", &pods("shop").kind, Some("shop"), "api-0");
     store.follows.lease(&key, "tab");
     store.follows.apply(
         &key,

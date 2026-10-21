@@ -76,17 +76,17 @@ fn manifest(work: &Path, name: &str) {
 #[tokio::test]
 async fn joining_copies_the_branch_and_names_its_plugin() {
     let root = tempfile::tempdir().unwrap();
-    let (shared, _) = origin(root.path(), "wiremind");
+    let (shared, _) = origin(root.path(), "acme");
     let data = root.path().join("data");
     let copy = join(&data, &shared).await.expect("a plugin");
-    assert_eq!(names(&copy), ["wiremind"]);
+    assert_eq!(names(&copy), ["acme"]);
     assert!(copy.path.starts_with(&data));
 }
 
 #[tokio::test]
 async fn following_takes_what_the_branch_holds_now() {
     let root = tempfile::tempdir().unwrap();
-    let (shared, work) = origin(root.path(), "wiremind");
+    let (shared, work) = origin(root.path(), "acme");
     let data = root.path().join("data");
     join(&data, &shared).await.expect("a plugin");
     manifest(&work, "platform");
@@ -127,7 +127,7 @@ async fn an_http_url_that_cannot_be_read_says_to_give_the_ssh_one() {
 #[tokio::test]
 async fn a_join_that_fails_keeps_the_copy_before_it() {
     let root = tempfile::tempdir().unwrap();
-    let (shared, _) = origin(root.path(), "wiremind");
+    let (shared, _) = origin(root.path(), "acme");
     let data = root.path().join("data");
     join(&data, &shared).await.expect("a plugin");
     let gone = SharedConfig {
@@ -140,7 +140,7 @@ async fn a_join_that_fails_keeps_the_copy_before_it() {
     let kept = crate::shared::copy_of(&data);
     assert_eq!(
         names(&follow(&data, &shared).await.expect("kept")),
-        ["wiremind"]
+        ["acme"]
     );
     assert!(kept.join(".git").exists());
 }

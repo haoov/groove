@@ -20,8 +20,8 @@ use crate::hit::Target;
 
 const COLUMNS: [Columned; 5] = [
     ("SYNC", "✓"),
-    ("NAME", "pythie-cayzn-config-manager"),
-    ("NAMESPACE", "pythie-cayzn-staging"),
+    ("NAME", "billing-eu-config-manager"),
+    ("NAMESPACE", "billing-eu-staging"),
     ("WAVE", "-10"),
     ("STATUS", ""),
 ];

@@ -24,7 +24,7 @@ fn a_merged_mr_s_worktree_closes_with_commits_origin_lacks_but_not_with_changes(
         worktree: second.id.clone(),
         forge: Forge::Gitlab,
         remote_id: "1".into(),
-        url: "https://gitlab.example.com/g/mayo/-/merge_requests/1".into(),
+        url: "https://gitlab.example.com/g/kiwi/-/merge_requests/1".into(),
         state: MrState::Merged,
     }]);
     std::fs::write(path.join("a.txt"), "edited after\n").expect("an edit");

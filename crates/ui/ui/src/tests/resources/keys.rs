@@ -58,10 +58,7 @@ fn enter_in_the_list_s_search_stands_on_its_first_row() {
     crate::tests::typed("worker", &mut ui, &app);
     key(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert!(!ui.session.resources.typing);
-    assert_eq!(
-        ui.hover,
-        Some(Target::ResourceRow("paxone/worker-0".into()))
-    );
+    assert_eq!(ui.hover, Some(Target::ResourceRow("shop/worker-0".into())));
 }
 
 #[test]

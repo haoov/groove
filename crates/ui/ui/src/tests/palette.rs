@@ -204,7 +204,7 @@ fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
         groove_controllers::Command::Session(
             groove_controllers::session::Command::AddWorktree { repo, spec, .. },
         ) => {
-            assert_eq!(repo.as_str(), "gitlab.example.com/g/mayo");
+            assert_eq!(repo.as_str(), "gitlab.example.com/g/kiwi");
             assert_eq!(spec.branch.as_deref(), Some("fix/x"));
             assert_eq!(spec.target.as_deref(), Some("release/1.0"));
         }
@@ -246,7 +246,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .map(|t| t.text.clone())
         .collect();
     assert_eq!(texts[0], "worktree", "the step, dimmed at the left");
-    assert!(texts.iter().any(|t| t == "mayo · explorer/alpha"));
+    assert!(texts.iter().any(|t| t == "kiwi · explorer/alpha"));
     let run = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(run[0].id(), "session.close_worktree");
     assert!(ui.palette().is_none());
