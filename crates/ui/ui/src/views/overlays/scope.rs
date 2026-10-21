@@ -7,7 +7,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
 use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Corner, Row, Text, input_at, list, panel_at};
+use groove_ui_kit::widgets::{Button, Corner, Material, Row, Text, input_at, list, panel_at};
 
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
@@ -32,7 +32,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         at,
         Corner::TopLeft,
         (width, height),
-        ctx.styles.border(),
+        (ctx.styles.border(), Material::Solid),
     );
     ctx.hit(rect, Target::ScopePanel);
     let tall = |height: f32| Spec::default().height(height);

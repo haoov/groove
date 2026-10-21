@@ -275,6 +275,13 @@ The bands sit under it: the rail, the sidebar, a column's heading, a menu, a fil
 The deepest holds the agent's pty, the terminal widget, a note's own rows under its card,
 and the field a note is typed in — nothing else.
 
+**Glass on two panels only.** The palette, its pickers and the language servers' popup
+are glass: the work below shows through them, frosted, magnified and bent at the rim. Every other
+panel is solid. A row on glass takes a rounded, see-through ground under the pointer and
+when selected. Enforced by `the_palette_is_glass`, `the_hover_popup_is_glass`,
+`the_completion_list_stays_solid` and
+`a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground`.
+
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
 caret is, two rules stand instead of a ground: a place is not a state. The row a list stands

@@ -202,9 +202,12 @@ impl Styles {
 
     /// The alpha a tint takes on this theme, stronger on a light ground.
     fn alpha(&self, (dark, light): (u8, u8)) -> u8 {
+        if self.light() { light } else { dark }
+    }
+
+    fn light(&self) -> bool {
         let base = self.palette.base;
-        let lightness = u16::from(base.r) + u16::from(base.g) + u16::from(base.b);
-        if lightness > 384 { light } else { dark }
+        u16::from(base.r) + u16::from(base.g) + u16::from(base.b) > 384
     }
 
     /// The stripes of a side with no line.

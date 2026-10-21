@@ -2,13 +2,19 @@ use groove_gfx::{Color, Rect};
 
 use crate::base::ctx::{App, Ctx};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material {
+    Solid,
+    Glass,
+}
+
 /// A panel with its named corner at `at`, edged in `border`, inside the window.
 pub fn panel_at<A: App>(
     ctx: &mut Ctx<'_, A>,
     at: (f32, f32),
     corner: Corner,
     size: (f32, f32),
-    border: Color,
+    (border, panel): (Color, Material),
 ) -> Rect {
     let window = ctx.window;
     let (width, height) = size;
@@ -19,29 +25,41 @@ pub fn panel_at<A: App>(
     };
     let rect = crate::shape::kept_in((x, y), (width, height), window);
     ctx.layer();
-    lifted(ctx, rect);
-    let band = ctx.styles.band();
-    ctx.rounded_box(rect, band, border, ctx.tokens.round);
+    made(ctx, rect, border, panel);
     rect
 }
 
-/// A box centred on a dimmed window, edged in `border`, on its own layer. Returns the box.
+/// A box centred on the window, edged in `border`, on its own layer. Returns the box.
 pub fn modal<A: App>(
     ctx: &mut Ctx<'_, A>,
-    width: f32,
-    height: f32,
+    (width, height): (f32, f32),
     top: f32,
-    border: Color,
+    (border, panel): (Color, Material),
 ) -> Rect {
     let window = ctx.window;
-    let (scrim, panel) = (ctx.styles.scrim(), ctx.styles.band());
     ctx.layer();
-    ctx.quad(window, scrim);
+    match panel {
+        Material::Solid => ctx.quad(window, ctx.styles.scrim()),
+        Material::Glass => ctx.veil(ctx.styles.glass_dim()),
+    }
     let w = width.min(window.w - ctx.tokens.xl);
     let rect = Rect::new((window.w - w) / 2.0, top, w, height);
-    lifted(ctx, rect);
-    ctx.rounded_box(rect, panel, border, ctx.tokens.round);
+    made(ctx, rect, border, panel);
     rect
+}
+
+fn made<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, border: Color, panel: Material) {
+    match panel {
+        Material::Solid => {
+            lifted(ctx, rect);
+            let band = ctx.styles.band();
+            ctx.rounded_box(rect, band, border, ctx.tokens.round);
+        }
+        Material::Glass => {
+            let shape = (ctx.tokens.glass_round, ctx.tokens.bezel);
+            ctx.glass(rect, shape, ctx.styles.glass());
+        }
+    }
 }
 
 /// A soft shade under the box, dropped below it.

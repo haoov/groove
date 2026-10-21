@@ -216,6 +216,9 @@ directly.
   Double-line and rounded glyphs stay on the font.
 - **Never read the frame back.** The window presents.
 - Rounded rects and borders: one SDF fragment shader. Clipping: a scissor per batch.
+- **Glass costs only the frames that hold it.** Such a frame draws the layers under the
+  glass into a texture and blurs it; a frame without glass is one pass. Enforced by
+  `a_frame_without_glass_draws_in_one_pass`.
 - **Chrome is owned and minimal**: about eight primitives on `gfx`, plus focus, hit
   testing and scroll. No general toolkit, no [home-grown layout engine](design.md#limits).
   `ui-kit` holds the context, tokens, styles, shapes, text, layout and widgets on plain

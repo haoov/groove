@@ -24,7 +24,7 @@ fn item(label: &str) -> Completion {
 }
 
 /// The open file with its caret after `No`, and the servers' offer standing there.
-fn offered() -> AppState {
+pub(super) fn offered() -> AppState {
     let mut app = diagnosed(groove_types::Severity::Error);
     app.workspace.edit(&Edit::Move(Motion::To(CARET)));
     let asked = app.workspace.servers.offering(PATH, CARET);

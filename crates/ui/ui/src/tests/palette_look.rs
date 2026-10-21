@@ -188,12 +188,14 @@ fn drawn(ui: &Ui, app: &AppState) -> groove_gfx::Frame {
 }
 
 #[test]
-fn the_palette_stands_on_a_shadow() {
+fn the_palette_stands_as_glass_with_no_shadow() {
     let app = full_app();
     let mut ui = Ui::default();
     press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
     let frame = drawn(&ui, &app);
-    assert!(frame.layers()[1].quads.iter().any(|q| q.shape.blur > 0.0));
+    let top = &frame.layers()[1];
+    assert_eq!(top.glass.len(), 1);
+    assert!(!top.quads.iter().any(|q| q.shape.blur > 0.0));
 }
 
 #[test]
@@ -228,7 +230,7 @@ fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
 }
 
 #[test]
-fn the_last_row_selected_meets_the_box_edge() {
+fn the_last_row_selected_keeps_the_inset_under_it() {
     let app = full_app();
     let mut ui = Ui::default();
     press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
@@ -242,18 +244,18 @@ fn the_last_row_selected_meets_the_box_edge() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let raised = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).raised();
+    let chosen = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).glass_chosen();
     let boxed = hits
         .rect_of(&crate::hit::Target::Palette)
         .expect("the palette");
     let mut quads = frame.layers()[1].quads.iter();
     let row = quads
-        .rfind(|q| q.color == raised)
+        .rfind(|q| q.color == chosen)
         .expect("the selected row");
     assert_eq!(
         row.rect.bottom(),
-        boxed.bottom() - tokens.hairline,
-        "no gap, the edge kept"
+        boxed.bottom() - tokens.sm,
+        "the inset, no more"
     );
 }
 

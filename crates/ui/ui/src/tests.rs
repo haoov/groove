@@ -19,6 +19,7 @@ mod finding;
 mod first_run;
 mod focus;
 mod frame;
+mod glass;
 mod hover;
 mod keymap;
 mod manual;

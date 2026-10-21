@@ -7,7 +7,7 @@ use crate::base::style::Role;
 use crate::base::tokens::COMPLETION_ROWS;
 use crate::text::row;
 use crate::widgets::menu::{listed, row_of};
-use crate::widgets::{Corner, panel_at};
+use crate::widgets::{Corner, Material, panel_at};
 
 /// One row of the list.
 pub struct Offer<'a> {
@@ -41,7 +41,13 @@ pub fn completions<A: App>(
     let most = ctx.tokens.popup.min(ctx.window.w - ctx.tokens.xl);
     let wide = (pad * 2.0 + labels + after).min(most);
     let size = (wide, ctx.tokens.row * shown as f32);
-    let rect = panel_at(ctx, at, Corner::TopLeft, size, ctx.styles.line());
+    let rect = panel_at(
+        ctx,
+        at,
+        Corner::TopLeft,
+        size,
+        (ctx.styles.line(), Material::Solid),
+    );
     for (index, one) in window.iter().enumerate() {
         let line = row_of(ctx, rect, index);
         let ground = (first + index == chosen).then(|| ctx.styles.raised());

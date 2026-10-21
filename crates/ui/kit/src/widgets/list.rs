@@ -97,33 +97,66 @@ pub fn list<A: App>(
         if let Some(target) = &item.target {
             hoverable(ctx, line, target.clone());
         }
-        let mut indent = item.indent;
-        if let Some((mark, turn)) = item.mark {
-            let full = leading(ctx, line, line.x + indent);
-            let box_ = match item.mark_size {
-                Some(size) => full.align((size, size), Align::Center, Align::Center),
-                None => full,
-            };
-            ctx.icon(box_, mark, turn, item.tint.unwrap_or(item.style.color));
-            indent = after_mark(ctx, indent);
-        }
-        let right = ended(ctx, line, item.end);
-        let start = line.x + indent;
-        let ends = match item.aside {
-            Some((at, _, _)) => rect.x + at - ctx.tokens.sm,
-            None => right,
-        };
-        let text = elide(ctx, item.text, &item.style, (ends - start).max(0.0));
-        texted(ctx, (line, indent), &text, item);
-        if let Some((at, text, style)) = item.aside {
-            let room = (right - (rect.x + at)).max(0.0);
-            let aside = Rect::new(rect.x + at, y, room, height);
-            let text = elide(ctx, text, &style, room);
-            row(ctx, aside, 0.0, &text, style);
-        }
+        drawn(ctx, (rect, line), item);
         y += height;
     }
     y
+}
+
+/// Rows on glass, each ground rounded and see-through; returns the y under the last.
+pub fn glass_list<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    rows: &[Row<'_, A::Target>],
+    selected: Option<usize>,
+) -> f32 {
+    let height = ctx.tokens.glass_row;
+    let mut y = rect.y;
+    for (i, item) in rows.iter().enumerate() {
+        let line = Rect::new(rect.x, y, rect.w, height);
+        let on = match &item.target {
+            Some(target) => ctx.interact(line, target.clone()),
+            None => false,
+        };
+        let ground = match (selected == Some(i), on) {
+            (true, _) => Some(ctx.styles.glass_chosen()),
+            (false, true) => Some(ctx.styles.glass_hover()),
+            (false, false) => item.background,
+        };
+        if let Some(color) = ground {
+            ctx.rounded(line, color, ctx.tokens.corner);
+        }
+        drawn(ctx, (rect, line), item);
+        y += height;
+    }
+    y
+}
+
+fn drawn<A: App>(ctx: &mut Ctx<'_, A>, (rect, line): (Rect, Rect), item: &Row<'_, A::Target>) {
+    let mut indent = item.indent;
+    if let Some((mark, turn)) = item.mark {
+        let full = leading(ctx, line, line.x + indent);
+        let box_ = match item.mark_size {
+            Some(size) => full.align((size, size), Align::Center, Align::Center),
+            None => full,
+        };
+        ctx.icon(box_, mark, turn, item.tint.unwrap_or(item.style.color));
+        indent = after_mark(ctx, indent);
+    }
+    let right = ended(ctx, line, item.end);
+    let start = line.x + indent;
+    let ends = match item.aside {
+        Some((at, _, _)) => rect.x + at - ctx.tokens.sm,
+        None => right,
+    };
+    let text = elide(ctx, item.text, &item.style, (ends - start).max(0.0));
+    texted(ctx, (line, indent), &text, item);
+    if let Some((at, text, style)) = item.aside {
+        let room = (right - (rect.x + at)).max(0.0);
+        let aside = Rect::new(rect.x + at, line.y, room, line.h);
+        let text = elide(ctx, text, &style, room);
+        row(ctx, aside, 0.0, &text, style);
+    }
 }
 
 /// The row's end text against its right edge; returns where the rest must stop.

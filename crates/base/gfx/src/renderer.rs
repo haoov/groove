@@ -1,5 +1,7 @@
 //! The renderer: a surface or an offscreen target, and one frame onto it.
 
+use crate::backdrop::Backdrop;
+use crate::glass::GlassPass;
 use crate::gpu::Gpu;
 use crate::quads::QuadPass;
 use crate::text::{Cached, TextPass};
@@ -21,11 +23,14 @@ pub(crate) enum Target {
 pub struct Renderer {
     pub(crate) gpu: Gpu,
     fonts: Fonts,
-    quads: QuadPass,
-    text: TextPass,
+    pub(crate) glass: GlassPass,
+    pub(crate) backdrop: Backdrop,
+    pub(crate) veils: QuadPass,
+    pub(crate) quads: QuadPass,
+    pub(crate) text: TextPass,
     pub(crate) target: Target,
     format: wgpu::TextureFormat,
-    size: Size,
+    pub(crate) size: Size,
 }
 
 impl Renderer {
@@ -60,7 +65,11 @@ impl Renderer {
         size: Size,
         fonts: Fonts,
     ) -> Self {
+        let backdrop = Backdrop::new(&gpu.device, format);
         Self {
+            glass: GlassPass::new(&gpu.device, format, backdrop.layout()),
+            backdrop,
+            veils: QuadPass::new(&gpu.device, format),
             quads: QuadPass::new(&gpu.device, format),
             text: TextPass::new(&gpu.device, &gpu.queue, format),
             gpu,
@@ -150,9 +159,18 @@ impl Renderer {
     fn prepare(&mut self, frame: &Frame) -> Result<()> {
         let (device, queue) = (&self.gpu.device, &self.gpu.queue);
         let layers = frame.layers.len();
+        self.veils.begin(layers);
+        self.glass.begin(layers);
         self.quads.begin(layers);
         self.text.begin(layers, device, queue, self.size);
         for (i, layer) in frame.layers.iter().enumerate() {
+            if let Some(veil) = layer.veil {
+                let all = self.size.rect();
+                self.veils.push(i, all, veil, 1.0, all, self.size);
+            }
+            for g in &layer.glass {
+                self.glass.push(i, g, self.size);
+            }
             for q in &layer.quads {
                 let shaped = (q.rect, q.shape);
                 self.quads
@@ -177,45 +195,13 @@ impl Renderer {
                 );
             }
         }
+        if frame.backdrop().is_some() {
+            self.backdrop.fit(device, self.size);
+        }
+        self.veils.upload(device, queue);
+        self.glass.upload(device, queue);
         self.quads.upload(device, queue);
         self.text.prepare(device, queue, &mut self.fonts)
-    }
-
-    fn encode(&self, view: &wgpu::TextureView, frame: &Frame) -> Result<wgpu::CommandBuffer> {
-        let mut encoder = self.gpu.device.create_command_encoder(&Default::default());
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("frame"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear(frame)),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            for layer in 0..frame.layers.len() {
-                self.quads.draw(layer, &mut pass, self.size);
-                self.text.draw(layer, &mut pass)?;
-            }
-        }
-        Ok(encoder.finish())
-    }
-}
-
-fn clear(frame: &Frame) -> wgpu::Color {
-    let [r, g, b, a] = frame.background.linear();
-    wgpu::Color {
-        r: f64::from(r),
-        g: f64::from(g),
-        b: f64::from(b),
-        a: f64::from(a),
     }
 }
 

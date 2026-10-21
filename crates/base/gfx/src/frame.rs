@@ -68,9 +68,22 @@ pub struct TextRun {
     pub clip: Rect,
 }
 
-/// Quads draw first, then text. A later layer draws over an earlier one.
+/// A pane that bends and frosts the layers below it.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Glass {
+    pub rect: Rect,
+    pub radius: f32,
+    /// The width of the curved rim.
+    pub bezel: f32,
+    pub tint: Color,
+    pub clip: Rect,
+}
+
+/// The veil draws first, then glass, quads and text. A later layer draws over an earlier one.
 #[derive(Default)]
 pub struct Layer {
+    pub veil: Option<Color>,
+    pub glass: Vec<Glass>,
     pub quads: Vec<Quad>,
     pub texts: Vec<TextRun>,
     pub grids: Vec<CellGrid>,
@@ -102,6 +115,11 @@ impl Frame {
 
     pub fn layers(&self) -> &[Layer] {
         &self.layers
+    }
+
+    /// The first layer that holds glass.
+    pub fn backdrop(&self) -> Option<usize> {
+        self.layers.iter().position(|l| !l.glass.is_empty())
     }
 
     pub fn clip(&self) -> Rect {
@@ -178,6 +196,25 @@ impl Frame {
             color,
             clip,
             shape,
+        });
+    }
+
+    /// Dims every layer below the top one, under what the top one draws.
+    pub fn veil(&mut self, color: Color) {
+        self.top().veil = Some(color);
+    }
+
+    pub fn glass(&mut self, rect: Rect, (radius, bezel): (f32, f32), tint: Color) {
+        if rect.is_empty() {
+            return;
+        }
+        let clip = self.clip();
+        self.top().glass.push(Glass {
+            rect,
+            radius,
+            bezel,
+            tint,
+            clip,
         });
     }
 
