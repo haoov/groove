@@ -22,17 +22,17 @@ pub(crate) fn one_paragraph(text: &str) -> std::borrow::Cow<'_, str> {
     }
 }
 
-const SANS: &str = "IBM Plex Sans";
+const SANS: &str = "Inter";
 const MONO: &str = "IBM Plex Mono";
 const JETBRAINS: &str = "JetBrainsMonoNL Nerd Font Mono";
 const LILEX: &str = "Lilex";
 
 const FACES: [&[u8]; 12] = [
-    include_bytes!("../../../../assets/fonts/IBMPlexSans-Regular.ttf"),
-    include_bytes!("../../../../assets/fonts/IBMPlexSans-Medium.ttf"),
-    include_bytes!("../../../../assets/fonts/IBMPlexSans-SemiBold.ttf"),
-    include_bytes!("../../../../assets/fonts/IBMPlexSans-Bold.ttf"),
-    include_bytes!("../../../../assets/fonts/IBMPlexSans-Italic.ttf"),
+    include_bytes!("../../../../assets/fonts/Inter-Regular.ttf"),
+    include_bytes!("../../../../assets/fonts/Inter-Medium.ttf"),
+    include_bytes!("../../../../assets/fonts/Inter-SemiBold.ttf"),
+    include_bytes!("../../../../assets/fonts/Inter-Bold.ttf"),
+    include_bytes!("../../../../assets/fonts/Inter-Italic.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Bold.ttf"),
     include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Regular.ttf"),

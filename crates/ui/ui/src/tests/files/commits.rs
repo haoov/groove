@@ -116,7 +116,7 @@ fn a_shown_commit_heads_every_list_with_the_way_back() {
     for pane in Pane::ALL {
         ui.session.pane = pane;
         let drawn = in_sidebar(&app, &ui);
-        let head = ["showing commit", "abc1234", "working tree"];
+        let head = ["commit", "abc1234", "working tree"];
         assert!(
             head.iter()
                 .all(|said| drawn.iter().any(|text| text == said)),

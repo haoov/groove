@@ -29,7 +29,7 @@ pub(super) fn showing(ctx: &mut Ctx, rect: Rect, one: &CommitEntry) {
     let working = Button::new("working tree", Target::Working, Role::Muted, raised).hover(action);
     let mut room = rect.pad(Edges::across(ctx.tokens.md, sm));
     working.right(ctx, &mut room, sm);
-    Label::new("showing commit", ctx.styles.small(Role::Faint)).left(ctx, &mut room, sm);
+    Label::new("commit", ctx.styles.small(Role::Faint)).left(ctx, &mut room, sm);
     Label::new(&one.short_sha, ctx.styles.code(Role::Text)).draw(ctx, room);
 }
 

@@ -329,7 +329,7 @@ fn an_event_reason_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
         kind: kind("", "Event", "events", true),
         ..key.clone()
     };
-    let reason = "FailedCreatePodSandBoxAgain";
+    let reason = "FailedCreatePodSandBox";
     let event = Described {
         event: Some(EventRow {
             warning: true,
