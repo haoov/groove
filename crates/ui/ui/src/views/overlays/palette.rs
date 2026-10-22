@@ -1,7 +1,6 @@
 //! The panel every choice is made in: the palette, or a picker on what it belongs to.
 
 mod rows;
-mod scoped;
 
 use rows::{entry, matched};
 
@@ -57,9 +56,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
     let shown = lines.len().clamp(usize::from(!typing_only), limit(palette));
     let typed = has_input(palette, &prompt, rows.len());
-    let scope = scoped::scope(app, palette);
-    let pinned = ctx.tokens.row * f32::from(u8::from(scope.is_some()));
-    let rows_high = ctx.tokens.glass_row * shown as f32 + pinned + ctx.tokens.sm * 2.0;
+    let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm * 2.0;
     let height = match typed {
         true => rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0,
         false => rows_high,
@@ -79,10 +76,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let under = match typed {
         true => input_line(ctx, rect, palette, &prompt),
         false => rect,
-    };
-    let under = match &scope {
-        Some(words) => scoped::draw(ctx, under, words),
-        None => under,
     };
     let body = inset(ctx, under, shown);
     let ends = (

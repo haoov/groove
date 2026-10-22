@@ -323,8 +323,7 @@ takes the last answer back into it, and on the first question returns to the ent
 Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
 
 **`#` searches files.** A query that starts with `#` lists the selected worktree's files, a
-match in the file name first, and opens the one picked on the Files tab. A line under the
-input names the session, repo and branch the palette acts on.
+match in the file name first, and opens the one picked on the Files tab.
 Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
 
 **One button says what to do now.** The commit box offers a single action — commit while
