@@ -158,12 +158,9 @@ pub enum Target {
     Approve(groove_types::ApprovalId),
     /// The sheet itself, which keeps a click from what it covers.
     Sheet,
-    /// The switch that lets a session's writes through without asking.
-    AutoApprove(groove_types::SessionId),
     Refuse(groove_types::ApprovalId),
     /// The agent's own row: what it can be sent, and its reload.
     Skills(SessionId),
-    Reload(SessionId),
     /// Which sessions the feed shows.
     FeedScope,
     /// One MR of the review column, by its project and its number.

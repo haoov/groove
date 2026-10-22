@@ -36,8 +36,10 @@ pub use icon::{busy, dot, icon, lead, turned};
 pub use input::{Lead, caret_after, input_at, stepped_input, typed_line};
 pub use inset::inset_row;
 pub use list::{Row, glass_list, list};
-pub use menu::{menu, size as menu_size};
-pub use modal::{Corner, Material, floating_pane, glass_pane, modal, panel_at};
+pub use menu::{glass_menu, glass_size, menu, size as menu_size};
+pub use modal::{
+    Corner, Material, floating_pane, glass_pane, glass_pill, ground_under, modal, panel_at,
+};
 pub use pane::{Side, pane};
 pub use popup::{Piece, Said, popup};
 pub use question::{offer, question};

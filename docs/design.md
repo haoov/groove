@@ -190,7 +190,7 @@ Four columns, left to right. The left half is the agents; the right half is the 
 | Column | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's pty · action bar: reload, skills menu, auto-approve switch |
+| **Agent pane** | the agent's pty · action bar: skills menu |
 | **Workspace** | header · tabs · the selected tab · the manual section |
 | **Sidebar** | contextual list for the selected tab; folds away |
 
@@ -292,11 +292,13 @@ The bands sit under it: the sidebar, a column's heading, a menu, a file's head.
 The deepest holds the agent's pty, the terminal widget, a note's own rows under its card,
 and the field a note is typed in — nothing else.
 
-**Glass on three panels only.** The rail, the palette with its pickers, and the language
-servers' popup are glass: the work below shows through them, frosted, magnified and bent at
-the rim. Every other panel is solid. A row on glass takes a rounded, see-through ground
+**Glass only where it floats.** The rail, the palette with its pickers, the language
+servers' popup and the agent bar's skills menu are glass: the work below shows through them,
+frosted, magnified and bent at the rim. Every other panel is solid. A row on glass takes a rounded, see-through ground
 under the pointer and when selected. Enforced by
-`the_rail_floats_as_a_pane_of_glass_inside_its_place`, `the_palette_is_glass`,
+`the_rail_floats_as_a_pane_of_glass_inside_its_place`,
+`the_bar_offers_the_skills_in_glass_on_the_screen_s_ground`,
+`the_palette_is_glass`,
 `the_hover_popup_is_glass`,
 `the_completion_list_stays_solid` and
 `a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground`.

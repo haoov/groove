@@ -9,7 +9,7 @@ use crate::{Corner, Menu, Of};
 mod act;
 mod picked;
 pub use act::Act;
-use groove_ui_kit::widgets::{menu, menu_size};
+use groove_ui_kit::widgets::{glass_menu, glass_size, menu, menu_size};
 pub use picked::picked;
 
 /// The actions of one file.
@@ -88,13 +88,20 @@ pub fn rows(of: &Of) -> Vec<&str> {
 pub fn draw(ctx: &mut Ctx, open: &Menu) {
     let within = ctx.window;
     let rows = rows(&open.of);
-    let (wide, tall) = menu_size(ctx, &rows);
+    let glass = matches!(open.of, Of::Skills { .. });
+    let (wide, tall) = match glass {
+        true => glass_size(ctx, &rows),
+        false => menu_size(ctx, &rows),
+    };
     let at = match open.corner {
         Corner::TopLeft => open.at,
         Corner::BottomLeft => (open.at.0, open.at.1 - tall),
         Corner::BottomRight => (open.at.0 - wide, open.at.1 - tall),
     };
     ctx.layer();
+    if glass {
+        return glass_menu(ctx, at, within, &rows, Target::MenuRow);
+    }
     let edge = ctx.styles.border();
     let roles: Vec<Role> = match &open.of {
         Of::Hues(_) => groove_types::Hue::ALL

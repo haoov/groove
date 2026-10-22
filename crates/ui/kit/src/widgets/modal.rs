@@ -66,9 +66,23 @@ pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     ctx.glass(rect, shape, ctx.styles.glass());
 }
 
+/// A pane of glass around `content`, `pad` wider on each side and a row tall. Returns the pane.
+pub fn glass_pill<A: App>(ctx: &mut Ctx<'_, A>, content: Rect, pad: f32) -> Rect {
+    let tall = ctx.tokens.row;
+    let top = content.y + (content.h - tall) / 2.0;
+    let pill = Rect::new(content.x - pad, top, content.w + pad * 2.0, tall);
+    glass_pane(ctx, pill);
+    pill
+}
+
+/// `rect` on `ground`, which glass drawn over it shows blurred.
+pub fn ground_under<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, ground: Ground) {
+    ctx.under(rect, ground.color(&ctx.styles));
+}
+
 /// `place` on `ground`, a pane of glass floating inside it. Returns the pane.
 pub fn floating_pane<A: App>(ctx: &mut Ctx<'_, A>, place: Rect, ground: Ground) -> Rect {
-    ctx.under(place, ground.color(&ctx.styles));
+    ground_under(ctx, place, ground);
     let pane = place.pad(groove_gfx::Edges::all(ctx.tokens.sm));
     glass_pane(ctx, pane);
     pane

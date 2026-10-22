@@ -54,8 +54,9 @@ namespaces under it. No health, no counts. A session with none has no clusters s
 ## Agent session
 
 **The pane draws the agent's terminal**; keys go to the pty as bytes. Escape reaches the
-agent's TUI like any key. The action bar holds reload, the skills menu and the
-auto-approve switch. An ask stands on the rail row alone.
+agent's TUI like any key. The action bar stands on the terminal's own ground and holds the
+skills menu, a pill of glass at its start. Auto-approve is a setting, not a switch on the bar.
+An ask stands on the rail row alone.
 
 **Skills are scoped per launch**: the pane's menu lists exactly what this agent was
-started with. A skill saved later shows after a reload.
+started with. A skill saved later shows after a reload, from the palette.

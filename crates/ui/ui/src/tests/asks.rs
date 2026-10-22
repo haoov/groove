@@ -137,21 +137,13 @@ fn escape_puts_the_sheet_away_without_deciding() {
 }
 
 #[test]
-fn the_bar_keeps_its_skills_and_switches_auto_approve() {
+fn the_bar_keeps_its_skills_and_no_switch() {
     let app = committing();
-    let mut ui = session_ui();
-    assert!(texts(&app, &ui).iter().any(|one| one == "skills"));
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let session = SessionId::new("a");
-    let rect = hits
-        .rect_of(&Target::AutoApprove(session.clone()))
-        .expect("the switch");
-    let acted = click(rect, &mut ui, &app, &hits);
-    assert_eq!(
-        acted,
-        [Command::Agent(agent::Command::AutoApprove {
-            session,
-            on: true
-        })]
+    let ui = session_ui();
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|one| one == "skills"), "{drawn:?}");
+    assert!(
+        !drawn.iter().any(|one| one.starts_with("auto-approve")),
+        "{drawn:?}"
     );
 }

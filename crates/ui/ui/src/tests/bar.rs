@@ -78,24 +78,35 @@ fn skill(name: &str, label: &str, kinds: &[&str]) -> groove_types::Skill {
 }
 
 #[test]
-fn the_bar_counts_the_skills_and_offers_them() {
+fn the_bar_offers_the_skills_in_glass_on_the_screen_s_ground() {
     let app = offering(vec![skill("co-review", "co review", &[])]);
     let ui = session_ui();
     let drawn = drawn(&app, &ui);
     assert!(drawn.iter().any(|one| one == "skills"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "reload"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "1 skill"), "{drawn:?}");
-}
-
-#[test]
-fn a_skill_switched_off_is_neither_counted_nor_offered() {
-    let off = groove_types::Skill {
-        enabled: false,
-        ..skill("rollout", "rollout", &[])
-    };
-    let app = offering(vec![skill("co-review", "co review", &[]), off]);
-    let drawn = drawn(&app, &session_ui());
-    assert!(drawn.iter().any(|one| one == "1 skill"), "{drawn:?}");
+    for gone in ["reload", "1 skill", "auto-approve"] {
+        assert!(!drawn.iter().any(|one| one == gone), "{gone}: {drawn:?}");
+    }
+    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let bar = crate::layout::Layout::of(window(), &ui).agent_bar;
+    let base = &frame.layers()[0];
+    let pills = base
+        .glass
+        .iter()
+        .filter(|one| bar.contains(one.rect.x, one.rect.y + 1.0));
+    assert_eq!(pills.count(), 1, "one pill of glass");
+    let deep =
+        groove_ui_kit::base::style::Styles::new(app.config.theme(), crate::Tokens::new(1.0)).deep();
+    let pane = crate::layout::Layout::of(window(), &ui).agent;
+    assert!(
+        pane.contains(bar.x, bar.y),
+        "the bar stands in the agent's pane"
+    );
+    let quads = base.quads.iter().filter(|one| one.rect == pane);
+    assert_eq!(quads.count(), 0, "no fill over the glass");
+    assert!(
+        base.under.contains(&(pane, deep)),
+        "on the screen's own ground"
+    );
 }
 
 #[test]
@@ -130,35 +141,6 @@ fn the_skills_menu_holds_what_this_kind_is_offered() {
         )],
         "an explorer is offered the explorer's own"
     );
-}
-
-#[test]
-fn reload_ends_the_agent_and_starts_it_again() {
-    let app = offering(Vec::new());
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Reload(SessionId::new("a")))
-        .expect("the reload word");
-    let acted = click(word, &mut ui, &app, &hits);
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.reload"]);
-}
-
-#[test]
-fn a_skill_newer_than_the_agent_lights_the_reload() {
-    let reload = |app: &groove_controllers::AppState| {
-        let (frame, _) = crate::view(app, &session_ui(), window(), &mut Fonts::embedded());
-        let mut texts = frame.layers()[0].texts.iter();
-        texts.find(|one| one.text == "reload").unwrap().style.color
-    };
-    let mut app = offering(vec![skill("save-task", "save task", &[])]);
-    let theme = app.config.theme();
-    let styles = groove_ui_kit::base::style::Styles::new(theme, crate::Tokens::new(1.0));
-    let attention = styles.color(groove_ui_kit::base::style::Role::Attention);
-    assert_ne!(reload(&app), attention, "no skill is newer");
-    app.skill.skills[0].changed_at = Timestamp::new(50);
-    assert_eq!(reload(&app), attention);
 }
 
 #[test]
@@ -370,4 +352,30 @@ fn a_trackpad_that_moves_a_little_still_moves_the_screen() {
         asked += nudge(&mut ui).len();
     }
     assert!(asked > 0, "what is under a line is carried, not lost");
+}
+
+#[test]
+fn the_skills_stand_at_the_bar_s_start_a_gap_above_the_foot() {
+    let app = offering(Vec::new());
+    let ui = session_ui();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let word = hits.rect_of(&Target::Skills(SessionId::new("a")));
+    let word = word.expect("the skills word");
+    let bar = crate::layout::Layout::of(window(), &ui).agent_bar;
+    let tokens = crate::Tokens::new(1.0);
+    assert!(word.x < bar.x + bar.w / 2.0, "at the start");
+    let foot = window().size.height as f32 - tokens.sm - tokens.xs / 2.0;
+    assert_eq!(word.bottom(), foot, "a gap above the foot");
+}
+#[test]
+fn the_skills_menu_stands_on_glass_as_the_pickers_do() {
+    let app = offering(vec![skill("save-task", "save task", &[])]);
+    let mut ui = session_ui();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let word = hits.rect_of(&Target::Skills(SessionId::new("a")));
+    click(word.expect("the skills word"), &mut ui, &app, &hits);
+    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let top = frame.layers().last().expect("the menu's layer");
+    assert_eq!(top.glass.len(), 1, "one pane of glass");
+    assert!(top.texts.iter().any(|run| run.text == "save task"));
 }
