@@ -1,6 +1,7 @@
 //! The renderer: a surface or an offscreen target, and one frame onto it.
 
 use crate::backdrop::Backdrop;
+use crate::frame::Layer;
 use crate::glass::GlassPass;
 use crate::gpu::Gpu;
 use crate::quads::QuadPass;
@@ -25,6 +26,7 @@ pub struct Renderer {
     fonts: Fonts,
     pub(crate) glass: GlassPass,
     pub(crate) backdrop: Backdrop,
+    pub(crate) unders: QuadPass,
     pub(crate) veils: QuadPass,
     pub(crate) quads: QuadPass,
     pub(crate) text: TextPass,
@@ -69,6 +71,7 @@ impl Renderer {
         Self {
             glass: GlassPass::new(&gpu.device, format, backdrop.layout()),
             backdrop,
+            unders: QuadPass::new(&gpu.device, format),
             veils: QuadPass::new(&gpu.device, format),
             quads: QuadPass::new(&gpu.device, format),
             text: TextPass::new(&gpu.device, &gpu.queue, format),
@@ -159,15 +162,13 @@ impl Renderer {
     fn prepare(&mut self, frame: &Frame) -> Result<()> {
         let (device, queue) = (&self.gpu.device, &self.gpu.queue);
         let layers = frame.layers.len();
+        self.unders.begin(layers);
         self.veils.begin(layers);
         self.glass.begin(layers);
         self.quads.begin(layers);
         self.text.begin(layers, device, queue, self.size);
         for (i, layer) in frame.layers.iter().enumerate() {
-            if let Some(veil) = layer.veil {
-                let all = self.size.rect();
-                self.veils.push(i, all, veil, 1.0, all, self.size);
-            }
+            backs((&mut self.unders, &mut self.veils), i, layer, self.size);
             for g in &layer.glass {
                 self.glass.push(i, g, self.size);
             }
@@ -198,10 +199,22 @@ impl Renderer {
         if frame.backdrop().is_some() {
             self.backdrop.fit(device, self.size);
         }
+        self.unders.upload(device, queue);
         self.veils.upload(device, queue);
         self.glass.upload(device, queue);
         self.quads.upload(device, queue);
         self.text.prepare(device, queue, &mut self.fonts)
+    }
+}
+
+/// What a layer draws before its glass: the grounds under it, then its veil.
+fn backs((unders, veils): (&mut QuadPass, &mut QuadPass), i: usize, layer: &Layer, size: Size) {
+    let all = size.rect();
+    for &(rect, color) in &layer.under {
+        unders.push(i, rect, color, 1.0, all, size);
+    }
+    if let Some(veil) = layer.veil {
+        veils.push(i, all, veil, 1.0, all, size);
     }
 }
 

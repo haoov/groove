@@ -79,9 +79,10 @@ pub struct Glass {
     pub clip: Rect,
 }
 
-/// The veil draws first, then glass, quads and text. A later layer draws over an earlier one.
+/// Grounds under glass, veil, glass, quads, then text; a later layer draws over an earlier one.
 #[derive(Default)]
 pub struct Layer {
+    pub under: Vec<(Rect, Color)>,
     pub veil: Option<Color>,
     pub glass: Vec<Glass>,
     pub quads: Vec<Quad>,
@@ -119,7 +120,13 @@ impl Frame {
 
     /// The first layer that holds glass.
     pub fn backdrop(&self) -> Option<usize> {
-        self.layers.iter().position(|l| !l.glass.is_empty())
+        self.glassed().next()
+    }
+
+    /// Every layer that holds glass, first to last.
+    pub fn glassed(&self) -> impl Iterator<Item = usize> + '_ {
+        let held = |(at, layer): (usize, &Layer)| (!layer.glass.is_empty()).then_some(at);
+        self.layers.iter().enumerate().filter_map(held)
     }
 
     pub fn clip(&self) -> Rect {
@@ -200,6 +207,11 @@ impl Frame {
     }
 
     /// Dims every layer below the top one, under what the top one draws.
+    /// A ground under the top layer's glass, which shows it blurred.
+    pub fn under(&mut self, rect: Rect, color: Color) {
+        self.top().under.push((rect, color));
+    }
+
     pub fn veil(&mut self, color: Color) {
         self.top().veil = Some(color);
     }

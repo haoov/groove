@@ -100,3 +100,44 @@ fn a_veil_dims_the_layers_below_and_not_its_own() {
     );
     assert_eq!(image.pixel(12, 8)[0], 255);
 }
+
+#[test]
+fn a_later_pane_shows_what_was_drawn_after_an_earlier_one() {
+    let size = Size::new(160, 80);
+    let mut r = renderer(size);
+    let mut frame = Frame::new(size, Color::BLACK);
+    frame.glass(
+        Rect::new(0.0, 0.0, 40.0, 80.0),
+        (6.0, 8.0),
+        Color::TRANSPARENT,
+    );
+    frame.quad(Rect::new(40.0, 0.0, 120.0, 80.0), Color::WHITE);
+    frame.layer();
+    frame.glass(
+        Rect::new(60.0, 10.0, 80.0, 60.0),
+        (6.0, 8.0),
+        Color::TRANSPARENT,
+    );
+    let image = r.snapshot(&frame).expect("snapshot");
+    assert!(image.pixel(100, 40)[0] > 120, "{:?}", image.pixel(100, 40));
+}
+
+#[test]
+fn a_ground_under_glass_shows_through_it_and_around_it() {
+    let size = Size::new(80, 80);
+    let mut r = renderer(size);
+    let mut frame = Frame::new(size, Color::BLACK);
+    frame.under(Rect::new(0.0, 0.0, 80.0, 80.0), Color::WHITE);
+    frame.glass(
+        Rect::new(20.0, 20.0, 40.0, 40.0),
+        (6.0, 8.0),
+        Color::TRANSPARENT,
+    );
+    let image = r.snapshot(&frame).expect("snapshot");
+    assert_eq!(image.pixel(4, 4)[0], 255, "around the pane");
+    assert!(
+        image.pixel(40, 40)[0] > 120,
+        "through it: {:?}",
+        image.pixel(40, 40)
+    );
+}
