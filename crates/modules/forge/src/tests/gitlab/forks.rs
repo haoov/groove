@@ -6,9 +6,9 @@ use super::*;
 async fn a_fork_s_mr_on_the_same_branch_is_not_the_branch_s_own() {
     let mut fork = mr("opened");
     fork["iid"] = "9".into();
-    fork["sourceProject"] = serde_json::json!({ "fullPath": "someone/overwhelm" });
+    fork["sourceProject"] = serde_json::json!({ "fullPath": "someone/orchard" });
     let mut own = mr("opened");
-    own["sourceProject"] = serde_json::json!({ "fullPath": "wiremind/devops/overwhelm" });
+    own["sourceProject"] = serde_json::json!({ "fullPath": "acme/devops/orchard" });
     let (_server, both) = gitlab(by_branch(vec![fork.clone(), own])).await;
     let read = both.find_mr(&repo(), "main").await.unwrap();
     assert_eq!(read.expect("its own mr").number, "7");

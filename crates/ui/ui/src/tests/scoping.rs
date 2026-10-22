@@ -25,7 +25,7 @@ fn holding(pairs: Vec<Attached>) -> AppState {
     app.config.config = Some(serde_json::from_str(config).expect("a config"));
     app.config.add_cluster("hub");
     app.config.add_cluster("staging");
-    let names = ["paxone", "cnpg", "monitoring"].map(String::from).to_vec();
+    let names = ["shop", "cnpg", "monitoring"].map(String::from).to_vec();
     app.cluster.store.set_namespaces("staging", names);
     let open = app
         .session
@@ -82,7 +82,7 @@ fn the_scope_line_stands_on_every_tab_and_attaches_a_first_context_and_namespace
     assert_eq!(listed, [Command::Cluster(list)]);
     assert_eq!(
         labels(&app, &ui),
-        ["staging", "* whole cluster", "paxone", "cnpg", "monitoring"]
+        ["staging", "* whole cluster", "shop", "cnpg", "monitoring"]
     );
     let attached = chose(&app, &mut ui, "cnpg", false);
     let attach = Session::AttachCluster {
@@ -99,7 +99,7 @@ fn the_scope_line_stands_on_every_tab_and_attaches_a_first_context_and_namespace
 #[test]
 fn the_namespace_panel_lists_the_held_first_checks_them_detaches_them_and_attaches_the_rest() {
     let app = holding(vec![
-        on("staging", Some("paxone")),
+        on("staging", Some("shop")),
         on("staging", Some("cnpg")),
     ]);
     let mut ui = Ui::default();
@@ -110,14 +110,14 @@ fn the_namespace_panel_lists_the_held_first_checks_them_detaches_them_and_attach
     assert_eq!(opened, [Command::Cluster(list)]);
     assert_eq!(
         labels(&app, &ui),
-        ["staging", "paxone", "cnpg", "* whole cluster", "monitoring"]
+        ["staging", "shop", "cnpg", "* whole cluster", "monitoring"]
     );
-    assert!(chose(&app, &mut ui, "paxone", false).is_empty());
+    assert!(chose(&app, &mut ui, "shop", false).is_empty());
     assert!(
         ui.session
             .resources
             .hidden
-            .contains(&on("staging", Some("paxone")))
+            .contains(&on("staging", Some("shop")))
     );
     assert!(
         matches!(ui.overlay, Some(Overlay::Scope(_))),
@@ -142,7 +142,7 @@ fn the_namespace_panel_lists_the_held_first_checks_them_detaches_them_and_attach
 #[test]
 fn ctrl_shift_n_then_a_name_and_enter_shows_that_namespace_alone_on_the_resources_tab() {
     let app = holding(vec![
-        on("staging", Some("paxone")),
+        on("staging", Some("shop")),
         on("staging", Some("cnpg")),
     ]);
     let mut ui = Ui {
@@ -155,20 +155,20 @@ fn ctrl_shift_n_then_a_name_and_enter_shows_that_namespace_alone_on_the_resource
     assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
     assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
     let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
-    assert_eq!(hidden, [on("staging", Some("paxone"))]);
+    assert_eq!(hidden, [on("staging", Some("shop"))]);
     press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
     press(Key::Down, Default::default(), &mut ui, &app);
     press(Key::Char(' '), Default::default(), &mut ui, &app);
     assert!(
         ui.session.resources.hidden.is_empty(),
-        "space checks paxone again"
+        "space checks shop again"
     );
 }
 
 #[test]
 fn enter_on_a_namespace_not_held_attaches_it_alone() {
     let app = holding(vec![
-        on("staging", Some("paxone")),
+        on("staging", Some("shop")),
         on("staging", Some("cnpg")),
     ]);
     let mut ui = Ui {
@@ -187,7 +187,7 @@ fn enter_on_a_namespace_not_held_attaches_it_alone() {
     let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
     assert_eq!(
         hidden,
-        [on("staging", Some("cnpg")), on("staging", Some("paxone"))]
+        [on("staging", Some("cnpg")), on("staging", Some("shop"))]
     );
 }
 
@@ -199,7 +199,7 @@ fn under_a_whole_cluster_a_namespace_is_offered_and_its_small_check_is_green_its
     picker(&app, &mut ui, Picks::Namespaces);
     assert_eq!(
         labels(&app, &ui),
-        ["staging", "* whole cluster", "paxone", "cnpg", "monitoring"]
+        ["staging", "* whole cluster", "shop", "cnpg", "monitoring"]
     );
     let attach = Session::AttachCluster {
         session: SessionId::new("a"),
@@ -244,7 +244,7 @@ fn under_a_whole_cluster_a_namespace_is_offered_and_its_small_check_is_green_its
 #[test]
 fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
     let app = holding(vec![
-        on("staging", Some("paxone")),
+        on("staging", Some("shop")),
         on("staging", Some("cnpg")),
     ]);
     let mut ui = Ui {
@@ -262,5 +262,5 @@ fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
     assert!(asked.is_empty(), "nothing else takes it: {asked:?}");
     press(Key::Enter, Default::default(), &mut ui, &app);
     let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
-    assert_eq!(hidden, [on("staging", Some("paxone"))]);
+    assert_eq!(hidden, [on("staging", Some("shop"))]);
 }

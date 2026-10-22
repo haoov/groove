@@ -49,16 +49,16 @@ fn an_application_lists_its_project_sync_health_auto_sync_and_short_revision() {
     );
     let raw = groove_kube::Row {
         uid: "u1".into(),
-        name: "pythie-cayzn-acc".into(),
+        name: "billing-eu-acc".into(),
         namespace: Some("argocd".into()),
         version: "9".into(),
         created: None,
         cells: [
-            "pythie-cayzn-acc",
+            "billing-eu-acc",
             "OutOfSync",
             "Degraded",
             "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
-            "data-science",
+            "analytics",
             "41d",
         ]
         .map(String::from)
@@ -72,8 +72,8 @@ fn an_application_lists_its_project_sync_health_auto_sync_and_short_revision() {
     assert_eq!(
         listed.cells,
         [
-            "pythie-cayzn-acc",
-            "data-science",
+            "billing-eu-acc",
+            "analytics",
             "OutOfSync",
             "Degraded",
             "auto · prune · heal",
@@ -98,26 +98,26 @@ fn an_application_without_a_sync_policy_is_manual_and_a_tag_reads_whole() {
 fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
     let app = serde_json::json!({
         "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
-        "metadata": { "name": "pythie-cayzn-acc", "namespace": "argocd", "uid": "u1" },
+        "metadata": { "name": "billing-eu-acc", "namespace": "argocd", "uid": "u1" },
         "spec": {
-            "project": "data-science",
+            "project": "analytics",
             "sources": [
-                { "repoURL": "https://gitlab.wiremind.io/charts.git", "chart": "pythie", "targetRevision": "3.8.0",
+                { "repoURL": "https://gitlab.example.com/charts.git", "chart": "billing", "targetRevision": "3.8.0",
                   "helm": { "valueFiles": ["$values/envs/acc/values.yaml"] } },
-                { "repoURL": "https://gitlab.wiremind.io/pythie-cayzn-deploy.git", "targetRevision": "main", "ref": "values" }
+                { "repoURL": "https://gitlab.example.com/billing-eu-deploy.git", "targetRevision": "main", "ref": "values" }
             ],
-            "destination": { "server": "https://10.0.0.1:6443", "namespace": "pythie-cayzn-acc" },
+            "destination": { "server": "https://10.0.0.1:6443", "namespace": "billing-eu-acc" },
             "syncPolicy": { "automated": { "prune": true, "selfHeal": true } }
         },
         "status": {
             "sync": { "status": "OutOfSync", "revision": "e9f8a7b" },
             "health": { "status": "Degraded" },
             "resources": [
-                { "group": "apps", "kind": "Deployment", "namespace": "pythie-cayzn-acc", "name": "pythie-api",
+                { "group": "apps", "kind": "Deployment", "namespace": "billing-eu-acc", "name": "billing-api",
                   "status": "OutOfSync", "syncWave": 1, "health": { "status": "Progressing", "message": "1 of 3 updated" } },
-                { "kind": "ConfigMap", "namespace": "pythie-cayzn-acc", "name": "pythie-old", "status": "OutOfSync",
+                { "kind": "ConfigMap", "namespace": "billing-eu-acc", "name": "billing-old", "status": "OutOfSync",
                   "requiresPruning": true },
-                { "group": "batch", "kind": "Job", "namespace": "pythie-cayzn-acc", "name": "pythie-migrate",
+                { "group": "batch", "kind": "Job", "namespace": "billing-eu-acc", "name": "billing-migrate",
                   "status": "OutOfSync", "hook": true }
             ],
             "conditions": [{ "type": "SyncError", "message": "one or more synchronization tasks completed unsuccessfully",
@@ -127,9 +127,9 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
                 "startedAt": "2026-10-10T08:56:00Z", "finishedAt": "2026-10-10T08:56:38Z",
                 "operation": { "initiatedBy": { "automated": true } },
                 "syncResult": { "revision": "a1b2c3d", "resources": [
-                    { "kind": "Job", "name": "pythie-migrate", "namespace": "pythie-cayzn-acc", "status": "Synced",
+                    { "kind": "Job", "name": "billing-migrate", "namespace": "billing-eu-acc", "status": "Synced",
                       "hookType": "PreSync", "hookPhase": "Failed", "syncPhase": "PreSync", "message": "Job has reached the specified backoff limit" },
-                    { "kind": "ConfigMap", "name": "pythie-config", "namespace": "pythie-cayzn-acc", "status": "Synced", "message": "configured" }
+                    { "kind": "ConfigMap", "name": "billing-config", "namespace": "billing-eu-acc", "status": "Synced", "message": "configured" }
                 ] }
             }
         }
@@ -143,7 +143,7 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
             part.sync.as_str(),
             part.health.as_str()
         ),
-        ("data-science", "OutOfSync", "Degraded")
+        ("analytics", "OutOfSync", "Degraded")
     );
     assert_eq!(part.sources.len(), 2);
     assert_eq!(part.sources[0].values, ["$values/envs/acc/values.yaml"]);
@@ -163,7 +163,7 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
         .collect();
     assert_eq!(
         broke,
-        ["pythie-migrate"],
+        ["billing-migrate"],
         "the failed hook, not the configured map"
     );
     assert!(operation.failed[0].hook);
@@ -194,8 +194,8 @@ fn a_source_keeps_its_whole_synced_commit_for_the_link_to_show() {
     let sha = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678";
     let app = serde_json::json!({
         "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
-        "metadata": { "name": "pythie-cayzn-acc", "namespace": "argocd", "uid": "u1" },
-        "spec": { "source": { "repoURL": "https://gitlab.wiremind.io/pythie-cayzn-deploy.git", "targetRevision": "main" } },
+        "metadata": { "name": "billing-eu-acc", "namespace": "argocd", "uid": "u1" },
+        "spec": { "source": { "repoURL": "https://gitlab.example.com/billing-eu-deploy.git", "targetRevision": "main" } },
         "status": { "sync": { "status": "Synced", "revision": sha } }
     });
     let part = crate::describe("Application", &app, false)
@@ -208,8 +208,8 @@ fn a_source_keeps_its_whole_synced_commit_for_the_link_to_show() {
 fn an_empty_sources_list_leaves_the_one_source_read() {
     let app = serde_json::json!({
         "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
-        "metadata": { "name": "pythie-cayzn-acc", "namespace": "argocd", "uid": "u1" },
-        "spec": { "sources": [], "source": { "repoURL": "https://gitlab.wiremind.io/deploy.git", "targetRevision": "main" } },
+        "metadata": { "name": "billing-eu-acc", "namespace": "argocd", "uid": "u1" },
+        "spec": { "sources": [], "source": { "repoURL": "https://gitlab.example.com/deploy.git", "targetRevision": "main" } },
         "status": { "sync": { "status": "Synced" } }
     });
     let part = crate::describe("Application", &app, false)

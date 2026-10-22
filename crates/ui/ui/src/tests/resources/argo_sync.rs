@@ -15,7 +15,7 @@ pub(super) fn managed(kind: &str, name: &str, sync: &str, wave: i64) -> AppResou
     AppResource {
         group: String::new(),
         kind: kind.into(),
-        namespace: Some("pythie-acc".into()),
+        namespace: Some("billing-acc".into()),
         name: name.into(),
         sync: sync.into(),
         wave,
@@ -29,7 +29,7 @@ fn result(kind: &str, name: &str, hook: bool, hook_phase: &str) -> SyncedResourc
         group: String::new(),
         kind: kind.into(),
         name: name.into(),
-        namespace: Some("pythie-acc".into()),
+        namespace: Some("billing-acc".into()),
         status: "Synced".into(),
         message: String::new(),
         hook,
@@ -44,8 +44,8 @@ pub(super) fn opened_application(object: Described) -> (AppState, Ui) {
     let link = Link {
         context: "staging".into(),
         kind: applications(),
-        namespace: Some("paxone".into()),
-        name: "pythie-acc".into(),
+        namespace: Some("shop".into()),
+        name: "billing-acc".into(),
     };
     app.cluster.store.follows.lease(&link.key(), "resource");
     let reset = Followed::Reset(vec![object]);
@@ -73,15 +73,15 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     let part = object.app.as_mut().expect("its part");
     let operation = part.operation.as_mut().expect("its sync");
     operation.phase = "Failed".into();
-    let mut broke = result("Job", "pythie-migrate", false, "Failed");
+    let mut broke = result("Job", "billing-migrate", false, "Failed");
     broke.status = "SyncFailed".into();
     broke.message = "field is immutable".into();
     operation.applied = vec![broke];
     part.resources = vec![
-        managed("Deployment", "pythie-api", "OutOfSync", 1),
-        managed("Job", "pythie-migrate", "Synced", -1),
-        managed("ConfigMap", "pythie-config", "Synced", 0),
-        managed("Service", "pythie", "Synced", 0),
+        managed("Deployment", "billing-api", "OutOfSync", 1),
+        managed("Job", "billing-migrate", "Synced", -1),
+        managed("ConfigMap", "billing-config", "Synced", 0),
+        managed("Service", "billing", "Synced", 0),
     ];
     let (app, mut ui) = opened_application(object);
     let shown = texts(&app, &ui);
@@ -91,11 +91,11 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
         "out of sync · 1",
         "syncing · 0",
         "Deployment",
-        "pythie-api",
+        "billing-api",
         "1 out of sync",
         "1 failed",
         "field is immutable",
-        "pythie-migrate",
+        "billing-migrate",
     ] {
         assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
     }
@@ -104,7 +104,7 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     let shown = texts(&app, &ui);
     assert!(shown.iter().any(|text| text == "ConfigMap"), "{shown:?}");
     assert!(
-        !shown.iter().any(|text| text == "pythie-config"),
+        !shown.iter().any(|text| text == "billing-config"),
         "a kind with nothing to see stands folded"
     );
     hit(
@@ -114,7 +114,7 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     );
     let shown = texts(&app, &ui);
     assert!(
-        shown.iter().any(|text| text == "pythie-config"),
+        shown.iter().any(|text| text == "billing-config"),
         "{shown:?}"
     );
 }
@@ -127,12 +127,12 @@ fn a_running_sync_opens_on_its_stages_and_counts_what_it_has_applied() {
     operation.phase = "Running".into();
     operation.failed.clear();
     operation.applied = vec![
-        result("Job", "pythie-migrate", true, "Succeeded"),
-        result("Deployment", "pythie-api", false, "Running"),
+        result("Job", "billing-migrate", true, "Succeeded"),
+        result("Deployment", "billing-api", false, "Running"),
     ];
     part.resources = vec![
-        managed("Deployment", "pythie-api", "OutOfSync", 0),
-        managed("ConfigMap", "pythie-config", "OutOfSync", 1),
+        managed("Deployment", "billing-api", "OutOfSync", 0),
+        managed("ConfigMap", "billing-config", "OutOfSync", 1),
     ];
     let (app, ui) = opened_application(object);
     let shown = texts(&app, &ui);
@@ -143,15 +143,15 @@ fn a_running_sync_opens_on_its_stages_and_counts_what_it_has_applied() {
         "PreSync hooks",
         "wave 0",
         "1 applying",
-        "pythie-api",
+        "billing-api",
         "wave 1",
         "1 waiting",
-        "pythie-config",
+        "billing-config",
     ] {
         assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
     }
     assert!(
-        !shown.iter().any(|text| text == "pythie-migrate"),
+        !shown.iter().any(|text| text == "billing-migrate"),
         "the hooks done stand folded: {shown:?}"
     );
 }
@@ -161,19 +161,25 @@ fn a_header_sorts_each_kind_s_rows_and_leaves_the_list_s_order_be() {
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     part.resources = vec![
-        managed("Deployment", "pythie-api", "OutOfSync", 0),
-        managed("Deployment", "pythie-worker", "OutOfSync", 0),
+        managed("Deployment", "billing-api", "OutOfSync", 0),
+        managed("Deployment", "billing-worker", "OutOfSync", 0),
     ];
     let (app, mut ui) = opened_application(object);
     let at = |app: &AppState, ui: &Ui, name: &str| {
         let drawn = runs(app, ui);
         drawn.iter().find(|one| one.text == name).map(|one| one.y)
     };
-    let (api, worker) = (at(&app, &ui, "pythie-api"), at(&app, &ui, "pythie-worker"));
+    let (api, worker) = (
+        at(&app, &ui, "billing-api"),
+        at(&app, &ui, "billing-worker"),
+    );
     assert!(api < worker, "by name at first");
     hit(&app, &mut ui, Target::ResourceSort("NAME".into()));
     hit(&app, &mut ui, Target::ResourceSort("NAME".into()));
-    let (api, worker) = (at(&app, &ui, "pythie-api"), at(&app, &ui, "pythie-worker"));
+    let (api, worker) = (
+        at(&app, &ui, "billing-api"),
+        at(&app, &ui, "billing-worker"),
+    );
     assert!(api > worker, "the second click turns the order round");
     let tab = ui.session.resources.tab().expect("its tab");
     assert_eq!(tab.sort, Some(("NAME".to_string(), true)));
@@ -191,12 +197,12 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
     operation.phase = "Succeeded".into();
     operation.failed.clear();
     operation.applied = vec![
-        result("Job", "pythie-migrate", true, "Succeeded"),
-        result("Deployment", "pythie-api", false, ""),
+        result("Job", "billing-migrate", true, "Succeeded"),
+        result("Deployment", "billing-api", false, ""),
     ];
-    let mut job = managed("Job", "pythie-migrate", "OutOfSync", 0);
+    let mut job = managed("Job", "billing-migrate", "OutOfSync", 0);
     job.hook = true;
-    part.resources = vec![managed("Deployment", "pythie-api", "Synced", 0), job];
+    part.resources = vec![managed("Deployment", "billing-api", "Synced", 0), job];
     let (app, mut ui) = opened_application(object);
     let shown = texts(&app, &ui);
     assert!(
@@ -212,7 +218,7 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
     hit(&app, &mut ui, Target::ResourceFold("wave 0".into(), true));
     let shown = texts(&app, &ui);
     assert!(
-        shown.iter().any(|text| text == "pythie-migrate"),
+        shown.iter().any(|text| text == "billing-migrate"),
         "{shown:?}"
     );
     assert!(shown.iter().any(|text| text == "1 applied"), "{shown:?}");
@@ -229,14 +235,17 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
     let operation = part.operation.as_mut().expect("its sync");
     operation.phase = "Running".into();
     operation.failed.clear();
-    let mut seed = result("Job", "pythie-seed", true, "Running");
+    let mut seed = result("Job", "billing-seed", true, "Running");
     seed.phase = "Sync".into();
-    operation.applied = vec![result("Deployment", "pythie-api", false, "Succeeded"), seed];
-    let mut listed = managed("Job", "pythie-seed", "Synced", 1);
+    operation.applied = vec![
+        result("Deployment", "billing-api", false, "Succeeded"),
+        seed,
+    ];
+    let mut listed = managed("Job", "billing-seed", "Synced", 1);
     listed.hook = true;
     part.resources = vec![
-        managed("Deployment", "pythie-api", "Synced", 0),
-        managed("ConfigMap", "pythie-config", "OutOfSync", 1),
+        managed("Deployment", "billing-api", "Synced", 0),
+        managed("ConfigMap", "billing-config", "OutOfSync", 1),
         listed,
     ];
     let (app, ui) = opened_application(object);
@@ -246,7 +255,7 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
         let drawn = runs(&app, &ui);
         drawn.iter().find(|one| one.text == text).map(|one| one.y)
     };
-    let (wave, seed) = (at("wave 1"), at("pythie-seed"));
+    let (wave, seed) = (at("wave 1"), at("billing-seed"));
     assert!(
         wave.is_some() && seed > wave,
         "the hook under wave 1: {shown:?}"
@@ -287,7 +296,7 @@ fn a_narrow_pane_keeps_the_application_s_badges_clear_of_its_views() {
 fn a_source_s_credentials_are_never_drawn() {
     let mut object = super::argo::failing();
     let part = object.app.as_mut().expect("its part");
-    part.sources[0].repo = "https://ci:s3cr3t@gitlab.wiremind.io/pythie-cayzn-deploy.git".into();
+    part.sources[0].repo = "https://ci:s3cr3t@gitlab.example.com/billing-eu-deploy.git".into();
     let (app, mut ui) = opened_application(object);
     ui.session.resources.opened[0].view = crate::views::session::resources::View::Describe;
     let shown = texts(&app, &ui);
@@ -295,7 +304,7 @@ fn a_source_s_credentials_are_never_drawn() {
     assert!(
         shown
             .iter()
-            .any(|one| one == "gitlab.wiremind.io/pythie-cayzn-deploy"),
+            .any(|one| one == "gitlab.example.com/billing-eu-deploy"),
         "{shown:?}"
     );
 }

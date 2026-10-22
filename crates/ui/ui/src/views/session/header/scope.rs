@@ -52,7 +52,7 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
     second.at(ctx, line, box_.right() + ctx.tokens.sm);
 }
 
-/// `paxone`, `*` for the whole cluster, after its context when several are held.
+/// `shop`, `*` for the whole cluster, after its context when several are held.
 fn pair(one: &groove_types::Attached) -> String {
     let whole = resources::WHOLE_MARK;
     one.namespace.as_deref().unwrap_or(whole).to_string()

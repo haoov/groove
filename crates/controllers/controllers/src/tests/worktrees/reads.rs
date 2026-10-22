@@ -63,7 +63,7 @@ fn a_repo_added_by_its_url_takes_the_clone_the_pool_holds() {
     let id = explorer(&mut state, &services, &spawner);
     let add = Command::AddRepo {
         session: id.clone(),
-        name: "git@gitlab.example.com:g/mayo.git".into(),
+        name: "git@gitlab.example.com:g/kiwi.git".into(),
         spec: WorktreeSpec::default(),
     };
     dispatch(session_cmd(add), &mut state, &services, &spawner);

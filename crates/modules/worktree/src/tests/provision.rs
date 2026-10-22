@@ -18,7 +18,7 @@ async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
         wt.path,
         fx.root
             .path()
-            .join("worktrees/explorer-ab12cd34/mayo/explorer/ab12cd34")
+            .join("worktrees/explorer-ab12cd34/kiwi/explorer/ab12cd34")
             .to_string_lossy()
     );
     assert!(wt.base_ref.is_none());

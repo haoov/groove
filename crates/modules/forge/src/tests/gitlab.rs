@@ -16,9 +16,9 @@ pub(super) fn repo() -> Repo {
     Repo {
         id: RepoId::new("r1"),
         host: "gitlab.example.com".into(),
-        group_path: "wiremind/devops".into(),
-        project: "overwhelm".into(),
-        local_path: "/main/overwhelm".into(),
+        group_path: "acme/devops".into(),
+        project: "orchard".into(),
+        local_path: "/main/orchard".into(),
     }
 }
 
@@ -31,13 +31,13 @@ pub(super) fn mr(state: &str) -> serde_json::Value {
         "description": "## What\nthe pipeline",
         "state": state,
         "draft": false,
-        "webUrl": "https://gitlab.example.com/wiremind/devops/overwhelm/-/merge_requests/7",
+        "webUrl": "https://gitlab.example.com/acme/devops/orchard/-/merge_requests/7",
         "createdAt": "2026-09-18T08:00:00Z",
         "updatedAt": "2026-09-19T09:30:00Z",
         "diffHeadSha": "cafe1234",
         "sourceBranch": "fix/pipeline",
         "targetBranch": "main",
-        "author": { "username": "rsabbah" },
+        "author": { "username": "alice" },
         "approved": true,
         "approvedBy": { "nodes": [{ "username": "reviewer" }] },
         "reviewers": { "nodes": [
@@ -49,7 +49,7 @@ pub(super) fn mr(state: &str) -> serde_json::Value {
         "headPipeline": {
             "status": "FAILED",
             "finishedAt": "2026-09-19T09:25:00Z",
-            "path": "/wiremind/devops/overwhelm/-/pipelines/1234"
+            "path": "/acme/devops/orchard/-/pipelines/1234"
         },
         "discussions": { "nodes": [{
             "id": "gid://gitlab/Discussion/abc",
@@ -83,7 +83,7 @@ pub(super) async fn gitlab(reply: serde_json::Value) -> (MockServer, Gitlab) {
 
 pub(super) fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
     serde_json::json!({ "data": {
-        "currentUser": { "username": "rsabbah" },
+        "currentUser": { "username": "alice" },
         "project": { "mergeRequests": { "nodes": nodes } }
     }})
 }
@@ -99,7 +99,7 @@ async fn the_mr_of_a_branch_comes_back_with_its_fields() {
     assert_eq!(read.number, "7", "gitlab counts by iid");
     assert_eq!(read.node, "gid://gitlab/MergeRequest/99");
     assert_eq!(read.details.title, "fix(forge): read the pipeline");
-    assert_eq!(read.details.author, "rsabbah");
+    assert_eq!(read.details.author, "alice");
     assert_eq!(read.details.state, MrState::Open, "opened is open");
     assert_eq!(read.details.target_branch, "main");
 }
@@ -124,9 +124,7 @@ async fn the_pipeline_on_its_head_is_the_ci_of_the_row() {
     assert_eq!(ci.state, CiState::Failed);
     assert!(
         ci.url.starts_with("http://127.0.0.1:")
-            && ci
-                .url
-                .ends_with("/wiremind/devops/overwhelm/-/pipelines/1234"),
+            && ci.url.ends_with("/acme/devops/orchard/-/pipelines/1234"),
         "the pipeline's own page on the host: {}",
         ci.url
     );
@@ -165,7 +163,7 @@ async fn a_reviewers_own_state_says_what_they_have_said() {
     let approval = read.details.approval.expect("an approval");
     assert!(approval.approved);
     assert_eq!(approval.approved_by, vec!["reviewer".to_string()]);
-    assert!(!approval.approved_by_me, "rsabbah wrote it");
+    assert!(!approval.approved_by_me, "alice wrote it");
 }
 
 #[tokio::test]
@@ -185,7 +183,7 @@ async fn a_discussion_reads_as_a_thread_at_its_line() {
 #[tokio::test]
 async fn what_a_mutation_refuses_is_the_writes_failure() {
     let reply = serde_json::json!({ "data": {
-        "currentUser": { "username": "rsabbah" },
+        "currentUser": { "username": "alice" },
         "mergeRequestCreate": {
             "errors": ["Another open merge request already exists for this source branch"],
             "mergeRequest": null
@@ -210,7 +208,7 @@ async fn what_a_mutation_refuses_is_the_writes_failure() {
 #[tokio::test]
 async fn an_mr_opened_answers_with_the_mr_itself() {
     let reply = serde_json::json!({ "data": {
-        "currentUser": { "username": "rsabbah" },
+        "currentUser": { "username": "alice" },
         "mergeRequestCreate": { "errors": [], "mergeRequest": mr("opened") }
     }});
     let (server, gitlab) = gitlab(reply).await;
@@ -251,7 +249,7 @@ async fn an_mr_opened_answers_with_the_mr_itself() {
 #[tokio::test]
 async fn closing_answers_with_the_mr_closed() {
     let reply = serde_json::json!({ "data": {
-        "currentUser": { "username": "rsabbah" },
+        "currentUser": { "username": "alice" },
         "mergeRequestUpdate": { "errors": [], "mergeRequest": mr("closed") }
     }});
     let (_server, gitlab) = gitlab(reply).await;
@@ -262,7 +260,7 @@ async fn closing_answers_with_the_mr_closed() {
 /// One MR as a read by its number answers, and the mutations after it.
 fn by_iid(one: serde_json::Value) -> serde_json::Value {
     serde_json::json!({ "data": {
-        "currentUser": { "username": "rsabbah" },
+        "currentUser": { "username": "alice" },
         "project": { "mergeRequest": one },
         "createLatestDiffNote": { "errors": [], "note": { "id": "gid://gitlab/Note/1" } },
         "createNote": { "errors": [], "note": { "id": "gid://gitlab/Note/2" } },

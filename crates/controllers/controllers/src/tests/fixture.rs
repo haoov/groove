@@ -103,7 +103,7 @@ contexts:
     std::fs::write(home.join(".kube/config"), yaml).unwrap();
 }
 
-/// A bare origin and a pooled clone of it at `<home>/code/main/gitlab.example.com/g/mayo`.
+/// A bare origin and a pooled clone of it at `<home>/code/main/gitlab.example.com/g/kiwi`.
 pub fn pooled_clone(home: &Path) -> PathBuf {
     let origin = home.join("origin.git");
     let seed = home.join("seed");
@@ -120,7 +120,7 @@ pub fn pooled_clone(home: &Path) -> PathBuf {
     );
     sh(&seed, &["push", "origin", "main"]);
     sh(&seed, &["push", "origin", "main:release/1.0"]);
-    let clone = home.join("code/main/gitlab.example.com/g/mayo");
+    let clone = home.join("code/main/gitlab.example.com/g/kiwi");
     std::fs::create_dir_all(clone.parent().unwrap()).unwrap();
     sh(
         home,
@@ -167,7 +167,7 @@ pub fn explorer(
 ) -> groove_types::SessionId {
     dispatch(
         Cmd::Session(session::Command::OpenExplorer {
-            title: Some("try mayo".into()),
+            title: Some("try kiwi".into()),
         }),
         state,
         services,
@@ -184,7 +184,7 @@ pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner
     dispatch(
         Cmd::Session(session::Command::AddRepo {
             session: id.clone(),
-            name: "mayo".into(),
+            name: "kiwi".into(),
             spec: WorktreeSpec::default(),
         }),
         state,

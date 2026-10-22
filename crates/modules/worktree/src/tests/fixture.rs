@@ -16,7 +16,7 @@ pub struct Fixture {
     pub session: Session,
 }
 
-pub const SLUG: &str = "gitlab.example.com/wiremind/devops/mayo";
+pub const SLUG: &str = "gitlab.example.com/acme/devops/kiwi";
 
 pub fn sh(dir: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
@@ -99,7 +99,7 @@ impl Fixture {
     /// The pooled clone, registered.
     pub async fn repo(&self) -> groove_types::Repo {
         let clones = self.pool.list().await.unwrap();
-        let clone = Pool::resolve("mayo", &clones).unwrap();
+        let clone = Pool::resolve("kiwi", &clones).unwrap();
         self.pool.register(clone).await.unwrap()
     }
 }

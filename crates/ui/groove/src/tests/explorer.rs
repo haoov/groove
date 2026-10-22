@@ -41,7 +41,7 @@ pub(super) fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppStat
         &["remote", "add", "origin", origin.to_str().unwrap()],
     );
     sh(&seed, &["push", "origin", "main"]);
-    let clone = home.join("code/main/gitlab.example.com/g/mayo");
+    let clone = home.join("code/main/gitlab.example.com/g/kiwi");
     std::fs::create_dir_all(clone.parent().unwrap()).unwrap();
     sh(
         home,
@@ -75,7 +75,7 @@ pub(super) fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppStat
     dispatch(
         groove_controllers::Command::Session(session::Command::AddRepo {
             session: id,
-            name: "mayo".into(),
+            name: "kiwi".into(),
             spec: WorktreeSpec::default(),
         }),
         &mut state,

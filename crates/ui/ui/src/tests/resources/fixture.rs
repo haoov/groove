@@ -15,9 +15,9 @@ pub(super) fn base(uid: &str, name: &str) -> Described {
     Described {
         uid: uid.into(),
         name: name.into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         labels: vec![("app".into(), "worker".into())],
-        annotations: vec![("meta.helm.sh/release-name".into(), "paxone-staging".into())],
+        annotations: vec![("meta.helm.sh/release-name".into(), "shop-staging".into())],
         created: None,
         owners: Vec::new(),
         replicas: None,
@@ -52,7 +52,7 @@ fn worker() -> Container {
 pub(super) fn crashing() -> Described {
     let pod = PodPart {
         status: "CrashLoopBackOff".into(),
-        node: Some("gra9-node-2".into()),
+        node: Some("node-2".into()),
         ip: Some("10.2.4.118".into()),
         qos: Some("Burstable".into()),
         priority: None,
@@ -66,7 +66,7 @@ pub(super) fn crashing() -> Described {
         containers: vec![worker()],
         uses: vec![groove_types::Used {
             tag: "secret".into(),
-            name: "paxone-db-legacy".into(),
+            name: "shop-db-legacy".into(),
             how: vec!["env worker".into()],
         }],
     };
@@ -78,7 +78,7 @@ pub(super) fn crashing() -> Described {
         }],
         pod: Some(Box::new(pod)),
         yaml: "metadata:\n  name: api-0\nstatus:\n  restartCount: 14\n".into(),
-        ..base("paxone/api-0", "api-0")
+        ..base("shop/api-0", "api-0")
     }
 }
 
@@ -96,7 +96,7 @@ pub(super) fn opened() -> (AppState, Ui) {
     app.cluster.store.set_kinds("staging", kinds);
     let (_, hits) = drawn(&app, &ui);
     let row = hits
-        .rect_of(&Target::ResourceRow("paxone/api-0".into()))
+        .rect_of(&Target::ResourceRow("shop/api-0".into()))
         .expect("api-0's row");
     click(row, &mut ui, &app, &hits);
     (app, ui)
@@ -106,7 +106,7 @@ pub(super) fn link(name: &str, of: groove_types::KubeKind) -> Link {
     Link {
         context: "staging".into(),
         kind: of,
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         name: name.into(),
     }
 }

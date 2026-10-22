@@ -25,16 +25,16 @@ fn task(id: &str, title: &str) -> Session {
 #[test]
 fn task_branches_follow_type_slug_id() {
     assert_eq!(
-        session_branch(&task("TASKS2-42", "Fix the diff parser crash"), None),
-        "fix/fix-the-diff-parser-crash-tasks2-42"
+        session_branch(&task("TASK-42", "Fix the diff parser crash"), None),
+        "fix/fix-the-diff-parser-crash-task-42"
     );
     assert_eq!(
-        session_branch(&task("TASKS2-43", "Add MR templates"), None),
-        "feat/add-mr-templates-tasks2-43"
+        session_branch(&task("TASK-43", "Add MR templates"), None),
+        "feat/add-mr-templates-task-43"
     );
     assert_eq!(
-        session_branch(&task("TASKS2-44", "!!!"), None),
-        "feat/tasks2-44"
+        session_branch(&task("TASK-44", "!!!"), None),
+        "feat/task-44"
     );
     assert_eq!(
         session_branch(
@@ -61,25 +61,25 @@ fn explorer_branches_are_named_after_the_explorer_whatever_its_title() {
 fn slugs_are_bounded_and_never_cut_words() {
     let branch = session_branch(
         &task(
-            "TASKS2-1",
+            "TASK-1",
             "Implement the extraordinarily long specification document end to end",
         ),
         None,
     );
     assert!(branch.starts_with("feat/implement-the"), "{branch}");
-    assert!(branch.ends_with("-tasks2-1"), "{branch}");
+    assert!(branch.ends_with("-task-1"), "{branch}");
     assert!(branch.len() < 60, "{branch}");
 }
 
 #[test]
 fn a_slash_and_a_dash_are_different_worktrees() {
     assert_eq!(
-        worktree_leaf("mayo", "fix/tasks2-42-parser"),
-        std::path::PathBuf::from("mayo/fix/tasks2-42-parser")
+        worktree_leaf("kiwi", "fix/task-42-parser"),
+        std::path::PathBuf::from("kiwi/fix/task-42-parser")
     );
     assert_ne!(
-        worktree_leaf("mayo", "fix/parser"),
-        worktree_leaf("mayo", "fix-parser")
+        worktree_leaf("kiwi", "fix/parser"),
+        worktree_leaf("kiwi", "fix-parser")
     );
 }
 

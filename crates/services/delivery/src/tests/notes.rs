@@ -14,7 +14,7 @@ fn own(path: &str, line: u32, at: i64) -> Annotation {
         start_line: line,
         end_line: line,
         content: "issue: this leaks".into(),
-        author: "rsabbah".into(),
+        author: "alice".into(),
         status: AnnotationStatus::Open,
         created_at: Timestamp::new(at),
     }

@@ -154,7 +154,7 @@ fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
     let texts: Vec<String> = texts_of(&frame);
     assert!(texts.iter().any(|t| t == "Overview"));
     assert!(texts.iter().any(|t| t == "REPOS AND WORKTREES"));
-    assert!(texts.iter().any(|t| t == "mayo"));
+    assert!(texts.iter().any(|t| t == "kiwi"));
     assert_eq!(
         texts.iter().filter(|t| *t == "explorer/alpha").count(),
         2,

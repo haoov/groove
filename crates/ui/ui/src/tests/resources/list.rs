@@ -210,7 +210,7 @@ fn a_table_narrower_than_its_columns_shrinks_them_all_and_overflows_nothing() {
     ui.session.resources.widths.insert("pods".into(), wide);
     let (_, hits) = drawn(&app, &ui);
     let list = hits
-        .rect_of(&Target::ResourceRow("paxone/api-0".into()))
+        .rect_of(&Target::ResourceRow("shop/api-0".into()))
         .expect("a row");
     let status = hits
         .rect_of(&Target::ResourceSort("STATUS".into()))
@@ -229,7 +229,7 @@ fn an_age_due_asks_a_tick_while_the_list_shows_and_the_list_reads_it_after() {
     use groove_controllers::cluster::Command as Cluster;
     use groove_types::{Aging, Timestamp};
     let (mut app, mut ui) = listing();
-    let key = key("staging", Some("paxone"));
+    let key = key("staging", Some("shop"));
     let young = ObjectRow {
         aging: vec![Aging {
             cell: 1,
@@ -238,7 +238,7 @@ fn an_age_due_asks_a_tick_while_the_list_shows_and_the_list_reads_it_after() {
             lead: None,
             turn: Timestamp::default(),
         }],
-        ..row("young", "paxone", "Running")
+        ..row("young", "shop", "Running")
     };
     app.cluster.store.apply(
         &key,
@@ -273,10 +273,10 @@ fn the_kept_order_gives_way_to_a_row_that_lands_and_to_a_sort_picked() {
         texts.into_iter().find(|one| names.contains(&one.as_str()))
     };
     assert_ne!(first(&app, &ui).as_deref(), Some("aaa-new"));
-    let put = groove_controllers::cluster_service::Delta::Put(row("aaa-new", "paxone", "Running"));
+    let put = groove_controllers::cluster_service::Delta::Put(row("aaa-new", "shop", "Running"));
     app.cluster
         .store
-        .apply(&key("staging", Some("paxone")), Batch::Changes(vec![put]));
+        .apply(&key("staging", Some("shop")), Batch::Changes(vec![put]));
     assert_eq!(
         first(&app, &ui).as_deref(),
         Some("aaa-new"),
@@ -301,10 +301,10 @@ fn a_sideways_offset_with_the_list_shown_leaves_its_scroll_down() {
 #[test]
 fn the_list_search_puts_the_best_name_first_until_a_column_is_picked() {
     let (mut app, mut ui) = listing();
-    let pods = key("staging", Some("paxone"));
+    let pods = key("staging", Some("shop"));
     let rows = vec![
-        row("worker-email-bot", "paxone", "Running"),
-        row("web-0", "paxone", "Running"),
+        row("worker-email-bot", "shop", "Running"),
+        row("web-0", "shop", "Running"),
     ];
     let columns = app
         .cluster

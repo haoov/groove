@@ -45,13 +45,13 @@ fn the_session_uuid_is_stable_and_v5() {
 fn the_session_file_encodes_the_cwd_like_claude_code() {
     let file = session_file(
         Path::new("/home/x"),
-        Path::new("/home/x/worktrees/gitlab.wiremind.io/devops/"),
+        Path::new("/home/x/worktrees/gitlab.example.com/devops/"),
         "u",
     );
     assert_eq!(
         file,
         PathBuf::from(
-            "/home/x/.claude/projects/-home-x-worktrees-gitlab-wiremind-io-devops/u.jsonl"
+            "/home/x/.claude/projects/-home-x-worktrees-gitlab-example-com-devops/u.jsonl"
         )
     );
 }

@@ -109,7 +109,7 @@ async fn a_review_posts_its_notes_its_words_and_then_asks_for_changes() {
         "the words go up as a comment"
     );
     let asked = variables(&sent, "mergeRequestRequestChanges");
-    assert_eq!(asked["path"], "wiremind/devops/overwhelm");
+    assert_eq!(asked["path"], "acme/devops/orchard");
     assert_eq!(asked["iid"], "7", "gitlab counts by iid");
 }
 
@@ -137,7 +137,7 @@ async fn an_approval_is_the_one_call_gitlab_keeps_out_of_graphql() {
         .collect();
     assert!(
         paths.iter().any(|path| path
-            == "/api/v4/projects/wiremind%2Fdevops%2Foverwhelm/merge_requests/7/approve"),
+            == "/api/v4/projects/acme%2Fdevops%2Forchard/merge_requests/7/approve"),
         "{paths:?}"
     );
 }

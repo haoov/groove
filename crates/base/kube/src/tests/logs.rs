@@ -9,7 +9,7 @@ use crate::{Client, LogQuery, Start};
 async fn a_followed_log_asks_for_timestamps_from_where_it_starts_and_streams_its_lines() {
     let server = MockServer::start().await;
     let body = "2026-10-09T14:02:09.1Z ready\n2026-10-09T14:02:10.2Z job 1 done\n";
-    Mock::given(path("/api/v1/namespaces/paxone/pods/api-0/log"))
+    Mock::given(path("/api/v1/namespaces/shop/pods/api-0/log"))
         .and(query_param("container", "worker"))
         .and(query_param("timestamps", "true"))
         .and(query_param("follow", "true"))
@@ -22,7 +22,7 @@ async fn a_followed_log_asks_for_timestamps_from_where_it_starts_and_streams_its
     let client = Client::connect(&[config], "kind").await.expect("a client");
     let start = Start::Time("2026-10-09T14:02:09Z".into());
     let query = LogQuery {
-        namespace: "paxone",
+        namespace: "shop",
         pod: "api-0",
         container: "worker",
         previous: false,
@@ -50,7 +50,7 @@ async fn a_previous_log_the_container_never_had_is_an_api_error() {
     let server = MockServer::start().await;
     let refused = serde_json::json!({ "kind": "Status", "apiVersion": "v1", "status": "Failure",
         "message": "previous terminated container \"worker\" not found", "code": 400 });
-    Mock::given(path("/api/v1/namespaces/paxone/pods/api-0/log"))
+    Mock::given(path("/api/v1/namespaces/shop/pods/api-0/log"))
         .and(query_param("previous", "true"))
         .respond_with(ResponseTemplate::new(400).set_body_json(refused))
         .mount(&server)
@@ -59,7 +59,7 @@ async fn a_previous_log_the_container_never_had_is_an_api_error() {
     let config = file(dir.path(), "config", &token_context("kind", &server.uri()));
     let client = Client::connect(&[config], "kind").await.expect("a client");
     let query = LogQuery {
-        namespace: "paxone",
+        namespace: "shop",
         pod: "api-0",
         container: "worker",
         previous: true,

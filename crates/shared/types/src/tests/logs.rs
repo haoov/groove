@@ -15,7 +15,7 @@ fn a_kubelet_line_reads_its_time_to_the_nanosecond_and_keeps_its_words() {
 #[test]
 fn a_level_is_read_from_the_first_words_in_any_usual_shape() {
     for (said, expected) in [
-        ("ERROR paxone.db unreachable", Level::Error),
+        ("ERROR shop.db unreachable", Level::Error),
         ("ts=1 level=warn msg=slow", Level::Warn),
         (r#"{"level":"error","msg":"boom"}"#, Level::Error),
         ("E1009 14:02:09.112 main.go:88] failed", Level::Error),

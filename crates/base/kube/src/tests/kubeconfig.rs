@@ -7,9 +7,9 @@ clusters:
 - name: hub
   cluster:
     server: https://hub.example:6443
-- name: elpis
+- name: lab
   cluster:
-    server: https://elpis.example:6443
+    server: https://lab.example:6443
 users:
 - name: oidc
   user:
@@ -26,9 +26,9 @@ contexts:
   context:
     cluster: hub
     user: oidc
-- name: platform-elpis
+- name: platform-lab
   context:
-    cluster: elpis
+    cluster: lab
     user: admin
 ";
 
@@ -58,7 +58,7 @@ async fn the_files_merge_in_order_and_a_missing_one_is_skipped() {
         .await
         .expect("contexts read");
     let names: Vec<&str> = found.iter().map(|one| one.name.as_str()).collect();
-    assert_eq!(names, ["platform-hub", "platform-elpis", "kind"]);
+    assert_eq!(names, ["platform-hub", "platform-lab", "kind"]);
     assert_eq!(found[2].auth, Auth::Token);
     assert_eq!(found[2].namespace.as_deref(), Some("default"));
 }

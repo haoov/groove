@@ -12,7 +12,7 @@ use crate::views::session::Tab;
 use crate::views::session::resources::{Link, Opens, View};
 
 const SHA: &str = "e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0";
-const REPO: &str = "https://gitlab.wiremind.io/pythie-cayzn-deploy.git";
+const REPO: &str = "https://gitlab.example.com/billing-eu-deploy.git";
 
 fn asked(app: &AppState, ui: &Ui) -> Vec<Command> {
     crate::frame_commands(app, ui, crate::tests::metrics(1920, 1080, 1.0))
@@ -22,7 +22,7 @@ fn asked(app: &AppState, ui: &Ui) -> Vec<Command> {
 fn a_resource_opens_on_the_context_whose_server_the_destination_names() {
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
-    let mut api = managed("Deployment", "pythie-api", "OutOfSync", 0);
+    let mut api = managed("Deployment", "billing-api", "OutOfSync", 0);
     api.group = "apps".into();
     part.resources = vec![api];
     let (mut app, mut ui) = opened_application(object);
@@ -50,8 +50,8 @@ fn a_resource_opens_on_the_context_whose_server_the_destination_names() {
     let link = Link {
         context: "prod".into(),
         kind: deployments,
-        namespace: Some("pythie-acc".into()),
-        name: "pythie-api".into(),
+        namespace: Some("billing-acc".into()),
+        name: "billing-api".into(),
     };
     hit(&app, &mut ui, Target::ResourceOpen(Box::new(link.clone())));
     let shown = ui.session.resources.tab().map(|one| &one.link);
@@ -112,12 +112,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
         repo: REPO.into(),
         target: "main".into(),
     };
-    let sent = followed(
-        &app,
-        &mut ui,
-        "gitlab.wiremind.io/pythie-cayzn-deploy",
-        repo,
-    );
+    let sent = followed(&app, &mut ui, "gitlab.example.com/billing-eu-deploy", repo);
     let show = |sha: Option<&str>| {
         Command::Workspace(workspace::Command::ShowRepo {
             repo: REPO.into(),
@@ -129,7 +124,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     let (diff, files, resources) = (Tab::Diff, Tab::Files, Tab::Resources);
     app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
         session: app.session.selected.clone().expect("a session"),
-        slug: "gitlab.wiremind.io/pythie-cayzn-deploy".into(),
+        slug: "gitlab.example.com/billing-eu-deploy".into(),
         sha: None,
         reading: false,
     });
@@ -152,7 +147,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     assert_eq!(sent, [show(Some(SHA))]);
     app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
         session: app.session.selected.clone().expect("a session"),
-        slug: "gitlab.wiremind.io/pythie-cayzn-deploy".into(),
+        slug: "gitlab.example.com/billing-eu-deploy".into(),
         sha: Some(SHA.into()),
         reading: true,
     });
@@ -179,7 +174,7 @@ fn the_in_cluster_address_is_the_application_s_own_context_with_no_kubeconfig_re
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     part.destination.server = Some("https://kubernetes.default.svc".into());
-    part.resources = vec![managed("ConfigMap", "pythie-config", "OutOfSync", 0)];
+    part.resources = vec![managed("ConfigMap", "billing-config", "OutOfSync", 0)];
     let (mut app, mut ui) = opened_application(object);
     let read = Command::Cluster(cluster::Command::ReadContexts);
     assert!(!asked(&app, &ui).contains(&read));
@@ -190,8 +185,8 @@ fn the_in_cluster_address_is_the_application_s_own_context_with_no_kubeconfig_re
     let link = Link {
         context: "staging".into(),
         kind: maps,
-        namespace: Some("pythie-acc".into()),
-        name: "pythie-config".into(),
+        namespace: Some("billing-acc".into()),
+        name: "billing-config".into(),
     };
     hit(&app, &mut ui, Target::ResourceOpen(Box::new(link.clone())));
     assert_eq!(ui.session.resources.tab().map(|one| &one.link), Some(&link));

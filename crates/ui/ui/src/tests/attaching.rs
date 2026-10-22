@@ -16,7 +16,7 @@ fn on(context: &str, namespace: Option<&str>) -> Attached {
     }
 }
 
-/// `hub` and `staging` added to Groove; the session holds staging on `paxone` and hub whole.
+/// `hub` and `staging` added to Groove; the session holds staging on `shop` and hub whole.
 fn attaching() -> AppState {
     let mut app = full_app();
     let config = r#"{ "git": { "worktree_root": "~/code" } }"#;
@@ -27,7 +27,7 @@ fn attaching() -> AppState {
         .session
         .get_mut(&SessionId::new("a"))
         .expect("the fixture's session");
-    open.clusters = vec![on("staging", Some("paxone")), on("hub", None)];
+    open.clusters = vec![on("staging", Some("shop")), on("hub", None)];
     app
 }
 
@@ -85,7 +85,7 @@ fn detach_picks_one_context_and_namespace_the_session_holds() {
 fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
     let app = attaching();
     let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
-    for shown in ["CLUSTERS", "staging", "paxone", "hub", "whole cluster"] {
+    for shown in ["CLUSTERS", "staging", "shop", "hub", "whole cluster"] {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
     assert_eq!(texts.iter().filter(|one| *one == "staging").count(), 1);

@@ -127,7 +127,7 @@ fn probe(probe: &Value) -> Option<String> {
     Some(format!("{how} · every {every}s"))
 }
 
-/// `paxone-tls → /etc/tls ro`.
+/// `shop-tls → /etc/tls ro`.
 fn mounts(list: &Value) -> Vec<String> {
     let list = list.as_array().map(Vec::as_slice).unwrap_or_default();
     list.iter()

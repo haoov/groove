@@ -282,26 +282,26 @@ fn app() -> AppState {
     app.session.open.push(open("b", "Beta"));
     app.session.selected = Some(SessionId::new("a"));
     app.session.pool = vec![PoolEntry {
-        slug: "gitlab.example.com/g/mayo".into(),
-        path: "/pool/mayo".into(),
+        slug: "gitlab.example.com/g/kiwi".into(),
+        path: "/pool/kiwi".into(),
     }];
     app
 }
 
 fn with_repo(mut app: AppState) -> AppState {
     let repo = Repo {
-        id: RepoId::new("gitlab.example.com/g/mayo"),
+        id: RepoId::new("gitlab.example.com/g/kiwi"),
         host: "gitlab.example.com".into(),
         group_path: "g".into(),
-        project: "mayo".into(),
-        local_path: "/pool/mayo".into(),
+        project: "kiwi".into(),
+        local_path: "/pool/kiwi".into(),
     };
     let wt = Worktree {
         id: WorktreeId::new("wt-1"),
         session: SessionId::new("a"),
         repo: repo.id.clone(),
         branch: "explorer/alpha".into(),
-        path: "/code/worktrees/a/mayo/explorer/alpha".into(),
+        path: "/code/worktrees/a/kiwi/explorer/alpha".into(),
         base_ref: None,
         created_at: Timestamp::new(0),
     };

@@ -15,7 +15,7 @@ use crate::views::session::resources::View;
 fn worker(previous: bool, range: LogRange) -> LogKey {
     LogKey {
         context: "staging".into(),
-        namespace: "paxone".into(),
+        namespace: "shop".into(),
         pod: "api-0".into(),
         source: LogSource::Container("worker".into()),
         previous,

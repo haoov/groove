@@ -116,7 +116,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
     let columns = [
         Column::plain("", Width::FitCell(&caret)),
         Column::plain("KIND", Width::Fit("secret")),
-        Column::plain("NAME", Width::FitBody("paxone-worker-5d6b9c7f4")),
+        Column::plain("NAME", Width::FitBody("shop-worker-5d6b9c7f4")),
         Column::plain("STATUS", Width::Fill),
     ];
     let one = match line {

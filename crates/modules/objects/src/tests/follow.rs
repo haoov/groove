@@ -10,7 +10,7 @@ use super::watch::kubeconfig;
 use crate::{Change, Followed, Stop, follow};
 
 fn pod(uid: &str, phase: &str) -> serde_json::Value {
-    serde_json::json!({ "metadata": { "name": "api-0", "uid": uid, "namespace": "paxone",
+    serde_json::json!({ "metadata": { "name": "api-0", "uid": uid, "namespace": "shop",
         "resourceVersion": "10" }, "status": { "phase": phase } })
 }
 
@@ -22,13 +22,13 @@ async fn one_object_is_listed_by_name_then_its_changes_follow() {
         "{}\n",
         serde_json::json!({ "type": "MODIFIED", "object": pod("u1", "Running") })
     );
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("fieldSelector", "metadata.name=api-0"))
         .and(query_param("watch", "1"))
         .respond_with(ResponseTemplate::new(200).set_body_string(changed))
         .mount(&server)
         .await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("fieldSelector", "metadata.name=api-0"))
         .respond_with(ResponseTemplate::new(200).set_body_json(listed))
         .mount(&server)
@@ -38,7 +38,7 @@ async fn one_object_is_listed_by_name_then_its_changes_follow() {
     let sent = Arc::new(Mutex::new(Vec::new()));
     let held = sent.clone();
     let stop = Stop::new();
-    let key = FollowKey::named("kind", &pods(), Some("paxone"), "api-0");
+    let key = FollowKey::named("kind", &pods(), Some("shop"), "api-0");
     let running = tokio::spawn(follow(paths, key, &stop, move |batch| {
         held.lock().expect("the batches").push(batch);
     }));
@@ -59,7 +59,7 @@ async fn one_object_is_listed_by_name_then_its_changes_follow() {
 async fn usage_reads_none_without_metrics_server_and_helm_its_latest_revision() {
     let server = MockServer::start().await;
     Mock::given(path(
-        "/apis/metrics.k8s.io/v1beta1/namespaces/paxone/pods/api-0",
+        "/apis/metrics.k8s.io/v1beta1/namespaces/shop/pods/api-0",
     ))
     .respond_with(
         ResponseTemplate::new(404)
@@ -70,18 +70,18 @@ async fn usage_reads_none_without_metrics_server_and_helm_its_latest_revision() 
     let secrets = serde_json::json!({ "items": [
         { "metadata": { "labels": { "version": "36" } } },
         { "metadata": { "labels": { "version": "37" } } }] });
-    Mock::given(path("/api/v1/namespaces/paxone/secrets"))
-        .and(query_param("labelSelector", "owner=helm,name=paxone"))
+    Mock::given(path("/api/v1/namespaces/shop/secrets"))
+        .and(query_param("labelSelector", "owner=helm,name=shop"))
         .respond_with(ResponseTemplate::new(200).set_body_json(secrets))
         .mount(&server)
         .await;
     let dir = tempfile::tempdir().expect("a temp dir");
     let paths = vec![kubeconfig(dir.path(), &server.uri())];
-    let usage = crate::usage(&paths, "kind", "paxone", "api-0")
+    let usage = crate::usage(&paths, "kind", "shop", "api-0")
         .await
         .expect("a read");
     assert_eq!(usage, None);
-    let revision = crate::helm_revision(&paths, "kind", "paxone", "paxone")
+    let revision = crate::helm_revision(&paths, "kind", "shop", "shop")
         .await
         .expect("a read");
     assert_eq!(revision, Some(37));
@@ -92,14 +92,14 @@ async fn usage_reads_each_container_in_cores_and_bytes() {
     let server = MockServer::start().await;
     let read = serde_json::json!({ "containers": [{ "name": "worker", "usage": { "cpu": "180m", "memory": "700Mi" } }] });
     Mock::given(path(
-        "/apis/metrics.k8s.io/v1beta1/namespaces/paxone/pods/api-0",
+        "/apis/metrics.k8s.io/v1beta1/namespaces/shop/pods/api-0",
     ))
     .respond_with(ResponseTemplate::new(200).set_body_json(read))
     .mount(&server)
     .await;
     let dir = tempfile::tempdir().expect("a temp dir");
     let paths = vec![kubeconfig(dir.path(), &server.uri())];
-    let usage = crate::usage(&paths, "kind", "paxone", "api-0")
+    let usage = crate::usage(&paths, "kind", "shop", "api-0")
         .await
         .expect("a read");
     let usage = usage.expect("usage");

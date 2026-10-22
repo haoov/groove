@@ -275,20 +275,20 @@ async fn a_session_holds_each_cluster_and_namespace_once_and_lets_them_go_with_i
         context: "hub".into(),
         namespace: None,
     };
-    let paxone = Attached {
+    let shop = Attached {
         context: "staging".into(),
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
     };
-    for (one, at) in [(&whole, 1), (&paxone, 2), (&whole, 3)] {
+    for (one, at) in [(&whole, 1), (&shop, 2), (&whole, 3)] {
         store
             .attach_cluster(&session.id, one, Timestamp::new(at))
             .await
             .unwrap();
     }
     let held = store.clusters_of(&session.id).await.unwrap();
-    assert_eq!(held, [whole.clone(), paxone.clone()]);
+    assert_eq!(held, [whole.clone(), shop.clone()]);
     store.detach_cluster(&session.id, &whole).await.unwrap();
-    assert_eq!(store.clusters_of(&session.id).await.unwrap(), [paxone]);
+    assert_eq!(store.clusters_of(&session.id).await.unwrap(), [shop]);
     store.remove(&session.id).await.unwrap();
     assert!(store.clusters_of(&session.id).await.unwrap().is_empty());
 }

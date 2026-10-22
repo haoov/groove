@@ -6,7 +6,7 @@ use crate::session::Command;
 use crate::tests::fixture::{self, explorer, pooled_clone, sh, until};
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
-pub(super) const REPO: &str = "gitlab.example.com/g/mayo";
+pub(super) const REPO: &str = "gitlab.example.com/g/kiwi";
 
 fn session_cmd(command: Command) -> Cmd {
     Cmd::Session(command)
@@ -32,7 +32,7 @@ fn add_repo_cuts_the_first_worktree_and_lists_the_pool() {
     dispatch(
         session_cmd(Command::AddRepo {
             session: id.clone(),
-            name: "mayo".into(),
+            name: "kiwi".into(),
             spec: WorktreeSpec::default(),
         }),
         &mut state,
@@ -164,7 +164,7 @@ pub(super) fn second_worktree(
     dispatch(
         session_cmd(Command::AddRepo {
             session: id.clone(),
-            name: "mayo".into(),
+            name: "kiwi".into(),
             spec: WorktreeSpec::default(),
         }),
         state,
@@ -311,7 +311,7 @@ fn an_unknown_repo_or_target_is_an_error_not_a_worktree() {
     dispatch(
         session_cmd(Command::AddRepo {
             session: id.clone(),
-            name: "mayo".into(),
+            name: "kiwi".into(),
             spec,
         }),
         &mut state,
@@ -373,7 +373,7 @@ fn first_worktree(
     dispatch(
         session_cmd(Command::AddRepo {
             session: id.clone(),
-            name: "mayo".into(),
+            name: "kiwi".into(),
             spec: WorktreeSpec::default(),
         }),
         state,

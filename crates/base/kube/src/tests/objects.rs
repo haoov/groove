@@ -23,13 +23,13 @@ async fn whole_objects_list_from_the_cache_a_page_at_a_time_without_their_manage
         "items": [pod("api-0")] });
     let last =
         serde_json::json!({ "metadata": { "resourceVersion": "9" }, "items": [pod("api-1")] });
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("fieldSelector", "metadata.name=api-0"))
         .and(query_param("continue", "next"))
         .respond_with(ResponseTemplate::new(200).set_body_json(last))
         .mount(&server)
         .await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("fieldSelector", "metadata.name=api-0"))
         .and(query_param("resourceVersion", "0"))
         .and(query_param("resourceVersionMatch", "NotOlderThan"))
@@ -40,7 +40,7 @@ async fn whole_objects_list_from_the_cache_a_page_at_a_time_without_their_manage
     let kind = pods();
     let narrowed = Narrowed {
         kind: &kind,
-        namespace: Some("paxone"),
+        namespace: Some("shop"),
         fields: Some("metadata.name=api-0"),
         labels: None,
     };
@@ -64,7 +64,7 @@ async fn a_watch_of_whole_objects_reads_puts_deletions_and_bookmarks() {
         serde_json::json!({ "type": "BOOKMARK", "object": { "metadata": { "resourceVersion": "12" } } }),
     ];
     let body: String = lines.iter().map(|one| format!("{one}\n")).collect();
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("watch", "1"))
         .and(query_param("resourceVersion", "9"))
         .respond_with(ResponseTemplate::new(200).set_body_string(body))
@@ -74,7 +74,7 @@ async fn a_watch_of_whole_objects_reads_puts_deletions_and_bookmarks() {
     let kind = pods();
     let narrowed = Narrowed {
         kind: &kind,
-        namespace: Some("paxone"),
+        namespace: Some("shop"),
         fields: None,
         labels: None,
     };
@@ -92,10 +92,10 @@ async fn a_watch_of_whole_objects_reads_puts_deletions_and_bookmarks() {
 #[tokio::test]
 async fn a_metadata_list_asks_the_cache_for_the_metadata_alone() {
     let server = MockServer::start().await;
-    let list = serde_json::json!({ "items": [{ "metadata": { "name": "sh.helm.release.v1.paxone.v3",
-        "labels": { "owner": "helm", "name": "paxone", "version": "3" } } }] });
-    Mock::given(path("/api/v1/namespaces/paxone/secrets"))
-        .and(query_param("labelSelector", "owner=helm,name=paxone"))
+    let list = serde_json::json!({ "items": [{ "metadata": { "name": "sh.helm.release.v1.shop.v3",
+        "labels": { "owner": "helm", "name": "shop", "version": "3" } } }] });
+    Mock::given(path("/api/v1/namespaces/shop/secrets"))
+        .and(query_param("labelSelector", "owner=helm,name=shop"))
         .and(query_param("resourceVersion", "0"))
         .and(header("accept", crate::objects::AS_METADATA))
         .respond_with(ResponseTemplate::new(200).set_body_json(list))
@@ -109,9 +109,9 @@ async fn a_metadata_list_asks_the_cache_for_the_metadata_alone() {
     };
     let narrowed = Narrowed {
         kind: &secrets,
-        namespace: Some("paxone"),
+        namespace: Some("shop"),
         fields: None,
-        labels: Some("owner=helm,name=paxone"),
+        labels: Some("owner=helm,name=shop"),
     };
     let found = client.list_metadata(narrowed).await.expect("a list");
     assert_eq!(found[0]["metadata"]["labels"]["version"], "3");

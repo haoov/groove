@@ -105,7 +105,7 @@ round. Up and down select an item, Enter opens it, Esc lets it go.
 the age, in peach — and floats to the top of its column whatever the sort:
 
 ```
-◎ paxone-deploy !88          waiting 5d
+◎ shop-deploy !88          waiting 5d
 ⚑ Harden Groove…             changes requested · 2d
 ⚑ finops export              CI failed · 3h
 ```
@@ -139,7 +139,7 @@ Each row:
     asks to commit         [Approve] [Review]
  ⚑  fix/keys-50                          6m
     committed 3 · 7 files
- ◎  review-3  paxone argo               now
+ ◎  review-3  shop argo               now
     working
  ⚑  TASK-48  finops export               3h
     idle
@@ -323,7 +323,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   live; the age from the object's creation. A header sorts by its column, numbers and ages
   by value, and a second click turns the order round; its edge drags the column's width,
   kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
-  `pyth-ca-st` keeps `pythie-cayzn-staging` — and `label=value` words the server filters
+  `bil-eu-st` keeps `billing-eu-staging` — and `label=value` words the server filters
   on. `ctrl+shift+n` opens the namespace panel.
 - **Object.** A row opens its object in a tab of its own beside the list, `describe ·
   yaml`, and `logs` for a pod. The tab reads the object, its events and its owners by name,

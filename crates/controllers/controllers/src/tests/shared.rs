@@ -59,7 +59,7 @@ fn join(url: &str) -> Command {
 #[test]
 fn a_repo_that_reads_as_a_marketplace_is_named_and_written() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     send(&mut state, &services, &spawner, join(&url));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let wanted = SharedConfig {
@@ -74,7 +74,7 @@ fn a_repo_that_reads_as_a_marketplace_is_named_and_written() {
     );
     let copy = state.skill.shared.as_ref().expect("the copy");
     assert_eq!(copy.marketplace.name, "groove-agent");
-    assert_eq!(copy.marketplace.plugins[0].name, "wiremind");
+    assert_eq!(copy.marketplace.plugins[0].name, "acme");
     let written = groove_config_service::load(&home.path().join("config")).unwrap();
     assert_eq!(
         written.and_then(|one| one.shared),
@@ -101,7 +101,7 @@ fn a_repo_that_is_no_marketplace_is_refused_and_not_written() {
 #[test]
 fn letting_the_repo_go_forgets_it_and_its_copy() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     send(&mut state, &services, &spawner, Command::LeaveShared);
@@ -113,7 +113,7 @@ fn letting_the_repo_go_forgets_it_and_its_copy() {
 #[test]
 fn a_listing_out_when_the_repo_is_let_go_brings_neither_it_nor_its_copy_back() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     let late = SyncSpawner::new().unwrap();
@@ -129,7 +129,7 @@ fn a_listing_out_when_the_repo_is_let_go_brings_neither_it_nor_its_copy_back() {
 #[test]
 fn a_join_asked_while_a_listing_is_out_copies_once_the_listing_lands() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     let late = SyncSpawner::new().unwrap();
     let list = Cmd::Agent(crate::agent::Command::ListSkills);
     dispatch(list, &mut state, &services, &late);
@@ -148,7 +148,7 @@ fn a_join_asked_while_a_listing_is_out_copies_once_the_listing_lands() {
 #[test]
 fn the_copy_stays_while_the_config_without_it_cannot_be_written() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     std::fs::create_dir(home.path().join("config/config.json.tmp")).unwrap();
@@ -286,7 +286,7 @@ fn a_listing_out_when_a_skill_is_switched_off_never_switches_it_back_on() {
 #[test]
 fn before_the_first_run_a_join_is_refused_and_nothing_is_copied() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     state.config.config = None;
     send(&mut state, &services, &spawner, join(&url));
     assert_eq!(state.errors.len(), 1, "the join is refused");
@@ -296,7 +296,7 @@ fn before_the_first_run_a_join_is_refused_and_nothing_is_copied() {
 #[test]
 fn a_listing_asked_while_a_refused_copy_is_out_still_runs() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     let held = crate::tests::fixture::Held::default();
     dispatch(Cmd::Config(join(&url)), &mut state, &services, &held);
     let list = Cmd::Agent(crate::agent::Command::ListSkills);
@@ -314,7 +314,7 @@ fn a_listing_asked_while_a_refused_copy_is_out_still_runs() {
 #[test]
 fn a_repo_joined_again_before_the_leave_lands_keeps_its_copy() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     let held = crate::tests::fixture::Held::default();
@@ -347,7 +347,7 @@ fn a_skill_read_that_fails_keeps_the_last_list_and_says_why() {
 #[test]
 fn a_leave_whose_write_failed_forgets_the_copy_once_a_later_write_lands() {
     let (home, spawner, services, mut state) = fresh();
-    let url = origin(home.path(), "wiremind");
+    let url = origin(home.path(), "acme");
     send(&mut state, &services, &spawner, join(&url));
     let copy = state.skill.shared.clone().expect("the copy").path;
     let blocker = home.path().join("config/config.json.tmp");

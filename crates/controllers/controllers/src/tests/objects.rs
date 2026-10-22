@@ -21,7 +21,7 @@ fn pods() -> WatchKey {
             namespaced: true,
             watchable: true,
         },
-        namespace: Some("paxone".into()),
+        namespace: Some("shop".into()),
         selector: None,
     }
 }
@@ -33,13 +33,13 @@ async fn server() -> MockServer {
     let table = serde_json::json!({ "kind": "Table", "metadata": { "resourceVersion": "42" },
         "columnDefinitions": [{ "name": "Name", "priority": 0 }],
         "rows": [{ "cells": ["api-0"], "object": { "metadata": {
-            "uid": "u1", "name": "api-0", "namespace": "paxone", "resourceVersion": "42" } } }] });
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+            "uid": "u1", "name": "api-0", "namespace": "shop", "resourceVersion": "42" } } }] });
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("limit", "5000"))
         .respond_with(plain(table))
         .mount(&server)
         .await;
-    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+    Mock::given(path("/api/v1/namespaces/shop/pods"))
         .and(query_param("watch", "1"))
         .respond_with(ResponseTemplate::new(200).set_body_string(""))
         .mount(&server)
@@ -58,7 +58,7 @@ async fn server() -> MockServer {
         .await;
     let names = serde_json::json!({ "kind": "Table", "metadata": { "resourceVersion": "9" },
         "columnDefinitions": [{ "name": "Name", "priority": 0 }],
-        "rows": [{ "cells": ["paxone"], "object": { "metadata": { "uid": "n1", "name": "paxone" } } },
+        "rows": [{ "cells": ["shop"], "object": { "metadata": { "uid": "n1", "name": "shop" } } },
                  { "cells": ["argocd"], "object": { "metadata": { "uid": "n2", "name": "argocd" } } }] });
     Mock::given(path("/api/v1/namespaces"))
         .respond_with(plain(names))
@@ -160,7 +160,7 @@ fn a_context_s_namespaces_are_listed_by_name() {
     dispatch(Cmd::Cluster(list), &mut state, &services, &spawner);
     spawner.drain(&mut state, &services);
     let names = state.cluster.store.namespaces("kind").expect("listed");
-    assert_eq!(names, ["argocd", "paxone"]);
+    assert_eq!(names, ["argocd", "shop"]);
 }
 
 #[test]

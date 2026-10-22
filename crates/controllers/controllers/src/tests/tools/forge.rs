@@ -12,7 +12,7 @@ use crate::{AppState, Services, SyncSpawner};
 fn pr() -> serde_json::Value {
     json!({
         "number": 7, "id": "PR_node", "title": "fix: one", "body": "why", "state": "OPEN",
-        "isDraft": false, "url": "https://forge.test/acme/mayo/pull/7",
+        "isDraft": false, "url": "https://forge.test/acme/kiwi/pull/7",
         "createdAt": "2026-09-18T08:00:00Z", "updatedAt": "2026-09-19T09:30:00Z",
         "headRefName": "explorer/x", "headRefOid": "cafe1234", "baseRefName": "main",
         "author": { "login": "haoov" }

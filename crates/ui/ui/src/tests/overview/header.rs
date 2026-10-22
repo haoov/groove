@@ -18,7 +18,7 @@ fn the_header_names_the_session_and_what_it_points_at() {
     );
     let texts: Vec<String> = texts_of(&frame);
     assert!(texts.iter().any(|t| t == "Alpha"), "the title");
-    assert!(texts.iter().any(|t| t == "mayo"), "the repo picker");
+    assert!(texts.iter().any(|t| t == "kiwi"), "the repo picker");
     assert_eq!(
         texts.iter().filter(|t| *t == "explorer/alpha").count(),
         2,
@@ -198,7 +198,7 @@ fn reviewing() -> groove_controllers::AppState {
         .expect("the fixture's session")
         .session
         .kind = groove_types::SessionKind::Review {
-        project: "g/mayo".into(),
+        project: "g/kiwi".into(),
         iid: 7,
     };
     app

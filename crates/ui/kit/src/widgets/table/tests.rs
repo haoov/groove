@@ -259,7 +259,7 @@ fn laid_stands_where_draw_puts_the_rows() {
 #[test]
 fn a_body_cell_in_a_column_fitted_to_its_sample_is_never_cut() {
     let samples = [
-        "paxone-worker-5d6b9c7f4",
+        "shop-worker-5d6b9c7f4",
         "waiting · CrashLoopBackOff",
         "WMWMWMWMWM",
     ];

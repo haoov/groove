@@ -59,7 +59,7 @@ fn the_repo_picker_lists_repos_and_the_branch_picker_their_worktrees() {
     };
     assert_eq!(
         picked(Picks::Repo),
-        ("repo", vec!["mayo".into(), "pomme".into()])
+        ("repo", vec!["kiwi".into(), "pomme".into()])
     );
     let branches = vec!["explorer/alpha".to_string(), "fix/y".into()];
     assert_eq!(
@@ -73,7 +73,7 @@ fn the_repo_picker_lists_repos_and_the_branch_picker_their_worktrees() {
 fn two_repos() -> AppState {
     let mut app = full_app();
     let open = app.session.get_mut(&SessionId::new("a")).unwrap();
-    let mayo = open.repos[0].clone();
+    let kiwi = open.repos[0].clone();
     let worktree = |id: &str, repo: &groove_types::Repo, branch: &str| groove_types::Worktree {
         id: WorktreeId::new(id),
         session: SessionId::new("a"),
@@ -87,9 +87,9 @@ fn two_repos() -> AppState {
         id: groove_types::RepoId::new("gitlab.example.com/g/pomme"),
         project: "pomme".into(),
         local_path: "/pool/pomme".into(),
-        ..mayo.clone()
+        ..kiwi.clone()
     };
-    open.add_worktree(mayo.clone(), worktree("wt-3", &mayo, "fix/y"));
+    open.add_worktree(kiwi.clone(), worktree("wt-3", &kiwi, "fix/y"));
     open.add_worktree(pomme.clone(), worktree("wt-2", &pomme, "main"));
     app
 }
