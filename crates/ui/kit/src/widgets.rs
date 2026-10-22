@@ -30,7 +30,7 @@ pub use button::{Button, Text, picker, slot_at};
 pub use completions::{Offer, completions};
 pub use counts::{changes, counts, counts_room, faults, faults_room};
 pub use field::Field;
-pub use fold::{caret, fold, fold_box, fold_turn, folder};
+pub use fold::{caret, fold, fold_turn, folder};
 pub use heading::Heading;
 pub use icon::{busy, dot, icon, lead, turned};
 pub use input::{Lead, caret_after, input_at, stepped_input, typed_line};

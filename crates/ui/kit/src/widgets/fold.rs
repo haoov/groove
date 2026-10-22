@@ -1,4 +1,4 @@
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
@@ -19,24 +19,6 @@ pub fn folder<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: R
 pub fn fold<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: Role) -> Rect {
     let size = ctx.tokens.small;
     caret(ctx, room, (open, size), role)
-}
-
-/// A square of `room`'s height at its left that folds on a click, its caret in the middle.
-pub fn fold_box<A: App>(
-    ctx: &mut Ctx<'_, A>,
-    room: &mut Rect,
-    (open, target): (bool, A::Target),
-    role: Role,
-) -> Rect {
-    let box_ = room.take_left(room.h);
-    if ctx.interact(box_, target) {
-        let size = (ctx.tokens.row - ctx.tokens.xs).min(box_.h);
-        let hover = ctx.styles.glass_hover();
-        crate::shape::circle(ctx, crate::shape::square(box_, size), hover);
-    }
-    let mut slot = box_.pad(Edges::across((box_.h - ctx.tokens.small) / 2.0, 0.0));
-    fold(ctx, &mut slot, open, role);
-    box_
 }
 
 /// A fold caret's turn.

@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_controllers::shell_service::{Shell, Shells};
 use groove_gfx::{Edges, Rect};
 use groove_types::SessionId;
-use groove_ui_kit::shape::{from_bottom, from_right, from_top, strip};
+use groove_ui_kit::shape::{from_bottom, from_top, strip};
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -12,7 +12,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Tab, fold_box, glass_pane, screen};
+use groove_ui_kit::widgets::{Button, Tab, fold_turn, glass_pane, screen};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -45,10 +45,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
 /// The fold, the section's name, a tab each, then what opens a tab and splits the one up.
 fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = line.pad(Edges::across(0.0, sm));
+    let mut room = line.pad(Edges::across(sm, sm));
     actions(ctx, &mut room);
-    let folding = (ui.session.manual, Target::ShellFold);
-    fold_box(ctx, &mut room, folding, Role::Faint);
+    folder(ui.session.manual).left(ctx, &mut room, 0.0);
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.left(ctx, &mut room, md);
     for (name, id, selected) in tabs(shells) {
@@ -66,16 +65,14 @@ fn folded(ctx: &mut Ctx, line: Rect, shells: Option<&Shells>) {
     }
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.right(ctx, &mut room, md);
-    let tall = room.h;
-    let slot = from_right(&mut room, tall, 0.0);
-    fold_box(
-        ctx,
-        &mut slot.clone(),
-        (false, Target::ShellFold),
-        Role::Faint,
-    );
-    let left = slot.x - xs;
+    let slot = folder(false).right(ctx, &mut room, 0.0);
+    let left = slot.x - ctx.tokens.sm;
     glass_pane(ctx, strip(line, left - line.x, line.right() - left));
+}
+
+/// The caret that folds the drawer or opens it.
+fn folder(open: bool) -> Button<'static, Target> {
+    Button::icon(Mark::Down, fold_turn(open), Target::ShellFold, Role::Faint)
 }
 
 /// What splits the selected tab and what opens a new one, at the right of `room`.
