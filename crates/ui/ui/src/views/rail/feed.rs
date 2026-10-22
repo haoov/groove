@@ -27,14 +27,15 @@ pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
 
 /// The word that folds the feed, and the one that narrows it to the session in hand.
 fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
-    groove_ui_kit::shape::rule_above(ctx, line, ctx.styles.line());
     let md = ctx.tokens.md;
-    let mut room = line.pad(Edges::across(md, md));
+    groove_ui_kit::shape::rule_above(ctx, line.pad(Edges::across(md, md)), ctx.styles.line());
+    let row = groove_ui_kit::widgets::inset_row(ctx, line, Target::Feed, (false, None));
+    let sm = ctx.tokens.sm;
+    let mut room = row.pad(Edges::across(sm, sm));
     let scope = narrowed(ctx, &mut room, app, ui);
     groove_ui_kit::widgets::Heading::new("feed")
         .fold(!ui.rail.folded)
-        .target(Target::Feed)
-        .within(ctx, line, room);
+        .within(ctx, row, room);
     if let Some(scope) = scope {
         ctx.hit(scope, Target::FeedScope);
     }

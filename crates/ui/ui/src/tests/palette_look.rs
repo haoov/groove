@@ -254,7 +254,7 @@ fn the_last_row_selected_keeps_the_inset_under_it() {
         .expect("the selected row");
     assert_eq!(
         row.rect.bottom(),
-        boxed.bottom() - tokens.sm,
+        boxed.bottom() - tokens.sm - tokens.xs / 2.0,
         "the inset, no more"
     );
 }

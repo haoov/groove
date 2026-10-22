@@ -185,6 +185,12 @@ impl Styles {
             .with_alpha(crate::base::tokens::BADGE_GROUND)
     }
 
+    /// A role's colour dimmed to a row's ground, stronger on a light theme.
+    pub fn row_tint(&self, role: Role) -> Color {
+        let alpha = self.alpha(crate::base::tokens::ROW_TINT_ALPHA);
+        self.color(role).with_alpha(alpha)
+    }
+
     /// The rules above and below a list's selected row.
     pub fn chosen(&self) -> Color {
         self.palette.rosewater

@@ -9,40 +9,32 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{
-    after_mark, band, from_left, from_right, from_top, hairline, inset_of, square,
-};
+use groove_ui_kit::shape::{after_mark, from_left, from_right, from_top, square};
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{Button, lead};
+use groove_ui_kit::widgets::{Button, dot, inset_row, lead};
 
-/// The row's lines: head, state, and the answers while the session asks.
-pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
-    let base = (ctx.tokens.sm + ctx.tokens.line) * 2.0 + ctx.tokens.xs;
-    match asked(app, id) {
-        Some(_) => base + ctx.tokens.row,
-        None => base,
-    }
+/// The row's two lines: head and state.
+pub fn height(ctx: &Ctx) -> f32 {
+    (ctx.tokens.sm + ctx.tokens.line) * 2.0 + ctx.tokens.xs
 }
 
-/// Type icon, title and how long it has waited, then the agent's state under them.
+/// State dot, type icon, title and how long it has waited, then the agent's state under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
     let up = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
-    if up {
-        groove_ui_kit::shape::chosen_ground(ctx, rect);
-    }
-    groove_ui_kit::shape::hoverable(ctx, rect, Target::Session(id.clone()));
-    if let Some(role) = tinted(app, id) {
-        groove_ui_kit::shape::ground(ctx, rect, Ground::Tint(role));
-    }
+    let tint = tinted(app, id).map(Ground::RowTint);
+    let row = inset_row(ctx, rect, Target::Session(id.clone()), (up, tint));
     let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
-    let mut body = rect;
+    let mut body = row;
     from_top(&mut body, 0.0, sm);
     let head = from_top(&mut body, ctx.tokens.line, xs);
     let under = from_top(&mut body, head.h, 0.0);
 
     let mut room = head.pad(Edges::across(md, md));
     waited(ctx, app, &mut room, id);
+    let (role, hollow) = dot_of(app, id);
+    let spot = from_left(&mut room, sm, sm);
+    dot(ctx, spot, role, hollow);
     lead(
         ctx,
         &mut room,
@@ -57,10 +49,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     }
     if let Some(routine) = open.session.kind.routine() {
         run(ctx, app, under, id, routine);
-    }
-    hairline(ctx, rect, ctx.styles.line());
-    if up {
-        groove_ui_kit::shape::chosen_rules(ctx, rect);
     }
 }
 
@@ -90,23 +78,36 @@ pub(crate) fn asks_to(op: &str) -> String {
     )
 }
 
-/// The write in peach where the state stands, and its two answers on the line under it.
+/// Where the state line starts: under the title, past the dot and the type icon.
+fn indent(ctx: &Ctx) -> f32 {
+    after_mark(ctx, ctx.tokens.md + ctx.tokens.sm * 2.0)
+}
+
+/// The write in peach where the state stands.
 fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
-    let (md, ground, hover) = (ctx.tokens.md, ctx.styles.ground(), ctx.styles.hover());
-    let room = line.pad(Edges::across(after_mark(ctx, md), md));
+    let room = line.pad(Edges::across(indent(ctx), ctx.tokens.md));
     let label = match waiting {
         1 => asks_to(&ask.op),
         n => format!("{} · +{}", asks_to(&ask.op), n - 1),
     };
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
-    let mut under =
-        band(line, line.h, ctx.tokens.row).pad(Edges::across(inset_of(line, room.x), 0.0));
-    for (label, target) in [
-        ("Approve", Target::Approve(ask.id.clone())),
-        ("Review", Target::Examine(ask.id.clone())),
-    ] {
-        let button = Button::new(label, target, Role::Text, ground).hover(hover);
-        button.left(ctx, &mut under, ctx.tokens.xs);
+}
+
+/// The dot's colour, and whether only its edge is drawn.
+fn dot_of(app: &AppState, id: &SessionId) -> (Role, bool) {
+    let Some(activity) = app.agent.activity(id) else {
+        return (Role::Ghost, false);
+    };
+    if !activity.asks.is_empty() {
+        return (Role::Attention, false);
+    }
+    match activity.status {
+        AgentStatus::Asking => (Role::Attention, false),
+        AgentStatus::Working => (Role::Working, false),
+        AgentStatus::Done { seen: false } => (Role::Ok, false),
+        AgentStatus::Error { .. } => (Role::Bad, false),
+        AgentStatus::Exited { .. } => (Role::Ghost, true),
+        AgentStatus::Idle | AgentStatus::Done { seen: true } => (Role::Ghost, false),
     }
 }
 
@@ -137,7 +138,7 @@ fn waited(ctx: &mut Ctx, app: &AppState, room: &mut Rect, id: &SessionId) {
 fn state(ctx: &mut Ctx, app: &AppState, rect: Rect, open: &Open) {
     let (label, role) = state_of(app, open);
     let style = ctx.styles.small(role);
-    let mut room = rect.pad(Edges::across(after_mark(ctx, ctx.tokens.md), 0.0));
+    let mut room = rect.pad(Edges::across(indent(ctx), 0.0));
     if role == Role::Working {
         let box_ = square(from_left(&mut room, style.size, ctx.tokens.xs), style.size);
         groove_ui_kit::widgets::busy(ctx, box_, role);

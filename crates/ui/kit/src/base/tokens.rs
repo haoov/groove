@@ -14,6 +14,7 @@ pub const SCRIM_ALPHA: u8 = 120;
 pub const GLASS_ALPHA: (u8, u8) = (140, 95);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
+pub const ROW_TINT_ALPHA: (u8, u8) = (28, 64);
 pub const GLASS_HOVER_ALPHA: (u8, u8) = (18, 22);
 pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (38, 46);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.

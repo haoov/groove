@@ -119,36 +119,53 @@ No timeline, no activity heatmap, no *blocked by*: the task tools draw those bet
 
 ## Rail — mid scope
 
-Only the sessions actually open, in the order opened. Never re-sorted. The Board row above
-them carries the board's attention count when it is not zero.
+The rail is a pane of glass floating inside its place, a small gap from the window's edges.
+It holds only the sessions actually open, under three headings, each with its count: **needs you**,
+**working**, **idle**. A heading with no session is not drawn. Under a heading the sessions
+keep the order they were opened in; a session moves only when its state does. The Board row
+above them carries the board's attention count when it is not zero. Enforced by
+`each_row_stands_under_its_state_in_the_order_opened`.
+
+Needs you holds the agents that ask, have exited or failed. Working holds the agents at work.
+Idle holds the rest, the done ones among them: done keeps its green, and opening it moves
+nothing. Up and down walk the rows in the order
+drawn. Enforced by `the_arrows_walk_the_rows_in_the_order_drawn`.
 
 Each row:
 
-1. **Type icon** — task, review, explorer, routine.
-2. **Title.**
-3. **Agent status** — `working`, `asks you`, `committed 2 · 5 files`, `idle`, `exited`,
-   `error`. One line, truncated, never wrapped.
-4. **Agent action, with buttons when it needs one** — `asks to commit` **Approve**
-   **Review**.
+1. **State dot** — peach while it asks, green while done and not seen, red on an error, blue
+   while working, grey when idle, hollow once exited.
+2. **Type icon** — task, review, explorer, routine.
+3. **Title.**
+4. **Agent status** — `working`, `asks to commit`, `done`, `idle`, `exited`, `error`. One
+   line, truncated, never wrapped.
 5. **Relative time, right-aligned** — how long the agent has waited, or since it finished.
 
 ```
- ▤  Board
- ─────────────────────────────────────────
- ⚑  TASK-51  auth refresh                2m
-    asks to commit         [Approve] [Review]
- ⚑  fix/keys-50                          6m
-    committed 3 · 7 files
- ◎  review-3  shop argo               now
-    working
- ⚑  TASK-48  finops export               3h
-    idle
+ ▤  Board                                   2
+ NEEDS YOU · 1
+ ● ⚑  TASK-51  auth refresh                2m
+      asks to commit
+ WORKING · 1
+ ● ◎  review-3  paxone argo               now
+      working
+ IDLE · 2
+ ● ⚑  fix/keys-50                          6m
+      done
+ ● ⚑  TASK-48  finops export               3h
+      idle
 ```
 
-Nothing else: no CI, no MR state, no worktree count. A row takes a tinted ground only while
-its agent asks, in peach, or is done and not yet seen, in green.
+Nothing else: no CI, no MR state, no worktree count. Rows stand inset from the rail's sides
+on rounded, see-through grounds, with no rule between them, as the palette's rows do: the
+selected one stronger, the one under the pointer lighter. Headings, rules and the footer keep
+the same inset. A row takes a tinted ground only while its agent asks, in peach, or is done and
+not yet seen, in green. Enforced by
+`the_selected_row_stands_inset_on_a_rounded_held_ground_and_the_hovered_one_lit`.
 
-An ask's text is peach and offers *Approve* and *Review*. With auto-approve on for the
+A row carries no button. An ask's text is peach, and a click on its row opens the session
+with the review sheet on the first ask. Enforced by
+`a_click_on_a_row_that_asks_opens_the_session_on_its_review`. With auto-approve on for the
 session, nothing asks. A working status is blue and its glyph moves.
 
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
@@ -271,22 +288,24 @@ caret, a selection, an undo and the clipboard work there too; Enter is a line of
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the
 workspace, its header, the board's own header, the commit box, the agent pane's frame.
-The bands sit under it: the rail, the sidebar, a column's heading, a menu, a file's head.
+The bands sit under it: the sidebar, a column's heading, a menu, a file's head.
 The deepest holds the agent's pty, the terminal widget, a note's own rows under its card,
 and the field a note is typed in — nothing else.
 
-**Glass on two panels only.** The palette, its pickers and the language servers' popup
-are glass: the work below shows through them, frosted, magnified and bent at the rim. Every other
-panel is solid. A row on glass takes a rounded, see-through ground under the pointer and
-when selected. Enforced by `the_palette_is_glass`, `the_hover_popup_is_glass`,
+**Glass on three panels only.** The rail, the palette with its pickers, and the language
+servers' popup are glass: the work below shows through them, frosted, magnified and bent at
+the rim. Every other panel is solid. A row on glass takes a rounded, see-through ground
+under the pointer and when selected. Enforced by
+`the_rail_floats_as_a_pane_of_glass_inside_its_place`, `the_palette_is_glass`,
+`the_hover_popup_is_glass`,
 `the_completion_list_stays_solid` and
 `a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground`.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
 caret is, two rules stand instead of a ground: a place is not a state. The row a list stands
-on — the open file, the shown commit, the session, the kind listed — has the two rules over
-the held ground, the accent dimmed into it.
+on — the open file, the shown commit, the kind listed — has the two rules over the held
+ground, the accent dimmed into it. The rail is the exception: see below.
 
 **A choice about one thing opens on that thing.** A picker draws the same rows the palette
 does, filtered and keyed the same way, anchored under what was clicked, as wide as its
@@ -382,7 +401,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
 
 ### Review sheet
 
-An ask's **Review** opens a sheet over the work half — workspace and sidebar. The agent
+An ask opens a sheet over the work half — workspace and sidebar. The agent
 pane stays visible. One frame for every op: the repo and the branch, then the text of the
 write. No diff and no file list. A push goes to the worktree's own branch and nowhere else.
 

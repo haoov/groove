@@ -18,12 +18,12 @@ fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
         &mut groove_gfx::Fonts::embedded(),
     );
     assert_eq!(frame.layers().len(), 1);
-    let rail = &frame.layers()[0].quads[0];
-    assert_eq!(rail.rect.w, 220.0);
+    let rail = &frame.layers()[0].glass[0];
+    let floating = (rail.rect.x, rail.rect.w);
     assert_eq!(
-        rail.color,
-        Palette::LATTE.mantle,
-        "the chrome sits under the work"
+        floating,
+        (8.0, 204.0),
+        "a pane floating in the rail's place"
     );
     let texts = all_texts(&frame);
     assert!(texts.iter().any(|t| t == "Board"));
@@ -42,7 +42,7 @@ fn hidpi_scales_the_layout() {
         metrics(2560, 1600, 2.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    assert_eq!(frame.layers()[0].quads[0].rect.w, 440.0);
+    assert_eq!(frame.layers()[0].glass[0].rect.w, 408.0);
     assert_eq!(
         frame.layers()[0].texts[0].style.size,
         26.0,

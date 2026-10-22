@@ -1,9 +1,10 @@
-use groove_gfx::{Align, Color, Rect, TextStyle};
+use groove_gfx::{Align, Color, Edges, Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::shape::{after_mark, hoverable, leading};
 use crate::text::{elide, lit_row, row};
+use crate::widgets::inset_row;
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
 pub struct Row<'a, T> {
@@ -114,19 +115,11 @@ pub fn glass_list<A: App>(
     let mut y = rect.y;
     for (i, item) in rows.iter().enumerate() {
         let line = Rect::new(rect.x, y, rect.w, height);
-        let on = match &item.target {
-            Some(target) => ctx.interact(line, target.clone()),
-            None => false,
+        let row = match &item.target {
+            Some(target) => inset_row(ctx, line, target.clone(), (selected == Some(i), None)),
+            None => line.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm)),
         };
-        let ground = match (selected == Some(i), on) {
-            (true, _) => Some(ctx.styles.glass_chosen()),
-            (false, true) => Some(ctx.styles.glass_hover()),
-            (false, false) => item.background,
-        };
-        if let Some(color) = ground {
-            ctx.rounded(line, color, ctx.tokens.corner);
-        }
-        drawn(ctx, (rect, line), item);
+        drawn(ctx, (rect, row), item);
         y += height;
     }
     y

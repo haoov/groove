@@ -123,6 +123,10 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.ring(rect, border, radius, 1.0);
     }
 
+    pub(crate) fn under(&mut self, rect: Rect, color: Color) {
+        self.frame.under(rect, color);
+    }
+
     pub(crate) fn veil(&mut self, color: Color) {
         self.frame.veil(color);
     }

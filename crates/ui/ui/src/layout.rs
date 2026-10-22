@@ -48,6 +48,7 @@ impl Layout {
         let feed = boxes.leaf(tall(band));
         let footer = boxes.leaf(tall(tokens.bar));
         let rail = Spec::default().width(scale(split.rail));
+        let rail = rail.pad(groove_gfx::Edges::all(tokens.sm));
         let rail = boxes.column(rail, &[sessions, feed, footer]);
         let screen = boxes.leaf(fill);
         let agent_bar = boxes.leaf(tall(tokens.bar));
@@ -86,7 +87,7 @@ impl Layout {
         let mut held = Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar());
         if ui.rail.folded {
             let row = tokens.row;
-            held.feed = Rect::new(0.0, held.feed.bottom() - row, held.feed.w, row);
+            held.feed = Rect::new(held.feed.x, held.feed.bottom() - row, held.feed.w, row);
         }
         held = held.committing(ui.session.commits());
         let tall = match ui.session.manual {

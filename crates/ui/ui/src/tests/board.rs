@@ -129,7 +129,7 @@ fn the_chord_opens_the_board_and_closes_it_again() {
 #[test]
 fn the_rail_holds_no_selection_while_the_board_is_up() {
     let app = full_app();
-    let ruled = |surface| {
+    let held = |surface| {
         let ui = Ui {
             surface,
             ..Ui::default()
@@ -140,20 +140,15 @@ fn the_rail_holds_no_selection_while_the_board_is_up() {
             groove_ui_kit::base::tokens::Tokens::new(1.0),
         );
         let rail = crate::layout::Layout::of(window(), &ui).rail;
-        frame.layers()[0]
-            .quads
-            .iter()
-            .filter(|quad| quad.color == styles.chosen() && quad.rect.x < rail.right())
+        let quads = frame.layers()[0].quads.iter();
+        quads
+            .filter(|quad| quad.color == styles.glass_chosen() && quad.rect.x < rail.right())
             .count()
     };
+    assert_eq!(held(Surface::Session), 1, "the selected session's ground");
     assert_eq!(
-        ruled(Surface::Session),
-        2,
-        "the selected session's two rules"
-    );
-    assert_eq!(
-        ruled(Surface::Board),
-        2,
+        held(Surface::Board),
+        1,
         "the board's own row, and no session"
     );
 }

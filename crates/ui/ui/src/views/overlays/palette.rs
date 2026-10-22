@@ -186,7 +186,7 @@ fn inset(ctx: &Ctx, body: Rect, shown: usize) -> Rect {
     let gap = Spec::default().height(pad);
     let tall = Spec::default().height(ctx.tokens.glass_row * shown as f32);
     let [_, rows, _] = column_in(body, [gap, tall, Spec::fill()]);
-    rows.pad(Edges::across(pad, pad))
+    rows
 }
 
 /// What stands in the list's place when it is empty.

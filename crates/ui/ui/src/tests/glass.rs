@@ -29,8 +29,12 @@ fn the_palette_is_glass() {
         overlay: Some(Overlay::Palette(Palette::default())),
         ..Ui::default()
     };
-    assert_eq!(panes(&app, &ui, 0), 1);
-    assert_eq!(panes(&app, &Ui::default(), 0), 0, "closed, none");
+    let rail = panes(&app, &Ui::default(), 0);
+    assert_eq!(
+        panes(&app, &ui, 0),
+        rail + 1,
+        "the rail's, then the palette's"
+    );
 }
 
 #[test]
@@ -43,13 +47,15 @@ fn the_hover_popup_is_glass() {
         .answered(PATH, at, Some("The absence of a value.".into()));
     let mut ui = on_file();
     moved_to(&mut ui, &app, at, metrics(1600, 1000, 1.0));
+    let rail = panes(&app, &ui, 0);
     hovering(&mut ui, &app, 0);
-    assert_eq!(panes(&app, &ui, 300), 1);
+    assert_eq!(panes(&app, &ui, 300), rail + 1);
 }
 
 #[test]
 fn the_completion_list_stays_solid() {
-    assert_eq!(panes(&offered(), &on_file(), 0), 0);
+    let app = offered();
+    assert_eq!(panes(&app, &on_file(), 0), panes(&app, &Ui::default(), 0));
 }
 
 #[test]
@@ -72,5 +78,23 @@ fn a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground() {
         .find(|q| q.color == hover)
         .expect("the ground");
     assert_eq!(ground.rect, row);
-    assert_eq!(ground.shape.radius, tokens.corner);
+    assert_eq!(ground.shape.radius, tokens.sm);
+}
+
+#[test]
+fn the_rail_floats_as_a_pane_of_glass_inside_its_place() {
+    let app = app();
+    let ui = Ui::default();
+    let (frame, _) = view(&app, &ui, metrics(1600, 1000, 1.0), &mut Fonts::embedded());
+    let place = crate::layout::Layout::of(metrics(1600, 1000, 1.0), &ui).rail;
+    let pane = frame.layers()[0].glass.first().expect("the rail's pane");
+    let inset = Tokens::new(1.0).sm;
+    assert_eq!(pane.rect, place.pad(groove_gfx::Edges::all(inset)));
+    let deep = Styles::new(app.config.theme(), Tokens::new(1.0)).deep();
+    let under = &frame.layers()[0].under;
+    assert_eq!(
+        under.first(),
+        Some(&(place, deep)),
+        "on the agent pane's ground"
+    );
 }

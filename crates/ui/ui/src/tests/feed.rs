@@ -335,10 +335,12 @@ fn this_session_s_feed_leaves_the_title_out() {
     ui.rail.mine = true;
     let drawn = in_rail(&app, &ui);
     assert!(drawn.iter().any(|one| one == "fix: one"), "{drawn:?}");
-    assert!(
-        !drawn.iter().any(|one| one.contains(" \u{b7} ")),
-        "{drawn:?}"
-    );
+    let titled = |one: &String| {
+        ["Alpha", "Beta"]
+            .iter()
+            .any(|t| one.starts_with(t) && one != t)
+    };
+    assert!(!drawn.iter().any(titled), "{drawn:?}");
 }
 
 /// Session a's three commits, then b's push between two of its own.

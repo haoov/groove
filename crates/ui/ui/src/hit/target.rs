@@ -156,8 +156,6 @@ pub enum Target {
     FeedRun(crate::views::rail::RunKey),
     /// The write the agent asked for, taken or refused.
     Approve(groove_types::ApprovalId),
-    /// The sheet that shows a write before it is decided.
-    Examine(groove_types::ApprovalId),
     /// The sheet itself, which keeps a click from what it covers.
     Sheet,
     /// The switch that lets a session's writes through without asking.

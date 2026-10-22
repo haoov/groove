@@ -1,6 +1,7 @@
 use groove_gfx::{Color, Rect};
 
 use crate::base::ctx::{App, Ctx};
+use crate::base::ground::Ground;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Material {
@@ -55,11 +56,22 @@ fn made<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, border: Color, panel: Material
             let band = ctx.styles.band();
             ctx.rounded_box(rect, band, border, ctx.tokens.round);
         }
-        Material::Glass => {
-            let shape = (ctx.tokens.glass_round, ctx.tokens.bezel);
-            ctx.glass(rect, shape, ctx.styles.glass());
-        }
+        Material::Glass => glass_pane(ctx, rect),
     }
+}
+
+/// A rounded pane of glass over `rect`.
+pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let shape = (ctx.tokens.glass_round, ctx.tokens.bezel);
+    ctx.glass(rect, shape, ctx.styles.glass());
+}
+
+/// `place` on `ground`, a pane of glass floating inside it. Returns the pane.
+pub fn floating_pane<A: App>(ctx: &mut Ctx<'_, A>, place: Rect, ground: Ground) -> Rect {
+    ctx.under(place, ground.color(&ctx.styles));
+    let pane = place.pad(groove_gfx::Edges::all(ctx.tokens.sm));
+    glass_pane(ctx, pane);
+    pane
 }
 
 /// A soft shade under the box, dropped below it.
