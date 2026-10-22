@@ -80,8 +80,8 @@ fn actions(ctx: &mut Ctx, room: &mut Rect) {
     let (ground, hover) = (ctx.styles.ground(), ctx.styles.glass_hover());
     let splits = Button::new("split", Target::ShellSplit, Role::Muted, ground);
     splits.flat().hover(hover).right(ctx, room, ctx.tokens.xs);
-    let new = Button::new("+", Target::ShellNew, Role::Muted, ground);
-    new.flat().hover(hover).right(ctx, room, ctx.tokens.sm);
+    let new = Button::icon(Mark::Add, 0, Target::ShellNew, Role::Muted);
+    new.right(ctx, room, ctx.tokens.sm);
 }
 
 /// Each tab's name, the numbers of its terminals, its id, and whether it is up.

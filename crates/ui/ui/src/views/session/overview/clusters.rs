@@ -1,43 +1,51 @@
-//! The overview's clusters: each context the session holds in its hue, its namespaces under it.
+//! The overview's clusters: each context the session holds in its hue, its namespaces after it.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::Hue;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::after_mark;
-use groove_ui_kit::widgets::{Row, list};
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::lead;
 
 use super::Part;
 use crate::ctx::Ctx;
 use crate::views::session::resources::WHOLE_NAME;
 
-/// A context once, in the order first attached, then each of its namespaces.
+/// A context once, in the order first attached, with each of its namespaces.
 pub(super) fn parts<'a>(app: &AppState, open: &'a Open) -> Vec<Part<'a>> {
-    let mut out = Vec::new();
-    for context in crate::views::session::resources::contexts(open) {
-        let hue = app.config.cluster(context).map(|one| one.hue);
-        out.push(Part::Cluster(context, hue));
-        let held = open.clusters.iter().filter(|one| one.context == context);
-        out.extend(held.map(|one| Part::Namespace(one.namespace.as_deref())));
-        out.push(Part::Gap);
-    }
-    out
+    crate::views::session::resources::contexts(open)
+        .into_iter()
+        .map(|context| {
+            let hue = app.config.cluster(context).map(|one| one.hue);
+            let held = open.clusters.iter().filter(|one| one.context == context);
+            Part::Cluster(
+                context,
+                hue,
+                held.map(|one| one.namespace.as_deref()).collect(),
+            )
+        })
+        .collect()
 }
 
-/// A context Settings no longer knows stands in the faint role.
-pub(super) fn context(ctx: &mut Ctx, line: Rect, context: &str, hue: Option<Hue>) {
+/// The context in its hue, faint once Settings no longer knows it, then its namespaces.
+pub(super) fn draw(
+    ctx: &mut Ctx,
+    line: Rect,
+    (context, hue): (&str, Option<Hue>),
+    held: &[Option<&str>],
+) {
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
+    let mut room = line.pad(Edges::across(md, md));
     let role = hue.map_or(Role::Faint, Role::Hue);
-    let row = Row::new(ctx.tokens.md, context, ctx.styles.label(role)).mark(Mark::Context);
-    list(ctx, line, &[row], None);
-}
-
-pub(super) fn namespace(ctx: &mut Ctx, line: Rect, namespace: Option<&str>) {
-    let indent = after_mark(ctx, ctx.tokens.md);
-    let row = match namespace {
-        Some(one) => Row::new(indent, one, ctx.styles.code(Role::Muted)),
-        None => Row::new(indent, WHOLE_NAME, ctx.styles.body(Role::Faint)),
-    };
-    list(ctx, line, &[row], None);
+    lead(ctx, &mut room, Mark::Context, role);
+    Label::new(context, ctx.styles.label(role)).left(ctx, &mut room, md);
+    for one in held {
+        let label = match one {
+            Some(name) => Label::new(name, ctx.styles.code(Role::Muted)),
+            None => Label::new(WHOLE_NAME, ctx.styles.body(Role::Faint)),
+        };
+        label.left(ctx, &mut room, sm);
+    }
 }

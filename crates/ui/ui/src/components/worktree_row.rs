@@ -1,4 +1,4 @@
-use groove_gfx::{Align, Edges, Rect};
+use groove_gfx::Rect;
 use groove_types::{Worktree, WorktreeDelivery};
 
 use crate::components::{delivered, room_for};
@@ -10,7 +10,7 @@ use groove_ui_kit::shape::after_mark;
 use groove_ui_kit::text::{elide, row};
 use groove_ui_kit::widgets::{counts, counts_room};
 
-/// One worktree: its branch cut short and its MR beside it, then git at the row's right end.
+/// One worktree in a line from the left: its branch, what git counts, then its MR.
 pub fn draw(ctx: &mut Ctx, line: Rect, worktree: &Worktree, delivery: Option<&WorktreeDelivery>) {
     let style = ctx.styles.body(Role::Muted);
     let indent = after_mark(ctx, ctx.tokens.md);
@@ -24,20 +24,20 @@ pub fn draw(ctx: &mut Ctx, line: Rect, worktree: &Worktree, delivery: Option<&Wo
         return row(ctx, line, indent, &text, style);
     };
     let git = told(delivery);
-    let (md, wide) = (ctx.tokens.md, counts_room(ctx, &git));
-    let end = line.pad(Edges::across(0.0, md));
-    let counted = end.align((wide, line.h), Align::End, Align::Start);
-    counts(ctx, line, counted.x, &git);
+    let (md, sm, wide) = (ctx.tokens.md, ctx.tokens.sm, counts_room(ctx, &git));
     let mr = room_for(ctx, delivery);
-    let gap = if mr > 0.0 { ctx.tokens.sm } else { 0.0 };
     let fixed = |width: f32| Spec::default().width(width);
-    let kept = fixed(md + mr + gap + md + wide);
-    let [_, room, _] = row_in(line, [fixed(indent), Spec::fill(), kept]);
+    let [_, room, _] = row_in(
+        line,
+        [fixed(indent), Spec::fill(), fixed(md + wide + sm + mr)],
+    );
     let text = elide(ctx, &worktree.branch, &style, room.w);
     row(ctx, line, indent, &text, style);
     let drawn = fixed(ctx.measure(&text, &style));
-    let [.., after] = row_in(line, [fixed(indent), drawn, fixed(gap), Spec::fill()]);
-    delivered(ctx, line, after.x, delivery);
+    let [.., after] = row_in(line, [fixed(indent), drawn, fixed(md), Spec::fill()]);
+    let x = counts(ctx, line, after.x, &git);
+    let gap = if wide > 0.0 { sm } else { 0.0 };
+    delivered(ctx, line, x + gap, delivery);
 }
 
 /// What git says about the worktree, as the counts it draws.

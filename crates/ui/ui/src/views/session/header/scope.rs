@@ -23,7 +23,7 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
     let pairs: Vec<String> = resources::held(open, held).map(pair).collect();
     let pairs: Vec<&str> = pairs.iter().map(String::as_str).collect();
     let namespaces = named(&pairs, offered.len(), "all namespaces");
-    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
     let role = |empty: bool| if empty { Role::Faint } else { Role::Text };
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     let x = lead(ctx, &mut room, Mark::Cluster, Role::Faint).right() + ctx.tokens.sm;
@@ -37,7 +37,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
         hue.unwrap_or(role(shown.is_empty())),
         band,
         hover,
-    );
+    )
+    .flat();
     let box_ = first.at(ctx, line, x);
     if none {
         return;
@@ -48,7 +49,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
         role(pairs.is_empty()),
         band,
         hover,
-    );
+    )
+    .flat();
     second.at(ctx, line, box_.right() + ctx.tokens.sm);
 }
 

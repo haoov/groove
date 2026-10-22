@@ -33,31 +33,26 @@ fn working_a_task() -> groove_controllers::AppState {
 }
 
 #[test]
-fn a_task_session_shows_the_six_properties_and_the_body() {
+fn a_task_session_shows_its_properties_on_one_line_and_the_body() {
     let app = working_a_task();
-    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
-    for named in [
-        "PROPERTIES",
-        "Status",
-        "Priority",
-        "Start",
-        "Due",
-        "Estimate",
-        "Logged",
-    ] {
-        assert!(texts.iter().any(|t| t == named), "{named}: {texts:?}");
-    }
-    assert!(texts.iter().any(|t| t == "In progress"), "{texts:?}");
-    assert!(texts.iter().any(|t| t == "2026-09-30"), "{texts:?}");
-    assert!(texts.iter().any(|t| t == "4h"), "the estimate: {texts:?}");
-    assert!(texts.iter().any(|t| t == "1.5h"), "the hours: {texts:?}");
-    assert!(texts.iter().any(|t| t == "BODY"), "{texts:?}");
-    assert!(
-        texts
-            .iter()
-            .any(|t| t == "Close the gates before the release."),
-        "{texts:?}"
+    let (frame, _) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
     );
+    let texts = &frame.layers()[0].texts;
+    let at = |said: &str| {
+        let one = texts.iter().find(|t| t.text == said);
+        one.unwrap_or_else(|| panic!("{said}: {:?}", texts_of(&frame)))
+            .y
+    };
+    let line = at("In progress");
+    for said in ["2026-09-14 → 2026-09-30", "1.5h of 4h"] {
+        assert_eq!(at(said), line, "{said} on the status's line");
+    }
+    assert!(at("PROPERTIES") < line, "the heading above");
+    assert!(at("Close the gates before the release.") > line);
 }
 
 #[test]
@@ -122,23 +117,16 @@ fn an_explorer_shows_no_properties_and_no_body() {
 }
 
 #[test]
-fn a_property_the_task_has_no_value_for_reads_as_a_dash() {
+fn a_property_the_task_lacks_is_left_out() {
     let mut app = working_a_task();
     let one = app.task.tasks.first_mut().expect("the task");
     one.logged = None;
     one.dates.start = None;
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let dashes = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|t| t.text == "—")
-        .count();
-    assert_eq!(dashes, 2, "the start and the hours");
+    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
+    for said in ["due 2026-09-30", "4h estimated"] {
+        assert!(texts.iter().any(|t| t == said), "{said}: {texts:?}");
+    }
+    assert!(!texts.iter().any(|t| t == "—"), "no dash: {texts:?}");
 }
 
 #[test]
@@ -192,7 +180,13 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
         metrics,
         &mut groove_gfx::Fonts::embedded(),
     );
-    let icons: Vec<groove_gfx::Icon> = frame.layers()[0].icons.iter().map(|i| i.icon).collect();
+    let workspace = crate::layout::Layout::of(metrics, &Ui::default()).workspace;
+    let icons: Vec<groove_gfx::Icon> = frame.layers()[0]
+        .icons
+        .iter()
+        .filter(|i| workspace.contains(i.rect.x, i.rect.y))
+        .map(|i| i.icon)
+        .collect();
     assert!(icons.contains(&groove_gfx::Icon::ArrowUp), "ahead 1");
     assert!(icons.contains(&groove_gfx::Icon::Dot), "modified 3");
     assert!(
@@ -219,7 +213,7 @@ fn a_session_without_a_worktree_says_so() {
 }
 
 #[test]
-fn a_rule_stands_between_the_overview_s_sections() {
+fn a_hairline_stands_between_the_sections_and_never_inside_one() {
     let app = working_a_task();
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
@@ -227,14 +221,17 @@ fn a_rule_stands_between_the_overview_s_sections() {
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let workspace = crate::layout::Layout::of(window, &ui).workspace;
-    let wide = workspace.w - tokens.md * 2.0;
+    let inset = workspace.x + tokens.xs + tokens.md;
     let rules = frame.layers()[0]
         .quads
         .iter()
         .filter(|quad| quad.color == styles.line() && quad.rect.h == tokens.hairline)
-        .filter(|quad| quad.rect.x == workspace.x + tokens.md && quad.rect.w == wide)
+        .filter(|quad| quad.rect.x == inset)
         .count();
-    assert_eq!(rules, 2, "one above the repos, one above the body");
+    assert_eq!(
+        rules, 2,
+        "above the repos and above the body, none between a repo and its worktree"
+    );
 }
 
 #[test]
