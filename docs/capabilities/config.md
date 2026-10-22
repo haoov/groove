@@ -92,7 +92,7 @@ only what the user rebound.
 | Ring | Modifier | Heard |
 |---|---|---|
 | app | `alt`, `alt+shift` | from any pane; in a terminal only these chords are taken, every other alt key passes through |
-| code | `ctrl`, `ctrl+shift` | by the focused pane: the editor, the diff, find, the commit box |
+| code | `ctrl`, `ctrl+shift` | by the focused pane: the editor, the diff, find |
 | terminal | `ctrl+shift+c`, `ctrl+shift+v` | in the agent and the shells, which take every other key |
 
 **A chord matches the key without its modifier**, so it stays on its key whatever the

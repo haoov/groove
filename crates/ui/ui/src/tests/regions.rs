@@ -9,14 +9,13 @@ fn no_region_takes_a_negative_size_in_a_window_shorter_than_its_bands() {
     for (w, h) in [(0, 0), (120, 40), (900, 60), (1280, 130)] {
         for sidebar in [false, true] {
             let held = Layout::new(Size::new(w, h), &tokens, Split::default(), sidebar);
-            let regions: [(&str, Rect); 10] = [
+            let regions: [(&str, Rect); 9] = [
                 ("rail", held.rail),
                 ("agent", held.agent),
                 ("header", held.header),
                 ("workspace", held.workspace),
                 ("agent_bar", held.agent_bar),
                 ("sidebar", held.sidebar),
-                ("commit", held.commit),
                 ("feed", held.feed),
                 ("manual", held.manual),
                 ("board", held.board),

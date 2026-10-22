@@ -20,30 +20,24 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
-use super::commit;
 use super::state::{Pane, Tab};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::glass_aside;
 use groove_ui_kit::widgets::tabs;
-use groove_ui_kit::widgets::{Side, pane};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.sidebar;
     if rect.is_empty() {
         return;
     }
-    pane(ctx, rect, Ground::Band, Side::Left);
-    let under = ctx.app.layout.commit;
-    if ui.session.commits() && !under.is_empty() {
-        commit::draw(ctx, app, ui, under);
-    }
+    glass_aside(ctx, rect);
     let tall = |height: f32| Spec::default().height(height);
-    let [list, _] = column_in(rect, [Spec::fill(), tall(under.h)]);
+    let list = rect;
     let bar = bar::draw(ctx, rect, ui);
     let [_, mut column] = column_in(list, [tall(bar.h), Spec::fill()]);
     if let Some(one) = app.workspace.commit.as_ref() {

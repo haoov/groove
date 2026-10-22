@@ -72,39 +72,6 @@ fn the_search_bar_and_the_board_filter_take_it_too() {
 }
 
 #[test]
-fn the_commit_box_keeps_every_line_of_what_is_pasted() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
-    ui.session.composing = true;
-    ui.focus = crate::Focus::Sidebar;
-    let asked = paste("feat: one\n\nthe body", &mut ui, &app);
-    assert_eq!(
-        asked,
-        vec![Command::Workspace(workspace::Command::Message(
-            groove_types::Edit::Insert("feat: one\n\nthe body".into())
-        ))],
-        "a message is more than one line"
-    );
-}
-
-#[test]
-fn the_commit_box_takes_it_as_an_edit_of_its_own() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
-    ui.session.composing = true;
-    ui.focus = crate::Focus::Sidebar;
-    let asked = paste("feat: one", &mut ui, &app);
-    assert_eq!(
-        asked,
-        vec![Command::Workspace(workspace::Command::Message(
-            groove_types::Edit::Insert("feat: one".into())
-        ))]
-    );
-}
-
-#[test]
 fn with_nothing_typing_the_open_file_takes_it() {
     let app = crate::tests::diff::opened();
     let mut ui = Ui {
@@ -185,20 +152,6 @@ fn a_field_on_a_tab_not_shown_takes_no_paste() {
 }
 
 #[test]
-fn the_commit_box_takes_no_paste_once_another_pane_has_the_keys() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
-    ui.session.composing = true;
-    ui.focus = crate::Focus::Agent;
-    let asked = paste("one", &mut ui, &app);
-    assert!(
-        matches!(asked.as_slice(), [Command::Agent(_)]),
-        "the agent takes it: {asked:?}"
-    );
-}
-
-#[test]
 fn a_paste_in_the_text_term_searches_as_typing_does() {
     let app = full_app();
     let mut ui = Ui::default();
@@ -215,19 +168,10 @@ fn a_paste_in_the_text_term_searches_as_typing_does() {
 }
 
 #[test]
-fn the_note_and_the_commit_box_take_a_paste_alike_without_its_carriage_returns() {
+fn the_note_takes_a_paste_without_its_carriage_returns() {
     let app = crate::tests::diff::opened();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
-    ui.session.composing = true;
-    ui.focus = crate::Focus::Sidebar;
-    let asked = paste("  one\r\n  two\r\n", &mut ui, &app);
-    let kept = groove_types::Edit::Insert("  one\n  two\n".into());
-    assert_eq!(
-        asked,
-        vec![Command::Workspace(workspace::Command::Message(kept))]
-    );
-
     let anchor = groove_types::Anchor::line("src/lib.rs", 0);
     ui.session.noting = Some(crate::views::session::Noting::new(anchor));
     ui.focus = crate::Focus::Workspace;

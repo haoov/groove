@@ -40,7 +40,7 @@ pub use menu::{glass_menu, glass_size, menu, size as menu_size};
 pub use modal::{
     Corner, Material, floating_pane, glass_pane, glass_pill, ground_under, modal, panel_at,
 };
-pub use pane::{Side, pane};
+pub use pane::{Side, glass_aside, pane};
 pub use popup::{Piece, Said, popup};
 pub use question::{offer, question};
 pub use scrolled::scrolled;

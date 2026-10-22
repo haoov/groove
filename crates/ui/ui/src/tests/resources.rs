@@ -252,6 +252,10 @@ fn a_lone_context_picked_wears_its_hue_in_its_picker() {
 
 /// The focus where a session opens it, then a click on the Resources tab, as the user gives it.
 fn clicked_in(app: &AppState, ui: &mut Ui) {
+    if ui.session.tab == Tab::Resources && !ui.session.stowed {
+        ui.focus = crate::Focus::Workspace;
+        return;
+    }
     ui.focus = crate::Focus::Agent;
     let (_, hits) = drawn(app, ui);
     let tab = hits

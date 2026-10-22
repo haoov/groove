@@ -103,8 +103,9 @@ fn the_bar_offers_the_skills_in_glass_on_the_screen_s_ground() {
     );
     let quads = base.quads.iter().filter(|one| one.rect == pane);
     assert_eq!(quads.count(), 0, "no fill over the glass");
+    let board = crate::layout::Layout::of(window(), &ui).board;
     assert!(
-        base.under.contains(&(pane, deep)),
+        base.under.contains(&(board, deep)),
         "on the screen's own ground"
     );
 }
@@ -154,7 +155,11 @@ fn the_row_stands_under_the_screen_and_the_grid_gives_way() {
         layout.agent.bottom(),
         "it sits at the pane's foot"
     );
-    assert_eq!(layout.agent_bar.h, tokens.bar);
+    assert_eq!(
+        layout.agent_bar.h,
+        tokens.bar + tokens.sm,
+        "a bar and its gap"
+    );
     assert_eq!(
         layout.agent_origin(&tokens).1,
         layout.agent.y + tokens.sm,
@@ -355,17 +360,33 @@ fn a_trackpad_that_moves_a_little_still_moves_the_screen() {
 }
 
 #[test]
-fn the_skills_stand_at_the_bar_s_start_a_gap_above_the_foot() {
+fn the_skills_stand_at_the_bar_s_start_as_tall_as_the_terminals_bar() {
     let app = offering(Vec::new());
     let ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let word = hits.rect_of(&Target::Skills(SessionId::new("a")));
     let word = word.expect("the skills word");
-    let bar = crate::layout::Layout::of(window(), &ui).agent_bar;
+    let layout = crate::layout::Layout::of(window(), &ui);
     let tokens = crate::Tokens::new(1.0);
-    assert!(word.x < bar.x + bar.w / 2.0, "at the start");
-    let foot = window().size.height as f32 - tokens.sm - tokens.xs / 2.0;
-    assert_eq!(word.bottom(), foot, "a gap above the foot");
+    assert!(
+        word.x < layout.agent_bar.x + layout.agent_bar.w / 2.0,
+        "at the start"
+    );
+    let pill = frame.layers()[0]
+        .glass
+        .iter()
+        .find(|one| one.rect.contains(word.x + 1.0, word.y + 1.0))
+        .expect("the pill");
+    assert_eq!(
+        pill.rect.bottom(),
+        window().size.height as f32 - tokens.sm,
+        "a gap above the foot"
+    );
+    assert_eq!(
+        (pill.rect.y, pill.rect.h),
+        (layout.manual.y, layout.manual.h),
+        "level with the terminals"
+    );
 }
 #[test]
 fn the_skills_menu_stands_on_glass_as_the_pickers_do() {

@@ -6,7 +6,6 @@ mod bar;
 mod board;
 mod budget;
 mod clusters;
-mod commit;
 mod completion;
 mod definition;
 mod diagnostics;
@@ -43,6 +42,7 @@ mod routines;
 mod scoping;
 mod settings;
 mod staging;
+mod strip;
 mod structure;
 
 use groove_controllers::session_service::Open;

@@ -22,6 +22,8 @@ pub struct Tab<'a, T> {
     pub italic: bool,
     /// The errors and warnings of the file it holds.
     pub tally: Option<(u32, u32)>,
+    /// A rounded row on glass, held while selected and lit under the pointer.
+    pub glass: bool,
 }
 
 impl<'a, T: Clone + PartialEq> Tab<'a, T> {
@@ -37,7 +39,13 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             close: None,
             italic: false,
             tally: None,
+            glass: false,
         }
+    }
+
+    pub fn glass(mut self) -> Self {
+        self.glass = true;
+        self
     }
 
     pub fn italic(mut self, italic: bool) -> Self {
@@ -104,6 +112,12 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     }
 
     fn style<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
+        if self.glass {
+            return match self.selected {
+                true => ctx.styles.strong(Role::Text),
+                false => ctx.styles.body(Role::Muted),
+            };
+        }
         let role = if self.selected {
             Role::Text
         } else {
@@ -127,6 +141,9 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     /// The label is drawn whole: the tab is as wide as it.
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, box_: Rect) {
+        if self.glass {
+            return self.drawn_on_glass(ctx, box_);
+        }
         hoverable(ctx, box_, self.target.clone());
         match (self.selected, self.ground) {
             (true, Some(ground)) => ctx.quad(box_, ground),
@@ -148,6 +165,26 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             crate::widgets::faults(ctx, &mut end, tally);
         }
         row(ctx, box_, pad, self.label, style);
+    }
+
+    fn drawn_on_glass<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, box_: Rect) {
+        let tall = ctx.tokens.row.min(box_.h);
+        let pill = crate::shape::band(box_, (box_.h - tall) / 2.0, tall);
+        let on = ctx.interact(pill, self.target.clone());
+        let ground = match (self.selected, on) {
+            (true, _) => Some(ctx.styles.glass_chosen()),
+            (false, true) => Some(ctx.styles.glass_hover()),
+            (false, false) => None,
+        };
+        if let Some(color) = ground {
+            ctx.rounded(pill, color, ctx.tokens.sm);
+        }
+        let (style, pad) = (self.style(ctx), self.pad(ctx));
+        let mut end = pill;
+        if let Some((mark, target)) = self.close {
+            Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
+        }
+        row(ctx, pill, pad, self.label, style);
     }
 }
 

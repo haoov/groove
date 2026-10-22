@@ -1,6 +1,6 @@
 //! The clipboard into whatever holds the keyboard, and where a paste would land.
 
-use groove_controllers::{AppState, Command, agent, workspace};
+use groove_controllers::{AppState, Command, agent};
 
 use super::keys;
 use super::typed::{self, Typed};
@@ -19,7 +19,6 @@ enum Sink {
     Board,
     Field(Typed),
     Find,
-    Message,
     Agent,
     Terminal,
     Buffer,
@@ -70,9 +69,6 @@ fn sink(ui: &Ui, app: &AppState) -> Option<Sink> {
     if session.finds() && session.find.as_ref().is_some_and(|find| find.typing) {
         return Some(Sink::Find);
     }
-    if session.composing && session.commits() && ui.focus == Focus::Sidebar {
-        return Some(Sink::Message);
-    }
     Some(match ui.focus {
         Focus::Agent => Sink::Agent,
         Focus::Terminal => Sink::Terminal,
@@ -105,9 +101,6 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
         }
         Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui, app),
         Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
-        Some(Sink::Message) => {
-            return vec![Command::Workspace(workspace::Command::Message(lines(text)))];
-        }
         Some(Sink::Agent) => return typed_at_agent(text, app),
         Some(Sink::Terminal) => return typed_at_shell(text, app),
         Some(Sink::Buffer) => return pasted_in_buffer(text, ui, app),

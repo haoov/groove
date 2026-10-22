@@ -52,7 +52,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 45] = [
+pub const TABLE: [Spec; 43] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -115,11 +115,6 @@ pub const TABLE: [Spec; 45] = [
         &["alt+3"],
     ),
     pane(A::FocusSidebar, ("pane.sidebar", "the sidebar"), &["alt+4"]),
-    pane(
-        A::FocusCommit,
-        ("pane.commit", "the commit box"),
-        &["alt+c"],
-    ),
     pane(A::NextTab, ("tab.next", "next tab"), &["alt+]"]),
     pane(A::PreviousTab, ("tab.previous", "previous tab"), &["alt+["]),
     opened(
@@ -262,12 +257,6 @@ pub const TABLE: [Spec; 45] = [
         ("files.search", "search in files", "Code"),
         Code,
         &["ctrl+shift+f"],
-    ),
-    spec(
-        A::Commit,
-        ("commit", "commit", "Code"),
-        Code,
-        &["ctrl+enter"],
     ),
     spec(
         A::TerminalCopy,

@@ -66,9 +66,9 @@ pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     ctx.glass(rect, shape, ctx.styles.glass());
 }
 
-/// A pane of glass around `content`, `pad` wider on each side and a row tall. Returns the pane.
+/// A pane of glass around `content`, `pad` wider on each side and as tall as a bar. Returns the pane.
 pub fn glass_pill<A: App>(ctx: &mut Ctx<'_, A>, content: Rect, pad: f32) -> Rect {
-    let tall = ctx.tokens.row;
+    let tall = ctx.tokens.bar;
     let top = content.y + (content.h - tall) / 2.0;
     let pill = Rect::new(content.x - pad, top, content.w + pad * 2.0, tall);
     glass_pane(ctx, pill);

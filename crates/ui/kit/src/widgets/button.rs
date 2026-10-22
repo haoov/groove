@@ -189,7 +189,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
 
     fn content<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>, style: &TextStyle) -> f32 {
         if self.mark.is_some() {
-            return style.size;
+            return (ctx.tokens.row - ctx.tokens.xs - ctx.tokens.sm * 2.0).max(0.0);
         }
         let word = ctx.measure(self.label, style);
         match self.caret {
@@ -205,7 +205,17 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             true => self.hover.or(self.ground),
             false => self.ground,
         };
-        let box_ = slot_at(ctx, line, x, content, ground);
+        let box_ = match self.mark {
+            Some(_) => {
+                let box_ = slot_at(ctx, line, x, content, None);
+                let lit = self.lit_now(ctx).then(|| ctx.styles.glass_hover());
+                if let Some(ground) = ground.or(lit) {
+                    crate::shape::circle(ctx, box_, ground);
+                }
+                box_
+            }
+            None => slot_at(ctx, line, x, content, ground),
+        };
         match self.mark {
             Some((mark, turn)) => {
                 let size = style.size;

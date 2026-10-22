@@ -10,7 +10,7 @@ use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::lit_cut;
-use groove_ui_kit::widgets::{Heading, Search, Side, pane};
+use groove_ui_kit::widgets::{Heading, Search, glass_aside};
 
 use super::scope;
 use crate::Ui;
@@ -30,7 +30,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let Some(open) = app.session.selected().filter(|_| !rect.is_empty()) else {
         return;
     };
-    pane(ctx, rect, Ground::Band, Side::Left);
+    glass_aside(ctx, rect);
     let [search, body] = column_in(rect, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     searched(ctx, search, ui);
     let picked = scope::kind(app, open, &ui.session.resources);

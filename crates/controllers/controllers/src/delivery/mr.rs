@@ -15,7 +15,7 @@ fn label(act: MrAct) -> &'static str {
     }
 }
 
-/// The selected worktree's MR, from the commit box.
+/// The selected worktree's MR, from the palette.
 pub(super) fn here(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: MrAct) {
     let Some(worktree) = state.session.selected_worktree().cloned() else {
         return;
@@ -24,7 +24,7 @@ pub(super) fn here(state: &mut AppState, services: &Services, spawner: &dyn Spaw
         .session
         .selected()
         .and_then(|open| state.task.worked(&open.session));
-    let text = text_of(&state.workspace.message.text(), task, &worktree.branch);
+    let text = text_of(task, &worktree.branch);
     if act == MrAct::Edit && text.title.is_empty() {
         return;
     }

@@ -6,7 +6,7 @@ use groove_types::{CommitEntry, Timestamp};
 use super::*;
 use crate::Focus;
 use crate::input::Modifiers;
-use crate::tests::{ALT, sidebar_ui};
+use crate::tests::sidebar_ui;
 use crate::views::session::Pane;
 
 fn key(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
@@ -81,35 +81,6 @@ fn the_commits_and_the_lists_are_walked_too() {
     assert_eq!(shown[0].id(), "workspace.open_commit");
     key(Key::Char('['), &mut ui, &app);
     assert_eq!(ui.session.pane, Pane::Files);
-}
-
-#[test]
-fn alt_4_leaves_the_commit_box_and_alt_c_comes_back_to_it() {
-    let app = with_files(&["a.rs"]);
-    let mut ui = sidebar_ui();
-    ui.session.composing = true;
-    press(Key::Char('4'), ALT, &mut ui, &app);
-    assert!(!ui.session.composing && ui.focus == Focus::Sidebar && !ui.session.folded);
-    key(Key::Down, &mut ui, &app);
-    assert_eq!(
-        ui.hover,
-        Some(Target::File("a.rs".into())),
-        "the arrows walk the list"
-    );
-    press(Key::Char('c'), ALT, &mut ui, &app);
-    assert!(ui.session.composing && ui.focus == Focus::Sidebar);
-}
-
-#[test]
-fn a_click_on_a_row_of_the_list_takes_the_keys_out_of_the_commit_box() {
-    let app = with_files(&["a.rs"]);
-    let mut ui = sidebar_ui();
-    ui.session.composing = true;
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let row = hits.rect_of(&Target::File("a.rs".into())).expect("the row");
-    click(row, &mut ui, &app, &hits);
-    assert!(!ui.session.composing, "the box lets go");
-    assert_eq!(ui.focus, Focus::Sidebar);
 }
 
 #[test]

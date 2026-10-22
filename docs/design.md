@@ -23,14 +23,12 @@ the rail only as its attention count.
   action. The mouse is a shortcut.
 - **Selection is a background**, one step above its ground. A selected tab adds its accent
   underline.
-- **Focus is a line.** The region that holds the keyboard carries a 2px accent line along
-  its bottom edge. Enforced by `the_focused_region_alone_carries_the_line`.
 - **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
   the workspace and the sidebar; the terminals keep their own chord. A second press folds
   the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
 - **A list walks from the keyboard.** In the sidebar the arrows step through the rows, Enter
   does what a click does, Space stages a changed file, Left and Right fold a folder, and
-  `[` and `]` change the list. `alt+c` puts the caret in the commit box.
+  `[` and `]` change the list.
   Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
 - **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
   `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
@@ -185,42 +183,63 @@ Enforced by `back_to_back_events_of_one_kind_fold_into_one_row`.
 
 ## Session — small scope
 
-Four columns, left to right. The left half is the agents; the right half is the work.
+The rail, then one ground for the agent with the workspace's strip of glass on it.
 
-| Column | Holds |
+| Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's pty · action bar: skills menu |
-| **Workspace** | header · tabs · the selected tab · the manual section |
-| **Sidebar** | contextual list for the selected tab; folds away |
+| **Agent pane** | a top bar · the agent's pty · action bar: skills menu |
+| **Strip** | header · info line · the selected tab · the sidebar |
+| **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
+| **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
+
+**The strip folds to its header.** A click on the open tab folds it: the header alone stays
+at the top right, a capsule as narrow as its title and tabs, and the agent takes the
+ground's whole width. A click on any tab opens it again on that tab. The agent's terminal
+takes its new size at once. Folding the terminals leaves a folded strip folded. Enforced by
+`a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent`,
+`any_tab_opens_the_folded_strip_on_itself`,
+`the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
+`folding_the_drawer_leaves_the_strip_folded`.
+
+**The terminals rise from the foot.** Their drawer is a pane of glass under the strip.
+Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the
+height the user dragged and the strip ends a gap above it; with the strip folded it fills
+the column under the strip's header, and the agent gives it the room until it folds again.
+Enforced by `the_folded_drawer_is_a_capsule_as_narrow_as_its_bar`,
+`an_open_drawer_rises_its_height_and_the_strip_ends_above_it` and
+`an_open_drawer_fills_the_column_beside_the_agent_while_the_strip_is_folded`.
 
 The rail, the agent pane and the sidebar each have a width the user drags, kept between
-runs. The workspace takes what is left, so it is the only column a resize, a fold or a drag
-elsewhere changes. A boundary moves the two columns it stands between and nothing else. The
-sidebar folds from the far end of the tab strip or with `alt+shift+b`.
+runs. The strip takes what is left, folded or open. A boundary moves the two parts it stands
+between and nothing else. The sidebar folds from the info line's far end or with
+`alt+shift+b`.
 
 ### Workspace
 
-**Header.** Three lines, above the workspace alone — not the agent pane, not the sidebar.
-The first holds the type icon and the title, with the task actions at its right: finish,
-and a menu with delete and open in provider. The second holds the repo and worktree
-pickers as buttons — the session's selector, which every tab and the manual section
-follow — with the selected worktree's MR and CI and a refresh button at its right. A git
-mark leads the pickers' line. A third line, led by a cluster mark, holds the scope on
-every tab: the contexts picked, a lone one in its hue, then the namespaces; before any
-cluster, a context picker alone. Each picker opens a panel with a search: what the session
-holds first, a check to show it and a × to detach it, then what it could attach. A pick
-there attaches; a known context opens its namespaces; Enter shows one line alone, and
-attaches it first when the session does not hold it. A title or a label too long for its
-line is cut with an ellipsis; the header never wraps; a tab's status badges keep their room
-before the cut, and a badge with no room left is dropped.
+**Header.** One line at the strip's top: the type icon and the title, then the tabs. Each tab
+is a rounded row on the glass, held while open, lit under the pointer; the terminals' tabs
+share it. Finishing the task and deleting the session here are palette rows. A button that
+is one icon alone is a circle. Enforced by
+`a_task_or_a_review_is_deleted_here_from_the_palette_and_an_explorer_is_not`.
+
+**Info line.** Under the header while the strip is open: the repo and worktree pickers —
+the session's selector, which every tab and the terminals follow — with the selected
+worktree's MR and CI and a refresh button, and the sidebar's fold at the far end. A git
+mark leads it. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
+the contexts picked, a lone one in its hue, then the namespaces. Each picker opens a panel
+with a search: what the session holds first, a check to show it and a × to detach it, then
+what it could attach. A pick there attaches; a known context opens its namespaces; Enter
+shows one line alone, and attaches it first when the session does not hold it. A title or a
+label too long for its line is cut with an ellipsis; no line wraps; a tab's status badges
+keep their room before the cut, and a badge with no room left is dropped.
 
 **Tabs.** `Overview · Diff · Files · Kubernetes`, the last while the session holds a cluster.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the clusters it holds, each context in its hue with its namespaces under it; then the body as text | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 | kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 
@@ -286,17 +305,18 @@ Commit commits the index. The message is typed on the same kind of buffer a file
 caret, a selection, an undo and the clipboard work there too; Enter is a line of the message and
 `ctrl+Enter` commits.
 
-**Three grounds, brightest first.** The work is the brightest the theme has: the
-workspace, its header, the board's own header, the commit box, the agent pane's frame.
-The bands sit under it: the sidebar, a column's heading, a menu, a file's head.
-The deepest holds the agent's pty, the terminal widget, a note's own rows under its card,
-and the field a note is typed in — nothing else.
+**Three grounds, brightest first.** The work is the brightest the theme has: the board's
+own header. The bands sit under it: a column's heading, a menu, a file's
+head. The deepest holds the session's ground under the agent and the strip, the terminal
+widget, a note's own rows under its card, and the field a note is typed in — nothing else.
+The strip and the sidebar inside it stand on glass, with no ground of their own.
 
-**Glass only where it floats.** The rail, the palette with its pickers, the language
-servers' popup and the agent bar's skills menu are glass: the work below shows through them,
+**Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette with its
+pickers, the language servers' popup and the agent bar's skills menu are glass: the work below shows through them,
 frosted, magnified and bent at the rim. Every other panel is solid. A row on glass takes a rounded, see-through ground
 under the pointer and when selected. Enforced by
 `the_rail_floats_as_a_pane_of_glass_inside_its_place`,
+`the_strip_stands_as_glass_on_the_agent_s_ground`,
 `the_bar_offers_the_skills_in_glass_on_the_screen_s_ground`,
 `the_palette_is_glass`,
 `the_hover_popup_is_glass`,
@@ -328,17 +348,15 @@ Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
 match in the file name first, and opens the one picked on the Files tab.
 Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
 
-**One button says what to do now.** The commit box offers a single action — commit while
-something is staged, push while ahead, pull while behind, open an MR once the branch is
-landed and has none — with a caret beside it for everything else the worktree can do,
-which includes writing that MR's text again or closing it. The menu hangs from that caret and ends on the rule
-that separates the box from the list.
+**Git and the MR go through the palette.** Push, pull, discard every change, and
+create, update, comment on, approve or close the MR are palette rows of the selected
+worktree. No box in the window holds them.
 
 **A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,
 or unstage — where its counts were. Everything else is behind the right button.
 
 **A question takes the place of what asked it.** Discarding one file turns its row into the
-question; discarding every change turns the commit box's first line into it. Two answers at
+question; discarding every change turns the info line into it. Two answers at
 the end, no modal, and nothing destructive within a click of something ordinary.
 
 ### Kubernetes tab

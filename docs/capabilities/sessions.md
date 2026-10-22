@@ -45,8 +45,7 @@ One overview for task, explorer and review sessions: the task's properties, the 
 with their worktree rows, the clusters it holds, then the body. An explorer has neither properties nor body.
 
 A worktree row joins its git status to its MR. Its skill button sends the skill that
-fits the row's state, with `agent.send_skill`. Finish is offered while no worktree of the
-session still carries an open MR.
+fits the row's state, with `agent.send_skill`. Finish is a palette row.
 
 The clusters name what is attached and nothing else: each context once, in its hue, its
 namespaces under it. No health, no counts. A session with none has no clusters section.

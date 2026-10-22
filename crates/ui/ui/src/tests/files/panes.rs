@@ -110,25 +110,6 @@ fn the_notes_are_read_once_a_session() {
 }
 
 #[test]
-fn the_commit_box_stands_under_every_list_and_goes_with_the_sidebar() {
-    for pane in Pane::ALL {
-        let mut ui = sidebar_ui();
-        ui.session.pane = pane;
-        assert!(
-            !crate::layout::Layout::of(window(), &ui).commit.is_empty(),
-            "{pane:?} keeps it"
-        );
-    }
-    let mut folded = sidebar_ui();
-    folded.session.folded = true;
-    assert!(
-        crate::layout::Layout::of(window(), &folded)
-            .commit
-            .is_empty()
-    );
-}
-
-#[test]
 fn a_note_of_the_list_opens_the_line_it_stands_on() {
     let (app, mut ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());

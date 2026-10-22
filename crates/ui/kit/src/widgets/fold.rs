@@ -3,7 +3,7 @@ use groove_gfx::{Edges, Rect};
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{hoverable, square};
+use crate::shape::square;
 
 /// A directory's folder, open or shut, from the left of `room`.
 pub fn folder<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: Role) -> Rect {
@@ -29,7 +29,11 @@ pub fn fold_box<A: App>(
     role: Role,
 ) -> Rect {
     let box_ = room.take_left(room.h);
-    hoverable(ctx, box_, target);
+    if ctx.interact(box_, target) {
+        let size = (ctx.tokens.row - ctx.tokens.xs).min(box_.h);
+        let hover = ctx.styles.glass_hover();
+        crate::shape::circle(ctx, crate::shape::square(box_, size), hover);
+    }
     let mut slot = box_.pad(Edges::across((box_.h - ctx.tokens.small) / 2.0, 0.0));
     fold(ctx, &mut slot, open, role);
     box_

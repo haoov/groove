@@ -13,7 +13,7 @@ use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use crate::components::{code_at, first};
 use crate::editor::Editing;
-use crate::hit::{Chars, Hits, Scroller, Target};
+use crate::hit::{Hits, Scroller, Target};
 use crate::input::follow::reaching;
 use crate::views::session::{Face, Tab, diff};
 use crate::{Click, Focus, Ui};
@@ -178,34 +178,6 @@ pub(in crate::input) fn at(
         path,
         Caret::new(line, column_of(&text, from + display, width)),
     ))
-}
-
-/// Where a click in the commit box puts its caret.
-pub(super) fn composed(
-    app: &AppState,
-    hits: &Hits,
-    metrics: Metrics,
-    point: (f32, f32),
-) -> Vec<Command> {
-    let Some(rect) = hits.rect_of(&Target::Message) else {
-        return Vec::new();
-    };
-    let chars = Chars {
-        left: rect.x,
-        advance: metrics.advance,
-        scroll: 0.0,
-    };
-    let Some((row, display)) = code_at(&metrics.tokens(), chars, rect, point) else {
-        return Vec::new();
-    };
-    let message = &app.workspace.message;
-    let line = row.min(message.lines().saturating_sub(1));
-    let text = message.line(line).unwrap_or_default();
-    let width = message.document().indent().width();
-    let caret = Caret::new(line, column_of(&text, display, width));
-    vec![Command::Workspace(workspace::Command::Message(Edit::Move(
-        Motion::To(caret),
-    )))]
 }
 
 /// The pointer moved while it holds text of the open file: the selection carried to it.

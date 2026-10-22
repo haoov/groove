@@ -7,17 +7,13 @@ use groove_gfx::{Edges, Rect};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::{Losing, Ui};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, row_in};
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Tab, Text};
 
 pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
-    groove_ui_kit::shape::ground(ctx, strip, Ground::Band);
-    hairline(ctx, strip, ctx.styles.line());
     let open = app
         .workspace
         .buffers()

@@ -21,29 +21,6 @@ pub const TAB: [Act; 3] = [Act::Close, Act::CloseOthers, Act::CloseAll];
 /// What the lines under a click offer.
 pub const LINE: [Act; 1] = [Act::Note];
 
-/// The actions of the worktree, from the commit box.
-pub const WORKTREE: [Act; 3] = [Act::Push, Act::Pull, Act::DiscardEverything];
-
-/// The same, for a worktree whose branch already has a merge request.
-pub const WORKTREE_MR: [Act; 6] = [
-    Act::Push,
-    Act::Pull,
-    Act::UpdateMr,
-    Act::Comment,
-    Act::CloseMr,
-    Act::DiscardEverything,
-];
-
-/// What a session reviewing someone else's merge request offers.
-pub const WORKTREE_REVIEW: [Act; 6] = [
-    Act::Pull,
-    Act::Comment,
-    Act::Approve,
-    Act::RequestChanges,
-    Act::CloseMr,
-    Act::DiscardEverything,
-];
-
 /// The actions of one path of the explorer.
 pub const PATH: [Act; 5] = [
     Act::NewFile,
@@ -53,9 +30,6 @@ pub const PATH: [Act; 5] = [
     Act::Delete,
 ];
 
-/// The actions of the session, from the header.
-pub const SESSION: [Act; 1] = [Act::DeleteLocally];
-
 /// The actions a menu of fixed rows offers; none for a menu whose rows come with it.
 fn acts(of: &Of) -> &'static [Act] {
     match of {
@@ -63,10 +37,6 @@ fn acts(of: &Of) -> &'static [Act] {
         Of::Tab { .. } => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
-        Of::Worktree { review: true, .. } => &WORKTREE_REVIEW,
-        Of::Worktree { mr: true, .. } => &WORKTREE_MR,
-        Of::Worktree { mr: false, .. } => &WORKTREE,
-        Of::Session(_) => &SESSION,
         Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
     }
 }

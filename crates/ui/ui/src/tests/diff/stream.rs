@@ -398,7 +398,7 @@ fn the_header_names_the_active_file_in_files_and_none_in_the_diff() {
             .iter()
             .filter(|run| run.x >= workspace.x && run.x < workspace.right())
             .filter(|run| {
-                let top = workspace.y + row + strip;
+                let top = workspace.y + strip;
                 run.y >= top && run.y < top + row
             })
             .map(|run| run.text.clone())

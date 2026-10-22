@@ -34,11 +34,6 @@ impl Asker {
         self.failed(state, Error::invalid(why.into()));
     }
 
-    /// Whether the words came from a box the surface should now clear.
-    pub(crate) fn carries_a_box(&self) -> bool {
-        matches!(self, Asker::Ui)
-    }
-
     /// The same result, told either way.
     pub(crate) fn answer(
         self,

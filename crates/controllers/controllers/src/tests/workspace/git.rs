@@ -72,7 +72,7 @@ fn discarding_a_file_puts_it_back_and_takes_it_off_the_list() {
 }
 
 #[test]
-fn a_commit_takes_the_index_and_empties_the_message() {
+fn a_commit_takes_the_index() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     let dir = worktree(&mut state, &services, &spawner);
@@ -92,19 +92,10 @@ fn a_commit_takes_the_index_and_empties_the_message() {
         s.workspace.files.iter().any(|f| f.staged == Some(true))
     });
 
-    state
-        .workspace
-        .message
-        .edit(&Edit::Insert("fix(a): change it".into()));
-    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    crate::tests::fixture::commit(&mut state, &spawner, "fix(a): change it");
     until(&spawner, &services, &mut state, |s| {
         s.workspace.files.is_empty()
     });
-    assert_eq!(
-        state.workspace.message.text(),
-        "",
-        "the message is spent with the commit"
-    );
     assert!(state.errors.is_empty(), "{:?}", state.errors);
 }
 
@@ -113,8 +104,7 @@ fn a_commit_with_no_message_is_not_made_and_says_why() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     worktree(&mut state, &services, &spawner);
-    state.workspace.message.edit(&Edit::Insert("   ".into()));
-    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    crate::tests::fixture::commit(&mut state, &spawner, "   ");
     spawner.drain(&mut state, &services);
     let said: Vec<&str> = state
         .errors
@@ -122,7 +112,6 @@ fn a_commit_with_no_message_is_not_made_and_says_why() {
         .map(|one| one.message.as_str())
         .collect();
     assert_eq!(said, ["a commit needs a message"]);
-    assert_eq!(state.workspace.message.text(), "   ", "and nothing spent");
 }
 
 #[test]
@@ -131,11 +120,7 @@ fn a_commit_whose_index_cannot_be_read_says_why() {
     pooled_clone(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::remove_file(std::path::Path::new(&dir).join(".git")).unwrap();
-    state
-        .workspace
-        .message
-        .edit(&Edit::Insert("fix: one".into()));
-    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    crate::tests::fixture::commit(&mut state, &spawner, "fix: one");
     spawner.drain(&mut state, &services);
     let said: Vec<&str> = state
         .errors
@@ -312,34 +297,4 @@ fn a_pull_from_an_origin_that_is_gone_says_so() {
         !state.errors.is_empty(),
         "the pull failed and the feed says so"
     );
-}
-
-#[test]
-fn words_typed_while_a_commit_runs_stay_in_the_box() {
-    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    pooled_clone(home.path());
-    let dir = worktree(&mut state, &services, &spawner);
-    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
-    until(&spawner, &services, &mut state, |s| {
-        !s.workspace.files.is_empty()
-    });
-    let stage = workspace::Command::Stage {
-        path: "a.txt".into(),
-    };
-    act(&mut state, &services, &spawner, stage);
-    until(&spawner, &services, &mut state, |s| {
-        s.workspace.files.iter().any(|f| f.staged == Some(true))
-    });
-    state
-        .workspace
-        .message
-        .edit(&Edit::Insert("fix(a): change it".into()));
-    act(&mut state, &services, &spawner, workspace::Command::Commit);
-    state
-        .workspace
-        .message
-        .edit(&Edit::Insert(" and more".into()));
-    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
-    assert!(state.errors.is_empty(), "{:?}", state.errors);
-    assert_eq!(state.workspace.message.text(), "fix(a): change it and more");
 }

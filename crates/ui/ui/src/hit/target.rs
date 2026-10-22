@@ -167,15 +167,12 @@ pub enum Target {
     Review(String, u64),
     /// A column heading of the review table, which orders it.
     SortReview(crate::views::board::review::By),
-    /// What finishes the task a session works, and what opens its other actions.
-    Finish(groove_types::SessionId),
     /// What reads the selected worktree's MR again.
     Refresh,
     /// An MR's number, a link to its page.
     MrPage(String),
     /// What opens the task's own page at its source.
     TaskPage(String),
-    TaskActions(groove_types::SessionId),
     /// A link in prose.
     Link(String),
     /// The board's filter, and one row it offers.

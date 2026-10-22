@@ -4,7 +4,6 @@ use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::{Edit, Motion};
 
 use super::super::{Key, Modifiers};
-use super::worded::{Asked, asked};
 use crate::Ui;
 use crate::editor::Editing;
 use crate::keymap::{Action, Keymap};
@@ -112,44 +111,17 @@ fn bound(editing: &Editing, keymap: &Keymap, key: Key, mods: Modifiers) -> Optio
     }
 }
 
-/// The list, or the commit message once the box has been clicked.
+/// The sidebar's list.
 pub(super) fn in_sidebar(
     (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
-    keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
     if ui.session.tab == crate::views::session::Tab::Resources {
         return super::resources::in_kinds_list((key, mods), ui, app, seen);
     }
-    if !(ui.session.composing && ui.session.commits()) {
-        return super::listed::in_list(key, ui, app, seen);
-    }
-    if key == Key::Escape {
-        ui.session.composing = false;
-        return Vec::new();
-    }
-    if keymap.is(Action::Commit, key, mods) {
-        ui.session.composing = false;
-        return vec![Command::Workspace(workspace::Command::Commit)];
-    }
-    in_message(key, mods, app, keymap)
-}
-
-/// What a keystroke asks of the message: a line, or what a note's buffer answers.
-fn in_message(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap) -> Vec<Command> {
-    let asked = match key {
-        Key::Enter if !mods.ctrl => Asked {
-            edit: Some(Edit::Newline),
-            copied: None,
-        },
-        _ => asked(&app.workspace.message, keymap, key, mods),
-    };
-    let edit = asked
-        .edit
-        .map(|edit| Command::Workspace(workspace::Command::Message(edit)));
-    asked.copied.into_iter().chain(edit).collect()
+    super::listed::in_list(key, ui, app, seen)
 }
 
 /// Up and down select a session, Enter goes to its workspace, `a` and `v` answer its ask.

@@ -21,7 +21,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 
 /// The skills menu at the row's start, a gap above the foot.
 fn offered(ctx: &mut Ctx, line: Rect, open: &Open) {
-    let (sm, xs, tall) = (ctx.tokens.sm, ctx.tokens.xs, ctx.tokens.row);
+    let (sm, xs, tall) = (ctx.tokens.sm, ctx.tokens.xs, ctx.tokens.bar);
     let foot = band(line, line.h - sm - tall, tall);
     let mut room = foot.pad(Edges::across(sm + xs, sm + xs));
     let target = Target::Skills(open.session.id.clone());

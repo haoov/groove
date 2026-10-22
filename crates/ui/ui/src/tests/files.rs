@@ -141,12 +141,12 @@ fn the_sidebar_stands_beside_the_workspace_only_where_a_tab_wants_it() {
     let size = Size::new(WINDOW.0, WINDOW.1);
     let folded = Layout::new(size, &tokens, Split::default(), false);
     assert!(folded.sidebar.is_empty());
-    assert_eq!(folded.workspace.right(), folded.window.right());
+    assert_eq!(folded.workspace.right(), folded.strip.right());
 
     let open = Layout::new(size, &tokens, Split::default(), true);
     assert_eq!(open.sidebar.w, Split::default().sidebar);
     assert_eq!(open.sidebar.x, open.workspace.right());
-    assert_eq!(open.sidebar.right(), open.window.right());
+    assert_eq!(open.sidebar.right(), open.strip.right());
     assert!(
         open.workspace.w < folded.workspace.w,
         "the workspace gives the room, not the agent"

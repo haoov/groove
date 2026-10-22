@@ -3,7 +3,6 @@
 use std::path::PathBuf;
 
 use groove_types::{TimelineKind, Worktree};
-use groove_workspace_service::Buffer;
 
 use super::diff::{load, reread};
 use crate::asker::Asker;
@@ -53,7 +52,6 @@ pub(crate) fn commit(
     let session = worktree.session.clone();
     let dir = PathBuf::from(&worktree.path);
     let job = state.begin("committing");
-    let clears = asker.carries_a_box();
     spawner.spawn(Box::pin(async move {
         let done = groove_workspace_service::commit(&dir, &message).await;
         Box::new(
@@ -63,9 +61,6 @@ pub(crate) fn commit(
                 if done.is_ok() {
                     let kind = TimelineKind::Commit;
                     crate::timeline::log(services, spawner, &session, kind, &said, &worktree.id);
-                    if clears && state.workspace.message.text() == message {
-                        state.workspace.message = Buffer::default();
-                    }
                     reread(state, spawner);
                 }
                 asker.answer(state, done, || format!("committed {said}"));

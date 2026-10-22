@@ -75,10 +75,6 @@ pub enum Command {
     Unstage { path: String },
     /// `workspace.discard`: what one path holds, thrown away.
     Discard { path: String },
-    /// `workspace.message`: one keystroke on the commit message.
-    Message(Edit),
-    /// `workspace.commit`: the index, with the message the box holds.
-    Commit,
     /// `workspace.push`: the branch to its own name on origin.
     Push,
     /// `workspace.pull`: origin's own head, fast-forward only.
@@ -142,8 +138,6 @@ impl Command {
             Command::Stage { .. } => "workspace.stage",
             Command::Unstage { .. } => "workspace.unstage",
             Command::Discard { .. } => "workspace.discard",
-            Command::Message(_) => "workspace.message",
-            Command::Commit => "workspace.commit",
             Command::Push => "workspace.push",
             Command::Pull => "workspace.pull",
             Command::DiscardAll => "workspace.discard_all",
@@ -176,7 +170,6 @@ impl Command {
                 | Command::Unstage { .. }
                 | Command::Discard { .. }
                 | Command::DiscardAll
-                | Command::Commit
                 | Command::Path(_)
         )
     }
@@ -212,10 +205,6 @@ pub fn dispatch(
         Command::Stage { path } => index(state, spawner, Act::Stage, path),
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
         Command::Discard { path } => index(state, spawner, Act::Discard, path),
-        Command::Message(edit) => {
-            state.workspace.message.edit(&edit);
-        }
-        Command::Commit => commit_here(state, spawner),
         Command::Push => on_remote(state, services, spawner, Remote::Push),
         Command::Pull => on_remote(state, services, spawner, Remote::Pull),
         Command::DiscardAll => discard_all(state, spawner),
@@ -242,15 +231,6 @@ fn read_of_file(state: &mut AppState, spawner: &dyn Spawner, command: Command) {
         Command::Dismiss => state.workspace.servers.dismiss(),
         _ => {}
     }
-}
-
-/// The words of the commit box on the selected worktree, from the surface.
-fn commit_here(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(worktree) = state.session.selected_worktree().cloned() else {
-        return;
-    };
-    let message = state.workspace.message.text();
-    git::commit(state, spawner, worktree, message, Asker::Ui);
 }
 
 /// A push or a pull of the selected worktree, from the surface.

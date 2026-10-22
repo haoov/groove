@@ -76,7 +76,7 @@ Not enforced by a test.
 
 **The controllers are the API.** A function nobody can reach, and a palette entry or tool
 that is not a function, are both defects.
-*Example:* the agent's `git_push` tool calls the same `remote` the commit box does.
+*Example:* the agent's `git_push` tool calls the same `remote` the palette's Push does.
 Enforced by `every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_refuses`.
 
 **`AppState` is the sum of the services' slices**, owned on the main thread. A

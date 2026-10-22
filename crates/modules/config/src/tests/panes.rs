@@ -6,7 +6,6 @@ const LEFT: Panes = Panes {
     rail: 240.0,
     agent: 600.0,
     sidebar: 380.0,
-    commit: 120.0,
     feed: 200.0,
     manual: 220.0,
 };

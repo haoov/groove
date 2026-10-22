@@ -100,7 +100,7 @@ fn in_view(app: &AppState, face: crate::views::session::Face) -> Vec<String> {
         crate::views::session::Face::File => tokens.row + tokens.sm,
         _ => 0.0,
     };
-    let body = workspace.y + tokens.row * 2.0 + strip;
+    let body = workspace.y + tokens.row - tokens.sm + strip;
     frame.layers()[0]
         .texts
         .iter()

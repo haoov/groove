@@ -21,9 +21,15 @@ fn the_section_stands_folded_to_its_bar_until_asked() {
         "the bar offers a terminal"
     );
     let layout = Layout::of(window(), &ui);
-    let bar = window().tokens().bar;
-    assert_eq!(layout.manual.h, bar);
-    assert_eq!(layout.workspace.bottom(), layout.manual.y);
+    let tokens = window().tokens();
+    assert_eq!(layout.manual.h, tokens.bar);
+    assert_eq!(layout.manual.bottom(), layout.window.bottom() - tokens.sm);
+    assert_eq!(
+        layout.strip.bottom(),
+        layout.manual.y - tokens.sm,
+        "a gap above it"
+    );
+    assert_eq!(layout.workspace.bottom(), layout.strip.bottom());
 }
 
 #[test]
@@ -100,14 +106,74 @@ fn a_split_tab_stands_its_panes_side_by_side_and_a_click_asks_for_that_one() {
 }
 
 #[test]
-fn an_open_section_takes_its_height_from_the_foot_of_the_workspace() {
+fn an_open_drawer_rises_its_height_and_the_strip_ends_above_it() {
     let mut ui = Ui::default();
     ui.session.manual = true;
     let layout = Layout::of(window(), &ui);
-    let tall = (ui.split.manual * window().tokens().scale).floor();
+    let tokens = window().tokens();
+    let tall = (ui.split.manual * tokens.scale).floor();
     assert_eq!(layout.manual.h, tall);
-    assert_eq!(layout.manual.bottom(), layout.window.bottom());
-    assert_eq!(layout.workspace.bottom(), layout.manual.y);
+    assert_eq!(
+        (layout.manual.x, layout.manual.w),
+        (layout.strip.x, layout.strip.w)
+    );
+    assert_eq!(layout.manual.bottom(), layout.window.bottom() - tokens.sm);
+    assert_eq!(layout.strip.bottom(), layout.manual.y - tokens.sm);
+    assert_eq!(layout.sidebar.bottom(), layout.strip.bottom());
+}
+
+#[test]
+fn an_open_drawer_fills_the_column_beside_the_agent_while_the_strip_is_folded() {
+    let mut ui = Ui::default();
+    ui.session.stowed = true;
+    let wide = Layout::of(window(), &ui);
+    assert_eq!(
+        wide.agent.w, wide.board.w,
+        "a folded drawer leaves the agent wide"
+    );
+    assert_eq!(
+        wide.manual.h,
+        window().tokens().bar,
+        "the drawer's bar stays"
+    );
+    ui.session.manual = true;
+    let narrow = Layout::of(window(), &ui);
+    assert!(
+        narrow.agent.right() <= narrow.manual.x,
+        "the agent ends where the drawer starts"
+    );
+    assert_eq!(narrow.strip.h, narrow.header.h, "the strip still folded");
+    let sm = window().tokens().sm;
+    assert_eq!(
+        narrow.manual.y,
+        narrow.strip.bottom() + sm,
+        "the drawer fills the column"
+    );
+    assert_eq!(narrow.manual.bottom(), narrow.window.bottom() - sm);
+    ui.session.manual = false;
+    assert_eq!(
+        Layout::of(window(), &ui).agent.w,
+        wide.agent.w,
+        "folded, the agent has it back"
+    );
+}
+
+#[test]
+fn the_folded_drawer_is_a_capsule_as_narrow_as_its_bar() {
+    let app = full_app();
+    let ui = Ui::default();
+    let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let layout = Layout::of(window(), &ui);
+    let capsule = frame.layers()[0]
+        .glass
+        .iter()
+        .find(|one| one.rect.y == layout.manual.y && one.rect.right() == layout.manual.right())
+        .expect("the drawer's glass");
+    assert!(
+        capsule.rect.w < layout.manual.w / 2.0,
+        "only what it holds: {:?}",
+        capsule.rect
+    );
 }
 
 #[test]
