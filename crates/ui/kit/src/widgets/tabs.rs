@@ -114,8 +114,8 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     fn style<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
         if self.glass {
             return match self.selected {
-                true => ctx.styles.strong(Role::Text),
-                false => ctx.styles.body(Role::Muted),
+                true => ctx.styles.label(Role::Text),
+                false => ctx.styles.label(Role::Muted),
             };
         }
         let role = if self.selected {

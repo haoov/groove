@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_controllers::shell_service::{Shell, Shells};
 use groove_gfx::{Edges, Rect};
 use groove_types::SessionId;
-use groove_ui_kit::shape::{from_bottom, from_top, strip};
+use groove_ui_kit::shape::{from_bottom, from_right, from_top, strip};
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -47,7 +47,7 @@ fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
     let mut room = line.pad(Edges::across(sm, sm));
     actions(ctx, &mut room);
-    folder(ui.session.manual).left(ctx, &mut room, 0.0);
+    folder(ui.session.manual).left(ctx, &mut room, md);
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.left(ctx, &mut room, md);
     for (name, id, selected) in tabs(shells) {
@@ -60,8 +60,12 @@ fn folded(ctx: &mut Ctx, line: Rect, shells: Option<&Shells>) {
     let (xs, md) = (ctx.tokens.xs, ctx.tokens.md);
     let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
     actions(ctx, &mut room);
-    for (name, id, selected) in tabs(shells).into_iter().rev() {
-        tab(&name, id, selected).right(ctx, &mut room, xs);
+    let held = tabs(shells);
+    for (name, id, selected) in held.iter().rev() {
+        tab(name, *id, *selected).right(ctx, &mut room, xs);
+    }
+    if !held.is_empty() {
+        from_right(&mut room, md - xs, 0.0);
     }
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.right(ctx, &mut room, md);

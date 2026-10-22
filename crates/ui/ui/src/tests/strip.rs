@@ -199,3 +199,20 @@ fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
     let new = hits.rect_of(&Target::ShellNew).expect("the + button");
     assert_eq!(new.w, new.h, "an icon button, square around its circle");
 }
+
+#[test]
+fn a_tab_keeps_its_width_whether_open_or_not() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let width = |ui: &Ui| {
+        let (_, hits) = view(&app, ui, window(), &mut Fonts::embedded());
+        hits.rect_of(&Target::Tab(Tab::Diff)).expect("the tab").w
+    };
+    let closed = width(&ui);
+    ui.session.tab = Tab::Diff;
+    assert_eq!(
+        width(&ui),
+        closed,
+        "the open tab's text is the same size and weight"
+    );
+}

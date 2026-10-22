@@ -42,7 +42,7 @@ const SATURATION: f32 = 1.5;
 // How far the backdrop moves toward black under a dark tint, and toward white under a light one.
 const DARKEN: f32 = 0.55;
 const LIGHTEN: f32 = 0.08;
-const RIM: f32 = 0.5;
+const RIM: f32 = 0.1;
 const SHADOW: f32 = 0.3;
 
 fn outside(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
@@ -102,7 +102,7 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
   color = mix(color, in.tint.rgb, in.tint.a);
 
   // A thin rim, lit on the top-left and the bottom-right edges.
-  let line = smoothstep(-2.0, -0.5, sd);
+  let line = smoothstep(-1.5, -0.5, sd);
   let lit = abs(dot(normal(in.local, in.half, round), vec2<f32>(-0.7071, -0.7071)));
   color += vec3<f32>(RIM * line * lit);
 
