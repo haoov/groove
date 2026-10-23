@@ -56,3 +56,22 @@ pub fn glass_lit<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
 pub fn glass_chosen<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     glass_row(ctx, rect, ctx.styles.glass_chosen());
 }
+
+/// One row's slice of a rounded box drawn row by row: rounded only where the box opens or closes.
+pub fn rounded_slice<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    (top, bottom): (bool, bool),
+    (ground, edge): (Color, Option<Color>),
+) {
+    let round = ctx.tokens.sm;
+    let up = if top { 0.0 } else { round };
+    let down = if bottom { 0.0 } else { round };
+    let whole = Rect::new(rect.x, rect.y - up, rect.w, rect.h + up + down);
+    ctx.clipped(rect, |ctx| {
+        ctx.rounded(whole, ground, round);
+        if let Some(edge) = edge {
+            ctx.ring(whole, edge, round, ctx.tokens.hairline);
+        }
+    });
+}

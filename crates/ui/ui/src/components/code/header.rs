@@ -24,6 +24,10 @@ pub struct Header {
 pub enum Room {
     Gap,
     Between,
+    /// A row half above a card, half inside it before its header.
+    Over,
+    /// A row half inside a card under its buttons, half under it.
+    Under,
 }
 
 /// A row of the composer around the words being typed.

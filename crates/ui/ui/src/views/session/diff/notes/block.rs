@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_types::Note;
 
-use super::{BETWEEN, Block, GAPS, Slot, UNDER, anchored, starts};
+use super::{BETWEEN, Block, GAPS, OVER, Slot, UNDER, anchored, starts};
 use crate::components::Room;
 use crate::views::session::Face;
 use crate::views::session::diff::wrap::{Compacted, wrapped};
@@ -24,7 +24,7 @@ pub(super) fn block(
     };
     let rows = match hidden {
         true => 0,
-        false => said.len().max(1) + BETWEEN + 1 + UNDER,
+        false => OVER + said.len().max(1) + BETWEEN + 1 + UNDER,
     };
     Some(Block {
         after,
@@ -53,12 +53,13 @@ impl Block {
     /// What one row of the block holds, counted from its first.
     pub(super) fn slot(&self, row: usize) -> Slot {
         if row + UNDER >= self.rows {
-            return Slot::Pad { room: Room::Gap };
+            return Slot::Pad { room: Room::Under };
         }
         let Some(at) = self.at else {
             let typed = GAPS + 1;
             return match row {
-                0 | 2 => Slot::Pad { room: Room::Gap },
+                0 => Slot::Pad { room: Room::Over },
+                2 => Slot::Pad { room: Room::Gap },
                 1 => Slot::Chips,
                 row if row < typed + self.typing => Slot::Typed {
                     row: row - typed,
@@ -70,6 +71,9 @@ impl Block {
                 _ => Slot::Footer { reply: false },
             };
         };
+        let Some(row) = row.checked_sub(OVER) else {
+            return Slot::Pad { room: Room::Over };
+        };
         let said = self.said.len().max(1);
         match row.checked_sub(said + BETWEEN) {
             None if row < said => Slot::Note { at, row },
@@ -80,5 +84,22 @@ impl Block {
             Some(_) if self.typing > 0 => Slot::Footer { reply: true },
             Some(_) => Slot::Acts { at },
         }
+    }
+}
+
+/// Whether a row stands in a note's card; the room under one does not.
+fn in_card(slot: &Slot) -> bool {
+    !matches!(slot, Slot::Code(_))
+}
+
+/// Each card row told whether its card opens or closes on it; a window's edge cuts none.
+pub(crate) fn carded(lines: &mut [crate::components::Line<'_>], slots: &[Slot]) {
+    for (at, line) in lines.iter_mut().enumerate() {
+        if !slots.get(at).is_some_and(in_card) {
+            continue;
+        }
+        let top = at > 0 && !slots.get(at - 1).is_some_and(in_card);
+        let bottom = slots.get(at + 1).is_some_and(|next| !in_card(next));
+        line.card = (top, bottom);
     }
 }

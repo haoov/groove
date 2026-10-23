@@ -11,6 +11,7 @@ mod tiles;
 
 use self::answer::answering;
 use self::block::block;
+pub(crate) use self::block::carded;
 use super::wrap::{Worded, cols_of};
 use crate::Ui;
 use crate::components::Room;
@@ -67,6 +68,8 @@ const GAPS: usize = 2;
 /// The row that rules off what a note says from what it offers, and the room under its buttons.
 const BETWEEN: usize = 1;
 const UNDER: usize = 1;
+/// The half row of room above a card, and the half row inside it before its header.
+const OVER: usize = 1;
 
 /// Where the notes stand among the rows of one view.
 #[derive(Default)]

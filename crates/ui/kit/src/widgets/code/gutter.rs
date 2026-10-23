@@ -99,7 +99,7 @@ pub(super) fn tiled<A: App>(
     match tile {
         Tile::Open(count) => {
             let ground = ctx.styles.color(Role::Warn);
-            ctx.rounded(box_, ground, ctx.tokens.round);
+            ctx.rounded(box_, ground, ctx.tokens.xs);
             let style = ctx.styles.initials(Role::Inverse);
             let text = count.to_string();
             let width = ctx.measure(&text, &style);

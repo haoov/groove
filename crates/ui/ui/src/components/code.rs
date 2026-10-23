@@ -79,6 +79,8 @@ pub struct Line<'a> {
     pub blame: Option<(&'a str, Option<&'a str>)>,
     /// Its fold names the line it opens.
     pub outline: Outline<'a, usize>,
+    /// Whether a note's card opens on this row, and whether it closes on it.
+    pub card: (bool, bool),
 }
 
 impl<'a> Line<'a> {
@@ -140,6 +142,7 @@ impl<'a> Line<'a> {
             noted: false,
             blame: None,
             outline: Outline::default(),
+            card: (false, false),
         }
     }
 

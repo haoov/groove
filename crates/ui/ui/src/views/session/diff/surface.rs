@@ -72,7 +72,9 @@ fn surface(
         said: said.as_ref(),
         heads: view != Face::Stream(DiffView::Split),
     };
-    let lines = lines_of(ctx, app, held);
+    let laid = held.slots;
+    let mut lines = lines_of(ctx, app, held);
+    super::notes::carded(&mut lines, laid);
     let numbers = numbers(app, ui, view);
     let across = across_of(ctx, (app, ui), numbers, rect, &rows);
     if clickable {

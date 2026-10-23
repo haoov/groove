@@ -295,7 +295,7 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        with_note + 2,
+        with_note + 1,
         "the composer stands in place of the note, room around its chips"
     );
 }
@@ -313,12 +313,24 @@ fn hovering_one_notes_button_leaves_the_others_alone() {
         groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
         crate::hit::NoteButton::Edit,
     ));
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let buttons: Vec<groove_gfx::Rect> = ["n1", "n2"]
+        .into_iter()
+        .flat_map(|id| {
+            let origin = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new(id));
+            [
+                crate::hit::NoteButton::Edit,
+                crate::hit::NoteButton::Resolve,
+            ]
+            .map(|button| hits.rect_of(&Target::Note(origin.clone(), button)))
+        })
+        .flatten()
+        .collect();
     let lit = frame
         .layers()
         .iter()
         .flat_map(|layer| layer.quads.iter())
-        .filter(|quad| quad.color == styles.action())
+        .filter(|quad| quad.color == styles.glass_hover() && buttons.contains(&quad.rect))
         .count();
     assert_eq!(lit, 1, "one button of one note");
 }

@@ -311,9 +311,11 @@ caret, a selection, an undo and the clipboard work there too; Enter is a line of
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the board's
 own header. The bands sit under it: a column's heading, a menu, a file's
-head. The deepest holds the session's ground under the agent and the strip, the terminal
-widget, a note's own rows under its card, and the field a note is typed in — nothing else.
-The strip and the sidebar inside it stand on glass, with no ground of their own.
+head. The deepest holds the session's ground under the agent and the strip, and the
+terminal widget — nothing else. The strip and the sidebar inside it stand on glass, with no
+ground of their own. A note stands on the glass in a rounded card of the overview's ground,
+its replies and its buttons ruled off inside it, its field a rounded field. Enforced by
+`a_note_stands_in_a_rounded_card_with_room_under_it_and_no_band_across_the_line`.
 
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette with its
 pickers, the language servers' popup and the agent bar's skills menu are glass: the work below shows through them,
