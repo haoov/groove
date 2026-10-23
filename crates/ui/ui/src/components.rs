@@ -4,6 +4,7 @@ mod code;
 mod delivery;
 pub mod worktree_row;
 
+pub(crate) use code::card_across;
 pub use code::{
     Acting, Block, Composed, Field, Gutters, Header, Line, Noted, Outline, Room, Rows, Tile,
     across_extent, chars_of, code, code_at, first, head_mark, head_of, height, label_role, visible,

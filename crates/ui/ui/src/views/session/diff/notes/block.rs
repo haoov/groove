@@ -87,19 +87,14 @@ impl Block {
     }
 }
 
-/// Whether a row stands in a note's card; the room under one does not.
-fn in_card(slot: &Slot) -> bool {
-    !matches!(slot, Slot::Code(_))
+/// Each row of a note told it floats over the rows, on its card's glass.
+pub(crate) fn floated(lines: &mut [crate::components::Line<'_>], slots: &[Slot]) {
+    for (line, slot) in lines.iter_mut().zip(slots) {
+        line.float = floats(slot);
+    }
 }
 
-/// Each card row told whether its card opens or closes on it; a window's edge cuts none.
-pub(crate) fn carded(lines: &mut [crate::components::Line<'_>], slots: &[Slot]) {
-    for (at, line) in lines.iter_mut().enumerate() {
-        if !slots.get(at).is_some_and(in_card) {
-            continue;
-        }
-        let top = at > 0 && !slots.get(at - 1).is_some_and(in_card);
-        let bottom = slots.get(at + 1).is_some_and(|next| !in_card(next));
-        line.card = (top, bottom);
-    }
+/// Whether a row belongs to a note, whose card floats over the rows on glass.
+pub(crate) fn floats(slot: &Slot) -> bool {
+    !matches!(slot, Slot::Code(_))
 }

@@ -11,7 +11,7 @@ mod tiles;
 
 use self::answer::answering;
 use self::block::block;
-pub(crate) use self::block::carded;
+pub(crate) use self::block::{floated, floats};
 use super::wrap::{Worded, cols_of};
 use crate::Ui;
 use crate::components::Room;

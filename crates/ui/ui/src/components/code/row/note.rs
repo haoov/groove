@@ -13,7 +13,7 @@ use groove_ui_kit::widgets::{Badge, Button, rounded_slice, typed_line};
 
 /// One row of a note: its part of the card, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
-    let card = slotted(ctx, line, gutter, code.card);
+    let card = card(ctx, line, gutter);
     let role = match said.resolved {
         true => Role::Faint,
         false => Role::Text,
@@ -71,32 +71,19 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
 }
 
 /// A row of room inside the card, a rule across it half way down when it parts two blocks.
-pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, code: &Line<'_>, gutter: Block) {
-    let half = line.h / 2.0;
-    match room {
-        Room::Over => {
-            slotted(ctx, band(line, half, half), gutter, (true, false));
-            return;
-        }
-        Room::Under => {
-            slotted(ctx, band(line, 0.0, half), gutter, (false, true));
-            return;
-        }
-        Room::Gap | Room::Between => {}
+pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, gutter: Block) {
+    if room != Room::Between {
+        return;
     }
-    let card = slotted(ctx, line, gutter, code.card);
-    if room == Room::Between {
-        let half = card.h / 2.0;
-        let lower = band(card, half, half).pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-        top_rule(ctx, lower, ctx.styles.line());
-    }
+    let card = card(ctx, line, gutter);
+    let half = card.h / 2.0;
+    let lower = band(card, half, half).pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    top_rule(ctx, lower, ctx.styles.line());
 }
 
-/// Where a note's card stands on its row, its slice of the card drawn there.
-pub(super) fn slotted(ctx: &mut Ctx, line: Rect, gutter: Block, edges: (bool, bool)) -> Rect {
-    let card = card(ctx, line, gutter);
-    rounded_slice(ctx, card, edges, (ctx.styles.glass_card(), None));
-    card
+/// Where a note's card stands across `line`.
+pub(crate) fn card_across(ctx: &mut Ctx, line: Rect, gutter: Block) -> Rect {
+    card(ctx, line, gutter)
 }
 
 /// Where a note's card stands on one of its rows: from just before the code to short of the end.
@@ -123,13 +110,8 @@ fn by(ctx: &mut Ctx, card: Rect, said: Noted<'_>) -> f32 {
 }
 
 /// What a note offers, as buttons from the column its words start on.
-pub(super) fn acts(
-    ctx: &mut Ctx,
-    line: Rect,
-    (acting, edges): (&Acting, (bool, bool)),
-    gutter: Block,
-) {
-    let card = slotted(ctx, line, gutter, edges);
+pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
+    let card = card(ctx, line, gutter);
     let at = gutter.content(ctx, line);
     let mut room = span(line, at, card.right() - ctx.tokens.sm - at);
     let gap = ctx.tokens.sm;

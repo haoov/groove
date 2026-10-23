@@ -3,7 +3,7 @@
 use groove_gfx::Rect;
 
 use super::super::{Composed, label_role};
-use super::note::slotted;
+use super::note::card_across;
 use crate::ctx::Ctx;
 use crate::hit::{Composing, Target};
 use groove_ui_kit::base::style::Role;
@@ -24,13 +24,8 @@ const CHIPS: [&str; 7] = [
 const DECORATIONS: [&str; 2] = ["blocking", "non-blocking"];
 
 /// A row of the composer: the lines and the chips to pick, or the hint and its buttons.
-pub(super) fn composer(
-    ctx: &mut Ctx,
-    line: Rect,
-    (composed, edges): (&Composed, (bool, bool)),
-    gutter: Block,
-) {
-    let card = slotted(ctx, line, gutter, edges);
+pub(super) fn composer(ctx: &mut Ctx, line: Rect, composed: &Composed, gutter: Block) {
+    let card = card_across(ctx, line, gutter);
     let at = gutter.content(ctx, line);
     let mut room = groove_ui_kit::shape::span(line, at, card.right() - ctx.tokens.sm - at);
     match composed {

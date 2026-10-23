@@ -11,6 +11,7 @@ use groove_types::{Highlight, Severity};
 
 pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
+pub(crate) use self::row::card_across;
 pub use self::rows::{Rows, code};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, Outline, Tile, head_mark, head_of};
 
@@ -79,8 +80,8 @@ pub struct Line<'a> {
     pub blame: Option<(&'a str, Option<&'a str>)>,
     /// Its fold names the line it opens.
     pub outline: Outline<'a, usize>,
-    /// Whether a note's card opens on this row, and whether it closes on it.
-    pub card: (bool, bool),
+    /// A row of a read note's card, drawn over the rows on glass, not among them.
+    pub float: bool,
 }
 
 impl<'a> Line<'a> {
@@ -142,7 +143,7 @@ impl<'a> Line<'a> {
             noted: false,
             blame: None,
             outline: Outline::default(),
-            card: (false, false),
+            float: false,
         }
     }
 

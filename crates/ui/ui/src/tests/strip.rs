@@ -264,3 +264,26 @@ fn a_file_s_band_reads_from_the_left_its_counts_right_after_its_path() {
         "not pushed to the right"
     );
 }
+
+#[test]
+fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
+    let app = crate::tests::diff::opened();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Files;
+    let anchor = groove_types::Anchor::line("src/lib.rs", 0);
+    ui.session.noting = Some(crate::views::session::Noting::new(anchor));
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let code = hits.rect_of(&Target::Code).expect("the rows");
+    let panes = frame.layers()[1..]
+        .iter()
+        .flat_map(|layer| layer.glass.iter())
+        .filter(|one| code.contains(one.rect.x, one.rect.y))
+        .count();
+    assert_eq!(panes, 1, "the composer floats over its rows, one pane");
+    let sliced = frame.layers()[0].quads.iter().any(|quad| {
+        code.contains(quad.rect.x, quad.rect.y)
+            && quad.shape.radius > 0.0
+            && quad.rect.w > code.w / 2.0
+    });
+    assert!(!sliced, "no card cut row by row among the code");
+}

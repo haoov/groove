@@ -35,6 +35,7 @@ pub(super) fn across(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline:
         first: window.start,
         gutters,
         across: 0.0,
+        floating: false,
     };
     let drawn = code(ctx, body, rows, scroll);
     ctx.clipped(body, |ctx| {

@@ -2,6 +2,7 @@
 
 mod blame;
 pub(crate) mod blocks;
+mod cards;
 pub(crate) mod completion;
 pub(crate) mod faults;
 mod finder;

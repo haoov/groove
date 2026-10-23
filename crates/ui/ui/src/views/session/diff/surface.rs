@@ -14,7 +14,7 @@ use super::row::{Drawn, Side, count, drawn};
 use super::words::{Words, words_of};
 use crate::Ui;
 use crate::components::{
-    Acting, Gutters, Line, Noted, Outline, Rows, across_extent, chars_of, code, height, visible,
+    Acting, Gutters, Line, Noted, Outline, across_extent, chars_of, height, visible,
 };
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -72,21 +72,14 @@ fn surface(
         said: said.as_ref(),
         heads: view != Face::Stream(DiffView::Split),
     };
-    let laid = held.slots;
-    let mut lines = lines_of(ctx, app, held);
-    super::notes::carded(&mut lines, laid);
+    let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, ui, view);
     let across = across_of(ctx, (app, ui), numbers, rect, &rows);
     if clickable {
         asks(ctx, rect, code_rows.clone(), numbers, (scroll, across));
     }
-    let shown = Rows {
-        lines: &lines,
-        first: window.start,
-        gutters: numbers,
-        across,
-    };
-    let drawn = code(ctx, rect, shown, scroll);
+    let laid = (&lines[..], window.start, numbers, across);
+    let drawn = super::cards::painted(ctx, rect, laid, (side, &slots), scroll);
     if clickable {
         let at = (numbers, view, side, rect);
         super::offers::marks(ctx, &drawn, &slots, &rows, code_rows.start, at);
@@ -167,7 +160,8 @@ struct Held<'a> {
 
 /// Every row of the window as the code widget takes it.
 fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> {
-    held.slots
+    let mut lines: Vec<Line<'a>> = held
+        .slots
         .iter()
         .enumerate()
         .map(|(on, slot)| match slot {
@@ -203,7 +197,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 .caret(held.words[on].caret)
                 .held(held.words[on].held),
         })
-        .collect()
+        .collect();
+    super::notes::floated(&mut lines, held.slots);
+    lines
 }
 
 /// A row of a note, from what it says.

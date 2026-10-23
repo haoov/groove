@@ -69,21 +69,24 @@ fn drawn_cols(app: &AppState, ui: &Ui) -> usize {
 fn row_texts(app: &AppState, ui: &Ui) -> Vec<String> {
     let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    frame.layers()[0]
-        .texts
+    let mut runs: Vec<&groove_gfx::TextRun> = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .filter(|run| code.contains(run.x, run.y))
-        .map(|run| run.text.clone())
-        .collect()
+        .collect();
+    runs.sort_by(|a, b| a.y.total_cmp(&b.y).then(a.x.total_cmp(&b.x)));
+    runs.into_iter().map(|run| run.text.clone()).collect()
 }
 
 /// Every text the workspace drew.
 fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
     let workspace = crate::layout::Layout::of(window(), ui).workspace;
-    frame.layers()[0]
-        .texts
+    frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .filter(|run| run.x >= workspace.x && run.x < workspace.right())
         .map(|run| run.text.clone())
         .collect()
@@ -101,9 +104,10 @@ fn in_view(app: &AppState, face: crate::views::session::Face) -> Vec<String> {
         _ => 0.0,
     };
     let body = workspace.y + tokens.row - tokens.sm + strip;
-    frame.layers()[0]
-        .texts
+    frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .filter(|run| run.x >= workspace.x && run.x < workspace.right() && run.y >= body)
         .map(|run| run.text.clone())
         .collect()
@@ -126,9 +130,10 @@ fn marks(app: &AppState) -> Vec<LineMark> {
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let tokens = Tokens::new(1.0);
     let width = tokens.xs - tokens.hairline;
-    frame.layers()[0]
-        .quads
+    frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.quads.iter())
         .filter(|quad| quad.rect.w == width)
         .filter_map(|quad| {
             [LineMark::Added, LineMark::Removed, LineMark::Changed]

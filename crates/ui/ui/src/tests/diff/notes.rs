@@ -52,7 +52,7 @@ fn a_note_draws_under_the_line_it_was_left_on() {
 }
 
 #[test]
-fn a_note_stands_in_a_rounded_card_with_room_under_it_and_no_band_across_the_line() {
+fn a_read_note_floats_over_its_rows_as_one_pane_of_glass() {
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
@@ -61,43 +61,39 @@ fn a_note_stands_in_a_rounded_card_with_room_under_it_and_no_band_across_the_lin
     let tokens = Tokens::new(1.0);
     let (line, thin) = (tokens.code_line, tokens.hairline);
     let code = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
-    let quads = &frame.layers()[0].quads;
-    let mut card: Vec<&groove_gfx::Quad> = quads
+    let layers = frame.layers();
+    let (under, over) = layers.split_at(1);
+    let panes: Vec<&groove_gfx::Glass> = over
         .iter()
-        .filter(|quad| quad.color == styles.glass_card() && code.contains(quad.clip.x, quad.clip.y))
+        .flat_map(|layer| layer.glass.iter())
+        .filter(|one| code.contains(one.rect.x, one.rect.y))
         .collect();
-    card.sort_by(|a, b| a.clip.y.total_cmp(&b.clip.y));
-    let rows: Vec<f32> = card.iter().map(|quad| quad.clip.h).collect();
+    assert_eq!(panes.len(), 1, "one pane for the note, over the rows");
+    let card = panes[0].rect;
     let half = line / 2.0;
     assert_eq!(
-        rows,
-        [half, line, line, line, line, half],
-        "room inside its top, the header, the words, the rule, the buttons, room inside its foot"
+        card.h,
+        line * 5.0,
+        "half a row, header, words, rule, buttons, half a row"
     );
     assert!(
-        card.iter().all(|quad| quad.shape.radius == tokens.sm),
-        "rounded"
+        card.y - code.y >= half,
+        "room between the code and the card"
     );
-    let (top, foot) = (card[0], card[5]);
-    assert!(
-        top.rect.y == top.clip.y && top.rect.h > half,
-        "its top rounded"
-    );
-    assert!(foot.rect.bottom() == foot.clip.bottom() && foot.rect.y < foot.clip.y);
-    assert!(
-        top.clip.y - code.y >= half,
-        "half a row of room between the code and the card"
-    );
-    let rule = quads.iter().any(|quad| {
-        quad.color == styles.line()
-            && quad.rect.h == thin
-            && quad.rect.y == card[3].clip.y + line / 2.0
-    });
-    assert!(rule, "the buttons ruled off from what the note says");
-    let deep = quads
+    let rule = over
         .iter()
-        .any(|quad| quad.color == styles.deep() && code.contains(quad.rect.x, quad.rect.y));
-    assert!(!deep, "no band across the line under the card");
+        .flat_map(|layer| layer.quads.iter())
+        .any(|quad| {
+            quad.color == styles.line()
+                && quad.rect.h == thin
+                && quad.rect.y == card.y + half + line * 2.5
+        });
+    assert!(rule, "the buttons ruled off from what the note says");
+    let banded = under[0].quads.iter().any(|quad| {
+        (quad.color == styles.deep() || quad.color == styles.glass_card())
+            && code.contains(quad.rect.x, quad.rect.y)
+    });
+    assert!(!banded, "nothing drawn for it among the rows");
 }
 
 #[test]
@@ -259,15 +255,17 @@ fn a_note_s_header_starts_where_the_code_does_and_its_words_a_step_in() {
     let ui = on_diff();
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows");
-    let words = frame.layers()[0]
-        .texts
+    let words = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .find(|run| run.text == "this leaks" && code.contains(run.x, run.y))
         .map(|run| run.x)
         .expect("the words");
-    let initials = frame.layers()[0]
-        .texts
+    let initials = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .find(|run| run.text == "ME" && code.contains(run.x, run.y))
         .map(|run| run.x)
         .expect("the initials");
@@ -301,9 +299,10 @@ fn a_line_carrying_a_note_takes_its_own_ground() {
         let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
         let ui = on_diff();
         let (frame, _) = view(app, &ui, window(), &mut Fonts::embedded());
-        frame.layers()[0]
-            .quads
+        frame
+            .layers()
             .iter()
+            .flat_map(|layer| layer.quads.iter())
             .filter(|quad| quad.color == styles.noted())
             .count()
     };

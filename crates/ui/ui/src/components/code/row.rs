@@ -4,6 +4,7 @@ mod composer;
 mod note;
 
 use self::composer::composer;
+pub(crate) use self::note::card_across;
 use self::note::{acts, note, padded};
 
 use groove_gfx::Rect;
@@ -18,16 +19,16 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, ac
         return;
     }
     if let Some(composed) = code.composed.as_ref() {
-        return composer(ctx, line, (composed, code.card), gutter);
+        return composer(ctx, line, composed, gutter);
     }
     if let Some(room) = code.pad {
-        return padded(ctx, line, room, code, gutter);
+        return padded(ctx, line, room, gutter);
     }
     if let Some(said) = code.said {
         return note(ctx, line, code, said, gutter);
     }
     if let Some(acting) = code.acting.as_ref() {
-        return acts(ctx, line, (acting, code.card), gutter);
+        return acts(ctx, line, acting, gutter);
     }
     code::draw(ctx, line, &painted(code), gutter, across);
 }

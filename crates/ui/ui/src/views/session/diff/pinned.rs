@@ -72,6 +72,7 @@ pub(super) fn draw(
             first: 0,
             gutters,
             across: ui.session.across(),
+            floating: false,
         };
         let drawn = code(ctx, band, rows, 0.0);
         ctx.hit(band, Target::Pinned);
