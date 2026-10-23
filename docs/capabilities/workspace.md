@@ -12,7 +12,7 @@ content at a ref; the working copy comes from disk. Git's own diff output is nev
 no patch parser. Expanding a gap is a slice of a document already held.
 
 **Two modes.** Base: against the merge-base with the base branch, or the MR's target in a
-review. Working: uncommitted changes against HEAD. Untracked files are all additions. A
+review. Local: uncommitted changes against HEAD. Untracked files are all additions. A
 throttled background fetch keeps the base fresh.
 
 **The whole change is one surface.** The file list is built from the numeric summary,

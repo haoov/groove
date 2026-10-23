@@ -34,7 +34,7 @@ pub use fold::{caret, fold, fold_turn, folder};
 pub use heading::Heading;
 pub use icon::{busy, dot, icon, lead, turned};
 pub use input::{Lead, caret_after, input_at, stepped_input, typed_line};
-pub use inset::inset_row;
+pub use inset::{glass_chosen, glass_hoverable, glass_lit, inset_row};
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size, menu, size as menu_size};
 pub use modal::{
@@ -46,7 +46,7 @@ pub use question::{offer, question};
 pub use scrolled::scrolled;
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};
-pub use tabs::{Tab, tabs};
+pub use tabs::{Tab, glass_tabs, tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;
 pub use toggle::Toggle;

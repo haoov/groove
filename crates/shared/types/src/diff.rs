@@ -17,7 +17,7 @@ impl DiffMode {
     pub fn label(self) -> &'static str {
         match self {
             DiffMode::Base => "base",
-            DiffMode::Working => "working",
+            DiffMode::Working => "local",
         }
     }
 }

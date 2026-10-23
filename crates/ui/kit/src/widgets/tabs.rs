@@ -24,6 +24,8 @@ pub struct Tab<'a, T> {
     pub tally: Option<(u32, u32)>,
     /// A rounded row on glass, held while selected and lit under the pointer.
     pub glass: bool,
+    /// Its label in the middle of a box wider than it.
+    pub centred: bool,
 }
 
 impl<'a, T: Clone + PartialEq> Tab<'a, T> {
@@ -40,6 +42,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             italic: false,
             tally: None,
             glass: false,
+            centred: false,
         }
     }
 
@@ -184,8 +187,57 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         if let Some((mark, target)) = self.close {
             Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
         }
-        row(ctx, pill, pad, self.label, style);
+        let label = crate::text::elide(ctx, self.label, &style, (end.w - pad * 2.0).max(0.0));
+        let pad = match self.centred {
+            true => ((end.w - ctx.measure(&label, &style)) / 2.0).max(pad),
+            false => pad,
+        };
+        row(ctx, pill, pad, &label, style);
     }
+}
+
+/// Rounded tabs on glass from the left of `rect`, the selected one held; returns their boxes.
+pub fn glass_tabs<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    tabs: &[(&str, A::Target)],
+    selected: usize,
+) -> Vec<Rect> {
+    let xs = ctx.tokens.xs;
+    let mut room = rect.pad(groove_gfx::Edges::across(ctx.tokens.sm, 0.0));
+    let made: Vec<Tab<'_, A::Target>> = tabs
+        .iter()
+        .enumerate()
+        .map(|(i, (label, target))| {
+            let mut tab = Tab::new(label, target.clone(), i == selected).glass();
+            tab.centred = true;
+            tab
+        })
+        .collect();
+    let natural: Vec<f32> = made.iter().map(|tab| tab.width(ctx)).collect();
+    let free = (room.w - xs * (natural.len().max(1) - 1) as f32).max(0.0);
+    let wide = shares(&natural, free);
+    made.into_iter()
+        .zip(wide)
+        .map(|(tab, wide)| {
+            let slot = crate::shape::from_left(&mut room, wide, xs);
+            tab.draw(ctx, slot);
+            slot
+        })
+        .collect()
+}
+
+/// Each width grown by an even share of the room left, or shrunk in proportion when none is.
+fn shares(natural: &[f32], room: f32) -> Vec<f32> {
+    let total: f32 = natural.iter().sum();
+    if total <= room {
+        let extra = (room - total) / natural.len().max(1) as f32;
+        return natural.iter().map(|one| one + extra).collect();
+    }
+    natural
+        .iter()
+        .map(|one| one * room / total.max(1.0))
+        .collect()
 }
 
 /// Tabs from the left of `rect`, the selected one underlined, a hairline under; returns their boxes.

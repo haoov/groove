@@ -425,32 +425,21 @@ fn the_header_names_the_active_file_in_files_and_none_in_the_diff() {
 }
 
 #[test]
-fn the_gutters_rule_stops_at_the_rows_that_name_things() {
+fn no_rule_stands_between_the_gutters_and_the_code() {
     let app = both();
     let ui = on_diff();
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let thickness = Tokens::new(1.0).hairline;
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let tokens = Tokens::new(1.0);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let surface = crate::layout::Layout::of(window(), &ui).workspace;
     let gutters = surface.x..surface.right() - tokens.map;
-    let rules: Vec<groove_gfx::Rect> = frame.layers()[0]
+    let upright = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.line() && quad.rect.w == thickness)
-        .map(|quad| quad.rect)
-        .filter(|rule| gutters.contains(&rule.x))
-        .collect();
-    assert!(!rules.is_empty(), "the code rows have their rule");
-
-    for path in FILES.map(|(path, _, _)| path) {
-        let head = hits
-            .rect_of(&crate::hit::Target::Head(path.into()))
-            .unwrap_or_else(|| panic!("{path} has a head row"));
-        let across = rules
-            .iter()
-            .filter(|rule| rule.y < head.bottom() && rule.bottom() > head.y)
-            .count();
-        assert_eq!(across, 0, "no rule is drawn over {path}'s own row");
-    }
+        .filter(|quad| quad.color == styles.line() && quad.rect.w == tokens.hairline)
+        .any(|quad| gutters.contains(&quad.rect.x) && quad.rect.h >= tokens.code_line);
+    assert!(
+        !upright,
+        "the numbers and the text stand apart by space alone"
+    );
 }

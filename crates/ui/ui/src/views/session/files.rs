@@ -28,7 +28,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::glass_aside;
-use groove_ui_kit::widgets::tabs;
+use groove_ui_kit::widgets::glass_tabs;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.sidebar;
@@ -36,6 +36,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return;
     }
     glass_aside(ctx, rect);
+    let rect = rect.pad(Edges::across(ctx.tokens.sm, 0.0));
     let tall = |height: f32| Spec::default().height(height);
     let list = rect;
     let bar = bar::draw(ctx, rect, ui);
@@ -78,7 +79,7 @@ fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
         .iter()
         .position(|pane| *pane == ui.session.pane)
         .unwrap_or(0);
-    tabs(ctx, rect, &shown, at);
+    glass_tabs(ctx, rect, &shown, at);
 }
 
 /// A list's own name, with what it holds when it holds anything.
@@ -110,15 +111,11 @@ fn counted(app: &AppState, pane: Pane) -> usize {
 fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let files = narrowed(app, ui);
     let grep = ui.session.bar.greps();
-    let moded = ui.session.tab == Tab::Diff && app.workspace.commit.is_none();
-    if grep || moded {
+    if grep {
         let band = Spec::default().height(ctx.tokens.header);
         let [head, rest] = column_in(column, [band, Spec::fill()]);
         column = rest;
-        match grep {
-            true => heading::found(ctx, head, app.workspace.found.len()),
-            false => heading::modes(ctx, head, app.workspace.mode),
-        }
+        heading::found(ctx, head, app.workspace.found.len());
     }
     let body = column;
     if grep {

@@ -91,16 +91,15 @@ fn a_found_line_opens_its_file_where_it_sits() {
 }
 
 #[test]
-fn the_bar_stands_only_once_a_search_asks_for_it() {
+fn the_field_stands_unasked_and_the_chord_puts_the_keys_in_its_text() {
     let app = app();
     let mut ui = crate::tests::sidebar_ui();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    for term in [Term::Path, Term::Text] {
-        assert!(
-            hits.rect_of(&crate::hit::Target::Term(term)).is_none(),
-            "{term:?} waits to be asked for"
-        );
-    }
+    assert!(
+        hits.rect_of(&crate::hit::Target::Term(Term::Path))
+            .is_some(),
+        "the field stands unasked"
+    );
 
     press(Key::Char('f'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert_eq!(

@@ -87,16 +87,6 @@ impl Block {
     }
 }
 
-/// The hairline the gutters end at, down the whole surface.
-pub fn rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, gutter: Block) {
-    if gutter.cells == 0 {
-        return;
-    }
-    let (color, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
-    let at = gutter.content(ctx, rect) - ctx.tokens.md;
-    ctx.quad(Rect::new(at, rect.y, thickness, rect.h), color);
-}
-
 /// A line's notes in its marks' column: a yellow tile counting the open ones, or a tick.
 pub(super) fn tiled<A: App>(
     ctx: &mut Ctx<'_, A>,

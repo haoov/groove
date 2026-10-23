@@ -216,3 +216,28 @@ fn a_tab_keeps_its_width_whether_open_or_not() {
         "the open tab's text is the same size and weight"
     );
 }
+
+#[test]
+fn the_first_file_s_head_holds_at_the_top_from_the_first_pixel_scrolled() {
+    let app = crate::tests::diff::opened();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    assert!(
+        hits.rect_of(&Target::Pinned).is_none(),
+        "unscrolled, the head stands in its row"
+    );
+    ui.session.diff = 1.0;
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let pinned = hits.rect_of(&Target::Pinned).expect("held at once");
+    let glassed = frame.layers().iter().any(|layer| {
+        layer
+            .glass
+            .iter()
+            .any(|one| pinned.contains(one.rect.x, one.rect.y + 1.0))
+    });
+    assert!(
+        glassed,
+        "the held head stands on glass, nothing showing through"
+    );
+}

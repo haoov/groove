@@ -32,7 +32,7 @@ pub struct Line<'a> {
     pub spans: &'a [Highlight],
     pub ground: Option<Color>,
     /// The gutter's own ground and its numbers' colour.
-    pub gutter: Option<(Color, Color)>,
+    pub gutter: Option<Color>,
     /// A bar at the row's left edge, for what a gutter number cannot say.
     pub mark: Option<Color>,
     /// A row across the whole width with no gutters: a gap, a note.
@@ -82,17 +82,6 @@ pub struct Line<'a> {
 }
 
 impl<'a> Line<'a> {
-    /// Whether the row carries gutters; a row that names a file has none.
-    pub fn numbered(&self) -> bool {
-        !self.head
-            && !self.banner
-            && !self.covered
-            && self.pad.is_none()
-            && self.composed.is_none()
-            && self.said.is_none()
-            && self.acting.is_none()
-    }
-
     pub fn composed(composed: Composed) -> Self {
         Self {
             composed: Some(composed),

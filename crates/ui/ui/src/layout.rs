@@ -77,7 +77,7 @@ impl Layout {
             header,
             info: boxes.rect(info),
             workspace: boxes.rect(workspace),
-            sidebar: boxes.rect(sidebar),
+            sidebar: boxes.rect(sidebar).pad(Edges::across(0.0, tokens.sm)),
             board: boxes.rect(board),
             work: Rect::new(
                 glass.x,

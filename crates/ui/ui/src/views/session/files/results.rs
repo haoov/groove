@@ -9,9 +9,9 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::folder;
+use groove_ui_kit::widgets::glass_hoverable;
 
 use groove_gfx::Edges;
 
@@ -60,7 +60,7 @@ pub(super) fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
 
 /// The file a run of matches belongs to, as the changed list draws a directory, and its count.
 fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
-    hoverable(ctx, line, Target::FoundIn(path.to_string()));
+    glass_hoverable(ctx, line, Target::FoundIn(path.to_string()));
     let md = ctx.tokens.md;
     let mut room = line.pad(Edges::across(md, md));
     let counted = ctx.styles.small(Role::Faint);
@@ -71,7 +71,7 @@ fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
 
 /// One line a search matched: its number, then what it says, in the column a name stands in.
 fn hit(ctx: &mut Ctx, line: Rect, one: &Found, at: usize) {
-    hoverable(ctx, line, Target::Found(at));
+    glass_hoverable(ctx, line, Target::Found(at));
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
     let mut room = line.pad(Edges::across(super::text_at(ctx, md), md));
     let number = (one.line + 1).to_string();

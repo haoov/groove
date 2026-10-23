@@ -8,8 +8,8 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::lit_cut;
+use groove_ui_kit::widgets::glass_hoverable;
 use groove_ui_kit::widgets::{Heading, Search, glass_aside};
 
 use super::scope;
@@ -31,6 +31,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return;
     };
     glass_aside(ctx, rect);
+    let rect = rect.pad(Edges::across(ctx.tokens.sm, 0.0));
     let [search, body] = column_in(rect, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     searched(ctx, search, ui);
     let picked = scope::kind(app, open, &ui.session.resources);
@@ -51,7 +52,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         |ctx, line, one| match one {
             Line::Heading(group, open) => {
                 if stood.as_ref() == Some(one) {
-                    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
+                    groove_ui_kit::widgets::glass_lit(ctx, line);
                 }
                 let heading = Heading::new(group.label()).fold(*open);
                 heading
@@ -85,11 +86,11 @@ fn named(
     (picked, highlighted): (bool, bool),
 ) {
     if highlighted {
-        groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
+        groove_ui_kit::widgets::glass_lit(ctx, line);
     }
-    hoverable(ctx, line, Target::ResourceKind(kind.clone()));
+    glass_hoverable(ctx, line, Target::ResourceKind(kind.clone()));
     if picked {
-        groove_ui_kit::shape::chosen(ctx, line);
+        groove_ui_kit::widgets::glass_chosen(ctx, line);
     }
     let role = if picked { Role::Text } else { Role::Muted };
     let style = ctx.styles.body(role);

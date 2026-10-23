@@ -6,7 +6,7 @@ mod listed;
 
 use super::*;
 use crate::tests::sidebar_ui;
-use crate::views::session::Pane;
+use crate::views::session::{Pane, Term};
 
 fn note(path: &str, line: u32, body: &str) -> Note {
     Note {
@@ -139,17 +139,11 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
     let tab = hits
         .rect_of(&Target::Pane(Pane::Notes))
         .expect("the list up");
-    let underlined = frame
-        .layers()
+    let held = frame.layers()[0]
+        .quads
         .iter()
-        .flat_map(|layer| layer.quads.iter())
-        .any(|quad| {
-            quad.color == styles.chosen()
-                && quad.rect.x == tab.x
-                && quad.rect.w == tab.w
-                && quad.rect.bottom() == tab.bottom()
-        });
-    assert!(underlined, "the one up is underlined in the accent");
+        .any(|quad| quad.color == styles.glass_chosen() && quad.rect == tab);
+    assert!(held, "the one up stands on a rounded held ground");
     let other = hits
         .rect_of(&Target::Pane(Pane::Files))
         .expect("another list");
@@ -160,25 +154,33 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
         .map(|run| run.style.color);
     assert_eq!(
         quiet,
-        Some(styles.color(groove_ui_kit::base::style::Role::Faint)),
-        "the others are dim"
+        Some(styles.color(groove_ui_kit::base::style::Role::Muted)),
+        "the others are muted"
     );
 }
 
 #[test]
-fn the_search_bar_stands_only_while_it_is_used() {
+fn one_search_field_always_stands_over_the_strip_and_switches_its_term() {
     let app = with_files(&["src/lib.rs"]);
-    let bare = sidebar_ui();
-    let (_, hits) = view(&app, &bare, window(), &mut Fonts::embedded());
+    let mut ui = sidebar_ui();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let field = hits
+        .rect_of(&Target::Term(Term::Path))
+        .expect("the path field, unasked");
     let strip = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
-    let sidebar = crate::layout::Layout::of(window(), &bare).sidebar;
-    assert_eq!(strip.y, sidebar.y, "the strip starts at the top");
-
-    let mut typing = sidebar_ui();
-    typing.session.bar.open(crate::views::session::Term::Path);
-    let (_, hits) = view(&app, &typing, window(), &mut Fonts::embedded());
-    let under = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
-    assert!(under.y > strip.y, "the bar pushes it down");
+    assert!(field.bottom() <= strip.y, "the field above the strip");
+    let switch = hits
+        .rect_of(&Target::Term(Term::Text))
+        .expect("what switches to text");
+    click(switch, &mut ui, &app, &hits);
+    assert_eq!(ui.session.bar.typing, Some(Term::Text));
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    assert!(
+        hits.rect_of(&Target::Term(Term::Path)).is_some(),
+        "and back to the path"
+    );
+    let after = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
+    assert_eq!(after.y, strip.y, "one field, whichever term it holds");
 }
 
 /// A thread the forge holds, on a line or on the MR itself.
@@ -195,4 +197,23 @@ fn a_session_s_notes_are_read_whichever_list_is_up() {
         )),
         "the surface draws them too: {asked:?}"
     );
+}
+
+#[test]
+fn a_tab_too_narrow_for_its_name_keeps_its_padding_and_cuts_the_name() {
+    let app = with_files(&["src/lib.rs"]);
+    let mut ui = sidebar_ui();
+    ui.split.sidebar = groove_ui_kit::base::tokens::SIDEBAR_MIN;
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let tab = hits
+        .rect_of(&Target::Pane(Pane::Commits))
+        .expect("the commits tab");
+    let run = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| tab.contains(run.x, run.y + run.height / 2.0))
+        .expect("its name");
+    assert!(run.text.ends_with('\u{2026}'), "cut: {}", run.text);
+    let pad = Tokens::new(1.0).md;
+    assert!(run.x >= tab.x + pad - 0.5, "the padding kept at its left");
 }

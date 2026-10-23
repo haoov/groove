@@ -24,7 +24,17 @@ pub(super) fn draw(
     if total == 0 {
         return;
     }
-    groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
+    let rect = rect.pad(Edges {
+        top: ctx.tokens.sm,
+        bottom: ctx.tokens.sm,
+        ..Edges::all(0.0)
+    });
+    let round = rect.w / 2.0;
+    let ground = ctx.styles.glass_hover();
+    Panel::default()
+        .ground(ground)
+        .radius(round)
+        .draw(ctx, rect);
     let per = rect.h / total as f32;
     match ui.session.face() {
         Face::File => whole(ctx, rect, per, app, inline),
@@ -62,7 +72,7 @@ fn read(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize)) {
     let (start, shown) = at;
     let high = (shown as f32 * per).max(ctx.tokens.hairline);
     let read = groove_ui_kit::shape::band(rect, start as f32 * per, high);
-    groove_ui_kit::shape::ground(ctx, read, Ground::Hover);
+    rounded(ctx, read, Ground::Hover);
 }
 
 /// The open file alone: what the change did to each of its lines.
@@ -92,7 +102,7 @@ fn band(
     let (top, high) = at;
     let height = (high as f32 * per).max(ctx.tokens.hairline);
     let shown = groove_ui_kit::shape::band(rect, top as f32 * per, height);
-    groove_ui_kit::shape::ground(ctx, shown, Ground::Work);
+    rounded(ctx, shown, Ground::Work);
     if high == 0 {
         return;
     }
@@ -107,7 +117,14 @@ fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: Line
     let high = (run as f32 * per).max(ctx.tokens.hairline);
     let run =
         groove_ui_kit::shape::band(rect, at as f32 * per, high).pad(Edges::across(inset, inset));
-    groove_ui_kit::shape::ground(ctx, run, Ground::Mark(mark));
+    rounded(ctx, run, Ground::Mark(mark));
+}
+
+/// `rect` on `ground`, its corners as round as its narrow side allows.
+fn rounded(ctx: &mut Ctx, rect: Rect, ground: Ground) {
+    let round = (rect.w.min(rect.h) / 2.0).min(ctx.tokens.xs);
+    let color = ground.color(&ctx.styles);
+    Panel::default().ground(color).radius(round).draw(ctx, rect);
 }
 
 /// Every run of rows the change touched: where it starts, how long, and what it did.
@@ -138,5 +155,9 @@ fn lens(ctx: &mut Ctx, rect: Rect, per: f32, body: Rect, ui: &Ui) {
     let high = (body.h / line * per).min(rect.h).max(ctx.tokens.xs);
     let top = ui.session.scroll() / line * per;
     let held = groove_ui_kit::shape::band(rect, top.min(rect.h - high), high);
-    Panel::default().border(ctx.styles.lens()).draw(ctx, held);
+    let round = (held.w / 2.0).min(held.h / 2.0);
+    Panel::default()
+        .border(ctx.styles.lens())
+        .radius(round)
+        .draw(ctx, held);
 }

@@ -78,7 +78,7 @@ impl<'a> Line<'a> {
         self
     }
 
-    pub fn gutter(mut self, gutter: Option<(Color, Color)>) -> Self {
+    pub fn gutter(mut self, gutter: Option<Color>) -> Self {
         self.gutter = gutter;
         self
     }

@@ -206,8 +206,12 @@ fn sidebar_ui() -> Ui {
     let mut ui = Ui::default();
     ui.session.tab = crate::views::session::Tab::Diff;
     ui.focus = crate::Focus::Sidebar;
+    ui.split.sidebar = WIDE_SIDEBAR;
     ui
 }
+
+/// A sidebar wide enough for its tabs' names whole.
+const WIDE_SIDEBAR: f32 = 360.0;
 
 /// One frame drawn in the window: its bottom layer's texts, and its hits.
 fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {

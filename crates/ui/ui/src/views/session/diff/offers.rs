@@ -1,7 +1,6 @@
 //! What a row offers the pointer: a file to fold, a gap to open.
 
-use groove_gfx::Align;
-use groove_gfx::Rect;
+use groove_gfx::{Align, Rect};
 use groove_types::{DiffView, RowKind};
 
 use super::row::Side;
@@ -16,6 +15,7 @@ use crate::hit::Target;
 use crate::views::session::Face;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::widgets::Button;
 
 /// What a head row offers (fold, mark read) and what a gap offers (its lines, from either end).
 pub(super) fn marks(
@@ -72,14 +72,13 @@ pub(super) fn head_hits(ctx: &mut Ctx, whole: Rect, path: &str) {
 fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: Face, side: Side) {
     ctx.hit(line, Target::Gap { row, way: Way::All });
     for (at, way) in ways(ctx, line, gutters, view, side) {
-        let size = ctx.tokens.icon;
         let turn = match way {
             Way::Up => Mark::UPWARDS,
             _ => 0,
         };
-        let mark = at.align((size, size), Align::Center, Align::Center);
-        groove_ui_kit::widgets::turned(ctx, mark, Mark::Down, turn, Role::Ghost);
-        ctx.hit(at, Target::Gap { row, way });
+        let arrow = Button::icon(Mark::Down, turn, Target::Gap { row, way }, Role::Ghost);
+        let slot = at.align((arrow.width(ctx), at.h), Align::Center, Align::Start);
+        arrow.at(ctx, at, slot.x);
     }
 }
 

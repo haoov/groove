@@ -1,7 +1,6 @@
 //! The rows a surface draws, from the top of their rect.
 
 use groove_gfx::Rect;
-use groove_ui_kit::widgets::code::rule;
 
 use super::row::draw;
 use super::{Block, Gutters, Line};
@@ -27,9 +26,6 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
         for line in rows.lines {
             let at = groove_ui_kit::shape::band(rect, y - rect.y, height);
             draw(ctx, at, line, block, rows.across);
-            if line.numbered() {
-                rule(ctx, at, block);
-            }
             drawn.push(at);
             y += height;
         }

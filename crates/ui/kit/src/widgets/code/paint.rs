@@ -29,16 +29,6 @@ pub(super) fn coded<A: App>(
     if let Some(ground) = code.ground {
         ctx.quad(line, ground);
     }
-    if let Some((ground, _)) = code.gutter {
-        let end = gutter.content(ctx, line) - ctx.tokens.md;
-        ctx.quad(
-            Rect {
-                w: end - line.x,
-                ..line
-            },
-            ground,
-        );
-    }
     if let Some(mark) = code.mark {
         let edge = Rect {
             w: ctx.tokens.hairline * 2.0,
@@ -124,7 +114,7 @@ fn blamed<A: App>(
 /// The row's own line numbers, one to a gutter cell.
 fn numbers<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>, gutter: Block) {
     let (sm, mut style) = (ctx.tokens.sm, ctx.styles.code(Role::Ghost));
-    if let Some((_, color)) = code.gutter {
+    if let Some(color) = code.gutter {
         style.color = color;
     }
     if let Some(color) = super::faults::worst(ctx, code) {

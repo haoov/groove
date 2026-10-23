@@ -23,10 +23,10 @@ pub fn pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, fill: Ground, edge: Side) 
 
 /// A pane on glass: no ground, a hairline down its left edge, short of the ends.
 pub fn glass_aside<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let sm = ctx.tokens.sm;
+    let md = ctx.tokens.md;
     let span = rect.pad(Edges {
-        top: sm,
-        bottom: sm,
+        top: md,
+        bottom: md,
         ..Edges::all(0.0)
     });
     side_rule(ctx, span, rect.x, ctx.styles.line());

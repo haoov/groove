@@ -19,8 +19,6 @@ pub const GLASS_HOVER_ALPHA: (u8, u8) = (18, 22);
 pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (38, 46);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.
 pub const GROUND_ALPHA: (u8, u8) = (12, 28);
-/// More of that colour under the row's numbers, and how far they lean to it.
-pub const GUTTER_ALPHA: (u8, u8) = (8, 16);
 pub const NUMBER_TINT: f32 = 0.4;
 /// The shade under what stands over the rows.
 pub const SHADOW_ALPHA: (u8, u8) = (110, 36);

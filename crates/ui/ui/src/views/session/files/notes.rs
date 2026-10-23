@@ -12,8 +12,8 @@ use crate::views::session::Showing;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{Label, ago, row};
+use groove_ui_kit::widgets::glass_hoverable;
 use groove_ui_kit::widgets::{Badge, tabs};
 
 /// One row of the list: a file's heading, or a note under it.
@@ -146,7 +146,7 @@ fn one(ctx: &mut Ctx, line: Rect, app: &AppState, at: usize) {
     let Some(note) = app.delivery.shown.get(at) else {
         return;
     };
-    hoverable(ctx, line, Target::NoteAt(at));
+    glass_hoverable(ctx, line, Target::NoteAt(at));
     let lines = note
         .anchor
         .as_ref()

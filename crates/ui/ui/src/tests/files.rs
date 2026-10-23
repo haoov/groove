@@ -47,6 +47,7 @@ fn with_files(paths: &[&str]) -> AppState {
 fn on_diff() -> Ui {
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
+    ui.split.sidebar = crate::tests::WIDE_SIDEBAR;
     ui
 }
 
@@ -144,9 +145,13 @@ fn the_sidebar_stands_beside_the_workspace_only_where_a_tab_wants_it() {
     assert_eq!(folded.workspace.right(), folded.strip.right());
 
     let open = Layout::new(size, &tokens, Split::default(), true);
-    assert_eq!(open.sidebar.w, Split::default().sidebar);
+    assert_eq!(open.sidebar.w, Split::default().sidebar - tokens.sm);
     assert_eq!(open.sidebar.x, open.workspace.right());
-    assert_eq!(open.sidebar.right(), open.strip.right());
+    assert_eq!(
+        open.sidebar.right(),
+        open.strip.right() - tokens.sm,
+        "a padding at its right"
+    );
     assert!(
         open.workspace.w < folded.workspace.w,
         "the workspace gives the room, not the agent"
@@ -284,7 +289,8 @@ fn folding_the_sidebar_gives_its_room_to_the_workspace_and_no_one_else() {
     assert!(folded.sidebar.is_empty());
     assert_eq!(folded.rail, open.rail);
     assert_eq!(folded.agent, open.agent, "the agent pane never moves");
-    assert_eq!(folded.workspace.w, open.workspace.w + open.sidebar.w);
+    let sm = window().tokens().sm;
+    assert_eq!(folded.workspace.w, open.workspace.w + open.sidebar.w + sm);
 
     press(Key::Char('b'), ALT_SHIFT, &mut ui, &app);
     assert!(!ui.session.folded, "the chord brings it back");
@@ -369,9 +375,10 @@ fn the_strip_names_the_three_tabs_the_workspace_has() {
 }
 
 #[test]
-fn the_list_says_what_the_change_is_read_against_and_picks_one() {
+fn the_band_says_what_the_change_is_read_against_and_picks_one() {
     let app = with_files(&["a.txt"]);
     let mut ui = on_diff();
+    ui.split.sidebar = Split::default().sidebar;
     let (drawn, hits) = render(&app, &ui, window());
     for mode in groove_types::DiffMode::ALL {
         assert!(
@@ -392,29 +399,4 @@ fn the_list_says_what_the_change_is_read_against_and_picks_one() {
             }
         )]
     );
-}
-
-#[test]
-fn the_rule_under_the_heading_runs_the_whole_width() {
-    let app = with_files(&["a.txt"]);
-    let ui = on_diff();
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let mode = hits
-        .rect_of(&Target::Mode(groove_types::DiffMode::Base))
-        .expect("the base mode");
-    let sidebar = Layout::of(window(), &ui).sidebar;
-    let under = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| quad.rect.h <= 1.0 && quad.rect.x >= sidebar.x)
-        .filter(|quad| quad.rect.y > mode.y && quad.rect.y <= mode.bottom())
-        .max_by(|a, b| a.rect.w.total_cmp(&b.rect.w))
-        .expect("a rule under the heading");
-    assert!(
-        under.rect.right() >= mode.right(),
-        "it runs past the modes: {} against {}",
-        under.rect.right(),
-        mode.right()
-    );
-    assert!(under.rect.w >= sidebar.w - 1.0, "{}", under.rect.w);
 }

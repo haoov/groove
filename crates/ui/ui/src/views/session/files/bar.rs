@@ -1,52 +1,58 @@
-//! The rows the search types into: one per term, under the one mark they share.
+//! The search at the sidebar's top: one rounded field, for a path or for text, always there.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::{Bar, Term};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hairline;
-use groove_ui_kit::widgets::Search;
+use groove_ui_kit::shape::{Panel, band};
+use groove_ui_kit::widgets::{Button, Search};
 
-/// A row for each term the search narrows by. Returns what they took.
+/// The field for the term in use, and what switches it to the other. Returns what it took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
+    let (row, sm) = (ctx.tokens.row, ctx.tokens.sm);
+    let [whole, _] = column_in(rect, [Spec::default().height(row + sm), Spec::fill()]);
+    let field = band(whole, sm / 2.0, row).pad(Edges::across(sm, 0.0));
+    let ground = ctx.styles.glass_hover();
+    Panel::default().ground(ground).radius(sm).draw(ctx, field);
     let bar = &ui.session.bar;
-    let shown: &[Term] = &Term::ALL;
-    let tall = match bar.in_use() {
-        true => ctx.tokens.row * shown.len() as f32,
-        false => 0.0,
+    let term = shown(bar);
+    let other = match term {
+        Term::Path => Term::Text,
+        Term::Text => Term::Path,
     };
-    let [whole, _] = column_in(rect, [Spec::default().height(tall), Spec::fill()]);
-    if !bar.in_use() {
-        return whole;
-    }
-    groove_ui_kit::shape::ground(ctx, whole, Ground::Work);
-    hairline(ctx, whole, ctx.styles.line());
-    let lines = column_in(
-        whole,
-        [Spec::default().height(ctx.tokens.row); Term::ALL.len()],
-    );
-    for (at, (term, line)) in shown.iter().copied().zip(lines).enumerate() {
-        narrowing(ctx, line, bar, term, at == 0);
-    }
-    whole
-}
-
-/// One term of the bar: what it narrows by, and what is typed into it.
-fn narrowing(ctx: &mut Ctx, line: Rect, bar: &Bar, term: Term, first: bool) {
-    let field = match term {
+    let mut room = field;
+    let switch = Button::new(other.label(), Target::Term(other), Role::Faint, ground);
+    switch
+        .flat()
+        .hover(ctx.styles.glass_hover())
+        .right(ctx, &mut room, 0.0);
+    let held = match term {
         Term::Path => &bar.path,
         Term::Text => &bar.text,
     };
-    let search = Search::new(field, Target::Term(term), bar.typing == Some(term));
-    let search = search
-        .prefix(term.label())
+    let hint = match term {
+        Term::Path => "search paths",
+        Term::Text => "search text",
+    };
+    let search = Search::new(held, Target::Term(term), bar.typing == Some(term));
+    search
+        .hint(hint)
         .code()
-        .glass(first)
-        .faint(Role::Faint);
-    search.draw(ctx, line);
+        .glass(true)
+        .faint(Role::Faint)
+        .draw(ctx, room);
+    whole
+}
+
+/// The term the field shows: the one typed in, else the one holding a query, else the path.
+pub(crate) fn shown(bar: &Bar) -> Term {
+    match bar.typing {
+        Some(term) => term,
+        None if !bar.text.is_empty() && bar.path.is_empty() => Term::Text,
+        None => Term::Path,
+    }
 }

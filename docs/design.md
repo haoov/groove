@@ -239,7 +239,7 @@ keep their room before the cut, and a badge with no room left is dropped.
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | sections, each a heading over its items, an inset hairline between two sections: the task's properties on one line — status, priority, dates, hours — a missing one left out; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `a_hairline_stands_between_the_sections_and_never_inside_one` | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on rounded grounds as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 | kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
 
@@ -252,12 +252,16 @@ which the gutter holds together.
 | inline | the change as one column | the old and the new line number |
 | split | the old beside the new | one number per side |
 
-An added or a removed row tints its gutter and its numbers in its own colour, a step
-stronger than its ground.
+An added or a removed row wears one tint across its gutter and its text, and its numbers
+lean to its colour. Enforced by
+`a_changed_row_wears_one_tint_across_its_gutter_and_its_numbers_lean_to_it`.
 In split, a side with no line is hatched, gutter included.
 
-Over the diff, a band holds the whole change — how many files, what it added and removed
-— and the inline and split switch. Over a file, the band names the file.
+Over the diff, a band holds the whole change from the left — how many files, what it added
+and removed — then the inline and split switch and the base and working modes as rounded tabs. Over a file, the band names
+the file. No rule stands between the gutter and the code; a run of unchanged lines stands between two
+rules, its arrows icon buttons. A file's head is a rounded row inset from the sides. Enforced by
+`no_rule_stands_between_the_gutters_and_the_code` and `a_gap_reads_as_a_band_across_the_rows`.
 
 The new side is editable in every mode. A caret lives in the document, never in a row, so
 it stays where the user left it while the rows move under it. A removed line belongs to the

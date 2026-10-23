@@ -4,7 +4,7 @@ use groove_gfx::Color;
 use groove_types::{Capture, LineMark, RowKind, Severity};
 
 use super::Styles;
-use crate::base::tokens::{GROUND_ALPHA, GUTTER_ALPHA, NUMBER_TINT, WORD_ALPHA};
+use crate::base::tokens::{GROUND_ALPHA, NUMBER_TINT, WORD_ALPHA};
 
 impl Styles {
     /// What a marked line did: came, went, or changed in place.
@@ -32,10 +32,9 @@ impl Styles {
     }
 
     /// The gutter of a changed row: its ground over the row's, and its numbers.
-    pub fn gutter(&self, kind: RowKind) -> Option<(Color, Color)> {
+    pub fn gutter(&self, kind: RowKind) -> Option<Color> {
         let color = self.changed(kind)?;
-        let numbers = self.palette.overlay0.mix(color, NUMBER_TINT);
-        Some((color.with_alpha(self.alpha(GUTTER_ALPHA)), numbers))
+        Some(self.palette.overlay0.mix(color, NUMBER_TINT))
     }
 
     /// Over the ground, where a row and the one it pairs with differ.
