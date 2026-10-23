@@ -67,7 +67,7 @@ fn logging(ctx: &mut Ctx, room: &mut Rect, task: &Task, time: Option<TimeSummary
 
 /// How tall the body stands as Markdown `wide` across.
 pub(super) fn body_height(ctx: &mut Ctx, text: &str, wide: f32) -> f32 {
-    let inner = wide - ctx.tokens.xs * 2.0 - ctx.tokens.md * 2.0;
+    let inner = wide - ctx.tokens.xl * 2.0;
     laid(ctx, &blocks(text), inner, Role::Muted).height
 }
 

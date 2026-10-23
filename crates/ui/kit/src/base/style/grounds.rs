@@ -4,8 +4,8 @@ use groove_gfx::Color;
 
 use super::Styles;
 use crate::base::tokens::{
-    GLASS_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA, GLASS_DIM_ALPHA, GLASS_HOVER_ALPHA,
-    SCRIM_ALPHA,
+    GLASS_ALPHA, GLASS_CARD_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA, GLASS_DIM_ALPHA,
+    GLASS_HOVER_ALPHA, SCRIM_ALPHA,
 };
 
 impl Styles {
@@ -92,6 +92,11 @@ impl Styles {
     pub fn glass_code_ground(&self) -> Color {
         self.prose_code_ground()
             .with_alpha(self.alpha(GLASS_CODE_ALPHA))
+    }
+
+    /// A card that sets a section apart on glass, fainter than a row under the pointer.
+    pub fn glass_card(&self) -> Color {
+        self.palette.text.with_alpha(self.alpha(GLASS_CARD_ALPHA))
     }
 
     pub fn glass_hover(&self) -> Color {

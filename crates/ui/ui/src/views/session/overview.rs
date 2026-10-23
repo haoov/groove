@@ -13,7 +13,7 @@ use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_from};
-use groove_ui_kit::shape::after_mark;
+use groove_ui_kit::shape::{Panel, after_mark};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Row, list};
 
@@ -21,8 +21,8 @@ use groove_ui_kit::widgets::{Row, list};
 enum Part<'a> {
     /// A section's name, above its items.
     Heading(&'a str),
-    /// The hairline between two sections.
-    Rule,
+    /// The card under a heading, as tall as the items it holds.
+    Card(f32),
     Properties(&'a Task, Option<TimeSummary>),
     NoRepos,
     Repo(&'a Repo),
@@ -61,7 +61,12 @@ fn parts<'a>(ctx: &mut Ctx, app: &'a AppState, open: &'a Open, wide: f32) -> Vec
     let worked = app.task.worked(&open.session);
     if let Some(one) = worked {
         let time = app.task.measured(&one.external_id);
-        section(&mut out, "Properties", vec![Part::Properties(one, time)]);
+        section(
+            ctx,
+            &mut out,
+            "Properties",
+            vec![Part::Properties(one, time)],
+        );
     }
     let mut repos = Vec::new();
     if open.repos.is_empty() {
@@ -72,9 +77,9 @@ fn parts<'a>(ctx: &mut Ctx, app: &'a AppState, open: &'a Open, wide: f32) -> Vec
         let held = open.worktrees.iter().filter(|w| w.repo == repo.id);
         repos.extend(held.map(Part::Worktree));
     }
-    section(&mut out, "Repos and worktrees", repos);
+    section(ctx, &mut out, "Repos and worktrees", repos);
     if open.holds_clusters() {
-        section(&mut out, "Clusters", clusters::parts(app, open));
+        section(ctx, &mut out, "Clusters", clusters::parts(app, open));
     }
     let (title, text) = match &open.session.kind {
         SessionKind::Review { .. } => ("Description", described(app, open)),
@@ -82,17 +87,15 @@ fn parts<'a>(ctx: &mut Ctx, app: &'a AppState, open: &'a Open, wide: f32) -> Vec
     };
     if let Some(text) = text.filter(|text| !text.trim().is_empty()) {
         let tall = task::body_height(ctx, text, wide);
-        section(&mut out, title, vec![Part::Body(text, tall)]);
+        section(ctx, &mut out, title, vec![Part::Body(text, tall)]);
     }
     out
 }
 
-/// A hairline after the section before, then the heading and its `items`.
-fn section<'a>(out: &mut Vec<Part<'a>>, title: &'a str, items: Vec<Part<'a>>) {
-    if !out.is_empty() {
-        out.push(Part::Rule);
-    }
-    out.push(Part::Heading(title));
+/// The heading, then a card holding `items`.
+fn section<'a>(ctx: &Ctx, out: &mut Vec<Part<'a>>, title: &'a str, items: Vec<Part<'a>>) {
+    let tall = items.iter().map(|one| height(ctx, one)).sum();
+    out.extend([Part::Heading(title), Part::Card(tall)]);
     out.extend(items);
     out.push(Part::Gap);
 }
@@ -100,8 +103,8 @@ fn section<'a>(out: &mut Vec<Part<'a>>, title: &'a str, items: Vec<Part<'a>>) {
 fn height(ctx: &Ctx, part: &Part) -> f32 {
     let row = ctx.tokens.row;
     match part {
-        Part::Rule => ctx.tokens.hairline,
-        Part::Gap => ctx.tokens.sm,
+        Part::Card(_) => 0.0,
+        Part::Gap => ctx.tokens.md,
         Part::Body(_, tall) => tall + ctx.tokens.md * 2.0,
         Part::Properties(..) | Part::Cluster(..) => row + ctx.tokens.sm,
         Part::Heading(_) | Part::NoRepos | Part::Repo(_) | Part::Worktree(_) => row + ctx.tokens.xs,
@@ -109,19 +112,25 @@ fn height(ctx: &Ctx, part: &Part) -> f32 {
 }
 
 fn inset(ctx: &Ctx, rect: Rect) -> Rect {
-    rect.pad(Edges::across(ctx.tokens.xs, ctx.tokens.xs))
+    rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md))
 }
 
 fn draw_part(ctx: &mut Ctx, app: &AppState, open: &Open, (area, rect): (Rect, Rect), part: &Part) {
     let pad = ctx.tokens.md;
     let line = groove_ui_kit::shape::band(rect, (rect.h - ctx.tokens.row) / 2.0, ctx.tokens.row);
     match part {
-        Part::Heading(title) => groove_ui_kit::widgets::Heading::new(title).draw(ctx, rect),
-        Part::Rule => groove_ui_kit::shape::top_rule(
-            ctx,
-            inset(ctx, rect).pad(Edges::across(pad, pad)),
-            ctx.styles.line(),
-        ),
+        Part::Heading(title) => {
+            groove_ui_kit::widgets::Heading::new(title).draw(ctx, inset(ctx, rect))
+        }
+        Part::Card(tall) => {
+            let held = groove_ui_kit::shape::band(inset(ctx, rect), 0.0, *tall);
+            let ground = ctx.styles.glass_card();
+            let round = ctx.tokens.glass_round;
+            Panel::default()
+                .ground(ground)
+                .radius(round)
+                .draw(ctx, held);
+        }
         Part::Properties(one, time) => task::properties(ctx, inset(ctx, line), one, *time),
         Part::NoRepos => {
             let style = ctx.styles.body(Role::Faint);

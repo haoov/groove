@@ -213,7 +213,7 @@ fn a_session_without_a_worktree_says_so() {
 }
 
 #[test]
-fn a_hairline_stands_between_the_sections_and_never_inside_one() {
+fn each_section_stands_in_its_own_card_inset_from_the_panel() {
     let app = working_a_task();
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
@@ -221,17 +221,24 @@ fn a_hairline_stands_between_the_sections_and_never_inside_one() {
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let workspace = crate::layout::Layout::of(window, &ui).workspace;
-    let inset = workspace.x + tokens.xs + tokens.md;
-    let rules = frame.layers()[0]
+    let cards: Vec<_> = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.line() && quad.rect.h == tokens.hairline)
-        .filter(|quad| quad.rect.x == inset)
-        .count();
-    assert_eq!(
-        rules, 2,
-        "above the repos and above the body, none between a repo and its worktree"
-    );
+        .filter(|quad| quad.color == styles.glass_card() && quad.shape.radius == tokens.glass_round)
+        .collect();
+    assert_eq!(cards.len(), 3, "the properties, the repos, the body");
+    for card in cards {
+        assert_eq!(
+            card.rect.x,
+            workspace.x + tokens.md,
+            "a padding at the left"
+        );
+        assert_eq!(
+            card.rect.right(),
+            workspace.right() - tokens.md,
+            "and at the right"
+        );
+    }
 }
 
 #[test]
