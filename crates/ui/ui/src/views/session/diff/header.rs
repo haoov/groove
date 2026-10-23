@@ -11,14 +11,12 @@ use crate::hit::Target;
 use crate::views::session::{Tab, files};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::{from_left, square};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{self, changes};
+use groove_ui_kit::widgets;
 
 /// The band over the diff or over the open file.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
-    let mut room = band;
     if ui.session.tab == Tab::Diff {
         let mut room = band.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         totals(ctx, &mut room, app);
@@ -29,32 +27,68 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
         }
         return;
     }
-    if let Some(counts) = super::row::counted(app, path) {
-        changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
-    }
-    for (name, up) in servers_of(app, path).into_iter().rev() {
-        server(ctx, &mut room, &name, up);
-    }
-    if let Some(tally) = super::faults::tally(app, path) {
-        widgets::faults(ctx, &mut room, tally);
-    }
+    named(ctx, band, app, path);
+}
+
+/// The file's path from the left, then what stands beside it: unsaved, changed, faults, servers.
+fn named(ctx: &mut Ctx, band: Rect, app: &AppState, path: &str) {
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
+    let mut room = band.pad(Edges::across(md, md));
+    let style = ctx.styles.code(Role::Muted);
+    let counts = super::row::counted(app, path).unwrap_or_default();
+    let tally = super::faults::tally(app, path);
+    let servers = servers_of(app, path);
     let dirty = app
         .workspace
         .buffer(path)
         .is_some_and(|open| open.new.dirty());
+    let after = beside(ctx, (dirty, counts, tally), &servers);
+    let wide = ctx.measure(path, &style).min((room.w - after).max(0.0));
+    let slot = from_left(&mut room, wide, sm);
+    Label::new(path, style).cut_start().draw(ctx, slot);
+    let size = ctx.styles.small(Role::Warn).size;
     if dirty {
-        let size = ctx.styles.small(Role::Warn).size;
-        let wide = |width: f32| Spec::default().width(width);
-        let [rest, dot, _] = row_in(room, [Spec::fill(), wide(size), wide(ctx.tokens.sm)]);
-        room = rest;
-        let dot = square(dot, size);
-        groove_ui_kit::widgets::icon(ctx, dot, Mark::Modified, Role::Warn);
+        let dot = from_left(&mut room, size, sm);
+        groove_ui_kit::widgets::icon(ctx, square(dot, size), Mark::Modified, Role::Warn);
     }
-    let md = ctx.tokens.md;
-    let style = ctx.styles.code(Role::Muted);
-    Label::new(path, style)
-        .cut_start()
-        .draw(ctx, room.pad(Edges::across(md, md)));
+    for (count, role, sign) in [(counts.0, Role::Ok, '+'), (counts.1, Role::Bad, '-')] {
+        if count > 0 {
+            let text = format!("{sign}{count}");
+            Label::new(&text, ctx.styles.code(role)).left(ctx, &mut room, sm);
+        }
+    }
+    if let Some(tally) = tally {
+        let wide = widgets::faults_room(ctx, tally);
+        let mut slot = from_left(&mut room, wide, md);
+        widgets::faults(ctx, &mut slot, tally);
+    }
+    for (name, up) in servers {
+        server(ctx, &mut room, &name, up);
+    }
+}
+
+/// How wide what stands beside the path is.
+fn beside(
+    ctx: &mut Ctx,
+    (dirty, counts, tally): (bool, (u32, u32), Option<(u32, u32)>),
+    servers: &[(String, Up)],
+) -> f32 {
+    let (sm, md, xs) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.xs);
+    let style = ctx.styles.code(Role::Faint);
+    let size = ctx.styles.small(Role::Warn).size;
+    let mut wide = if dirty { size + sm } else { 0.0 };
+    for (count, sign) in [(counts.0, '+'), (counts.1, '-')] {
+        if count > 0 {
+            wide += ctx.measure(&format!("{sign}{count}"), &style) + sm;
+        }
+    }
+    if let Some(tally) = tally {
+        wide += widgets::faults_room(ctx, tally) + md;
+    }
+    for (name, _) in servers {
+        wide += size + xs + ctx.measure(name, &style) + md;
+    }
+    wide + sm
 }
 
 /// The views after the totals, the current one held.
@@ -113,22 +147,16 @@ fn servers_of(app: &AppState, path: &str) -> Vec<(String, Up)> {
         .collect()
 }
 
-/// A server's dot, in the colour of where it stands, then its name, from the right of `room`.
+/// A server's dot, in the colour of where it stands, then its name, from the left of `room`.
 fn server(ctx: &mut Ctx, room: &mut Rect, name: &str, up: Up) {
     let role = match up {
         Up::Ready => Role::Ok,
         Up::Starting => Role::Working,
         Up::Down => Role::Bad,
     };
-    let style = ctx.styles.code(Role::Faint);
-    let (size, width) = (ctx.styles.small(role).size, ctx.measure(name, &style));
-    let wide = |width: f32| Spec::default().width(width);
-    let gaps = (wide(ctx.tokens.xs), wide(ctx.tokens.md));
-    let [rest, dot, _, label, _] = row_in(
-        *room,
-        [Spec::fill(), wide(size), gaps.0, wide(width), gaps.1],
-    );
-    *room = rest;
+    let size = ctx.styles.small(role).size;
+    let dot = from_left(room, size, ctx.tokens.xs);
     groove_ui_kit::widgets::icon(ctx, square(dot, size), Mark::Modified, role);
-    Label::new(name, style).draw(ctx, label);
+    let style = ctx.styles.code(Role::Faint);
+    Label::new(name, style).left(ctx, room, ctx.tokens.md);
 }

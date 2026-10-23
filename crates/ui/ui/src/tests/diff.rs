@@ -124,7 +124,8 @@ fn marks(app: &AppState) -> Vec<LineMark> {
     ui.session.tab = crate::views::session::Tab::Files;
     let (frame, _) = view_of(app, &ui);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let width = Tokens::new(1.0).hairline * 2.0;
+    let tokens = Tokens::new(1.0);
+    let width = tokens.xs - tokens.hairline;
     frame.layers()[0]
         .quads
         .iter()

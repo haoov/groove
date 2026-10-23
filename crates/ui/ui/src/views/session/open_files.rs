@@ -9,9 +9,8 @@ use crate::hit::Target;
 use crate::{Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Tab, Text};
+use groove_ui_kit::widgets::Tab;
 
 pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
     let open = app
@@ -31,7 +30,7 @@ pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
     }
     let active = app.workspace.active().map(|one| one.path.as_str());
     let buffers = app.workspace.buffers();
-    let mut room = strip;
+    let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     for one in open {
         let preview = buffers.is_some_and(|all| all.previews(&one.path));
         let tally = crate::views::session::diff::faults::tally(app, &one.path);
@@ -55,20 +54,11 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview, tally): 
         Target::OpenTab(open.path.clone()),
         active,
     );
-    let ground = ctx.styles.ground();
-    tab.text(Text::Small)
+    tab.glass()
         .italic(preview)
         .tally(tally)
-        .quiet(Role::Muted)
-        .ground(ground)
         .close(mark, close)
-        .left(ctx, room, 0.0);
-    let [rule, rest] = row_in(
-        *room,
-        [Spec::default().width(ctx.tokens.hairline), Spec::fill()],
-    );
-    *room = rest;
-    groove_ui_kit::shape::side_rule(ctx, rule, rule.x, ctx.styles.line());
+        .left(ctx, room, ctx.tokens.xs);
 }
 
 /// The open file whose closing waits on an answer.

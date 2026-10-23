@@ -263,6 +263,7 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
             .quads
             .iter()
             .filter(|quad| quad.color == styles.caret())
+            .filter(|quad| quad.rect.h > Tokens::new(1.0).hairline)
             .filter(|quad| rows.contains(quad.rect.x, quad.rect.y))
             .count()
     };

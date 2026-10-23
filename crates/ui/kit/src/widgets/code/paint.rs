@@ -31,7 +31,7 @@ pub(super) fn coded<A: App>(
     }
     if let Some(mark) = code.mark {
         let edge = Rect {
-            w: ctx.tokens.hairline * 2.0,
+            w: ctx.tokens.xs - ctx.tokens.hairline,
             ..line
         };
         ctx.quad(edge, mark);

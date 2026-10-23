@@ -241,3 +241,26 @@ fn the_first_file_s_head_holds_at_the_top_from_the_first_pixel_scrolled() {
         "the held head stands on glass, nothing showing through"
     );
 }
+
+#[test]
+fn a_file_s_band_reads_from_the_left_its_counts_right_after_its_path() {
+    let app = crate::tests::diff::opened();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Files;
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let workspace = Layout::of(window(), &ui).workspace;
+    let texts = &frame.layers()[0].texts;
+    let path = texts
+        .iter()
+        .find(|run| run.text == "src/lib.rs" && workspace.contains(run.x, run.y + 1.0))
+        .expect("the path");
+    let count = texts
+        .iter()
+        .find(|run| run.text.starts_with('+') && (run.y - path.y).abs() < 1.0)
+        .expect("its counts on its line");
+    assert!(count.x > path.x, "after the path");
+    assert!(
+        count.x < workspace.x + workspace.w / 2.0,
+        "not pushed to the right"
+    );
+}

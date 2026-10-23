@@ -116,10 +116,11 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     fn style<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
         if self.glass {
-            return match self.selected {
+            let style = match self.selected {
                 true => ctx.styles.label(Role::Text),
                 false => ctx.styles.label(Role::Muted),
             };
+            return ctx.styles.emphasised(style, false, self.italic);
         }
         let role = if self.selected {
             Role::Text
@@ -186,6 +187,9 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         let mut end = pill;
         if let Some((mark, target)) = self.close {
             Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
+        }
+        if let Some(tally) = self.tally {
+            crate::widgets::faults(ctx, &mut end, tally);
         }
         let label = crate::text::elide(ctx, self.label, &style, (end.w - pad * 2.0).max(0.0));
         let pad = match self.centred {

@@ -258,8 +258,8 @@ lean to its colour. Enforced by
 In split, a side with no line is hatched, gutter included.
 
 Over the diff, a band holds the whole change from the left — how many files, what it added
-and removed — then the inline and split switch and the base and working modes as rounded tabs. Over a file, the band names
-the file. No rule stands between the gutter and the code; a run of unchanged lines stands between two
+and removed — then the inline and split switch and the base and working modes as rounded tabs. Over a file, the band names the file from the left, then what stands beside it: unsaved,
+changed, faults, servers (enforced by `a_file_s_band_reads_from_the_left_its_counts_right_after_its_path`). No rule stands between the gutter and the code; a run of unchanged lines stands between two
 rules, its arrows icon buttons. A file's head is a rounded row inset from the sides. Enforced by
 `no_rule_stands_between_the_gutters_and_the_code` and `a_gap_reads_as_a_band_across_the_rows`.
 

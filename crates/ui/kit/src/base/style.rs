@@ -201,9 +201,9 @@ impl Styles {
         self.palette.rosewater
     }
 
-    /// The rules above and below the caret's row, as a chosen list row has.
+    /// The rules above and below the caret's row, in the text's own colour.
     pub fn here(&self) -> Color {
-        self.chosen()
+        self.palette.text
     }
 
     /// The bar where the caret sits.

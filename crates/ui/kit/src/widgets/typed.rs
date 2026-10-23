@@ -32,5 +32,6 @@ pub fn wavy<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, (start, end): (f32, f32), 
 /// A band of `color` under `rect`, from `start` to `end` across it.
 pub fn text_band<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, (start, end): (f32, f32), color: Color) {
     let band = Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h);
-    ctx.quad(band, color);
+    let round = ctx.tokens.xs.min(band.w / 2.0);
+    ctx.rounded(band, color, round);
 }
