@@ -146,21 +146,21 @@ fn the_pointer_takes_the_light_from_the_row_the_keyboard_stands_on() {
         let rows: Vec<f32> = (0..2)
             .filter_map(|at| hits.rect_of(&Target::Offer(at)).map(|rect| rect.y))
             .collect();
-        let tall = groove_ui_kit::base::tokens::Tokens::new(1.0).row;
         let mut on = frame.layers()[1]
             .quads
             .iter()
-            .filter(|quad| quad.color == styles.hover() && quad.rect.h == tall)
-            .map(|quad| quad.rect.y)
-            .collect::<Vec<f32>>();
+            .filter(|quad| quad.color == styles.glass_chosen())
+            .map(|quad| {
+                rows.iter()
+                    .position(|y| quad.rect.y >= *y && quad.rect.y < y + 8.0)
+            })
+            .collect::<Vec<_>>();
         on.dedup();
-        (rows, on)
+        on
     };
-    let (rows, on) = lit(&ui);
-    assert_eq!(on, vec![rows[0]], "the keyboard stands on the first");
+    assert_eq!(lit(&ui), [Some(0)], "the keyboard stands on the first");
     ui.hover = Some(Target::Offer(1));
-    let (rows, on) = lit(&ui);
-    assert_eq!(on, vec![rows[1]], "the pointer moves it, and only it");
+    assert_eq!(lit(&ui), [Some(1)], "the pointer moves it, and only it");
 }
 
 #[test]

@@ -11,7 +11,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::shape::{Panel, band, strip};
-use groove_ui_kit::widgets::{Row, Search, glass_button, glass_pane, list};
+use groove_ui_kit::widgets::{Row, Search, glass_button, glass_list, glass_pane};
 
 const PLACEHOLDER: &str = "filter — status:, priority:, project:, provider:, kind:, repo:";
 
@@ -60,29 +60,21 @@ pub(super) fn offers(ctx: &mut Ctx, field: Rect, app: &AppState, ui: &Ui) {
         return;
     }
     let from = field.pad(Edges::across(ctx.tokens.md, 0.0));
-    let size = (ctx.tokens.modal / 2.0, ctx.tokens.row * shown.len() as f32);
-    let at = (from.x, from.bottom() + ctx.tokens.sm);
+    let sm = ctx.tokens.sm;
+    let rows_high = ctx.tokens.glass_row * shown.len() as f32;
+    let size = (ctx.tokens.modal / 2.0, rows_high + sm * 2.0);
+    let at = (from.x, from.bottom() + sm);
     let whole = groove_ui_kit::shape::kept_in(at, size, ctx.window);
     ctx.layer();
-    let (raised, deep) = (ctx.styles.raised(), ctx.styles.deep());
-    Panel::default()
-        .ground(raised)
-        .border(deep)
-        .draw(ctx, whole);
+    glass_pane(ctx, whole);
     let lit = hovered(ctx).unwrap_or(ui.board.offer);
-    let (style, hover) = (ctx.styles.body(Role::Text), ctx.styles.hover());
+    let style = ctx.styles.body(Role::Text);
     let rows: Vec<Row<'_, Target>> = shown
         .iter()
         .enumerate()
-        .map(|(at, offer)| {
-            let row = Row::new(ctx.tokens.md, offer, style).target(Target::Offer(at));
-            Row {
-                background: (at == lit).then_some(hover),
-                ..row
-            }
-        })
+        .map(|(at, offer)| Row::new(ctx.tokens.md, offer, style).target(Target::Offer(at)))
         .collect();
-    list(ctx, whole, &rows, None);
+    glass_list(ctx, whole.pad(Edges::xy(0.0, sm)), &rows, Some(lit));
 }
 
 /// Which row the pointer stands on, which takes the light from the keyboard's.

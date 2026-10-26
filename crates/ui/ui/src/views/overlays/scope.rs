@@ -7,7 +7,9 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
 use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Corner, Material, Row, Text, input_at, list, panel_at};
+use groove_ui_kit::widgets::{
+    Button, Corner, Lead, Material, Row, Text, glass_list, panel_at, stepped_input,
+};
 
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
@@ -24,31 +26,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
     let lines = scope_lines(app, open, &ui.session.resources, scoping);
     let labels: Vec<String> = lines.iter().map(ScopeLine::label).collect();
     let shown = lines.len().clamp(1, PALETTE_ROWS);
-    let height = ctx.tokens.row * (shown + 1) as f32 + ctx.tokens.sm;
-    let width = wide(ctx, &labels);
-    let at = (anchor.x, anchor.bottom());
-    let rect = panel_at(
-        ctx,
-        at,
-        Corner::TopLeft,
-        (width, height),
-        (ctx.styles.border(), Material::Solid),
-    );
+    let (high, sm, xs) = (ctx.tokens.glass_row, ctx.tokens.sm, ctx.tokens.xs);
+    let height = ctx.tokens.bar + xs * 2.0 + high * shown as f32 + sm * 2.0;
+    let width = wide(ctx, &labels) + sm * 2.0;
+    let at = (anchor.x, anchor.bottom() + xs);
+    let edge = (ctx.styles.border(), Material::Glass);
+    let rect = panel_at(ctx, at, Corner::TopLeft, (width, height), edge);
     ctx.hit(rect, Target::ScopePanel);
     let tall = |height: f32| Spec::default().height(height);
-    let [_, line, rest] = column_in(
+    let [_, line, _, body, _] = column_in(
         rect,
-        [tall(ctx.tokens.xs), tall(ctx.tokens.row), Spec::fill()],
+        [
+            tall(xs),
+            tall(ctx.tokens.bar),
+            tall(sm),
+            tall(high * shown as f32),
+            Spec::fill(),
+        ],
     );
-    let prefix = match scoping.which {
-        Picks::Contexts => "context: ",
-        _ => "namespace: ",
-    };
-    let query = &scoping.query;
-    input_at(ctx, line, prefix, (query.text(), query.before()));
-    let hairline = ctx.tokens.hairline;
-    let [rows_room, _] = column_in(rest, [tall(ctx.tokens.row * shown as f32), Spec::fill()]);
-    let body = rows_room.pad(Edges::across(hairline, hairline));
+    typed(ctx, line, scoping);
     if lines.is_empty() {
         let hint = match scoping.which {
             Picks::Contexts => "no context in Settings",
@@ -59,6 +55,17 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         return;
     }
     rows(ctx, app, (body, ui, scoping), (&lines, &labels));
+}
+
+/// The line the search is typed in, led by what it picks.
+fn typed(ctx: &mut Ctx, line: Rect, scoping: &Scoping) {
+    let step = match scoping.which {
+        Picks::Contexts => "context",
+        _ => "namespace",
+    };
+    let query = &scoping.query;
+    let typed = (query.text(), query.before(), None);
+    stepped_input(ctx, line, Lead::Step(step), typed);
 }
 
 /// The widest label, with a check's room before it and a ×'s after.
@@ -133,21 +140,21 @@ fn rows(
         .map(|(at, (line, label))| item(ctx, app, held, (at, line, label, &found[at])))
         .collect();
     let selected = scoping.cursor.map(|at| at - first);
-    list(ctx, body, &items, selected);
+    glass_list(ctx, body, &items, selected);
     let slots = column_of(
         body,
-        &vec![Spec::default().height(ctx.tokens.row); PALETTE_ROWS],
+        &vec![Spec::default().height(ctx.tokens.glass_row); PALETTE_ROWS],
     );
     for (slot, (at, line)) in slots
         .into_iter()
         .zip(lines.iter().enumerate().skip(first).take(PALETTE_ROWS))
     {
         if matches!(line, ScopeLine::Held(Pick::Context(_) | Pick::Pair(_))) {
-            let mut room = slot.pad(Edges::across(0.0, ctx.tokens.sm));
+            let mut room = slot.pad(Edges::across(0.0, ctx.tokens.sm * 2.0));
             let close = Button::icon(Mark::Close, 0, Target::ScopeDetach(at), Role::Bad);
             close
                 .text(Text::Small)
-                .hover(ctx.styles.hover())
+                .hover(ctx.styles.glass_hover())
                 .right(ctx, &mut room, 0.0);
         }
     }

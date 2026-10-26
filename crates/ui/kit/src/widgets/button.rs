@@ -72,6 +72,8 @@ pub struct Button<'a, T> {
     pub caret: Option<u8>,
     /// Drawn, but not a target: an action that cannot run now.
     pub inert: bool,
+    /// On a pill of glass, its hover laid over the ground.
+    pub glass: bool,
 }
 
 impl<'a, T: Clone + PartialEq> Button<'a, T> {
@@ -93,6 +95,21 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             open: false,
             caret: None,
             inert: false,
+            glass: false,
+        }
+    }
+
+    /// A word on a pill of glass, lit whole under the pointer.
+    pub fn glass(
+        label: &'a str,
+        target: T,
+        role: Role,
+        styles: &crate::base::style::Styles,
+    ) -> Self {
+        Self {
+            glass: true,
+            hover: Some(styles.glass_hover()),
+            ..Self::new(label, target, role, styles.glass_card())
         }
     }
 
@@ -211,6 +228,14 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
                 let lit = self.lit_now(ctx).then(|| ctx.styles.glass_hover());
                 if let Some(ground) = ground.or(lit) {
                     crate::shape::circle(ctx, box_, ground);
+                }
+                box_
+            }
+            None if self.glass => {
+                let box_ = slot_at(ctx, line, x, content, None);
+                let lit = self.lit_now(ctx).then_some(self.hover).flatten();
+                for ground in [self.ground, lit].into_iter().flatten() {
+                    ctx.rounded(box_, ground, box_.h / 2.0);
                 }
                 box_
             }

@@ -3,17 +3,13 @@
 use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
-use crate::base::ground::Ground;
 use crate::base::style::Role;
 use crate::text::Label;
 use crate::widgets::Button;
 
-/// One word at the right of `room`, with a ground of its own under the pointer.
+/// One word at the right of `room`, on a pill of glass under the pointer.
 pub fn offer<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, label: &str, target: A::Target) {
-    let (ground, action) = (ctx.styles.ground(), ctx.styles.action());
-    let word = Button::new(label, target, Role::Muted, ground)
-        .flat()
-        .hover(action);
+    let word = Button::glass(label, target, Role::Muted, &ctx.styles).flat();
     word.right(ctx, room, ctx.tokens.sm);
 }
 
@@ -24,8 +20,9 @@ pub fn question<A: App>(
     question: &str,
     answers: [(&str, A::Target); 2],
 ) {
-    crate::shape::ground(ctx, line, Ground::Raised);
-    let mut room = line;
+    let card = line.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
+    ctx.rounded(card, ctx.styles.glass_card(), ctx.tokens.sm);
+    let mut room = card.pad(Edges::across(0.0, ctx.tokens.xs));
     for (label, target) in answers.into_iter().rev() {
         offer(ctx, &mut room, label, target);
     }

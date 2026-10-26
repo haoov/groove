@@ -38,7 +38,7 @@ pub use inset::{
     card_inset, glass_card_row, glass_chosen, glass_hoverable, glass_lit, inset_row, rounded_slice,
 };
 pub use list::{Row, glass_list, list};
-pub use menu::{glass_menu, glass_size, menu, size as menu_size};
+pub use menu::{glass_menu, glass_size};
 pub use modal::{
     Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_under, modal,
     panel_at,

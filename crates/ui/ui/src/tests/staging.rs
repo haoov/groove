@@ -211,11 +211,15 @@ fn the_offer_takes_a_ground_only_once_the_pointer_is_on_it() {
         frame.layers()[0]
             .quads
             .iter()
-            .filter(|quad| quad.color == styles.action())
+            .filter(|quad| quad.color == styles.glass_hover())
             .count()
     };
     ui.hover = Some(Target::File("a.txt".into()));
-    assert_eq!(lit(&ui), 0, "the word is there, with no ground of its own");
+    let row = lit(&ui);
     ui.hover = Some(Target::Stage("a.txt".into()));
-    assert_eq!(lit(&ui), 1, "and it lights up under the pointer");
+    assert_eq!(
+        lit(&ui),
+        row + 1,
+        "the word lights up only under the pointer"
+    );
 }

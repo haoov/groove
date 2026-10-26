@@ -261,3 +261,21 @@ fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
     let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
     assert_eq!(hidden, [on("staging", Some("shop"))]);
 }
+
+#[test]
+fn the_panel_stands_on_glass() {
+    let app = holding(vec![on("staging", Some("paxone"))]);
+    let mut ui = on_kubernetes();
+    let panes = |ui: &Ui| {
+        let at = crate::tests::metrics(1600, 1000, 1.0);
+        let (frame, _) = crate::view(&app, ui, at, &mut groove_gfx::Fonts::embedded());
+        frame
+            .layers()
+            .iter()
+            .map(|layer| layer.glass.len())
+            .sum::<usize>()
+    };
+    let shut = panes(&ui);
+    picker(&app, &mut ui, Picks::Namespaces);
+    assert_eq!(panes(&ui), shut + 1);
+}

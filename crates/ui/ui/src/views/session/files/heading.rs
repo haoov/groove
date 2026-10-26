@@ -24,8 +24,8 @@ pub(super) fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
 /// The commit the surface shows, and what puts the working tree back.
 pub(super) fn showing(ctx: &mut Ctx, rect: Rect, one: &CommitEntry) {
     hairline(ctx, rect, ctx.styles.line());
-    let (raised, action, sm) = (ctx.styles.raised(), ctx.styles.action(), ctx.tokens.sm);
-    let working = Button::new("working tree", Target::Working, Role::Muted, raised).hover(action);
+    let sm = ctx.tokens.sm;
+    let working = Button::glass("working tree", Target::Working, Role::Muted, &ctx.styles);
     let mut room = rect.pad(Edges::across(ctx.tokens.md, sm));
     working.right(ctx, &mut room, sm);
     Label::new("commit", ctx.styles.small(Role::Faint)).left(ctx, &mut room, sm);

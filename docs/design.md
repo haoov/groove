@@ -321,13 +321,16 @@ does the same, its field a rounded field. Enforced by
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette with its
-pickers, the language servers' popup and the agent bar's skills menu are glass: the work below shows through them,
-frosted, magnified and bent at the rim. Every other panel is solid. A row on glass takes a rounded, see-through ground
-under the pointer and when selected. Enforced by
+pickers, every menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
+bar's skills menu are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
+list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
+glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_floats_as_a_pane_of_glass_inside_its_place`,
 `the_strip_stands_as_glass_on_the_agent_s_ground`,
 `the_bar_offers_the_skills_in_glass_on_the_screen_s_ground`,
 `the_palette_is_glass`,
+`a_menu_is_glass`,
+`the_panel_stands_on_glass`,
 `the_hover_popup_is_glass`,
 `the_completion_list_stays_solid` and
 `a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground`.

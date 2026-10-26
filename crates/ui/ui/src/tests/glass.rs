@@ -1,4 +1,4 @@
-//! Glass: the palette and the hover popup show what lies below them, and nothing else does.
+//! Glass: the palette, the menus and the hover popup show what lies below them, and nothing else does.
 
 use groove_controllers::AppState;
 use groove_gfx::{Fonts, Frame};
@@ -13,7 +13,7 @@ use crate::hit::Target;
 use crate::input::hovering;
 use crate::palette::Palette;
 use crate::tests::{app, metrics, on_file};
-use crate::{Overlay, Ui, view};
+use crate::{Corner, Menu, Of, Overlay, Ui, view};
 
 fn panes(app: &AppState, ui: &Ui, tick: u64) -> usize {
     let mut at = metrics(1600, 1000, 1.0);
@@ -50,6 +50,21 @@ fn the_hover_popup_is_glass() {
     let rail = panes(&app, &ui, 0);
     hovering(&mut ui, &app, 0);
     assert_eq!(panes(&app, &ui, 300), rail + 1);
+}
+
+#[test]
+fn a_menu_is_glass() {
+    let app = app();
+    let menu = Menu {
+        at: (200.0, 200.0),
+        corner: Corner::TopLeft,
+        of: Of::File("a.txt".into()),
+    };
+    let ui = Ui {
+        overlay: Some(Overlay::Menu(menu)),
+        ..Ui::default()
+    };
+    assert_eq!(panes(&app, &ui, 0), panes(&app, &Ui::default(), 0) + 1);
 }
 
 #[test]

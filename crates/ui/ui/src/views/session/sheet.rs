@@ -82,14 +82,9 @@ fn said(ctx: &mut Ctx, rect: Rect, text: &str) {
 
 /// Approve in peach, and refuse, from the sheet's end.
 fn answers(ctx: &mut Ctx, line: Rect, id: &ApprovalId) {
-    let (mut room, raised) = (line, ctx.styles.raised());
-    let refuse = Button::new("Refuse", Target::Refuse(id.clone()), Role::Muted, raised);
-    refuse.right(ctx, &mut room, ctx.tokens.xs);
-    let approve = Button::new(
-        "Approve",
-        Target::Approve(id.clone()),
-        Role::Attention,
-        raised,
-    );
-    approve.right(ctx, &mut room, ctx.tokens.xs);
+    let (mut room, gap) = (line, ctx.tokens.sm);
+    let refuse = Target::Refuse(id.clone());
+    Button::glass("Refuse", refuse, Role::Muted, &ctx.styles).right(ctx, &mut room, gap);
+    let approve = Target::Approve(id.clone());
+    Button::glass("Approve", approve, Role::Attention, &ctx.styles).right(ctx, &mut room, gap);
 }
