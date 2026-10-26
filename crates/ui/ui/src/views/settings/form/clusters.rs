@@ -72,6 +72,7 @@ fn table<'a>(columns: &'a [Column<'a, Target>], count: usize, line: f32) -> Tabl
             first: line,
             under: 0.0,
             ruled: true,
+            carded: false,
         },
         count,
         offset: 0.0,

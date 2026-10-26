@@ -34,17 +34,8 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
         Term::Path => &bar.path,
         Term::Text => &bar.text,
     };
-    let hint = match term {
-        Term::Path => "search paths",
-        Term::Text => "search text",
-    };
     let search = Search::new(held, Target::Term(term), bar.typing == Some(term));
-    search
-        .hint(hint)
-        .code()
-        .glass(true)
-        .faint(Role::Faint)
-        .draw(ctx, room);
+    search.code().glass(true).faint(Role::Faint).draw(ctx, room);
     whole
 }
 

@@ -24,11 +24,12 @@ use super::state::{Pane, Tab};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::glass_aside;
-use groove_ui_kit::widgets::glass_tabs;
+use groove_ui_kit::widgets::marked_glass_tabs;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.sidebar;
@@ -70,26 +71,26 @@ fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
         .iter()
         .map(|pane| labelled(app, ui, *pane))
         .collect();
-    let shown: Vec<(&str, Target)> = labels
+    let shown: Vec<(Option<Mark>, &str, Target)> = labels
         .iter()
         .zip(offered)
-        .map(|(label, pane)| (label.as_str(), Target::Pane(*pane)))
+        .map(|(label, pane)| (Some(pane.mark()), label.as_str(), Target::Pane(*pane)))
         .collect();
     let at = offered
         .iter()
         .position(|pane| *pane == ui.session.pane)
         .unwrap_or(0);
-    glass_tabs(ctx, rect, &shown, at);
+    marked_glass_tabs(ctx, rect, &shown, at);
 }
 
-/// A list's own name, with what it holds when it holds anything.
+/// How many items a list holds, beside its mark; nothing when it holds none.
 fn labelled(app: &AppState, ui: &Ui, pane: Pane) -> String {
     if pane == Pane::Files && ui.session.tab != Tab::Diff {
-        return "files".to_string();
+        return String::new();
     }
     match counted(app, pane) {
-        0 => pane.label().to_string(),
-        n => format!("{} · {n}", pane.label()),
+        0 => String::new(),
+        n => n.to_string(),
     }
 }
 

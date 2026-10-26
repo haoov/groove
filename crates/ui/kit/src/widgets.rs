@@ -34,11 +34,14 @@ pub use fold::{caret, fold, fold_turn, folder};
 pub use heading::Heading;
 pub use icon::{busy, dot, icon, lead, turned};
 pub use input::{Lead, caret_after, input_at, stepped_input, typed_line};
-pub use inset::{glass_chosen, glass_hoverable, glass_lit, inset_row, rounded_slice};
+pub use inset::{
+    card_inset, glass_card_row, glass_chosen, glass_hoverable, glass_lit, inset_row, rounded_slice,
+};
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size, menu, size as menu_size};
 pub use modal::{
-    Corner, Material, floating_pane, glass_pane, glass_pill, ground_under, modal, panel_at,
+    Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_under, modal,
+    panel_at,
 };
 pub use pane::{Side, glass_aside, pane};
 pub use popup::{Piece, Said, popup};
@@ -46,7 +49,7 @@ pub use question::{offer, question};
 pub use scrolled::scrolled;
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};
-pub use tabs::{Tab, glass_tabs, tabs};
+pub use tabs::{Tab, glass_tabs, marked_glass_tabs, tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;
 pub use toggle::Toggle;

@@ -47,6 +47,11 @@ pub fn glass_hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Targ
     on
 }
 
+/// The room inside a card above its content and below it.
+pub fn card_inset(tokens: &crate::base::tokens::Tokens) -> f32 {
+    tokens.sm
+}
+
 /// A list row lit as the pointer lights it.
 pub fn glass_lit<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     glass_row(ctx, rect, ctx.styles.glass_hover());
@@ -74,4 +79,26 @@ pub fn rounded_slice<A: App>(
             ctx.ring(whole, edge, round, ctx.tokens.hairline);
         }
     });
+}
+
+/// A row as a card on glass: its rounded ground, held when selected, lit under the pointer.
+pub fn glass_card_row<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    target: Option<A::Target>,
+    selected: bool,
+) -> Rect {
+    let card = rect.pad(Edges::xy(0.0, ctx.tokens.xs));
+    let round = ctx.tokens.glass_round;
+    ctx.rounded(card, ctx.styles.glass_card(), round);
+    let lit = target.is_some_and(|target| ctx.interact(rect, target));
+    let tint = match (selected, lit) {
+        (true, _) => Some(ctx.styles.glass_chosen()),
+        (false, true) => Some(ctx.styles.glass_hover()),
+        (false, false) => None,
+    };
+    if let Some(color) = tint {
+        ctx.rounded(card, color, round);
+    }
+    card
 }

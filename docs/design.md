@@ -72,11 +72,13 @@ the rail only as its attention count.
 ## Board — large scope
 
 The board replaces the agent pane, the workspace and the sidebar; the rail stays. Three
-columns, one per list, each scrolling on its own.
+columns, one per list, each scrolling on its own, on the deep ground. The page has no title.
 
-**Header.** The filter — `field:value` tokens and bare words, with autocomplete — applied
-to all three columns at once. On the right, **+ explorer**, which starts one; filing
-the task at the provider is the agent's own write.
+**Header.** At the top, in the middle, the filter on its own pane of glass — `field:value`
+tokens and bare words, with autocomplete — applied to all three columns at once. Just right
+of it, a round **+** made of glass, which starts an explorer; the pointer lights its whole glass.
+Filing the task at the provider is the agent's own write. Enforced by
+`the_filter_stands_on_glass_at_the_top_middle_and_the_button_beside_it`.
 
 | Column | Holds | Sort |
 |---|---|---|
@@ -84,14 +86,13 @@ the task at the provider is the agent's own write.
 | **Up next** | tickets with no session, in the user's local order — the plan | the user's order |
 | **Review** | the forge queue: MRs where the user is a requested reviewer, neither approved by them nor open in a session | updated |
 
-Each column header carries its count.
+Each column heading carries its count. Each item is a rounded card; no rule parts them.
 
 **Live item.** One line: the kind icon, blue while the session is open, the title, then
 the repo count and the worktree count when it is not one. A click opens the session,
 which joins the rail. Right click: delete locally.
 
-**Up next item.** A position number, title, priority and size as text. Drag to reorder. One
-divider, **later**, that items can be dragged under. The order is Groove's and is never
+**Up next item.** A position number, title, priority and size as text. Drag to reorder. The order is Groove's and is never
 written to the provider. A ticket that gets a session leaves the plan for Live.
 
 **Review item.** Title and updated, then under them the project and MR number, the

@@ -98,7 +98,8 @@ pub(crate) fn group_of(app: &AppState, open: &Open) -> Group {
 
 /// A floating pane of glass: the Board row, the sessions by state, the feed, the footer.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let column = floating_pane(ctx, ctx.app.layout.rail, Ground::Deep);
+    let pane = floating_pane(ctx, ctx.app.layout.rail, Ground::Deep);
+    let column = pane.pad(Edges::xy(0.0, ctx.tokens.sm));
     let tall = |height: f32| Spec::default().height(height);
     let parts = [
         tall(ctx.tokens.header),

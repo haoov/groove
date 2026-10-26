@@ -52,10 +52,11 @@ fn the_strip_counts_the_commits_the_branch_owns() {
         commit("abc1234", "feat: one", false),
         commit("def5678", "chore: base", true),
     ]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one == "commits · 1"),
-        "the base's own are not the branch's: {drawn:?}"
+    let said = tab_said(&app, &ui, Pane::Commits);
+    assert_eq!(
+        said.as_deref(),
+        Some("1"),
+        "the base's own are not the branch's"
     );
 }
 

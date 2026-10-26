@@ -223,6 +223,7 @@ fn listed(
             first: ctx.tokens.row,
             under: 0.0,
             ruled: false,
+            carded: false,
         },
         count: rows.len(),
         offset,

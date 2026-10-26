@@ -219,15 +219,21 @@ fn a_click_on_a_note_moves_no_caret() {
 /// The note glyphs the sidebar drew on its file rows.
 fn marks_in_sidebar(app: &AppState) -> usize {
     let ui = on_diff();
-    let (frame, _) = view(app, &ui, window(), &mut Fonts::embedded());
+    let (frame, hits) = view(app, &ui, window(), &mut Fonts::embedded());
     let sidebar = crate::layout::Layout::of(window(), &ui).sidebar;
     let shape = groove_ui_kit::base::mark::Mark::Note.shape();
+    let tab = hits
+        .rect_of(&crate::hit::Target::Pane(
+            crate::views::session::Pane::Notes,
+        ))
+        .expect("the notes tab");
     frame
         .layers()
         .iter()
         .flat_map(|layer| layer.icons.iter())
         .filter(|icon| icon.icon == shape)
         .filter(|icon| icon.rect.x >= sidebar.x && icon.rect.x < sidebar.right())
+        .filter(|icon| icon.rect.y > tab.bottom())
         .count()
 }
 

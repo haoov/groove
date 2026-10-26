@@ -14,11 +14,12 @@ mod state;
 pub use state::BoardUi;
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use groove_ui_kit::base::ground::Ground;
+use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
 
 /// Which list a column holds.
@@ -41,17 +42,15 @@ impl List {
     }
 }
 
-/// The board: one header line, the three columns under it.
+/// The board: the header, the three columns under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.app.layout.board;
-    groove_ui_kit::shape::ground(ctx, area, Ground::Work);
-    let [line, _] = column_in(
-        area,
-        [Spec::default().height(ctx.tokens.header), Spec::fill()],
-    );
-    let field = header::draw(ctx, line, app, ui);
+    groove_ui_kit::widgets::ground_under(ctx, area, Ground::Deep);
+    let field = header::draw(ctx, area, ui);
     for list in List::ALL {
-        column::draw(ctx, column_of(&ctx.tokens, area, list), app, ui, list);
+        let column = column_of(&ctx.tokens, area, list);
+        let column = column.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
+        column::draw(ctx, column, app, ui, list);
     }
     header::offers(ctx, field, app, ui);
 }
@@ -61,7 +60,7 @@ pub fn spans(
     app: &AppState,
     ui: &Ui,
     list: List,
-    tokens: &groove_ui_kit::base::tokens::Tokens,
+    tokens: &Tokens,
 ) -> Vec<(crate::hit::Target, f32, f32)> {
     use crate::hit::Target;
     let card = row::card(tokens);
@@ -88,9 +87,8 @@ pub fn spans(
             let mut top = 0.0;
             let mut out = Vec::new();
             for (line, tall) in lines.iter().zip(heights) {
-                if let row::Line::Task(task) = line {
-                    out.push((Target::Task(task.short_id.clone()), top, tall));
-                }
+                let row::Line::Task(task) = line;
+                out.push((Target::Task(task.short_id.clone()), top, tall));
                 top += tall;
             }
             out
@@ -99,24 +97,21 @@ pub fn spans(
 }
 
 /// The room one list's column takes under the header.
-pub fn column_of(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, list: List) -> Rect {
-    let body = columns(tokens, area);
+pub fn column_of(tokens: &Tokens, area: Rect, list: List) -> Rect {
+    let [_, body] = column_in(
+        area,
+        [Spec::default().height(header::tall(tokens)), Spec::fill()],
+    );
     let wide = Spec::default().width((body.w / List::ALL.len() as f32).floor());
     let at = List::ALL.iter().position(|one| *one == list).unwrap_or(0);
     row_in(body, [wide; List::ALL.len()])[at]
 }
 
 /// The list whose column stands at `x`.
-pub fn list_at(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, x: f32) -> Option<List> {
+pub fn list_at(tokens: &Tokens, area: Rect, x: f32) -> Option<List> {
     let within = |list: &List| {
         let column = column_of(tokens, area, *list);
         x >= column.x && x < column.right()
     };
     List::ALL.into_iter().find(within)
-}
-
-/// The room the three columns share under the header.
-pub fn columns(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect) -> Rect {
-    let [_, rest] = column_in(area, [Spec::default().height(tokens.header), Spec::fill()]);
-    rest
 }

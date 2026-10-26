@@ -1,7 +1,7 @@
 //! The notes list: its filter, its files, each note on two lines, and where a click lands.
 
 use super::*;
-use crate::views::session::{Showing, Tab};
+use crate::views::session::{Pane, Showing, Tab};
 
 fn thread(id: &str, line: Option<u32>, resolved: bool) -> Note {
     Note {
@@ -60,7 +60,8 @@ fn the_filter_counts_open_resolved_and_all_and_shows_the_one_picked() {
         note("src/lib.rs", 11, "issue: this leaks"),
     ]);
     let drawn = in_sidebar(&app, &ui);
-    for text in ["open · 2", "resolved · 1", "all · 3", "notes · 2"] {
+    assert_eq!(tab_said(&app, &ui, Pane::Notes).as_deref(), Some("2"));
+    for text in ["open · 2", "resolved · 1", "all · 3"] {
         assert!(drawn.iter().any(|one| one == text), "{text}: {drawn:?}");
     }
     let said = |drawn: &[String], text: &str| drawn.iter().any(|one| one == text);
@@ -104,11 +105,8 @@ fn the_files_tab_offers_the_notes_too_and_a_click_opens_the_file_at_the_note() {
     let (app, mut ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
     ui.session.tab = Tab::Files;
     let drawn = in_sidebar(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "files"), "{drawn:?}");
-    assert!(
-        !drawn.iter().any(|one| one.starts_with("commits")),
-        "{drawn:?}"
-    );
+    assert_eq!(tab_said(&app, &ui, Pane::Files).as_deref(), Some(""));
+    assert!(tab_said(&app, &ui, Pane::Commits).is_none(), "{drawn:?}");
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let line = hits.rect_of(&Target::NoteAt(0)).expect("the note's row");
     let commands = click(line, &mut ui, &app, &hits);

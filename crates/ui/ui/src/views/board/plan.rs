@@ -1,4 +1,4 @@
-//! Up next: the tasks in the user's own order, and the divider they stand either side of.
+//! Up next: the tasks in the user's own order.
 
 use groove_controllers::AppState;
 use groove_controllers::task::Landing;
@@ -11,23 +11,13 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::text::row;
 
-const LATER: &str = "LATER";
-
-/// What Up next holds: the tasks over the divider, the divider, the ones under it.
+/// What Up next holds: the tasks in the user's order.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
-    let mut lines = Vec::new();
-    for planned in upcoming(app, ui) {
-        if planned.later && !lines.iter().any(is_divider) {
-            lines.push(Line::Divider);
-        }
-        lines.push(Line::Task(planned.task));
-    }
-    if !lines.iter().any(is_divider) {
-        lines.push(Line::Divider);
-    }
-    lines
+    upcoming(app, ui)
+        .into_iter()
+        .map(|planned| Line::Task(planned.task))
+        .collect()
 }
 
 /// Where every line of Up next starts, and where the last one ends.
@@ -54,20 +44,6 @@ fn upcoming<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
     let mut planned = app.task.planned(&left);
     planned.sort_by_key(|one| (one.later, !app.task.asks(&one.task.external_id)));
     planned
-}
-
-fn is_divider(line: &Line<'_>) -> bool {
-    matches!(line, Line::Divider)
-}
-
-/// The divider a task is dragged under to leave the plan for later.
-pub(super) fn divider(ctx: &mut Ctx, line: Rect) {
-    let style = ctx.styles.heading(Role::Ghost);
-    let pad = ctx.tokens.md;
-    let from = pad * 2.0 + ctx.measure(LATER, &style);
-    row(ctx, line, pad, LATER, style);
-    let rule = groove_ui_kit::shape::strip(line, from, line.w - pad - from);
-    groove_ui_kit::shape::mid_rule(ctx, rule, ctx.styles.line());
 }
 
 /// The rule where a dragged row would land, over the rows it moves between.
@@ -108,21 +84,18 @@ pub fn landing(app: &AppState, ui: &Ui) -> Option<Landing> {
     let external_id = ui.carried()?.clone();
     let at = ui.board.drop?;
     let lines = lines(app, ui);
-    let later = lines.iter().position(is_divider).is_some_and(|it| it < at);
     let before = lines
         .get(at..)
         .unwrap_or_default()
         .iter()
-        .find_map(|line| match line {
-            Line::Task(task) => Some(task.external_id.clone()),
-            _ => None,
-        });
+        .map(|Line::Task(task)| task.external_id.clone())
+        .next();
     match before.as_ref() == Some(&external_id) {
         true => None,
         false => Some(Landing {
             external_id,
             before,
-            later,
+            later: false,
         }),
     }
 }

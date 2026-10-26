@@ -9,10 +9,8 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Scroller;
 use crate::offsets::listed;
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::row;
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
@@ -20,7 +18,6 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: Lis
         area,
         [Spec::default().height(ctx.tokens.header), Spec::fill()],
     );
-    edge(ctx, area);
     match list {
         List::Review => {
             let asked = super::review::sorted(app, ui);
@@ -43,25 +40,15 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: Lis
     }
 }
 
-/// How many items a column holds; its worktrees and its hints are not items.
+/// How many items a column holds.
 fn counted(lines: &[Line<'_>]) -> usize {
-    lines
-        .iter()
-        .filter(|line| matches!(line, Line::Task(_)))
-        .count()
+    lines.len()
 }
 
 fn heading(ctx: &mut Ctx, line: Rect, list: List, count: usize) {
-    groove_ui_kit::shape::ground(ctx, line, Ground::Band);
-    hairline(ctx, line, ctx.styles.line());
     groove_ui_kit::widgets::Heading::new(list.name())
         .count(count)
         .draw(ctx, line);
-}
-
-/// The rule that separates this column from the one before it.
-fn edge(ctx: &mut Ctx, area: Rect) {
-    groove_ui_kit::shape::side_rule(ctx, area, area.x, ctx.styles.line());
 }
 
 /// The lines a column has room for, scrolled and clipped to it.
@@ -83,11 +70,8 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, lines: &[Line<'_>]) 
 }
 
 fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, line: &Line<'_>) {
-    match line {
-        Line::Task(task) => row::up_next(ctx, rect, app, task),
-        Line::Divider => return super::plan::divider(ctx, rect),
-    }
-    hairline(ctx, rect, ctx.styles.line());
+    let Line::Task(task) = line;
+    row::up_next(ctx, rect, app, task);
 }
 
 /// The one line a column says when it holds nothing.

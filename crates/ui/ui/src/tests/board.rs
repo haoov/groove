@@ -173,7 +173,7 @@ fn a_session_picked_while_the_board_is_up_puts_the_window_back_on_it() {
 }
 
 #[test]
-fn every_row_of_a_column_ends_in_a_hairline() {
+fn every_row_of_a_column_is_a_rounded_card_and_no_rule_parts_them() {
     let mut app = full_app();
     app.task.tasks = vec![
         task("gh-a-b-1", "waiting one", "github.com/a/b#1"),
@@ -189,16 +189,22 @@ fn every_row_of_a_column_ends_in_a_hairline() {
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let width = (board.w / 3.0).floor();
-    let rules = frame.layers()[0]
-        .quads
+    let middle = |quad: &&groove_gfx::Quad| {
+        quad.rect.x >= board.x + width && quad.rect.x < board.x + width * 2.0
+    };
+    let quads = &frame.layers()[0].quads;
+    let cards = quads
         .iter()
-        .filter(|quad| quad.color == styles.line() && quad.rect.h == tokens.hairline)
-        .filter(|quad| quad.rect.x >= board.x + width && quad.rect.x < board.x + width * 2.0)
+        .filter(middle)
+        .filter(|quad| quad.color == styles.glass_card() && quad.shape.radius == tokens.glass_round)
         .count();
-    assert_eq!(
-        rules, 5,
-        "the heading, the three rows, and the divider's own"
-    );
+    assert_eq!(cards, 3, "a card a task, and no divider");
+    let rules = quads
+        .iter()
+        .filter(middle)
+        .filter(|quad| quad.color == styles.line() && quad.rect.h == tokens.hairline)
+        .count();
+    assert_eq!(rules, 0, "no rule under the heading or between the cards");
 }
 
 #[test]

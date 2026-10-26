@@ -26,6 +26,7 @@ pub struct Tab<'a, T> {
     pub glass: bool,
     /// Its label in the middle of a box wider than it.
     pub centred: bool,
+    pub mark: Option<Mark>,
 }
 
 impl<'a, T: Clone + PartialEq> Tab<'a, T> {
@@ -43,6 +44,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             tally: None,
             glass: false,
             centred: false,
+            mark: None,
         }
     }
 
@@ -140,7 +142,17 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             .tally
             .map_or(0.0, |tally| crate::widgets::faults_room(ctx, tally));
         let style = self.style(ctx);
-        ctx.measure(self.label, &style) + self.pad(ctx) * 2.0 + closing + tallied
+        let lead = self.lead(ctx);
+        ctx.measure(self.label, &style) + self.pad(ctx) * 2.0 + closing + tallied + lead
+    }
+
+    /// The room the mark takes before the label, its gap included.
+    fn lead<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> f32 {
+        match (self.mark, self.label.is_empty()) {
+            (None, _) => 0.0,
+            (Some(_), true) => ctx.tokens.icon,
+            (Some(_), false) => ctx.tokens.icon + ctx.tokens.xs,
+        }
     }
 
     /// The label is drawn whole: the tab is as wide as it.
@@ -183,7 +195,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         if let Some(color) = ground {
             ctx.rounded(pill, color, ctx.tokens.sm);
         }
-        let (style, pad) = (self.style(ctx), self.pad(ctx));
+        let (style, pad, lead) = (self.style(ctx), self.pad(ctx), self.lead(ctx));
         let mut end = pill;
         if let Some((mark, target)) = self.close {
             Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
@@ -191,12 +203,17 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         if let Some(tally) = self.tally {
             crate::widgets::faults(ctx, &mut end, tally);
         }
-        let label = crate::text::elide(ctx, self.label, &style, (end.w - pad * 2.0).max(0.0));
+        let label =
+            crate::text::elide(ctx, self.label, &style, (end.w - pad * 2.0 - lead).max(0.0));
         let pad = match self.centred {
-            true => ((end.w - ctx.measure(&label, &style)) / 2.0).max(pad),
+            true => ((end.w - lead - ctx.measure(&label, &style)) / 2.0).max(pad),
             false => pad,
         };
-        row(ctx, pill, pad, &label, style);
+        if let Some(mark) = self.mark {
+            let at = crate::shape::box_in(pill, pill.x + pad, ctx.tokens.icon);
+            ctx.icon(at, mark, 0, style.color);
+        }
+        row(ctx, pill, pad + lead, &label, style);
     }
 }
 
@@ -207,14 +224,29 @@ pub fn glass_tabs<A: App>(
     tabs: &[(&str, A::Target)],
     selected: usize,
 ) -> Vec<Rect> {
+    let marked: Vec<(Option<Mark>, &str, A::Target)> = tabs
+        .iter()
+        .map(|(label, target)| (None, *label, target.clone()))
+        .collect();
+    marked_glass_tabs(ctx, rect, &marked, selected)
+}
+
+/// The same, each tab with its mark before its label.
+pub fn marked_glass_tabs<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    tabs: &[(Option<Mark>, &str, A::Target)],
+    selected: usize,
+) -> Vec<Rect> {
     let xs = ctx.tokens.xs;
     let mut room = rect.pad(groove_gfx::Edges::across(ctx.tokens.sm, 0.0));
     let made: Vec<Tab<'_, A::Target>> = tabs
         .iter()
         .enumerate()
-        .map(|(i, (label, target))| {
+        .map(|(i, (mark, label, target))| {
             let mut tab = Tab::new(label, target.clone(), i == selected).glass();
             tab.centred = true;
+            tab.mark = *mark;
             tab
         })
         .collect();

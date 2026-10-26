@@ -78,6 +78,8 @@ pub struct Rows {
     /// The second line's height; nothing when the rows have none.
     pub under: f32,
     pub ruled: bool,
+    /// Each row a rounded card on glass instead of a ruled line.
+    pub carded: bool,
 }
 
 pub struct Table<'a, T> {
@@ -123,7 +125,11 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         if self.sorted.is_some() {
             body.take_top(ctx.tokens.row);
         }
-        let height = self.rows.first + self.rows.under;
+        let inset = match self.rows.carded {
+            true => crate::widgets::card_inset(&ctx.tokens),
+            false => 0.0,
+        };
+        let height = self.rows.first + self.rows.under + inset * 2.0;
         let extent = (self.count as f32 * height - body.h).max(0.0);
         Laid {
             extent,
@@ -132,6 +138,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             offset: self.offset.min(extent),
             height,
             first: self.rows.first,
+            inset,
         }
     }
 

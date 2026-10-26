@@ -45,13 +45,10 @@ fn in_sidebar(app: &AppState, ui: &Ui) -> Vec<String> {
 #[test]
 fn the_strip_names_the_three_lists_and_counts_them() {
     let (app, ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one.starts_with("changed")),
-        "{drawn:?}"
-    );
-    assert!(drawn.iter().any(|one| one == "commits"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "notes · 1"), "{drawn:?}");
+    let said = |pane| tab_said(&app, &ui, pane);
+    assert_eq!(said(Pane::Files).as_deref(), Some("1"), "the changed file");
+    assert_eq!(said(Pane::Commits).as_deref(), Some(""), "a mark alone");
+    assert_eq!(said(Pane::Notes).as_deref(), Some("1"), "the open note");
 }
 
 #[test]
@@ -59,8 +56,7 @@ fn a_resolved_note_is_not_counted() {
     let mut one = note("src/lib.rs", 11, "issue: this leaks");
     one.resolved = true;
     let (app, ui) = noting(vec![one]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "notes"), "{drawn:?}");
+    assert_eq!(tab_said(&app, &ui, Pane::Notes).as_deref(), Some(""));
 }
 
 #[test]
@@ -200,20 +196,18 @@ fn a_session_s_notes_are_read_whichever_list_is_up() {
 }
 
 #[test]
-fn a_tab_too_narrow_for_its_name_keeps_its_padding_and_cuts_the_name() {
+fn a_narrow_tab_keeps_its_mark_whole_inside_it() {
     let app = with_files(&["src/lib.rs"]);
     let mut ui = sidebar_ui();
     ui.split.sidebar = groove_ui_kit::base::tokens::SIDEBAR_MIN;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let tab = hits
-        .rect_of(&Target::Pane(Pane::Commits))
-        .expect("the commits tab");
-    let run = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| tab.contains(run.x, run.y + run.height / 2.0))
-        .expect("its name");
-    assert!(run.text.ends_with('\u{2026}'), "cut: {}", run.text);
-    let pad = Tokens::new(1.0).md;
-    assert!(run.x >= tab.x + pad - 0.5, "the padding kept at its left");
+    for pane in Pane::ALL {
+        let tab = hits.rect_of(&Target::Pane(pane)).expect("the tab");
+        let mark = frame.layers()[0]
+            .icons
+            .iter()
+            .find(|icon| icon.icon == pane.mark().shape() && tab.contains(icon.rect.x, icon.rect.y))
+            .expect("its mark");
+        assert!(mark.rect.right() <= tab.right(), "{pane:?} whole");
+    }
 }

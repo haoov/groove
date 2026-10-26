@@ -1,7 +1,9 @@
-use groove_gfx::{Color, Rect};
+use groove_gfx::{Align, Color, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::ground::Ground;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Material {
@@ -73,6 +75,32 @@ pub fn glass_pill<A: App>(ctx: &mut Ctx<'_, A>, content: Rect, pad: f32) -> Rect
     let pill = Rect::new(content.x - pad, top, content.w + pad * 2.0, tall);
     glass_pane(ctx, pill);
     pill
+}
+
+/// A round button made of glass, `mark` in its middle, the whole glass lit under the pointer.
+pub fn glass_button<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    (mark, role): (Mark, Role),
+    target: A::Target,
+) -> bool {
+    let size = rect.w.min(rect.h);
+    let round = rect.align((size, size), Align::Center, Align::Center);
+    let radius = size / 2.0;
+    ctx.glass(
+        round,
+        (radius, radius.min(ctx.tokens.bezel)),
+        ctx.styles.glass(),
+    );
+    let on = ctx.interact(round, target);
+    if on {
+        ctx.rounded(round, ctx.styles.glass_hover(), radius);
+    }
+    let icon = ctx.tokens.icon;
+    let at = round.align((icon, icon), Align::Center, Align::Center);
+    let color = ctx.styles.color(role);
+    ctx.icon(at, mark, 0, color);
+    on
 }
 
 /// `rect` on `ground`, which glass drawn over it shows blurred.

@@ -9,14 +9,12 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Badge, lead};
+use groove_ui_kit::widgets::{Badge, card_inset, glass_card_row, lead};
 
-/// One line of Up next: a task, or the plan's divider.
+/// One line of Up next: a task.
 pub(super) enum Line<'a> {
     Task(&'a Task),
-    Divider,
 }
 
 /// How tall a line stands: one row, and one more when it carries a second line.
@@ -29,17 +27,15 @@ pub(super) fn heights(
         .iter()
         .map(|line| match under(app, line) {
             true => card(tokens),
-            false => item(tokens),
+            false => item(tokens) + card_inset(tokens) * 2.0,
         })
         .collect()
 }
 
 /// Whether this line carries a second line under its title.
 fn under(app: &AppState, line: &Line<'_>) -> bool {
-    match line {
-        Line::Task(task) if task.priority.is_some() || task.project.is_some() => true,
-        _ => !reasons(app, line).is_empty(),
-    }
+    let Line::Task(task) = line;
+    task.priority.is_some() || task.project.is_some() || !reasons(app, line).is_empty()
 }
 
 /// How tall one plain line of a column is.
@@ -47,15 +43,20 @@ pub(super) fn item(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
 }
 
-/// How tall a line stands with a second line under its title.
+/// How tall a card stands with a second line under its title, its inset included.
 pub fn card(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
+    lines(tokens) + card_inset(tokens) * 2.0
+}
+
+/// How tall the title and the second line stand together.
+pub(super) fn lines(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
     item(tokens) + tokens.line + tokens.xs
 }
 
 /// One task waiting: its source and title, then its worth and why it needs the user.
 pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
-    hoverable(ctx, rect, Target::Task(task.short_id.clone()));
-    let mut rest = rect;
+    glass_card_row(ctx, rect, Some(Target::Task(task.short_id.clone())), false);
+    let mut rest = rect.pad(Edges::xy(0.0, card_inset(&ctx.tokens)));
     let line = from_top(&mut rest, item(&ctx.tokens), 0.0);
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     handle(ctx, &mut room, task);
@@ -130,8 +131,6 @@ pub(super) fn named(ctx: &mut Ctx, mut room: Rect, title: &str) {
 
 /// Why this line needs the user.
 fn reasons<'a>(app: &'a AppState, line: &Line<'_>) -> &'a [groove_types::Attention] {
-    match line {
-        Line::Task(task) => app.task.needs(&task.external_id),
-        _ => &[],
-    }
+    let Line::Task(task) = line;
+    app.task.needs(&task.external_id)
 }

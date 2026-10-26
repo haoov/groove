@@ -45,7 +45,7 @@ impl<'a> Badge<'a> {
         );
         let top = line.y + (line.h - tall) / 2.0;
         let box_ = Rect::new(x.round(), top.round(), wide.round(), tall.round());
-        let corner = ctx.tokens.corner;
+        let corner = box_.h / 2.0;
         ctx.rounded(box_, ctx.styles.tint(self.role), corner);
         let edge = ctx.tokens.edge;
         ctx.ring(box_, colour.with_alpha(BADGE_EDGE), corner, edge);

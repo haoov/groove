@@ -146,6 +146,15 @@ impl Pane {
             Pane::Notes => "notes",
         }
     }
+
+    pub fn mark(self) -> groove_ui_kit::base::mark::Mark {
+        use groove_ui_kit::base::mark::Mark;
+        match self {
+            Pane::Files => Mark::List,
+            Pane::Commits => Mark::Commits,
+            Pane::Notes => Mark::Note,
+        }
+    }
 }
 
 /// Which of the session's notes the sidebar lists.

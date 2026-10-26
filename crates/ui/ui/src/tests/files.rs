@@ -173,7 +173,8 @@ fn the_diff_sidebar_names_the_changed_files_with_what_they_changed() {
         .filter(|run| run.x >= sidebar.x)
         .map(|run| run.text.clone())
         .collect();
-    assert!(texts.iter().any(|t| t == "changed · 2"), "{texts:?}");
+    let said = tab_said(&app, &on_diff(), crate::views::session::Pane::Files);
+    assert_eq!(said.as_deref(), Some("2"), "the list mark, then the count");
     assert!(texts.iter().any(|t| t == "tokens.rs"));
     assert!(texts.iter().any(|t| t == "session.rs"));
     assert!(
@@ -399,4 +400,21 @@ fn the_band_says_what_the_change_is_read_against_and_picks_one() {
             }
         )]
     );
+}
+
+/// The count a sidebar tab says beside its mark, empty when it says none; none without its mark.
+fn tab_said(app: &AppState, ui: &Ui, pane: crate::views::session::Pane) -> Option<String> {
+    let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());
+    let tab = hits.rect_of(&Target::Pane(pane))?;
+    let inside = |x: f32, y: f32| tab.contains(x, y);
+    let layer = &frame.layers()[0];
+    let marked = layer.icons.iter().any(|icon| {
+        icon.icon == pane.mark().shape() && inside(icon.rect.x, icon.rect.y + icon.rect.h / 2.0)
+    });
+    let said = layer
+        .texts
+        .iter()
+        .find(|run| inside(run.x, run.y + run.height / 2.0))
+        .map_or(String::new(), |run| run.text.clone());
+    marked.then_some(said)
 }

@@ -26,7 +26,7 @@ pub(super) fn living<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Living> {
 /// What the column says when it holds nothing.
 pub(super) fn empty(ui: &Ui) -> &'static str {
     match ui.board.query().is_empty() {
-        true => "nothing here. + explorer starts one",
+        true => "nothing here. + starts an explorer",
         false => "nothing the filter lets through",
     }
 }
@@ -39,8 +39,9 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
         columns: &columns,
         rows: Rows {
             first,
-            under: super::row::card(&tokens) - first,
-            ruled: true,
+            under: super::row::lines(&tokens) - first,
+            ruled: false,
+            carded: true,
         },
         count: living.len(),
         offset: ui.board.live,

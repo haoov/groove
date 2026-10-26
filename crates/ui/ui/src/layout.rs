@@ -197,7 +197,7 @@ fn rail(boxes: &mut Boxes, tokens: &Tokens, split: Split, height: f32) -> (Node,
     let feed = boxes.leaf(tall(band));
     let footer = boxes.leaf(tall(tokens.bar));
     let rail = Spec::default().width((split.rail * tokens.scale).floor());
-    let rail = rail.pad(Edges::all(tokens.sm));
+    let rail = rail.pad(Edges::xy(tokens.sm, tokens.sm * 2.0));
     (boxes.column(rail, &[sessions, feed, footer]), feed)
 }
 

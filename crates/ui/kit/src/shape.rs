@@ -175,7 +175,8 @@ pub fn hairline<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
 /// A round ground as wide as `rect`'s shorter side, centred in it.
 pub fn circle<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let size = rect.w.min(rect.h);
-    ctx.rounded(square(rect, size), color, size / 2.0);
+    let round = rect.align((size, size), Align::Center, Align::Center);
+    ctx.rounded(round, color, size / 2.0);
 }
 
 /// Registers `target` at `rect`, on the hover ground while the pointer rests on it.
