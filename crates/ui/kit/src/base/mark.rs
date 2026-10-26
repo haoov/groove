@@ -65,6 +65,10 @@ pub enum Mark {
     /// The sidebar's lists: the files, the commits.
     List,
     Commits,
+    /// The session in hand alone.
+    Person,
+    /// Every session.
+    People,
     /// What a language server found wrong in a file, and what it warns of.
     Errors,
     Warnings,
@@ -145,6 +149,8 @@ impl Mark {
             Mark::File => Icon::File,
             Mark::List => Icon::List,
             Mark::Commits => Icon::Commit,
+            Mark::Person => Icon::Person,
+            Mark::People => Icon::People,
         }
     }
 }

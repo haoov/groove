@@ -161,8 +161,8 @@ pub enum Target {
     Refuse(groove_types::ApprovalId),
     /// The agent's own row: what it can be sent, and its reload.
     Skills(SessionId),
-    /// Which sessions the feed shows.
-    FeedScope,
+    /// The feed narrowed to the session in hand, or widened to every session.
+    FeedScope(bool),
     /// One MR of the review column, by its project and its number.
     Review(String, u64),
     /// A column heading of the review table, which orders it.

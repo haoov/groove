@@ -57,6 +57,11 @@ pub fn glass_lit<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     glass_row(ctx, rect, ctx.styles.glass_hover());
 }
 
+/// A list row on a rounded ground of `color`, as a row in a role's tint stands.
+pub fn glass_tinted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    glass_row(ctx, rect, color);
+}
+
 /// The row a list stands on, held on a rounded ground.
 pub fn glass_chosen<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     glass_row(ctx, rect, ctx.styles.glass_chosen());

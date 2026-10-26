@@ -12,9 +12,12 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::shape::from_right;
 use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::marked_glass_tabs;
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
@@ -25,32 +28,29 @@ pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
     }
 }
 
-/// The word that folds the feed, and the one that narrows it to the session in hand.
+/// The word that folds the feed, and the tabs that narrow it to the session in hand.
 fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
-    let md = ctx.tokens.md;
-    groove_ui_kit::shape::rule_above(ctx, line.pad(Edges::across(md, md)), ctx.styles.line());
     let row = groove_ui_kit::widgets::inset_row(ctx, line, Target::Feed, (false, None));
-    let sm = ctx.tokens.sm;
-    let mut room = row.pad(Edges::across(sm, sm));
-    let scope = narrowed(ctx, &mut room, app, ui);
+    let mut room = row.pad(Edges::across(ctx.tokens.sm, 0.0));
+    narrowed(ctx, &mut room, app, ui);
     groove_ui_kit::widgets::Heading::new("feed")
         .fold(!ui.rail.folded)
         .within(ctx, row, room);
-    if let Some(scope) = scope {
-        ctx.hit(scope, Target::FeedScope);
-    }
 }
 
-/// Which sessions it shows, at the header's own end; returns the box a click narrows by.
-fn narrowed(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) -> Option<Rect> {
+/// Which sessions it shows, as two tabs at the header's own end.
+fn narrowed(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) {
     if app.session.open.len() < 2 {
-        return None;
+        return;
     }
-    let (role, text) = match ui.rail.mine {
-        true => (Role::Muted, "this session"),
-        false => (Role::Ghost, "every session"),
-    };
-    Some(Label::new(text, ctx.styles.small(role)).right(ctx, room, 0.0))
+    let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
+    let tab = ctx.tokens.icon + ctx.tokens.md * 2.0;
+    let place = from_right(room, tab * 2.0 + xs + sm * 2.0, 0.0);
+    let tabs = [
+        (Some(Mark::Person), "", Target::FeedScope(true)),
+        (Some(Mark::People), "", Target::FeedScope(false)),
+    ];
+    marked_glass_tabs(ctx, place, &tabs, usize::from(!ui.rail.mine));
 }
 
 /// The lines, scrolled and clipped to the room they have.
@@ -75,18 +75,18 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         at,
         &shown,
         |one| match one {
-            Line::Under(_) => short,
+            Line::Under(..) => short,
             _ => tall,
         },
         |ctx, line, one| line::draw(ctx, line, one, (app, !ui.rail.mine, open)),
     );
 }
 
-/// One line of the feed: a job running now, a run of what happened, or one of an open run.
+/// One line of the feed: a job running now, a run of what happened, or one of an open run, the last of it marked.
 enum Line<'a> {
     Job(&'a str),
     Run(Run<'a>),
-    Under(Item<'a>),
+    Under(Item<'a>, bool),
 }
 
 /// The running jobs first, then what happened, newest first, each run folded unless open.
@@ -106,7 +106,9 @@ fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
             false => Vec::new(),
         };
         out.push(Line::Run(run));
-        out.extend(under.into_iter().map(Line::Under));
+        let last = under.len().saturating_sub(1);
+        let lines = under.into_iter().enumerate();
+        out.extend(lines.map(|(at, one)| Line::Under(one, at == last)));
     }
     out
 }

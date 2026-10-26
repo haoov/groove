@@ -139,10 +139,14 @@ fn the_rail_holds_no_selection_while_the_board_is_up() {
             app.config.theme(),
             groove_ui_kit::base::tokens::Tokens::new(1.0),
         );
-        let rail = crate::layout::Layout::of(window(), &ui).rail;
+        let layout = crate::layout::Layout::of(window(), &ui);
+        let rows = |quad: &&groove_gfx::Quad| {
+            quad.rect.x < layout.rail.right() && quad.rect.bottom() <= layout.feed.y
+        };
         let quads = frame.layers()[0].quads.iter();
         quads
-            .filter(|quad| quad.color == styles.glass_chosen() && quad.rect.x < rail.right())
+            .filter(|quad| quad.color == styles.glass_chosen())
+            .filter(rows)
             .count()
     };
     assert_eq!(held(Surface::Session), 1, "the selected session's ground");

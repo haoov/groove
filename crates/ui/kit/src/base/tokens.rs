@@ -189,7 +189,7 @@ const LOGICAL: Tokens = Tokens {
     sidebar: 260.0,
     line: 18.0,
     code_line: 21.0,
-    feed_row: 34.0,
+    feed_row: 50.0,
     feed_age: 30.0,
     bar: 36.0,
     hairline: 1.0,

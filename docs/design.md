@@ -180,7 +180,13 @@ the selected session: agent turns, commits, pushes, MR events, CI results, notes
 Monochrome, no motion, collapsible. Asks are never in the feed; they live on the row.
 Back-to-back events of one kind from one session fold into one row with a count; a click
 opens the run to one line per event.
-Enforced by `back_to_back_events_of_one_kind_fold_into_one_row`.
+It shares the rail's glass with the rows, set apart by a gap, not a rule. Two icon tabs at its
+heading's end pick the session in hand or every session. Each line has its mark in a round. An
+open run and its lines stand on one held ground. An error lies on its colour's tint.
+Enforced by `back_to_back_events_of_one_kind_fold_into_one_row`,
+`the_scope_tabs_pick_the_session_in_hand_or_every_session`,
+`an_open_run_and_its_lines_stand_on_one_held_ground` and
+`an_error_lies_on_its_colour_s_tint`.
 
 ## Session — small scope
 
