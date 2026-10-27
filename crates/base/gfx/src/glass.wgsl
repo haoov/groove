@@ -1,4 +1,5 @@
-// The lens follows Kyant0/AndroidLiquidGlass (Apache-2.0): its rounded-rect refraction shader.
+// The lens is ported to WGSL and changed from Kyant0/AndroidLiquidGlass, Apache-2.0:
+// see LICENSE-AndroidLiquidGlass.txt at the crate root. Its rounded-rect refraction shader.
 
 @group(0) @binding(0) var blurred: texture_2d<f32>;
 @group(0) @binding(1) var smp: sampler;

@@ -1,13 +1,12 @@
-use groove_gfx::{Color, Rect, TextStyle};
+use groove_gfx::{Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{hairline, hoverable};
 use crate::text::row;
 use crate::widgets::{Button, Text};
 
-/// One tab: its label, underlined in the accent while selected, and the mark that closes it.
+/// One tab: a rounded row on glass, held while selected and lit under the pointer.
 pub struct Tab<'a, T> {
     pub label: &'a str,
     pub target: T,
@@ -15,15 +14,11 @@ pub struct Tab<'a, T> {
     pub text: Text,
     /// The label's role while another tab is up.
     pub quiet: Role,
-    /// The selected tab's ground in place of the accent underline.
-    pub ground: Option<Color>,
     pub tight: bool,
     pub close: Option<(Mark, T)>,
     pub italic: bool,
     /// The errors and warnings of the file it holds.
     pub tally: Option<(u32, u32)>,
-    /// A rounded row on glass, held while selected and lit under the pointer.
-    pub glass: bool,
     /// Its label in the middle of a box wider than it.
     pub centred: bool,
     pub mark: Option<Mark>,
@@ -36,21 +31,14 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             target,
             selected,
             text: Text::Label,
-            quiet: Role::Faint,
-            ground: None,
+            quiet: Role::Muted,
             tight: false,
             close: None,
             italic: false,
             tally: None,
-            glass: false,
             centred: false,
             mark: None,
         }
-    }
-
-    pub fn glass(mut self) -> Self {
-        self.glass = true;
-        self
     }
 
     pub fn italic(mut self, italic: bool) -> Self {
@@ -65,11 +53,6 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     pub fn quiet(mut self, role: Role) -> Self {
         self.quiet = role;
-        self
-    }
-
-    pub fn ground(mut self, ground: Color) -> Self {
-        self.ground = Some(ground);
         self
     }
 
@@ -117,13 +100,6 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     }
 
     fn style<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
-        if self.glass {
-            let style = match self.selected {
-                true => ctx.styles.label(Role::Text),
-                false => ctx.styles.label(Role::Muted),
-            };
-            return ctx.styles.emphasised(style, false, self.italic);
-        }
         let role = if self.selected {
             Role::Text
         } else {
@@ -155,35 +131,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         }
     }
 
-    /// The label is drawn whole: the tab is as wide as it.
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, box_: Rect) {
-        if self.glass {
-            return self.drawn_on_glass(ctx, box_);
-        }
-        hoverable(ctx, box_, self.target.clone());
-        match (self.selected, self.ground) {
-            (true, Some(ground)) => ctx.quad(box_, ground),
-            (true, None) => {
-                crate::shape::ground(ctx, box_, crate::base::ground::Ground::Held);
-                let thick = ctx.tokens.hairline * 2.0;
-                let under = Rect::new(box_.x, box_.bottom() - thick, box_.w, thick);
-                ctx.quad(under, ctx.styles.chosen());
-            }
-            (false, _) => {}
-        }
-        let style = self.style(ctx);
-        let pad = self.pad(ctx);
-        let mut end = box_;
-        if let Some((mark, target)) = self.close {
-            Button::icon(mark, 0, target, Role::Faint).right(ctx, &mut end, 0.0);
-        }
-        if let Some(tally) = self.tally {
-            crate::widgets::faults(ctx, &mut end, tally);
-        }
-        row(ctx, box_, pad, self.label, style);
-    }
-
-    fn drawn_on_glass<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, box_: Rect) {
         let tall = ctx.tokens.row.min(box_.h);
         let pill = crate::shape::band(box_, (box_.h - tall) / 2.0, tall);
         let on = ctx.interact(pill, self.target.clone());
@@ -244,7 +192,7 @@ pub fn marked_glass_tabs<A: App>(
         .iter()
         .enumerate()
         .map(|(i, (mark, label, target))| {
-            let mut tab = Tab::new(label, target.clone(), i == selected).glass();
+            let mut tab = Tab::new(label, target.clone(), i == selected);
             tab.centred = true;
             tab.mark = *mark;
             tab
@@ -273,23 +221,5 @@ fn shares(natural: &[f32], room: f32) -> Vec<f32> {
     natural
         .iter()
         .map(|one| one * room / total.max(1.0))
-        .collect()
-}
-
-/// Tabs from the left of `rect`, the selected one underlined, a hairline under; returns their boxes.
-pub fn tabs<A: App>(
-    ctx: &mut Ctx<'_, A>,
-    rect: Rect,
-    tabs: &[(&str, A::Target)],
-    selected: usize,
-) -> Vec<Rect> {
-    let line = ctx.styles.line();
-    hairline(ctx, rect, line);
-    let mut room = rect;
-    tabs.iter()
-        .enumerate()
-        .map(|(i, (label, target))| {
-            Tab::new(label, target.clone(), i == selected).left(ctx, &mut room, 0.0)
-        })
         .collect()
 }

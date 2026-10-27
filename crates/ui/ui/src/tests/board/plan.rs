@@ -68,8 +68,8 @@ fn up_next(app: &AppState, ui: &Ui) -> Vec<String> {
 fn up_next_stands_in_the_order_the_plan_gives_it() {
     let (mut app, ui) = waiting();
     app.task.plan = vec![
-        groove_controllers::task_service::Placed::now(ExternalId::new("github.com/a/b#3")),
-        groove_controllers::task_service::Placed::now(ExternalId::new("github.com/a/b#2")),
+        groove_controllers::task_service::Placed::new(ExternalId::new("github.com/a/b#3")),
+        groove_controllers::task_service::Placed::new(ExternalId::new("github.com/a/b#2")),
     ];
     assert_eq!(
         up_next(&app, &ui),
@@ -108,7 +108,6 @@ fn a_task_dragged_by_its_place_lands_where_it_was_dropped() {
             groove_controllers::task::Command::Plan(groove_controllers::task::Landing {
                 external_id: third,
                 before: Some(ExternalId::new("github.com/a/b#1")),
-                later: false,
             })
         )]
     );

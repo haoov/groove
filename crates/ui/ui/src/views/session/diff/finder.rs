@@ -1,27 +1,32 @@
-//! The bar that pops over the rows while a search of them is live.
+//! The glass bar that floats over the rows while a search of them is live.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::Search;
+use groove_ui_kit::widgets::{Search, glass_pane};
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     let Some(find) = ui.session.find.as_ref() else {
         return;
     };
-    let [bar, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
+    let sm = ctx.tokens.sm;
+    let room = body.pad(Edges::xy(sm, sm));
+    let [bar, _] = column_in(room, [Spec::default().height(ctx.tokens.bar), Spec::fill()]);
     ctx.layer();
-    let panel = Panel::default().ground(ctx.styles.action());
-    panel.border(ctx.styles.border()).draw(ctx, bar);
+    glass_pane(ctx, bar);
+    let field = bar.pad(Edges::across(sm, sm));
     let search = Search::new(&find.query, Target::Finding, find.typing);
-    search.code().faint(Role::Faint).draw(ctx, bar);
-    count(ctx, bar, &find.count());
+    search
+        .code()
+        .glass(false)
+        .faint(Role::Faint)
+        .draw(ctx, field);
+    count(ctx, field, &find.count());
 }
 
 /// How many matches there are, at the bar's own end.

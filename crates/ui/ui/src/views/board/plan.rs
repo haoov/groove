@@ -42,7 +42,7 @@ fn upcoming<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
         .filter(|task| query.lets_task(task))
         .collect();
     let mut planned = app.task.planned(&left);
-    planned.sort_by_key(|one| (one.later, !app.task.asks(&one.task.external_id)));
+    planned.sort_by_key(|one| !app.task.asks(&one.task.external_id));
     planned
 }
 
@@ -95,7 +95,6 @@ pub fn landing(app: &AppState, ui: &Ui) -> Option<Landing> {
         false => Some(Landing {
             external_id,
             before,
-            later: false,
         }),
     }
 }

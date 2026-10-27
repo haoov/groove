@@ -97,7 +97,6 @@ fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
         };
         let said = format!("{} · {count}", filter.label());
         Tab::new(&said, Target::ArgoFilter(filter), filter == on)
-            .glass()
             .text(Text::Small)
             .quiet(role)
             .left(ctx, &mut room, ctx.tokens.xs);

@@ -94,7 +94,7 @@ fn beside(
 /// The views after the totals, the current one held.
 fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
     for view in DiffView::ALL {
-        let tab = widgets::Tab::new(view.label(), Target::View(view), view == current).glass();
+        let tab = widgets::Tab::new(view.label(), Target::View(view), view == current);
         tab.left(ctx, room, ctx.tokens.xs);
     }
 }
@@ -102,7 +102,7 @@ fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
 /// What the change is read against, the one in use held.
 fn modes(ctx: &mut Ctx, room: &mut Rect, current: DiffMode) {
     for mode in DiffMode::ALL {
-        let tab = widgets::Tab::new(mode.label(), Target::Mode(mode), mode == current).glass();
+        let tab = widgets::Tab::new(mode.label(), Target::Mode(mode), mode == current);
         tab.left(ctx, room, ctx.tokens.xs);
     }
 }

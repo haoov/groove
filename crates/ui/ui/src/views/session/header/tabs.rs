@@ -21,7 +21,7 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &crate::Ui) ->
         .collect();
     for tab in up.into_iter().rev() {
         let on = tab == ui.session.tab && !ui.session.stowed;
-        let shown = groove_ui_kit::widgets::Tab::new(tab.label(), Target::Tab(tab), on).glass();
+        let shown = groove_ui_kit::widgets::Tab::new(tab.label(), Target::Tab(tab), on);
         shown.right(ctx, &mut room, xs);
     }
     room

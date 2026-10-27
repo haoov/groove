@@ -282,24 +282,13 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
 }
 
 #[test]
-fn the_bar_pops_over_the_rows_on_a_ground_of_its_own() {
+fn the_bar_floats_over_the_rows_on_glass() {
     let app = app();
     let mut ui = on_code();
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let above = frame.layers().last().expect("a layer over the rows");
-    assert!(
-        above.quads.iter().any(|quad| quad.color == styles.action()),
-        "the bar stands on its own ground"
-    );
-    for other in [styles.raised(), styles.band(), styles.deep()] {
-        assert_ne!(
-            styles.action(),
-            other,
-            "and that ground is not a header's or a band's"
-        );
-    }
+    assert!(!above.glass.is_empty(), "the bar stands on glass");
 }
 
 #[test]

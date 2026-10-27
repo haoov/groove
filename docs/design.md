@@ -285,9 +285,9 @@ next line at the indent of the one it left. Tab writes what the language's own f
 writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
-surface, `ctrl+f` opens a bar over the file's own header, with the count at its end; enter
-hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc ends
-it. `ctrl+shift+p` opens a file by its path.
+surface, `ctrl+f` floats a glass bar over the file's own header, with the count at its
+end; enter hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc
+ends it. `ctrl+shift+p` opens a file by its path.
 
 **Finding your way in a big change.** Three answers, and none of them is a bigger tree:
 

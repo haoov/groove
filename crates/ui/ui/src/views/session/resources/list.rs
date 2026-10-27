@@ -105,15 +105,13 @@ fn title(
     if let Some(kind) = kind {
         let named = format!("{} \u{b7} {count}", plural(kind));
         let list = Tab::new(&named, Target::ResourceList, held.showing.is_none());
-        list.glass().left(ctx, &mut room, xs);
+        list.left(ctx, &mut room, xs);
     }
     for (at, one) in held.opened.iter().enumerate() {
         let shown = held.showing == Some(at);
         let tab = Tab::new(&one.link.name, Target::ResourceTab(at), shown);
         let close = Target::ResourceClose(at);
-        tab.glass()
-            .close(Mark::Close, close)
-            .left(ctx, &mut room, xs);
+        tab.close(Mark::Close, close).left(ctx, &mut room, xs);
     }
 }
 

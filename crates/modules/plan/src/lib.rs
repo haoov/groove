@@ -1,4 +1,4 @@
-//! The order the user gave the tasks waiting, and the divider they stand either side of.
+//! The order the user gave the tasks waiting.
 
 #[cfg(test)]
 mod tests;
@@ -7,19 +7,15 @@ use groove_db::Db;
 pub use groove_db::Store as Stored;
 use groove_types::{Error, ExternalId, Result};
 
-/// One task's place: where it stands, and whether it stands under the divider.
+/// One task's place in the order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Placed {
     pub external_id: ExternalId,
-    pub later: bool,
 }
 
 impl Placed {
-    pub fn now(external_id: ExternalId) -> Self {
-        Self {
-            external_id,
-            later: false,
-        }
+    pub fn new(external_id: ExternalId) -> Self {
+        Self { external_id }
     }
 }
 
@@ -42,17 +38,14 @@ impl groove_db::Store for Plan {
 impl Plan {
     /// Every placed task, in the order the user gave it.
     pub async fn order(&self) -> Result<Vec<Placed>> {
-        let rows: Vec<(String, i64)> =
-            sqlx::query_as("SELECT external_id, later FROM plan ORDER BY at, external_id")
+        let rows: Vec<(String,)> =
+            sqlx::query_as("SELECT external_id FROM plan ORDER BY at, external_id")
                 .fetch_all(self.db.pool())
                 .await
                 .map_err(failed)?;
         Ok(rows
             .into_iter()
-            .map(|(id, later)| Placed {
-                external_id: ExternalId::new(id),
-                later: later != 0,
-            })
+            .map(|(id,)| Placed::new(ExternalId::new(id)))
             .collect())
     }
 
@@ -64,10 +57,9 @@ impl Plan {
             .await
             .map_err(failed)?;
         for (at, placed) in order.iter().enumerate() {
-            sqlx::query("INSERT INTO plan (external_id, at, later) VALUES (?, ?, ?)")
+            sqlx::query("INSERT INTO plan (external_id, at) VALUES (?, ?)")
                 .bind(placed.external_id.as_str())
                 .bind(at as i64)
-                .bind(i64::from(placed.later))
                 .execute(&mut *tx)
                 .await
                 .map_err(failed)?;

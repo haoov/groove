@@ -44,13 +44,13 @@ pub use modal::{
     Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_under, modal,
     panel_at,
 };
-pub use pane::{Side, glass_aside, pane};
+pub use pane::{Side, glass_aside};
 pub use popup::{Piece, Said, popup};
 pub use question::{offer, question};
 pub use scrolled::scrolled;
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};
-pub use tabs::{Tab, glass_tabs, marked_glass_tabs, tabs};
+pub use tabs::{Tab, glass_tabs, marked_glass_tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;
 pub use toggle::Toggle;

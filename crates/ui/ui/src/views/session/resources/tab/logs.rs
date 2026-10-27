@@ -82,7 +82,7 @@ fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Opti
 
 /// A control of the bar: small text on glass, no padding.
 fn small(tab: Tab<'_, Target>) -> Tab<'_, Target> {
-    tab.glass().text(Text::Small).tight()
+    tab.text(Text::Small).tight()
 }
 
 /// From the right: how the stream stands, where it does not simply stream.

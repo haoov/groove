@@ -110,9 +110,7 @@ fn tabs(shells: Option<&Shells>) -> Vec<(String, u64, bool)> {
 
 /// One tab, a rounded row on the glass, and the cross that ends its terminals.
 fn tab(name: &str, id: u64, selected: bool) -> Tab<'_, Target> {
-    Tab::new(name, Target::ShellTab(id), selected)
-        .glass()
-        .close(Mark::Close, Target::ShellCloseTab(id))
+    Tab::new(name, Target::ShellTab(id), selected).close(Mark::Close, Target::ShellCloseTab(id))
 }
 
 /// One terminal's grid, or what stands in its place; a pane of several can close alone.

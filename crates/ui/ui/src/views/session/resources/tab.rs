@@ -63,7 +63,7 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
     };
     for view in views {
         let shown = Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view);
-        let shown = shown.glass().text(Text::Small).tight();
+        let shown = shown.text(Text::Small).tight();
         shown.right(ctx, &mut room, ctx.tokens.xs);
     }
     let mut at = room.x;

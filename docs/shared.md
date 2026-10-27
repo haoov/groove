@@ -102,9 +102,9 @@ skills says what to do with them, in plain words. Three kinds:
 - **Standalone:** the work belongs to no session — check that every task has its properties
   set, say. The routine has a session of its own to run in.
 - **Action:** no agent of its own. Its `do` names an action built into Groove, which runs it
-  itself. `start-due` opens each task of Up Next above the later divider that must start
-  today — its Start date has come, or today plus its estimate, at eight hours a day, reaches
-  its Due date — and starts `groove:start-task` in the new session's agent. It opens as many
+  itself. `start-due` opens each task of Up Next that must start today — its Start date
+  has come, or today plus its estimate, at eight hours a day, reaches its Due date — and
+  starts `groove:start-task` in the new session's agent. It opens as many
   as the cap at most, and the user's selection stays where it was.
 
 **A standalone routine runs in a routine session.** A session of the kind `routine`, one per
