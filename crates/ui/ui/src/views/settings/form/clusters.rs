@@ -6,6 +6,7 @@ use groove_types::{ClusterChange, ClusterConfig, KubeContext, Login};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Act, Cell, Column, Rows, Shown, Slot, Sorted, Table, Width};
 
@@ -35,6 +36,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState) {
         ],
     );
     group(ctx, first, "Contexts");
+    card(ctx, contexts);
     match added.is_empty() {
         true => quiet(
             ctx,
@@ -44,6 +46,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState) {
         false => known(ctx, contexts, app, added),
     }
     group(ctx, second, "In your kubeconfig, not added");
+    card(ctx, others);
     match (&app.cluster.found, &app.cluster.unread, rest.is_empty()) {
         (None, Some(why), _) => {
             let said = format!("could not read the kubeconfig: {why}");
@@ -60,6 +63,11 @@ fn group(ctx: &mut Ctx, rect: Rect, name: &str) {
     Label::new(name, ctx.styles.label(Role::Faint)).draw(ctx, line);
 }
 
+fn card(ctx: &mut Ctx, rect: Rect) {
+    let ground = Panel::default().ground(ctx.styles.glass_card());
+    ground.radius(ctx.tokens.sm).draw(ctx, rect);
+}
+
 fn quiet(ctx: &mut Ctx, rect: Rect, said: &str) {
     let [line, _] = column_in(rect, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     Label::new(said, ctx.styles.body(Role::Ghost)).draw(ctx, line);
@@ -71,7 +79,7 @@ fn table<'a>(columns: &'a [Column<'a, Target>], count: usize, line: f32) -> Tabl
         rows: Rows {
             first: line,
             under: 0.0,
-            ruled: true,
+            ruled: false,
             carded: false,
         },
         count,

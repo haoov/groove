@@ -468,12 +468,13 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 ## Settings
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
-the user was. Reached from the rail's footer and the palette. A section list on the left —
-Setup, Providers, Clusters, Agent, Appearance, Preferences, Keymap — with a search bar at its top:
-typing filters every section to the matching rows, each shown with its section. The
-selected section's form on the right: labels left, controls right, one row per setting,
-hairlines between groups, paths and ids in mono. Clusters alone is a table, since each
-context holds several settings.
+the user was. Reached from the rail's footer and the palette. A section list on the left,
+on a floating pane of glass as the rail's — Setup, Providers, Clusters, Agent, Appearance,
+Preferences, Keymap — under the title, *back* and a search field: typing filters every
+section to the matching rows, each shown with its section. The selected section's form on
+the right: labels left, controls right as glass buttons, one row per setting, each group a
+rounded card under its name, paths and ids in mono. Clusters alone is a table on its card,
+since each context holds several settings.
 
 **Setup opens on its own once.** At start Groove checks the environment; when a required
 program is missing, claude is signed out or no config file stands, Settings opens on Setup,

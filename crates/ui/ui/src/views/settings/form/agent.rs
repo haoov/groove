@@ -11,7 +11,7 @@ use groove_ui_kit::widgets::{Button, Toggle};
 
 /// A routine's switch, its run and what it does; or one trigger's switch.
 pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
-    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    let (styles, sm) = (ctx.styles, ctx.tokens.sm);
     match value {
         Value::Switch { on, target } => {
             Toggle::new(*on, target.clone()).left(ctx, &mut room, sm);
@@ -27,7 +27,7 @@ pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
                 Label::new(said, ctx.styles.body(*role)).left(ctx, &mut room, sm);
             }
             if let Some((word, target)) = act {
-                Button::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+                Button::glass(word, target.clone(), Role::Muted, &styles).left(ctx, &mut room, sm);
             }
         }
         Value::Routine { id, on, said, runs } => {
@@ -38,7 +38,7 @@ pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             Toggle::new(*on, flip).left(ctx, &mut room, sm);
             if *runs {
                 let run = Target::RoutineRun(id.clone());
-                Button::new("run", run, Role::Muted, ground).left(ctx, &mut room, sm);
+                Button::glass("run", run, Role::Muted, &styles).left(ctx, &mut room, sm);
             }
             Label::new(said, ctx.styles.small(Role::Faint)).draw(ctx, room);
         }
@@ -53,13 +53,14 @@ pub(super) fn skill(
     (id, on, said): (&str, Option<bool>, &str),
     (deletes, asking): (bool, bool),
 ) {
-    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    let (styles, sm) = (ctx.styles, ctx.tokens.sm);
     if asking {
         let question = Label::new("delete it? its file goes", ctx.styles.body(Role::Warn));
         question.left(ctx, &mut room, sm);
         let sure = Target::SkillDeleteSure(id.to_string());
-        Button::new("yes, delete", sure, Role::Muted, ground).left(ctx, &mut room, sm);
-        Button::new("keep", Target::SkillDeleteKeep, Role::Muted, ground).left(ctx, &mut room, sm);
+        Button::glass("yes, delete", sure, Role::Muted, &styles).left(ctx, &mut room, sm);
+        Button::glass("keep", Target::SkillDeleteKeep, Role::Muted, &styles)
+            .left(ctx, &mut room, sm);
         return;
     }
     match on {
@@ -73,7 +74,7 @@ pub(super) fn skill(
     }
     if deletes {
         let delete = Target::SkillDelete(id.to_string());
-        Button::new("delete", delete, Role::Muted, ground).left(ctx, &mut room, sm);
+        Button::glass("delete", delete, Role::Muted, &styles).left(ctx, &mut room, sm);
     }
     Label::new(said, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }

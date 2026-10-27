@@ -18,14 +18,12 @@ use crate::offsets::listed;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::hairline;
+use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, caret_after, picker, screen};
+use groove_ui_kit::widgets::{Button, caret_after, picker, rounded_slice, screen};
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &SettingsUi) {
     let band = Spec::default().height(ctx.tokens.header);
-    let [bar, area] = column_in(area, [band, Spec::fill()]);
-    super::back(ctx, bar);
     let inner = area.pad(Edges::all(ctx.tokens.md));
     let [head, mut body] = column_in(inner, [band, Spec::fill()]);
     let query = settings.search.text();
@@ -67,7 +65,7 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
         height,
         |ctx, rect, line| match line {
             Line::Group(name) => group(ctx, rect, name),
-            Line::Setting(one, ruled) => setting(ctx, rect, one, (searching, *ruled)),
+            Line::Setting(one, ends) => carded(ctx, rect, (one, *ends), searching),
         },
     );
 }
@@ -75,8 +73,8 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
 /// One line of the form: a group's heading, or a row.
 enum Line<'a> {
     Group(&'static str),
-    /// A row, and whether a rule closes it: none while its block goes on under it.
-    Setting(&'a Row, bool),
+    /// A row, and whether it opens and closes its group's card.
+    Setting(&'a Row, (bool, bool)),
 }
 
 /// The rows, a heading wherever the group changes; none while a search mixes them.
@@ -84,12 +82,14 @@ fn lines(shown: &[Row], searching: bool) -> Vec<Line<'_>> {
     let mut out = Vec::new();
     let mut under = "";
     for (at, one) in shown.iter().enumerate() {
+        let opens = at == 0 || !searching && one.group != under;
         if !searching && one.group != under {
             under = one.group;
             out.push(Line::Group(under));
         }
-        let ruled = !shown.get(at + 1).is_some_and(Row::sub);
-        out.push(Line::Setting(one, ruled));
+        let next = shown.get(at + 1);
+        let closes = next.is_none_or(|next| !searching && next.group != one.group);
+        out.push(Line::Setting(one, (opens, closes)));
     }
     out
 }
@@ -114,11 +114,15 @@ fn signing_in(ctx: &mut Ctx, inner: Rect, terminal: &Terminal) -> Rect {
     body
 }
 
+/// A row on its slice of its group's card.
+fn carded(ctx: &mut Ctx, rect: Rect, (one, ends): (&Row, (bool, bool)), searching: bool) {
+    rounded_slice(ctx, rect, ends, (ctx.styles.glass_card(), None));
+    let rect = rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    setting(ctx, rect, one, searching);
+}
+
 /// One row: its label, its group when a search mixes them, its value at the right.
-fn setting(ctx: &mut Ctx, line: Rect, one: &Row, (searching, ruled): (bool, bool)) {
-    if ruled {
-        hairline(ctx, line, ctx.styles.line());
-    }
+fn setting(ctx: &mut Ctx, line: Rect, one: &Row, searching: bool) {
     let [label, room] = row_in(
         line,
         [Spec::default().width(ctx.tokens.aside_mid), Spec::fill()],
@@ -136,7 +140,7 @@ fn setting(ctx: &mut Ctx, line: Rect, one: &Row, (searching, ruled): (bool, bool
 }
 
 fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
-    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    let sm = ctx.tokens.sm;
     match value {
         Value::Text { text, mono } => written(ctx, room, text, *mono),
         Value::Toggle { on, flip } => {
@@ -150,7 +154,8 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         Value::State { shown, role, act } => {
             Label::new(shown, ctx.styles.body(*role)).left(ctx, &mut room, sm);
             if let Some((word, target)) = act {
-                Button::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+                let act = Button::glass(word, target.clone(), Role::Muted, &ctx.styles);
+                act.left(ctx, &mut room, sm);
             }
         }
         Value::Input {
@@ -221,15 +226,17 @@ fn picked(
     (shown, role, target): (&str, Role, &Target),
     act: Option<&(&'static str, Target)>,
 ) {
-    let (band, hover, ground, sm) = (
-        ctx.styles.band(),
-        ctx.styles.hover(),
-        ctx.styles.ground(),
+    let (card, hover, sm) = (
+        ctx.styles.glass_card(),
+        ctx.styles.glass_hover(),
         ctx.tokens.sm,
     );
-    picker(shown, target.clone(), role, band, hover).left(ctx, &mut room, sm);
+    let mut pick = picker(shown, target.clone(), role, card, hover);
+    pick.glass = true;
+    pick.left(ctx, &mut room, sm);
     if let Some((word, at)) = act {
-        Button::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+        let act = Button::glass(word, at.clone(), Role::Muted, &ctx.styles);
+        act.left(ctx, &mut room, sm);
     }
 }
 
@@ -240,12 +247,14 @@ fn stepped(
     shown: &str,
     (less, more): (Option<Preference>, Preference),
 ) {
-    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    let sm = ctx.tokens.sm;
+    let styles = ctx.styles;
+    let step = |word, to| Button::glass(word, Target::SetPreference(to), Role::Muted, &styles);
     if let Some(less) = less {
-        Button::new("−", Target::SetPreference(less), Role::Muted, ground).left(ctx, &mut room, sm);
+        step("−", less).left(ctx, &mut room, sm);
     }
     Label::new(shown, ctx.styles.code(Role::Text)).left(ctx, &mut room, sm);
-    Button::new("+", Target::SetPreference(more), Role::Muted, ground).left(ctx, &mut room, sm);
+    step("+", more).left(ctx, &mut room, sm);
 }
 
 /// A row of words, the ones held in the text's colour, the rest in `quiet`.
@@ -255,10 +264,10 @@ fn held_words(
     words: impl Iterator<Item = (&'static str, bool, Target)>,
     quiet: Role,
 ) {
-    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    let sm = ctx.tokens.sm;
     for (word, held, target) in words {
         let role = if held { Role::Text } else { quiet };
-        Button::new(word, target, role, ground).left(ctx, &mut room, sm);
+        Button::glass(word, target, role, &ctx.styles).left(ctx, &mut room, sm);
     }
 }
 
@@ -267,10 +276,10 @@ fn input(ctx: &mut Ctx, room: Rect, (shown, caret): (&str, Option<&str>), target
     let sm = ctx.tokens.sm;
     let field = room.pad(Edges::across(0.0, sm));
     let (ground, role) = match caret {
-        Some(_) => (Ground::Raised, Role::Text),
-        None => (Ground::Band, Role::Muted),
+        Some(_) => (ctx.styles.glass_chosen(), Role::Text),
+        None => (ctx.styles.glass_hover(), Role::Muted),
     };
-    groove_ui_kit::shape::ground(ctx, field, ground);
+    Panel::default().ground(ground).radius(sm).draw(ctx, field);
     ctx.hit(field, target.clone());
     let text = field.pad(Edges::across(sm, sm));
     let style = ctx.styles.code(role);
