@@ -6,7 +6,6 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{LogSource, PodPart};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Tab, Text};
 
@@ -33,8 +32,8 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate
 
 /// The containers, the run, the range; then the clocks and whether the lines follow.
 fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Option<&Log>) {
-    hairline(ctx, line, ctx.styles.line());
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let xs = ctx.tokens.xs;
     let chosen = tab
         .logs
         .source
@@ -47,7 +46,7 @@ fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Opti
         };
         let source = LogSource::Container(one.name.clone());
         let on = chosen.as_ref() == Some(&source);
-        small(Tab::new(&label, Target::LogSource(source), on)).left(ctx, &mut room, 0.0);
+        small(Tab::new(&label, Target::LogSource(source), on)).left(ctx, &mut room, xs);
     }
     if pod.containers.len() > 1 {
         let on = chosen == Some(LogSource::All);
@@ -60,7 +59,7 @@ fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Opti
         Target::LogPrevious(false),
         !tab.logs.previous,
     ))
-    .left(ctx, &mut room, 0.0);
+    .left(ctx, &mut room, xs);
     match restarted {
         true => {
             let previous = Tab::new("previous", Target::LogPrevious(true), tab.logs.previous);
@@ -77,13 +76,13 @@ fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Opti
         .find(|(_, one)| *one == tab.logs.range)
         .map_or("", |(label, _)| *label);
     let picker = format!("{range} ▾");
-    small(Tab::new(&picker, Target::LogRange, false)).left(ctx, &mut room, 0.0);
+    small(Tab::new(&picker, Target::LogRange, false)).left(ctx, &mut room, xs);
     stands(ctx, &mut room, (tab, log));
 }
 
-/// A control of the bar: small text, no padding.
+/// A control of the bar: small text on glass, no padding.
 fn small(tab: Tab<'_, Target>) -> Tab<'_, Target> {
-    tab.text(Text::Small).tight()
+    tab.glass().text(Text::Small).tight()
 }
 
 /// From the right: how the stream stands, where it does not simply stream.
@@ -111,7 +110,6 @@ fn waiting(ctx: &mut Ctx, body: Rect, log: Option<&Log>) {
 
 /// How much the stream holds against what it may; on the right, whether the view follows its end.
 fn footer(ctx: &mut Ctx, line: Rect, (tab, log): (&Opened, Option<&Log>)) {
-    groove_ui_kit::shape::top_rule(ctx, line, ctx.styles.line());
     let Some(log) = log else {
         return;
     };

@@ -386,12 +386,16 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   live; the age from the object's creation. A header sorts by its column, numbers and ages
   by value, and a second click turns the order round; its edge drags the column's width,
   kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
-  `bil-eu-st` keeps `billing-eu-staging` — and `label=value` words the server filters
-  on. `ctrl+shift+n` opens the namespace panel.
+  `pyth-ca-st` keeps `pythie-cayzn-staging` — and `label=value` words the server filters
+  on. `ctrl+shift+n` opens the namespace panel. No rule stands under the header; a row under
+  the pointer or selected stands on a rounded ground, as the rail's rows do. The list's tab
+  and each open object's are glass tabs as the Files tab's are, an object's with its ×, no
+  rule under them; the find bar is a rounded field.
 - **Object.** A row opens its object in a tab of its own beside the list, `describe ·
   yaml`, and `logs` for a pod. The tab reads the object, its events and its owners by name,
   and a pod's usage every 15 s, while it shows. As YAML it is the file editor's own view of
-  the object, read-only.
+  the object, read-only. Its heading holds the object's status badges, then its views as
+  glass tabs at the end, and no rule stands under it.
 - **Describe.** Described, it is one column of sections, each folding under its heading:
   conditions, a summary of facts a line each, a pod's containers, labels, annotations,
   relations and events. Its relations are the list's table under headings that fold (what
@@ -402,14 +406,18 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   probes, ports and mounts a line each, the ones not ready unfolded. Annotations, relations
   and events start folded. A name, an address, an image, a label or an event's message
   copies on a click: the copy mark shows on hover and turns to a green tick once copied. A
-  link copies the same way; `ctrl`+click opens its object.
+  link copies the same way; `ctrl`+click opens its object. Each section stands on a
+  rounded glass card, its heading lit whole with its caret under the pointer, with no rule
+  between the sections or inside them. A copy under the pointer lights on a rounded glass
+  ground, and a usage's tip floats on glass.
 - **Logs.** Its logs are the file editor's view too, read-only, at the small text size: a
   tab per container and one for all of them, the current run or the previous one, the last
   5 minutes to 24 hours or from the start, each line after its clock; a line naming an
   error is red, a warning yellow. The view follows the last line until the wheel moves it
   up; the footer then counts the lines below and follows them again on a click. A stream
   holds 10 MB, its oldest lines going first, and picks up after a break from its last
-  second.
+  second. Its containers, runs and range are glass tabs over the lines, and no rule
+  stands over or under them.
 - **Argo CD.** Argo CD's Applications list their project, sync, health, auto-sync and
   revision. An Application's describe holds its last sync, red when it failed and blue
   while it runs, its heading included; its conditions; where it syncs to and how; and its
@@ -422,19 +430,22 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   a commit of the list does, fetched first when the clone lacks it. Its `resources` view
   filters by what needs attention (out of sync, to prune, or failed in the last sync), out
   of sync, syncing or all, each in its colour with its count; it opens on what needs
-  attention, or on the sync while one runs. Both it and syncing are the list's table, its
-  headers sorting each group's rows and its edges dragging widths kept for both. Resources
-  stand by kind, each kind a heading on the band's ground, the kinds needing attention
-  first; under all, a kind with nothing to see stands folded. Syncing shows the sync's line
-  over a bar that fills resource by resource, then the PreSync hooks, each wave in order
-  with its Sync hooks on a badge, and the hooks after, each step applied, applying, waiting
-  or failed; a stage done stands folded.
+  attention, or on the sync while one runs. Its filters are glass tabs. Both it and syncing
+  are the list's table, its headers sorting each group's rows and its edges dragging widths
+  kept for both; no rule stands between a group's heading and its rows. Resources stand by
+  kind, the kinds needing attention first; under all, a kind with nothing to see stands
+  folded. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
+  fills resource by resource, then the PreSync hooks, each wave in order with its Sync
+  hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
+  stage done stands folded.
 - **Sidebar.** A search that narrows the kinds — `ctrl+shift+p`; a word in a kind, a
   heading or an API group, `rbac/role` a heading and a kind — then the kinds the contexts
   serve, indented under headings that fold: workloads, network, config, storage, RBAC and
   other for Kubernetes' own, one a CRD group by its name, then cluster for the built-in
   kinds not namespaced. In the search, ↑ and ↓ step through the headings and the kinds;
-  Enter folds a heading or lists a kind. No counts, no health marks.
+  Enter folds a heading or lists a kind. No counts, no health marks. The search is a
+  rounded field, as the files' search is; a heading or a kind under the pointer lights on
+  glass, and the kind shown stands on a rounded ground.
 
 ### Review sheet
 

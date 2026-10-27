@@ -1,6 +1,6 @@
 //! The search at the sidebar's top: one rounded field, for a path or for text, always there.
 
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -8,16 +8,14 @@ use crate::hit::Target;
 use crate::views::session::{Bar, Term};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::{Panel, band};
-use groove_ui_kit::widgets::{Button, Search};
+use groove_ui_kit::widgets::{Button, Search, glass_field};
 
 /// The field for the term in use, and what switches it to the other. Returns what it took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
     let (row, sm) = (ctx.tokens.row, ctx.tokens.sm);
     let [whole, _] = column_in(rect, [Spec::default().height(row + sm), Spec::fill()]);
-    let field = band(whole, sm / 2.0, row).pad(Edges::across(sm, 0.0));
+    let field = glass_field(ctx, whole);
     let ground = ctx.styles.glass_hover();
-    Panel::default().ground(ground).radius(sm).draw(ctx, field);
     let bar = &ui.session.bar;
     let term = shown(bar);
     let other = match term {

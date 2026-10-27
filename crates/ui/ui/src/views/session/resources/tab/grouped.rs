@@ -48,7 +48,7 @@ pub(super) fn draw<'a>(
         rows: Rows {
             first: ctx.tokens.row,
             under: 0.0,
-            ruled: true,
+            ruled: false,
             carded: false,
         },
         count,
@@ -89,7 +89,7 @@ pub(super) fn single<'a>(
         rows: Rows {
             first: ctx.tokens.row,
             under: 0.0,
-            ruled: true,
+            ruled: false,
             carded: false,
         },
         count: 1,

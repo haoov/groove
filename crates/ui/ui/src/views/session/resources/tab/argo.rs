@@ -45,10 +45,11 @@ pub(super) fn tint(app: &AppPart) -> Option<Role> {
     }
 }
 
-/// A row of the operation, on its colour from the panel's edge to the other.
+/// A row of the operation, on its colour, rounded.
 pub(super) fn ground(ctx: &mut Ctx, line: Rect, role: Role) {
     Panel::default()
         .ground(ctx.styles.tint(role))
+        .radius(ctx.tokens.sm)
         .draw(ctx, line);
 }
 
@@ -188,7 +189,7 @@ pub(super) fn source_rows(one: &AppSource) -> usize {
 pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&str>) {
     let row = Spec::default().height(ctx.tokens.row);
     let lines = column_of(rect, &vec![row; source_rows(one)]);
-    let tag = Spec::default().width(ctx.tokens.lg * 2.0);
+    let tag = Spec::default().width(ctx.tokens.aside_near);
     let [kind, head] = row_in(lines[0], [tag, Spec::fill()]);
     let is_chart = one.chart.is_some();
     let said = if is_chart { "chart" } else { "git" };

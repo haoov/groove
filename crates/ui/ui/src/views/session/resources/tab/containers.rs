@@ -4,9 +4,9 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{Container, Pressure, State, Usage, bytes, cores, gauge, quantity};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
-use groove_ui_kit::shape::{Panel, hung_under};
+use groove_ui_kit::shape::hung_under;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Cell, Column, Shown, Width};
+use groove_ui_kit::widgets::{Cell, Column, Shown, Width, glass_pane};
 
 use super::super::opened::Opened;
 use super::{copy, grouped};
@@ -136,11 +136,7 @@ pub(super) fn tip(ctx: &mut Ctx, tip: &Tip) {
         row * tip.lines.len() as f32 + sm * 2.0,
     );
     let box_ = hung_under(tip.under, size);
-    Panel::default()
-        .ground(ctx.styles.deep())
-        .border(ctx.styles.line())
-        .radius(ctx.tokens.corner)
-        .draw(ctx, box_);
+    glass_pane(ctx, box_);
     let inside = box_.pad(Edges::all(sm)).pad(Edges::across(sm, sm));
     let lines = column_of(inside, &vec![Spec::default().height(row); tip.lines.len()]);
     for (line, (key, value)) in lines.iter().zip(&tip.lines) {

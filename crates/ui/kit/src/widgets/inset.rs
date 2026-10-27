@@ -47,6 +47,14 @@ pub fn glass_hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Targ
     on
 }
 
+/// A row-high field on a rounded glass ground, centred in `rect`; returns the field.
+pub fn glass_field<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) -> Rect {
+    let down = ((rect.h - ctx.tokens.row) / 2.0).max(0.0);
+    let field = rect.pad(Edges::xy(ctx.tokens.sm, down));
+    ctx.rounded(field, ctx.styles.glass_hover(), ctx.tokens.sm);
+    field
+}
+
 /// The room inside a card above its content and below it.
 pub fn card_inset(tokens: &crate::base::tokens::Tokens) -> f32 {
     tokens.sm

@@ -7,7 +7,7 @@ use super::{Cell, Line, Shown, Slot, Table};
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{hairline, hoverable};
+use crate::shape::hairline;
 
 impl<T: Clone + PartialEq> Table<'_, T> {
     pub(super) fn header<A: App<Target = T>>(
@@ -16,7 +16,6 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         line: Rect,
         spans: &[(f32, f32)],
     ) {
-        hairline(ctx, line, ctx.styles.line());
         for (at, column) in self.columns.iter().enumerate() {
             let (x, w) = spans[at];
             let rect = Rect::new(x, line.y, w, line.h);
@@ -53,7 +52,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         selected: bool,
     ) {
         match shown {
-            Shown::Band(band) => banded(ctx, line, band, selected),
+            Shown::Band(band) => banded(ctx, line, band, (selected, self.rows.ruled)),
             Shown::Row(row) => self.row(ctx, line, spans, row, selected),
         }
     }
@@ -74,10 +73,10 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             crate::widgets::glass_card_row(ctx, line, row.target.clone(), selected);
         } else {
             if selected {
-                crate::shape::chosen(ctx, line);
+                crate::widgets::glass_chosen(ctx, line);
             }
             if let Some(target) = row.target.clone() {
-                hoverable(ctx, line, target);
+                crate::widgets::glass_hoverable(ctx, line, target);
             }
         }
         let mut rest = match self.rows.carded {

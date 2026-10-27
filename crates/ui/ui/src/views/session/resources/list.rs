@@ -4,13 +4,11 @@ use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::{KubeKind, ObjectRow, WatchKey};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Column, Rows, Search, Sorted, Tab, Table, Text, Width};
+use groove_ui_kit::widgets::{Column, Rows, Search, Sorted, Tab, Table, Width, glass_field};
 
 mod cells;
 mod order;
@@ -86,14 +84,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
 
 /// The find bar over the rows: what it narrows by, typed.
 fn found(ctx: &mut Ctx, line: Rect, held: &ResourcesUi) {
-    groove_ui_kit::shape::ground(ctx, line, Ground::Work);
-    hairline(ctx, line, ctx.styles.line());
+    let field = glass_field(ctx, line);
     let search = Search::new(&held.search, Target::ResourceSearch, held.typing);
     search
         .hint("name, or label=value")
         .code()
         .faint(Role::Faint)
-        .draw(ctx, line);
+        .draw(ctx, field);
 }
 
 /// The list's own tab, its kind and how many rows it holds, then a tab for each object open.
@@ -103,29 +100,20 @@ fn title(
     (kind, count): (Option<&KubeKind>, usize),
     held: &ResourcesUi,
 ) {
-    groove_ui_kit::shape::ground(ctx, strip, Ground::Band);
-    hairline(ctx, strip, ctx.styles.line());
-    let mut room = strip;
-    let ground = ctx.styles.ground();
+    let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.md));
+    let xs = ctx.tokens.xs;
     if let Some(kind) = kind {
-        let named = format!("{} · {count}", plural(kind));
-        Tab::new(&named, Target::ResourceList, held.showing.is_none())
-            .text(Text::Small)
-            .quiet(Role::Muted)
-            .ground(ground)
-            .left(ctx, &mut room, 0.0);
+        let named = format!("{} \u{b7} {count}", plural(kind));
+        let list = Tab::new(&named, Target::ResourceList, held.showing.is_none());
+        list.glass().left(ctx, &mut room, xs);
     }
     for (at, one) in held.opened.iter().enumerate() {
-        Tab::new(
-            &one.link.name,
-            Target::ResourceTab(at),
-            held.showing == Some(at),
-        )
-        .text(Text::Small)
-        .quiet(Role::Muted)
-        .ground(ground)
-        .close(Mark::Close, Target::ResourceClose(at))
-        .left(ctx, &mut room, 0.0);
+        let shown = held.showing == Some(at);
+        let tab = Tab::new(&one.link.name, Target::ResourceTab(at), shown);
+        let close = Target::ResourceClose(at);
+        tab.glass()
+            .close(Mark::Close, close)
+            .left(ctx, &mut room, xs);
     }
 }
 

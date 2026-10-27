@@ -35,8 +35,8 @@ pub use heading::Heading;
 pub use icon::{busy, dot, icon, lead, turned};
 pub use input::{Lead, caret_after, input_at, stepped_input, typed_line};
 pub use inset::{
-    card_inset, glass_card_row, glass_chosen, glass_hoverable, glass_lit, glass_tinted, inset_row,
-    rounded_slice,
+    card_inset, glass_card_row, glass_chosen, glass_field, glass_hoverable, glass_lit,
+    glass_tinted, inset_row, rounded_slice,
 };
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};

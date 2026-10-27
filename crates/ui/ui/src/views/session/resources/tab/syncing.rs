@@ -7,7 +7,7 @@ use groove_types::{AppPart, Operation};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::{Panel, hairline};
+use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Shown};
 
@@ -48,7 +48,6 @@ pub(super) fn draw(
     for stage in &mut stages {
         grouped::order(&mut stage.steps, tab, key);
     }
-    hairline(ctx, line, ctx.styles.line());
     progress(ctx, line, (part, operation), &stages);
     let mut lines = Vec::new();
     for stage in &stages {
@@ -79,13 +78,14 @@ fn progress(
     (part, operation): (&AppPart, &Operation),
     stages: &[Stage],
 ) {
+    let line = line.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     if let Some(role) = argo::tint(part) {
         argo::ground(ctx, line, role);
     }
     let steps = stages.iter().flat_map(|stage| &stage.steps);
     let total = steps.clone().count().max(1);
     let done = steps.filter(|one| one.state == State::Done).count();
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let mut room = line.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     let said = format!("{done} of {total}");
     Label::new(&said, ctx.styles.small(Role::Faint)).right(ctx, &mut room, ctx.tokens.sm);
     let gap = Spec::default().width(ctx.tokens.md);
@@ -93,11 +93,18 @@ fn progress(
     let [room, _, bar] = row_in(room, [Spec::fill(), gap, bar]);
     let thick = Spec::default().height(ctx.tokens.sm);
     let [_, track, _] = column_in(bar, [Spec::fill(), thick, Spec::fill()]);
-    Panel::default().ground(ctx.styles.line()).draw(ctx, track);
+    let round = ctx.tokens.sm / 2.0;
+    let rail = Panel::default()
+        .ground(ctx.styles.glass_hover())
+        .radius(round);
+    rail.draw(ctx, track);
     let part = Spec::default().width(track.w * done as f32 / total as f32);
     let [filled, _] = row_in(track, [part, Spec::fill()]);
     let working = ctx.styles.color(Role::Working);
-    Panel::default().ground(working).draw(ctx, filled);
+    Panel::default()
+        .ground(working)
+        .radius(round)
+        .draw(ctx, filled);
     argo::operation(ctx, room, operation, ctx.now);
 }
 

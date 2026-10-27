@@ -8,7 +8,7 @@ use groove_types::{
     AppCondition, AppSource, Container, Described, Operation, PodPart, SyncedResource, Usage,
 };
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::widgets::scrolled;
+use groove_ui_kit::widgets::{rounded_slice, scrolled};
 
 use super::super::opened::{Opened, Section};
 use super::argo;
@@ -36,9 +36,10 @@ pub(super) enum Block<'a> {
     Detail((&'static str, String)),
     Pair(&'a (String, String)),
     Event(&'a groove_types::EventRow),
+    /// The room between two cards.
     Gap,
-    /// The hairline over a section that follows another.
-    Rule,
+    /// The room inside a card above its heading and below what it holds.
+    Inset,
 }
 
 /// What a section's heading says after its name.
@@ -57,7 +58,7 @@ pub(super) fn draw(
     let blocks = blocks(app, (tab, object), &events, ctx.now);
     let md = ctx.tokens.md;
     let usage = usage(app, tab);
-    let keys = key_width(ctx, object, body.w - md * 2.0);
+    let keys = key_width(ctx, object, body.w - (md + md) * 2.0);
     let heights: Vec<f32> = blocks.iter().map(|one| height(ctx, one)).collect();
     let indexed: Vec<(usize, &Block)> = blocks.iter().enumerate().collect();
     let tint = tinted(object, &blocks);
@@ -69,10 +70,21 @@ pub(super) fn draw(
         &indexed,
         |(at, _)| heights[*at],
         |ctx, line, (at, block)| {
-            if let Some((role, _)) = tint.filter(|(_, until)| at < until) {
-                argo::ground(ctx, line, role);
+            if matches!(block, Block::Gap) {
+                return;
             }
-            let rect = line.pad(Edges::across(md, md));
+            let card = line.pad(Edges::across(md, md));
+            let ground = match tint.filter(|(_, until)| at < until) {
+                Some((role, _)) => ctx.styles.tint(role),
+                None => ctx.styles.glass_card(),
+            };
+            let gap = |one: Option<&Block>| matches!(one, None | Some(Block::Gap));
+            let ends = (gap(blocks.get(at.wrapping_sub(1))), gap(blocks.get(at + 1)));
+            rounded_slice(ctx, card, ends, (ground, None));
+            let rect = match block {
+                Block::Heading(..) => card,
+                _ => card.pad(Edges::across(md, md)),
+            };
             let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()));
             tip = drawn.or(tip.take());
         },
@@ -107,17 +119,19 @@ fn one(
         Block::Detail(line) => containers::detail(ctx, rect, line, last),
         Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
         Block::Event(row) => sections::event(ctx, rect, row, last),
-        Block::Gap => {}
-        Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
+        Block::Gap | Block::Inset => {}
     }
     None
 }
 
-/// The operation's colour, and the blocks it stands under: from the top to the rule after it.
+/// The operation's colour, and the blocks of the first card it tints.
 fn tinted(object: &Described, blocks: &[Block]) -> Option<(Role, usize)> {
     let role = object.app.as_deref().and_then(argo::tint)?;
-    let until = blocks.iter().position(|one| matches!(one, Block::Rule));
-    Some((role, until.unwrap_or(blocks.len())))
+    let until = blocks
+        .iter()
+        .skip(1)
+        .position(|one| matches!(one, Block::Gap));
+    Some((role, until.map_or(blocks.len(), |at| at + 1)))
 }
 
 /// A row of the operation.
@@ -137,7 +151,7 @@ fn height(ctx: &Ctx, block: &Block) -> f32 {
         Block::Relation(_, true) | Block::Container(_, true) => row * 2.0,
         Block::Source(one) => row * argo::source_rows(one) as f32,
         Block::Gap => ctx.tokens.md,
-        Block::Rule => ctx.tokens.sm,
+        Block::Inset => groove_ui_kit::widgets::card_inset(&ctx.tokens),
         _ => row,
     }
 }
@@ -153,12 +167,13 @@ fn blocks<'a>(
     let mut out = vec![Block::Gap];
     for (section, count, held) in parts {
         if out.len() > 1 {
-            out.extend([Block::Gap, Block::Rule]);
+            out.push(Block::Gap);
         }
-        out.push(Block::Heading(section, count));
+        out.extend([Block::Inset, Block::Heading(section, count)]);
         if !tab.shut.contains(&section) {
             out.extend(held);
         }
+        out.push(Block::Inset);
     }
     out.push(Block::Gap);
     out

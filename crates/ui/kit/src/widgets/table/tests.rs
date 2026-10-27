@@ -165,7 +165,7 @@ fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
 }
 
 #[test]
-fn a_selected_band_stands_on_the_held_ground_between_the_chosen_rules() {
+fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
     let columns = [column(Width::Fill)];
     let table = Table {
         columns: &columns,
@@ -183,16 +183,14 @@ fn a_selected_band_stands_on_the_held_ground_between_the_chosen_rules() {
     let band = Shown::band(vec![Cell::small("pods", Role::Text)]);
     let ((held, chosen), frame) = drawn(|ctx| {
         table.one(ctx, ROOM, band);
-        (ctx.styles.held(), ctx.styles.chosen())
+        (ctx.styles.glass_chosen(), ctx.styles.chosen())
     });
     let quads = &frame.layers()[0].quads;
     let line = Rect { h: 24.0, ..ROOM };
-    assert!(
-        quads
-            .iter()
-            .any(|one| one.rect == line && one.color == held)
-    );
-    assert_eq!(quads.iter().filter(|one| one.color == chosen).count(), 2);
+    let ground = quads.iter().find(|one| one.color == held).expect("held");
+    assert!(ground.rect.w < line.w, "set in from the sides");
+    assert!(ground.shape.radius > 0.0, "and rounded");
+    assert_eq!(quads.iter().filter(|one| one.color == chosen).count(), 0);
 }
 
 #[test]
