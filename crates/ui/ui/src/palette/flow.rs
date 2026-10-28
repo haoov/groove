@@ -6,7 +6,9 @@ mod kinds;
 
 pub use self::kinds::chosen as kind_chosen;
 
-use self::choices::{base_prompt, pool_choices, repo_choices, session_choices, worktree_choices};
+use self::choices::{
+    base_prompt, open_choices, pool_choices, repo_choices, session_choices, worktree_choices,
+};
 
 use groove_controllers::{AppState, Command, session};
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
@@ -18,6 +20,7 @@ pub enum Action {
     AddWorktree,
     RemoveRepo,
     SelectWorktree,
+    SelectSession,
     CloseWorktree,
     /// Closes a worktree whatever it holds that origin lacks.
     ForceCloseWorktree,
@@ -37,6 +40,7 @@ impl Action {
             Action::AddWorktree => "session.add_worktree",
             Action::RemoveRepo => "session.remove_repo",
             Action::SelectWorktree => "session.select_worktree",
+            Action::SelectSession => "session.select",
             Action::CloseWorktree | Action::ForceCloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
@@ -120,11 +124,14 @@ impl Flow {
 
     /// The next question, or `None` when every answer is in.
     pub fn prompt(&self, app: &AppState) -> Option<Prompt> {
-        if self.action == Action::ForceDelete {
-            return self
-                .answers
-                .is_empty()
-                .then(|| Prompt::choose("session", session_choices(app)));
+        let sessions = match self.action {
+            Action::ForceDelete => Some(session_choices(app)),
+            Action::SelectSession => Some(open_choices(app, &self.session)),
+            _ => None,
+        };
+        if let Some(sessions) = sessions {
+            let first = self.answers.is_empty();
+            return first.then(|| Prompt::choose("session", sessions));
         }
         let open = app.session.get(&self.session)?;
         let step = self.answers.len();
@@ -217,6 +224,9 @@ impl Flow {
                 force: false,
             },
             Action::SelectWorktree => select(session, answer(0)),
+            Action::SelectSession => session::Command::Select {
+                session: SessionId::new(answer(0)),
+            },
             Action::CloseWorktree | Action::ForceCloseWorktree => session::Command::CloseWorktree {
                 session,
                 worktree: WorktreeId::new(answer(0)),

@@ -29,6 +29,7 @@ pub enum Action {
     SelectContext,
     SelectKind,
     SelectWorktree,
+    SelectSession,
     Terminals,
     NewTerminal,
     Reload,

@@ -17,7 +17,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::Palette => return palette(ui),
         Action::SelectNamespace | Action::SelectContext => return scope(ui, app, action),
         Action::SelectKind => return kinds(ui, app),
-        Action::SelectWorktree => return worktrees(ui, app),
+        Action::SelectWorktree | Action::SelectSession => return flowed(action, ui, app),
         Action::Settings if ui.settings.open => return ui.close_settings(),
         Action::Settings => return ui.open_settings(),
         Action::Board => return board(ui),
@@ -126,17 +126,21 @@ pub(super) fn kinds(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     unknown.map(|one| Command::Cluster(discover(one))).collect()
 }
 
-/// The palette on every worktree of the session, as `repo/branch`.
-fn worktrees(ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let Some(open) = app
-        .session
-        .selected()
-        .filter(|one| !one.worktrees.is_empty())
-    else {
-        return Vec::new();
+/// The palette on the session's worktrees, as `repo/branch`, or on the other open sessions.
+fn flowed(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let open = app.session.selected();
+    let flow = match action {
+        Action::SelectSession => {
+            let session = open.map(|one| one.session.id.clone());
+            let session = session.unwrap_or_else(|| groove_types::SessionId::new(""));
+            Flow::new(FlowAction::SelectSession, session)
+        }
+        _ => match open.filter(|one| !one.worktrees.is_empty()) {
+            Some(open) => Flow::new(FlowAction::SelectWorktree, open.session.id.clone()),
+            None => return Vec::new(),
+        },
     };
     ui.surface = Surface::Session;
-    let flow = Flow::new(FlowAction::SelectWorktree, open.session.id.clone());
     ui.overlay = Some(Overlay::Palette(Palette {
         flow: Some(flow),
         ..Palette::default()

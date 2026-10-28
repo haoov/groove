@@ -25,6 +25,7 @@ fn flowed(action: Action) -> Mark {
         | Action::ForceCloseWorktree
         | Action::ForceDelete => Mark::Close,
         Action::SelectWorktree => Mark::Git,
+        Action::SelectSession => Mark::Sidebar,
         Action::RenameExplorer => Mark::Explorer,
         Action::AttachCluster | Action::DetachCluster | Action::PickKind => Mark::Cluster,
     }

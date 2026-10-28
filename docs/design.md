@@ -360,12 +360,14 @@ dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an 
 takes the last answer back into it, and on the first question returns to the entries.
 Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
 
-**A worktree, a kind and a namespace are one chord away.** `alt+w` opens the palette on
-the session's worktrees as `repo/branch`. `alt+k` opens it on the kinds the session's
+**A session, a worktree, a kind and a namespace are one chord away.** `alt+s` opens the
+palette on the other open sessions by title and id, `alt+w` on the session's worktrees as
+`repo/branch`. `alt+k` opens it on the kinds the session's
 contexts serve, each with its short names and its group; a short name typed whole comes
 first, and Enter lists the kind. `alt+n` opens the namespace panel, `alt+c` the context
 panel.
-Enforced by `alt_w_picks_a_worktree_by_repo_and_branch_ranked`,
+Enforced by `alt_s_picks_another_open_session_by_its_title_or_its_id`,
+`alt_w_picks_a_worktree_by_repo_and_branch_ranked`,
 `alt_k_picks_a_kind_by_its_name_its_short_name_or_its_group_and_lists_it`,
 `alt_n_then_a_ranked_query_and_enter_shows_that_namespace_alone_and_space_adds_one` and
 `alt_c_opens_the_context_panel_and_again_shuts_it`.

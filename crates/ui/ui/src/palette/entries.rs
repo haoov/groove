@@ -121,7 +121,7 @@ fn explorer(open: &Open) -> Vec<Entry> {
     ]
 }
 
-/// Closing this session, and switching to any other open one.
+/// Closing this session, and switching to another open one.
 fn sessions(app: &AppState, open: &Open) -> Vec<Entry> {
     let id = open.session.id.clone();
     let mut out = vec![Entry::command(
@@ -131,13 +131,11 @@ fn sessions(app: &AppState, open: &Open) -> Vec<Entry> {
             session: id.clone(),
         }),
     )];
-    for other in app.session.open.iter().filter(|o| o.session.id != id) {
-        out.push(Entry::command(
+    if app.session.open.iter().any(|one| one.session.id != id) {
+        out.push(Entry::flow(
             "Session",
-            format!("Switch to {}", other.session.title),
-            Command::Session(session::Command::Select {
-                session: other.session.id.clone(),
-            }),
+            "Switch session",
+            Action::SelectSession,
         ));
     }
     out
