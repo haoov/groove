@@ -52,12 +52,12 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 43] = [
+pub const TABLE: [Spec; 45] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
         App,
-        &["alt+k"],
+        &["alt+shift+;"],
     ),
     spec(
         A::Settings,
@@ -163,6 +163,24 @@ pub const TABLE: [Spec; 43] = [
         &["alt+shift+4"],
     ),
     spec(
+        A::SelectNamespace,
+        ("resources.select_namespace", "pick the namespaces", "Panes"),
+        App,
+        &["alt+n"],
+    ),
+    spec(
+        A::SelectContext,
+        ("resources.select_context", "pick the contexts", "Panes"),
+        App,
+        &["alt+c"],
+    ),
+    spec(
+        A::SelectKind,
+        ("resources.select_kind", "pick a kind", "Panes"),
+        App,
+        &["alt+k"],
+    ),
+    spec(
         A::Terminals,
         ("terminals.toggle", "terminals", "Panes"),
         App,
@@ -225,12 +243,6 @@ pub const TABLE: [Spec; 43] = [
         &["ctrl+f"],
     ),
     spec(
-        A::SelectNamespace,
-        ("resources.select_namespace", "select a namespace", "Code"),
-        Code,
-        &["ctrl+shift+n"],
-    ),
-    spec(
         A::FindNext,
         ("find.next", "next match", "Code"),
         Code,
@@ -244,11 +256,7 @@ pub const TABLE: [Spec; 43] = [
     ),
     spec(
         A::OpenPath,
-        (
-            "files.open_path",
-            "open a file by path, or search the kinds",
-            "Code",
-        ),
+        ("files.open_path", "open a file by path", "Code"),
         Code,
         &["ctrl+shift+p"],
     ),

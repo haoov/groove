@@ -118,13 +118,4 @@ fn a_folded_sidebar_keeps_its_fields_but_gives_them_no_keys() {
         .as_ref()
         .map(|one| one.named().to_string());
     assert_eq!(named.as_deref(), Some(""), "the name row is folded away");
-
-    ui.session.tab = Tab::Resources;
-    ui.session.resources.filtering = true;
-    typed("x", &mut ui, &app);
-    assert_eq!(
-        ui.session.resources.filter.text(),
-        "",
-        "the kinds search too"
-    );
 }

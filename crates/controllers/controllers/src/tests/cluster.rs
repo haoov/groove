@@ -229,6 +229,7 @@ fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
         plural: "pods".into(),
         namespaced: true,
         watchable: true,
+        short_names: Vec::new(),
     };
     let key = FollowKey::named("kind", &pods, Some("shop"), "api-0");
     let object = Described {

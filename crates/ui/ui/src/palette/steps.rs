@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 
-use super::{Outcome, Palette};
+use super::{Act, Action, Outcome, Palette};
 
 impl Palette {
     /// The typed text or the picked option becomes the answer; the flow moves on or ends.
@@ -40,10 +40,21 @@ impl Palette {
                 ..Outcome::default()
             };
         }
-        let command = flow.command();
-        self.flow = None;
+        self.ended()
+    }
+
+    /// Every answer in: the flow's command, or the kind it picked; the palette shuts.
+    fn ended(&mut self) -> Outcome {
+        let Some(flow) = self.flow.take() else {
+            return Outcome::default();
+        };
+        let (commands, act) = match flow.action {
+            Action::PickKind => (Vec::new(), flow.answers.first().cloned().map(Act::Kind)),
+            _ => (flow.command().into_iter().collect(), None),
+        };
         Outcome {
-            commands: command.into_iter().collect(),
+            commands,
+            act,
             close: true,
             ..Outcome::default()
         }
@@ -57,12 +68,12 @@ impl Palette {
                 self.reset();
                 Outcome::default()
             }
-            Some(_) => {
+            Some(flow) if !flow.from.0.is_empty() => {
                 self.flow = None;
                 self.reset();
                 Outcome::default()
             }
-            None => Outcome {
+            _ => Outcome {
                 close: true,
                 ..Outcome::default()
             },

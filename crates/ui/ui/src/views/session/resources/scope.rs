@@ -10,9 +10,6 @@ use groove_ui_kit::widgets::Field;
 /// The whole cluster, where a namespace would stand in a short label.
 pub const WHOLE_MARK: &str = "*";
 
-/// The whole cluster, as a line of the scope panel.
-pub const WHOLE_LINE: &str = "* whole cluster";
-
 /// The whole cluster, as a name under its context.
 pub const WHOLE_NAME: &str = "whole cluster";
 
@@ -23,7 +20,8 @@ pub const READER: &str = "resources";
 pub struct ResourcesUi {
     /// What the pickers leave out; nothing left out is everything the session holds.
     pub hidden_contexts: BTreeSet<String>,
-    pub hidden: BTreeSet<Attached>,
+    /// The namespaces picked; a context with none picked shows all it holds.
+    pub picked: BTreeSet<Attached>,
     /// The kind picked in the sidebar; none is the pods.
     pub kind: Option<KubeKind>,
     /// The list's find bar: words narrow by name, a word with `=` is a label selector.
@@ -31,9 +29,6 @@ pub struct ResourcesUi {
     /// The find bar stands over the list, and has the keys.
     pub finding: bool,
     pub typing: bool,
-    /// The sidebar's search, which narrows the kinds, and whether it has the keys.
-    pub filter: Field,
-    pub filtering: bool,
     /// The kind the arrows stand on, by its place among the kinds shown.
     pub cursor: Option<usize>,
     /// The sidebar's headings folded shut.
@@ -65,44 +60,6 @@ pub struct Dragged {
     pub width: f32,
 }
 
-/// One row of a scope picker: a context, or one context and namespace pair.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Pick {
-    Context(String),
-    Pair(Attached),
-}
-
-impl Pick {
-    pub fn shown(&self, ui: &ResourcesUi) -> bool {
-        match self {
-            Pick::Context(context) => !ui.hidden_contexts.contains(context),
-            Pick::Pair(pair) => !ui.hidden.contains(pair),
-        }
-    }
-
-    pub fn toggle(&self, ui: &mut ResourcesUi) {
-        match self {
-            Pick::Context(context) => {
-                groove_types::toggle(&mut ui.hidden_contexts, context.clone())
-            }
-            Pick::Pair(pair) => groove_types::toggle(&mut ui.hidden, pair.clone()),
-        }
-        ui.scroll = 0.0;
-    }
-}
-
-/// The scope narrowed to one pair.
-pub fn focus(held: &mut ResourcesUi, open: &Open, pair: &Attached) {
-    held.hidden_contexts.clear();
-    held.hidden = open
-        .clusters
-        .iter()
-        .filter(|one| *one != pair)
-        .cloned()
-        .collect();
-    held.scroll = 0.0;
-}
-
 /// The contexts the session holds, in the order first attached.
 pub fn contexts(open: &Open) -> Vec<&str> {
     let mut out: Vec<&str> = Vec::new();
@@ -121,7 +78,7 @@ pub fn shown_contexts<'a>(open: &'a Open, ui: &ResourcesUi) -> Vec<&'a str> {
     out
 }
 
-/// The pairs whose context is picked: what the namespace picker offers.
+/// The pairs the session holds whose context is picked.
 pub fn offered<'a>(open: &'a Open, ui: &ResourcesUi) -> impl Iterator<Item = &'a Attached> {
     let hidden = ui.hidden_contexts.clone();
     open.clusters
@@ -129,9 +86,76 @@ pub fn offered<'a>(open: &'a Open, ui: &ResourcesUi) -> impl Iterator<Item = &'a
         .filter(move |one| !hidden.contains(&one.context))
 }
 
+/// Whether the session lets the list read `pair`: held as it is, or within a whole cluster held.
+pub fn holds(open: &Open, pair: &Attached) -> bool {
+    open.clusters
+        .iter()
+        .any(|one| one.context == pair.context && (one.namespace.is_none() || one == pair))
+}
+
+/// The pairs one context shows: those picked, else every one the session holds there.
+fn showing(open: &Open, ui: &ResourcesUi, context: &str) -> Vec<Attached> {
+    let picked: Vec<Attached> = ui
+        .picked
+        .iter()
+        .filter(|one| one.context == context && holds(open, one))
+        .cloned()
+        .collect();
+    match picked.is_empty() {
+        true => open
+            .clusters
+            .iter()
+            .filter(|one| one.context == context)
+            .cloned()
+            .collect(),
+        false => picked,
+    }
+}
+
 /// The pairs the list reads.
-pub fn held<'a>(open: &'a Open, ui: &'a ResourcesUi) -> impl Iterator<Item = &'a Attached> {
-    offered(open, ui).filter(|one| !ui.hidden.contains(one))
+pub fn held(open: &Open, ui: &ResourcesUi) -> Vec<Attached> {
+    shown_contexts(open, ui)
+        .into_iter()
+        .flat_map(|context| showing(open, ui, context))
+        .collect()
+}
+
+/// Whether the list reads `pair` as it stands.
+pub fn shows(open: &Open, ui: &ResourcesUi, pair: &Attached) -> bool {
+    !ui.hidden_contexts.contains(&pair.context) && showing(open, ui, &pair.context).contains(pair)
+}
+
+/// The list on `pair` alone.
+pub fn focus(held: &mut ResourcesUi, open: &Open, pair: &Attached) {
+    held.hidden_contexts = contexts(open)
+        .into_iter()
+        .filter(|one| *one != pair.context)
+        .map(String::from)
+        .collect();
+    held.picked.retain(|one| one.context != pair.context);
+    held.picked.insert(pair.clone());
+    held.scroll = 0.0;
+}
+
+/// `pair` shown or left out; a namespace picked under a whole cluster shown narrows it.
+pub fn toggle(held: &mut ResourcesUi, open: &Open, pair: &Attached) {
+    let context = pair.context.clone();
+    let mut now = match held.hidden_contexts.remove(&context) {
+        true => Vec::new(),
+        false => showing(open, held, &context),
+    };
+    let whole = now.iter().any(|one| one.namespace.is_none());
+    match now.iter().position(|one| one == pair) {
+        Some(at) => _ = now.remove(at),
+        None if whole || pair.namespace.is_none() => now = vec![pair.clone()],
+        None => now.push(pair.clone()),
+    }
+    held.picked.retain(|one| one.context != context);
+    if now.is_empty() {
+        held.hidden_contexts.insert(context);
+    }
+    held.picked.extend(now);
+    held.scroll = 0.0;
 }
 
 /// The kind picked, or the pods of the first context whose kinds are known.
@@ -172,7 +196,10 @@ pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
         false => search(ui).0,
     };
     let mut out: Vec<WatchKey> = Vec::new();
-    for pair in held(open, ui).filter(|one| app.config.cluster(&one.context).is_some()) {
+    for pair in held(open, ui)
+        .iter()
+        .filter(|one| app.config.cluster(&one.context).is_some())
+    {
         let served = app
             .cluster
             .store

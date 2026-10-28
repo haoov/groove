@@ -250,7 +250,7 @@ fn a_source_turns_off_only_once_confirmed() {
 fn the_palette_opens_settings_too() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed("settings", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert!(ui.settings.open);

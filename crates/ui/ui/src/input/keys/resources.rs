@@ -6,11 +6,11 @@ use super::super::{Key, Modifiers};
 use crate::hit::{Hits, Scroller};
 use crate::keymap::{Action, Keymap};
 use crate::views::session::Tab;
-use crate::views::session::resources::{Line, Scoping};
-use crate::{Focus, Overlay, Surface, Ui};
+use crate::views::session::resources::Line;
+use crate::{Focus, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
-/// The list's find bar, the kind search, or the namespace picker; `None` for any other chord.
+/// The list's find bar; `None` for any other chord.
 pub(super) fn chord(
     (key, mods): (Key, Modifiers),
     ui: &mut Ui,
@@ -23,20 +23,10 @@ pub(super) fn chord(
     };
     let up = ui.session.tab == Tab::Resources && open.holds_clusters();
     let held = &mut ui.session.resources;
-    match () {
-        _ if up && held.showing.is_none() && keymap.is(Action::Find, key, mods) => {
-            (held.finding, held.typing, held.filtering) = (true, true, false);
-        }
-        _ if up && keymap.is(Action::OpenPath, key, mods) => {
-            (held.filtering, held.typing) = (true, false);
-        }
-        _ if keymap.is(Action::SelectNamespace, key, mods) => {
-            let (scoping, commands) = Scoping::asked(open).opened(open, held);
-            ui.overlay = Some(Overlay::Scope(scoping));
-            return Some(commands);
-        }
-        _ => return None,
+    if !up || held.showing.is_some() || !keymap.is(Action::Find, key, mods) {
+        return None;
     }
+    (held.finding, held.typing) = (true, true);
     Some(Vec::new())
 }
 
@@ -45,11 +35,7 @@ pub(super) fn in_resources(
     (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
-    seen: (&Hits, Metrics),
 ) -> Vec<Command> {
-    if ui.session.resources.filtering {
-        return in_kinds((key, mods), ui, app, seen);
-    }
     let held = &mut ui.session.resources;
     match key {
         Key::Enter => {
@@ -71,9 +57,9 @@ pub(super) fn in_resources(
     Vec::new()
 }
 
-/// The kind search: arrows step through the lines; Enter folds a heading or lists a kind.
+/// The kinds: arrows step through the lines; Enter folds a heading or lists a kind.
 fn in_kinds(
-    (key, mods): (Key, Modifiers),
+    key: Key,
     ui: &mut Ui,
     app: &AppState,
     (hits, metrics): (&Hits, Metrics),
@@ -106,17 +92,12 @@ fn in_kinds(
                 groove_types::toggle(&mut held.folded, heading.clone());
             }
             Some(Line::Kind(kind)) => {
-                (held.kind, held.scroll) = (Some(kind.clone()), 0.0);
-                (held.filtering, held.cursor) = (false, None);
+                (held.kind, held.scroll, held.cursor) = (Some(kind.clone()), 0.0, None);
                 ui.focus = Focus::Workspace;
             }
-            None => (held.filtering, held.cursor) = (false, None),
+            None => held.cursor = None,
         },
-        Key::Escape => (held.filtering, held.cursor) = (false, None),
-        key => {
-            super::bar::typing(key, mods, &mut held.filter);
-            kinds_changed(ui, app);
-        }
+        _ => {}
     }
     Vec::new()
 }
@@ -126,14 +107,7 @@ pub(in crate::input) fn search_changed(ui: &mut Ui) {
     ui.session.resources.scroll = 0.0;
 }
 
-/// The kind search's text changed: the cursor on the first kind it keeps.
-pub(in crate::input) fn kinds_changed(ui: &mut Ui, app: &AppState) {
-    let lines = crate::views::session::resources::shown(app, ui);
-    let first = lines.iter().position(|one| matches!(one, Line::Kind(_)));
-    ui.session.resources.cursor = first;
-}
-
-/// The kinds sidebar has the keys: the arrows walk it, Enter lists or folds, a letter searches.
+/// The kinds sidebar has the keys: the arrows walk it, Enter lists or folds, a letter opens the kinds.
 pub(super) fn in_kinds_list(
     (key, mods): (Key, Modifiers),
     ui: &mut Ui,
@@ -141,11 +115,14 @@ pub(super) fn in_kinds_list(
     seen: (&Hits, Metrics),
 ) -> Vec<Command> {
     match key {
-        Key::Char(_) if !mods.ctrl && !mods.alt => {
-            ui.session.resources.filtering = true;
-            in_kinds((key, mods), ui, app, seen)
+        Key::Char(c) if !mods.ctrl && !mods.alt => {
+            super::app::kinds(ui, app);
+            if let Some(palette) = ui.palette_mut() {
+                palette.query.insert(c);
+            }
+            Vec::new()
         }
-        Key::Up | Key::Down | Key::Enter => in_kinds((key, mods), ui, app, seen),
+        Key::Up | Key::Down | Key::Enter => in_kinds(key, ui, app, seen),
         _ => Vec::new(),
     }
 }

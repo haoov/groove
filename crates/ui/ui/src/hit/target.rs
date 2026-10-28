@@ -84,7 +84,6 @@ pub enum Target {
     ResourceList,
     ResourceKind(groove_types::KubeKind),
     ResourceSearch,
-    ResourceFilter,
     ResourceGroup(groove_types::KindHeading),
     ResourceRow(String),
     /// A column of the list, by its label: its header sorts by it, its edge drags its width.

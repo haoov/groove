@@ -1,11 +1,11 @@
-//! The scope line: the contexts picked, then the namespaces, each a picker; a context alone before any.
+//! The scope line: the contexts shown, then the namespaces; `alt+c` and `alt+n` change them.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::widgets::{lead, picker};
+use groove_ui_kit::widgets::{Button, Text, lead};
 
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
@@ -20,10 +20,16 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
         false => named(&shown, contexts.len(), "all contexts"),
     };
     let offered: Vec<_> = resources::offered(open, held).collect();
-    let pairs: Vec<String> = resources::held(open, held).map(pair).collect();
+    let pairs: Vec<String> = resources::held(open, held).iter().map(pair).collect();
     let pairs: Vec<&str> = pairs.iter().map(String::as_str).collect();
     let namespaces = named(&pairs, offered.len(), "all namespaces");
-    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
+    let band = ctx.styles.band();
+    let shown_as = |label, which, role| {
+        Button::new(label, Target::Picker(which), role, band)
+            .text(Text::Body)
+            .flat()
+            .inert(true)
+    };
     let role = |empty: bool| if empty { Role::Faint } else { Role::Text };
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     let x = lead(ctx, &mut room, Mark::Cluster, Role::Faint).right() + ctx.tokens.sm;
@@ -31,26 +37,13 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
         [one] => app.config.cluster(one).map(|held| Role::Hue(held.hue)),
         _ => None,
     };
-    let first = picker(
-        &contexts,
-        Target::Picker(Picks::Contexts),
-        hue.unwrap_or(role(shown.is_empty())),
-        band,
-        hover,
-    )
-    .flat();
+    let role_of = hue.unwrap_or(role(shown.is_empty()));
+    let first = shown_as(&contexts, Picks::Contexts, role_of);
     let box_ = first.at(ctx, line, x);
     if none {
         return;
     }
-    let second = picker(
-        &namespaces,
-        Target::Picker(Picks::Namespaces),
-        role(pairs.is_empty()),
-        band,
-        hover,
-    )
-    .flat();
+    let second = shown_as(&namespaces, Picks::Namespaces, role(pairs.is_empty()));
     second.at(ctx, line, box_.right() + ctx.tokens.sm);
 }
 

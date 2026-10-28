@@ -227,7 +227,7 @@ fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
 fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let metrics = metrics(1280, 800, 1.0);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts: Vec<String> = frame.layers()[1]
@@ -407,7 +407,7 @@ fn backspace_on_an_empty_query_takes_the_last_answer_back() {
 fn the_input_line_names_the_step_it_answers() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed("add work", &mut ui, &app);
     let first = |ui: &Ui| {
         let (frame, _) = view(

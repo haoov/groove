@@ -48,7 +48,7 @@ fn the_query_keeps_each_group_in_one_run() {
 fn the_selected_row_shows_under_its_heading() {
     let app = with_repo(app());
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let rows = under("", &app);
     let at = rows
         .iter()
@@ -102,7 +102,7 @@ fn every_entry_draws_an_icon() {
 fn the_selected_row_lights_its_icon() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let (frame, _) = view(
         &app,
         &ui,
@@ -134,7 +134,7 @@ fn the_selected_row_lights_its_icon() {
 fn lit_under(query: &str) -> Vec<String> {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed(query, &mut ui, &app);
     let (frame, _) = view(
         &app,
@@ -191,7 +191,7 @@ fn drawn(ui: &Ui, app: &AppState) -> groove_gfx::Frame {
 fn the_palette_stands_as_glass_with_no_shadow() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let frame = drawn(&ui, &app);
     let top = &frame.layers()[1];
     assert_eq!(top.glass.len(), 1);
@@ -202,7 +202,7 @@ fn the_palette_stands_as_glass_with_no_shadow() {
 fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed("zzz", &mut ui, &app);
     let texts = |frame: &groove_gfx::Frame| -> Vec<String> {
         frame.layers()[1]
@@ -217,7 +217,7 @@ fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
         "{none:?}"
     );
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed("add work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
@@ -233,7 +233,7 @@ fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
 fn the_last_row_selected_keeps_the_inset_under_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     for _ in 0..under("", &app).len() {
         press(Key::Down, Modifiers::default(), &mut ui, &app);
     }

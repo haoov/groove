@@ -73,7 +73,7 @@ impl Ui {
             Surface::Board => {
                 let session = &mut self.session;
                 session.bar.typing = None;
-                (session.resources.typing, session.resources.filtering) = (false, false);
+                session.resources.typing = false;
                 if let Some(find) = session.find.as_mut() {
                     find.typing = false;
                 }
@@ -133,7 +133,7 @@ impl Ui {
         };
         let session = &mut self.session;
         let mut left = std::mem::take(&mut session.resources);
-        (left.typing, left.filtering) = (false, false);
+        left.typing = false;
         session.resources_of.insert(was, left);
         let back = now.and_then(|id| session.resources_of.remove(&id));
         session.resources = back.unwrap_or_default();

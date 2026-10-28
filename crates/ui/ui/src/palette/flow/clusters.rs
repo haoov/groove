@@ -4,7 +4,7 @@ use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, session};
 use groove_types::Attached;
 
-use super::{Action, Flow, Prompt};
+use super::{Action, Flow};
 
 /// What separates a held context from its namespace in a choice's value.
 const BETWEEN: char = '\u{1}';
@@ -15,28 +15,6 @@ pub(super) fn known(app: &AppState) -> Vec<(String, String)> {
     contexts
         .map(|one| (one.context.clone(), one.context.clone()))
         .collect()
-}
-
-/// The context's namespaces as last listed, behind `*` for the whole cluster; any name typed too.
-pub(super) fn namespaces(app: &AppState, context: &str) -> Prompt {
-    let listed = app.cluster.store.namespaces(context).unwrap_or_default();
-    let whole = crate::views::session::resources::WHOLE_LINE.to_string();
-    let whole = std::iter::once((whole, String::new()));
-    let named = listed.iter().map(|one| (one.clone(), one.clone()));
-    Prompt {
-        label: "namespace",
-        options: whole.chain(named).collect(),
-        free: true,
-        allow_empty: true,
-    }
-}
-
-/// Lists the context's namespaces again.
-pub(super) fn refresh(context: &str) -> groove_controllers::Command {
-    let list = groove_controllers::cluster::Command::ListNamespaces {
-        context: context.to_string(),
-    };
-    groove_controllers::Command::Cluster(list)
 }
 
 /// What the session holds, one choice a context and namespace.
@@ -63,7 +41,7 @@ pub(super) fn command(flow: &Flow) -> Option<session::Command> {
             session,
             attached: Attached {
                 context: answer(0)?.clone(),
-                namespace: answer(1).filter(|one| !one.is_empty()).cloned(),
+                namespace: None,
             },
         }),
         Action::DetachCluster => Some(session::Command::DetachCluster {

@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 use super::super::{Key, Modifiers};
 use super::bar::typing;
 use crate::views::session::resources::{How, ScopeLine, choose, scope_lines};
-use crate::{Overlay, Ui};
+use crate::{Focus, Overlay, Ui};
 
 pub(super) fn in_scope(
     key: Key,
@@ -20,45 +20,40 @@ pub(super) fn in_scope(
         ui.overlay = None;
         return Some(Vec::new());
     };
-    let lines = scope_lines(app, open, &ui.session.resources, scoping);
-    let picks: Vec<usize> = (0..lines.len())
-        .filter(|at| !matches!(lines[*at], ScopeLine::Heading(_)))
-        .collect();
+    let lines = scope_lines(app, open, scoping);
+    let picks = picks(&lines);
+    let at = scoping.cursor.or(picks.first().copied());
     let how = match key {
-        Key::Escape => {
-            ui.overlay = None;
-            return Some(Vec::new());
-        }
         Key::Down | Key::Up => {
-            scoping.cursor = stepped(&picks, scoping.cursor, key == Key::Down);
+            scoping.cursor = stepped(&picks, at, key == Key::Down);
             return Some(Vec::new());
         }
         Key::Enter => How::Alone,
         Key::Char(' ') => How::Toggle,
         key => {
-            typing(key, mods, &mut scoping.query);
-            scope_changed(ui, app);
+            if typing(key, mods, &mut scoping.query) {
+                scoping.cursor = None;
+            }
             return Some(Vec::new());
         }
     };
-    let typed = picks.first().copied().filter(|_| !scoping.query.is_empty());
-    let Some(at) = scoping.cursor.or(typed) else {
+    let Some(at) = at else {
         return Some(Vec::new());
     };
     Some(pick((at, how), ui, app))
 }
 
-/// The panel's query changed: the cursor on the first line that acts, none for an empty query.
-pub(in crate::input) fn scope_changed(ui: &mut Ui, app: &AppState) {
-    let (Some(Overlay::Scope(scoping)), Some(open)) = (&mut ui.overlay, app.session.selected())
-    else {
-        return;
-    };
-    let lines = scope_lines(app, open, &ui.session.resources, scoping);
-    let first = lines
-        .iter()
-        .position(|one| !matches!(one, ScopeLine::Heading(_)));
-    scoping.cursor = first.filter(|_| !scoping.query.is_empty());
+/// The lines that act, by their place among all the lines.
+pub(in crate::input) fn picks(lines: &[ScopeLine]) -> Vec<usize> {
+    let acts = |at: &usize| !matches!(lines[*at], ScopeLine::Heading(_));
+    (0..lines.len()).filter(acts).collect()
+}
+
+/// The panel's query changed: the cursor back on the first line that acts.
+pub(in crate::input) fn scope_changed(ui: &mut Ui) {
+    if let Some(Overlay::Scope(scoping)) = &mut ui.overlay {
+        scoping.cursor = None;
+    }
 }
 
 /// The next line that acts, down or up from the cursor; the first one when there is none.
@@ -73,7 +68,7 @@ fn stepped(picks: &[usize], cursor: Option<usize>, down: bool) -> Option<usize> 
     next.copied().or(Some(cursor))
 }
 
-/// Line `at` chosen `how`; one shown alone, held or attached, shuts the panel onto the Resources tab.
+/// Line `at` chosen `how`, the Kubernetes tab shown under it; Enter shuts the panel onto the list.
 pub(in crate::input) fn pick((at, how): (usize, How), ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let Some(open) = app.session.selected() else {
         return Vec::new();
@@ -81,14 +76,19 @@ pub(in crate::input) fn pick((at, how): (usize, How), ui: &mut Ui, app: &AppStat
     let Some(Overlay::Scope(scoping)) = &mut ui.overlay else {
         return Vec::new();
     };
-    let lines = scope_lines(app, open, &ui.session.resources, scoping);
+    let lines = scope_lines(app, open, scoping);
     let Some(line) = lines.get(at) else {
         return Vec::new();
     };
     let commands = choose(line, how, (open, &mut ui.session.resources, scoping));
-    if how == How::Alone && matches!(line, ScopeLine::Held(_) | ScopeLine::Free { .. }) {
+    if how == How::Detach || matches!(line, ScopeLine::Heading(_)) {
+        return commands;
+    }
+    ui.session.tab = crate::views::session::Tab::Resources;
+    ui.session.resources.showing = None;
+    if how == How::Alone {
         ui.overlay = None;
-        ui.session.tab = crate::views::session::Tab::Resources;
+        ui.focus = Focus::Workspace;
     }
     commands
 }

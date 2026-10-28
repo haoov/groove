@@ -15,5 +15,6 @@ pub(crate) fn pods() -> groove_types::KubeKind {
         plural: "pods".into(),
         namespaced: true,
         watchable: true,
+        short_names: Vec::new(),
     }
 }

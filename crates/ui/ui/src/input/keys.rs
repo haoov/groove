@@ -32,7 +32,7 @@ use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
-pub(in crate::input) use resources::{kinds_changed, search_changed};
+pub(in crate::input) use resources::search_changed;
 pub(in crate::input) use scope::{pick, scope_changed};
 
 pub(super) fn key_input(
@@ -90,8 +90,8 @@ fn in_session(
             }
             return in_bar(key, mods, ui, app, keymap);
         }
-        Some(Typed::Kinds | Typed::Search) => {
-            return resources::in_resources((key, mods), ui, app, seen);
+        Some(Typed::Search) => {
+            return resources::in_resources((key, mods), ui, app);
         }
         None => {}
     }

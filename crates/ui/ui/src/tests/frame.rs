@@ -140,7 +140,7 @@ fn keys_encode_as_a_terminal_sends_them() {
 fn chords_are_grooves_and_the_rest_is_the_agents() {
     let app = AppState::default();
     let mut ui = Ui::default();
-    let opened = press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    let opened = press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     assert_eq!(opened.len(), 1, "opening refreshes the pool");
     assert_eq!(opened[0].id(), "session.list_repos");
     assert!(ui.palette().is_some());

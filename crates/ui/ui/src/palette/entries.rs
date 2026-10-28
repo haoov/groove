@@ -52,12 +52,18 @@ fn repos(open: &Open) -> Vec<Entry> {
 /// Attach while Groove knows a context; detach while the session holds one.
 fn clusters(app: &AppState, open: &Open) -> Vec<Entry> {
     let mut out = Vec::new();
+    let keyed = |label: &str, action| Entry {
+        group: "Session",
+        label: label.into(),
+        run: super::Run::Act(super::Act::Key(action)),
+    };
     if !app.config.clusters().is_empty() {
         out.push(Entry::flow(
             "Session",
             "Attach cluster",
             Action::AttachCluster,
         ));
+        out.push(keyed("Pick contexts", crate::keymap::Action::SelectContext));
     }
     if open.holds_clusters() {
         out.push(Entry::flow(
@@ -65,11 +71,11 @@ fn clusters(app: &AppState, open: &Open) -> Vec<Entry> {
             "Detach cluster",
             Action::DetachCluster,
         ));
-        out.push(Entry {
-            group: "Session",
-            label: "Select namespace".into(),
-            run: super::Run::Scope,
-        });
+        out.push(keyed(
+            "Pick namespaces",
+            crate::keymap::Action::SelectNamespace,
+        ));
+        out.push(Entry::flow("Session", "Pick a kind", Action::PickKind));
     }
     out
 }

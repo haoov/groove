@@ -17,11 +17,11 @@ pub use list::{draw, uids as row_uids};
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
 pub use opened::{Link, Opens, Section};
 pub use scope::{
-    Dragged, Pick, ResourcesUi, WHOLE_LINE, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered,
-    shown_contexts, wants,
+    Dragged, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered, shown_contexts,
+    shows, wants,
 };
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
-pub use sidebar::{Line, draw as sidebar, shown};
+pub use sidebar::{Line, draw as sidebar, served, shown};
 pub use tab::{due as tab_due, wants as tab_wants};
 
 use groove_controllers::{Command, cluster};

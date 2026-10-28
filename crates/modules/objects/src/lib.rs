@@ -30,6 +30,7 @@ fn kind_of(kind: groove_kube::Kind) -> KubeKind {
         plural: kind.plural,
         namespaced: kind.namespaced,
         watchable: kind.watchable,
+        short_names: kind.short_names,
     }
 }
 
@@ -41,6 +42,7 @@ fn kube_kind(kind: &KubeKind) -> groove_kube::Kind {
         plural: kind.plural.clone(),
         namespaced: kind.namespaced,
         watchable: kind.watchable,
+        short_names: kind.short_names.clone(),
     }
 }
 

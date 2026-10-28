@@ -1,4 +1,4 @@
-//! The scope pickers' panel: what the session holds, checked or not, then what it could attach.
+//! The scope panel: the contexts held and to attach, or every `context/namespace` ranked.
 
 use groove_controllers::session::Command as Session;
 use groove_controllers::{AppState, Command, cluster};
@@ -7,7 +7,7 @@ use groove_types::{Attached, SessionId};
 use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
 use crate::tests::drawn;
-use crate::tests::{CTRL_SHIFT, click, full_app, press, typed};
+use crate::tests::{ALT, click, full_app, press, typed};
 use crate::views::session::resources::{ScopeLine, scope_lines};
 use crate::{Overlay, Ui};
 
@@ -39,7 +39,7 @@ fn labels(app: &AppState, ui: &Ui) -> Vec<String> {
     let (Some(open), Some(Overlay::Scope(scoping))) = (app.session.selected(), &ui.overlay) else {
         return Vec::new();
     };
-    let lines = scope_lines(app, open, &ui.session.resources, scoping);
+    let lines = scope_lines(app, open, scoping);
     lines.iter().map(ScopeLine::label).collect()
 }
 
@@ -56,35 +56,63 @@ fn chose(app: &AppState, ui: &mut Ui, label: &str, detach: bool) -> Vec<Command>
     click(rect, ui, app, &hits)
 }
 
-fn picker(app: &AppState, ui: &mut Ui, which: Picks) -> (Vec<Command>, Hits) {
-    let (_, hits) = drawn(app, ui);
-    let rect = hits.rect_of(&Target::Picker(which)).expect("the picker");
-    (click(rect, ui, app, &hits), hits)
+/// The panel `alt+n` or `alt+c` opens.
+fn picker(app: &AppState, ui: &mut Ui, which: Picks) -> Vec<Command> {
+    let key = match which {
+        Picks::Contexts => 'c',
+        _ => 'n',
+    };
+    press(Key::Char(key), ALT, ui, app)
 }
 
 fn session(command: Session) -> Command {
     Command::Session(command)
 }
 
+/// The pairs the list reads.
+fn held(app: &AppState, ui: &Ui) -> Vec<String> {
+    let open = app.session.selected().expect("the session");
+    let pairs = crate::views::session::resources::held(open, &ui.session.resources);
+    let label = |pair: &Attached| ScopeLine::Namespace(pair.clone()).label();
+    pairs.iter().map(label).collect()
+}
+
 #[test]
-fn the_scope_line_stands_on_the_kubernetes_tab_alone() {
-    let bare = holding(Vec::new());
-    let (texts, hits) = drawn(&bare, &Ui::default());
-    assert!(!texts.iter().any(|one| one == "no cluster"), "{texts:?}");
-    assert!(hits.rect_of(&Target::Picker(Picks::Contexts)).is_none());
-    let app = holding(vec![on("staging", Some("shop"))]);
-    let (_, hits) = drawn(&app, &Ui::default());
-    assert!(
-        hits.rect_of(&Target::Picker(Picks::Contexts)).is_none(),
-        "not on the overview"
-    );
+fn the_scope_line_only_tells_and_alt_n_opens_the_panel_from_any_tab() {
+    let app = holding(vec![on("staging", None)]);
     let mut ui = on_kubernetes();
-    let (opened, _) = picker(&app, &mut ui, Picks::Namespaces);
+    let (texts, hits) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "staging"), "{texts:?}");
+    for which in [Picks::Contexts, Picks::Namespaces] {
+        assert!(hits.rect_of(&Target::Picker(which)).is_none(), "{which:?}");
+    }
+    ui.session.tab = crate::views::session::Tab::Diff;
+    let opened = picker(&app, &mut ui, Picks::Namespaces);
     let list = cluster::Command::ListNamespaces {
         context: "staging".into(),
     };
     assert_eq!(opened, [Command::Cluster(list)]);
     assert!(matches!(ui.overlay, Some(Overlay::Scope(_))));
+    chose(&app, &mut ui, "staging/shop", false);
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
+}
+
+#[test]
+fn alt_c_opens_the_context_panel_and_again_shuts_it() {
+    let app = holding(vec![on("staging", None)]);
+    let mut ui = Ui::default();
+    picker(&app, &mut ui, Picks::Contexts);
+    assert_eq!(
+        labels(&app, &ui),
+        ["in this session", "staging", "available", "hub"]
+    );
+    picker(&app, &mut ui, Picks::Namespaces);
+    assert_eq!(
+        labels(&app, &ui).first().map(String::as_str),
+        Some("staging/*")
+    );
+    picker(&app, &mut ui, Picks::Namespaces);
+    assert!(ui.overlay.is_none());
 }
 
 fn on_kubernetes() -> Ui {
@@ -94,115 +122,106 @@ fn on_kubernetes() -> Ui {
 }
 
 #[test]
-fn the_namespace_panel_lists_the_held_first_checks_them_detaches_them_and_attaches_the_rest() {
-    let app = holding(vec![
-        on("staging", Some("shop")),
-        on("staging", Some("cnpg")),
-    ]);
-    let mut ui = on_kubernetes();
-    let (opened, _) = picker(&app, &mut ui, Picks::Namespaces);
-    let list = cluster::Command::ListNamespaces {
-        context: "staging".into(),
-    };
-    assert_eq!(opened, [Command::Cluster(list)]);
-    assert_eq!(
-        labels(&app, &ui),
-        ["staging", "shop", "cnpg", "* whole cluster", "monitoring"]
-    );
-    assert!(chose(&app, &mut ui, "shop", false).is_empty());
-    assert!(
-        ui.session
-            .resources
-            .hidden
-            .contains(&on("staging", Some("shop")))
-    );
-    assert!(
-        matches!(ui.overlay, Some(Overlay::Scope(_))),
-        "a check keeps the panel"
-    );
-    let detach = Session::DetachCluster {
-        session: SessionId::new("a"),
-        attached: on("staging", Some("cnpg")),
-    };
-    assert_eq!(chose(&app, &mut ui, "cnpg", true), [session(detach)]);
-    let attach = Session::AttachCluster {
-        session: SessionId::new("a"),
-        attached: on("staging", Some("monitoring")),
-    };
-    assert_eq!(chose(&app, &mut ui, "monitoring", false), [session(attach)]);
-    typed("dev-x", &mut ui, &app);
-    assert_eq!(labels(&app, &ui), ["staging", "attach dev-x"]);
-    press(Key::Escape, Default::default(), &mut ui, &app);
-    assert!(ui.overlay.is_none());
-}
-
-#[test]
-fn ctrl_shift_n_then_a_name_and_enter_shows_that_namespace_alone_on_the_resources_tab() {
-    let app = holding(vec![
-        on("staging", Some("shop")),
-        on("staging", Some("cnpg")),
-    ]);
-    let mut ui = Ui {
-        focus: crate::Focus::Workspace,
-        ..Ui::default()
-    };
-    press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
-    typed("cnp", &mut ui, &app);
-    press(Key::Enter, Default::default(), &mut ui, &app);
-    assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
-    let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
-    assert_eq!(hidden, [on("staging", Some("shop"))]);
-    press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
-    press(Key::Down, Default::default(), &mut ui, &app);
-    press(Key::Char(' '), Default::default(), &mut ui, &app);
-    assert!(
-        ui.session.resources.hidden.is_empty(),
-        "space checks shop again"
-    );
-}
-
-#[test]
-fn enter_on_a_namespace_not_held_attaches_it_alone() {
-    let app = holding(vec![
-        on("staging", Some("shop")),
-        on("staging", Some("cnpg")),
-    ]);
-    let mut ui = Ui {
-        focus: crate::Focus::Workspace,
-        ..Ui::default()
-    };
-    press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
-    typed("monit", &mut ui, &app);
-    let attach = Session::AttachCluster {
-        session: SessionId::new("a"),
-        attached: on("staging", Some("monitoring")),
-    };
-    let sent = press(Key::Enter, Default::default(), &mut ui, &app);
-    assert_eq!(sent, [session(attach)]);
-    assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
-    let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
-    assert_eq!(
-        hidden,
-        [on("staging", Some("cnpg")), on("staging", Some("shop"))]
-    );
-}
-
-#[test]
-fn under_a_whole_cluster_a_namespace_is_offered_and_its_small_check_is_green_its_cross_red() {
-    use groove_ui_kit::base::style::{Role, Styles};
+fn the_namespace_panel_lists_each_context_and_namespace_and_a_click_shows_one_more() {
     let app = holding(vec![on("staging", None)]);
     let mut ui = on_kubernetes();
     picker(&app, &mut ui, Picks::Namespaces);
     assert_eq!(
         labels(&app, &ui),
-        ["staging", "* whole cluster", "shop", "cnpg", "monitoring"]
+        [
+            "staging/*",
+            "staging/shop",
+            "staging/cnpg",
+            "staging/monitoring"
+        ]
+    );
+    assert!(chose(&app, &mut ui, "staging/shop", false).is_empty());
+    assert_eq!(
+        held(&app, &ui),
+        ["staging/shop"],
+        "the whole cluster narrows"
+    );
+    assert!(
+        matches!(ui.overlay, Some(Overlay::Scope(_))),
+        "a check keeps the panel"
+    );
+    chose(&app, &mut ui, "staging/cnpg", false);
+    assert_eq!(held(&app, &ui), ["staging/cnpg", "staging/shop"]);
+    chose(&app, &mut ui, "staging/shop", false);
+    assert_eq!(held(&app, &ui), ["staging/cnpg"]);
+    chose(&app, &mut ui, "staging/*", false);
+    assert_eq!(held(&app, &ui), ["staging/*"]);
+    press(Key::Escape, Default::default(), &mut ui, &app);
+    assert!(ui.overlay.is_none());
+}
+
+#[test]
+fn alt_n_then_a_ranked_query_and_enter_shows_that_namespace_alone_and_space_adds_one() {
+    let mut app = holding(vec![on("staging", None), on("hub", None)]);
+    app.cluster
+        .store
+        .set_namespaces("hub", vec!["argocd".into(), "shop-cnpg".into()]);
+    let mut ui = Ui::default();
+    press(Key::Char('n'), ALT, &mut ui, &app);
+    typed("st/cn", &mut ui, &app);
+    assert_eq!(
+        labels(&app, &ui).first().map(String::as_str),
+        Some("staging/cnpg")
+    );
+    press(Key::Enter, Default::default(), &mut ui, &app);
+    assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
+    assert_eq!(ui.focus, crate::Focus::Workspace, "the list takes the keys");
+    assert_eq!(held(&app, &ui), ["staging/cnpg"]);
+    press(Key::Char('n'), ALT, &mut ui, &app);
+    typed("argo", &mut ui, &app);
+    press(Key::Char(' '), Default::default(), &mut ui, &app);
+    assert_eq!(held(&app, &ui), ["staging/cnpg", "hub/argocd"]);
+    assert!(
+        matches!(ui.overlay, Some(Overlay::Scope(_))),
+        "space keeps it"
+    );
+}
+
+#[test]
+fn a_context_held_by_its_namespaces_offers_those_alone() {
+    let app = holding(vec![
+        on("staging", Some("shop")),
+        on("staging", Some("cnpg")),
+    ]);
+    let mut ui = on_kubernetes();
+    let opened = picker(&app, &mut ui, Picks::Namespaces);
+    assert!(opened.is_empty(), "nothing to list");
+    assert_eq!(labels(&app, &ui), ["staging/shop", "staging/cnpg"]);
+}
+
+#[test]
+fn the_context_panel_attaches_a_known_context_whole_and_detaches_a_held_one() {
+    let app = holding(vec![on("staging", None)]);
+    let mut ui = on_kubernetes();
+    picker(&app, &mut ui, Picks::Contexts);
+    assert_eq!(
+        labels(&app, &ui),
+        ["in this session", "staging", "available", "hub"]
     );
     let attach = Session::AttachCluster {
         session: SessionId::new("a"),
-        attached: on("staging", Some("cnpg")),
+        attached: on("hub", None),
     };
-    assert_eq!(chose(&app, &mut ui, "cnpg", false), [session(attach)]);
+    assert_eq!(chose(&app, &mut ui, "hub", false), [session(attach)]);
+    let detach = Session::DetachCluster {
+        session: SessionId::new("a"),
+        attached: on("staging", None),
+    };
+    assert_eq!(chose(&app, &mut ui, "staging", true), [session(detach)]);
+}
+
+#[test]
+fn a_shown_line_s_small_check_is_green_and_a_held_context_s_cross_red() {
+    use groove_ui_kit::base::style::{Role, Styles};
+    let app = holding(vec![on("staging", None)]);
+    let mut ui = on_kubernetes();
+    picker(&app, &mut ui, Picks::Contexts);
     let (frame, _) = crate::view(
         &app,
         &ui,
@@ -240,15 +259,9 @@ fn under_a_whole_cluster_a_namespace_is_offered_and_its_small_check_is_green_its
 
 #[test]
 fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
-    let app = holding(vec![
-        on("staging", Some("shop")),
-        on("staging", Some("cnpg")),
-    ]);
-    let mut ui = Ui {
-        focus: crate::Focus::Workspace,
-        ..Ui::default()
-    };
-    press(Key::Char('n'), CTRL_SHIFT, &mut ui, &app);
+    let app = holding(vec![on("staging", None)]);
+    let mut ui = Ui::default();
+    press(Key::Char('n'), ALT, &mut ui, &app);
     let asked = crate::input::handle(
         crate::input::Input::Paste("cnp".into()),
         &mut ui,
@@ -258,13 +271,12 @@ fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
     );
     assert!(asked.is_empty(), "nothing else takes it: {asked:?}");
     press(Key::Enter, Default::default(), &mut ui, &app);
-    let hidden: Vec<Attached> = ui.session.resources.hidden.iter().cloned().collect();
-    assert_eq!(hidden, [on("staging", Some("shop"))]);
+    assert_eq!(held(&app, &ui), ["staging/cnpg"]);
 }
 
 #[test]
 fn the_panel_stands_on_glass() {
-    let app = holding(vec![on("staging", Some("shop"))]);
+    let app = holding(vec![on("staging", None)]);
     let mut ui = on_kubernetes();
     let panes = |ui: &Ui| {
         let at = crate::tests::metrics(1600, 1000, 1.0);

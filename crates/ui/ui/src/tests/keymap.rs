@@ -48,7 +48,7 @@ fn a_chord_the_config_binds_replaces_the_default() {
     config.keymap = rebound.into_iter().collect();
     app.config.config = Some(config);
     let mut ui = Ui::default();
-    press(Key::Char('k'), ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     assert!(ui.palette().is_none(), "the default gave way");
     press(Key::Char('j'), ALT, &mut ui, &app);
     assert!(ui.palette().is_some());
@@ -81,8 +81,8 @@ fn a_chord_pressed_in_settings_moves_to_the_action_and_off_the_one_that_held_it(
     let keymap = Keymap::of(Some(&rebound));
     assert_eq!(keymap.chords(Action::Board), [chord("alt+k")]);
     assert!(
-        keymap.chords(Action::Palette).is_empty(),
-        "the palette gave its chord up"
+        keymap.chords(Action::SelectKind).is_empty(),
+        "the kind picker gave its chord up"
     );
     assert!(ui.settings.binding.is_none());
 }

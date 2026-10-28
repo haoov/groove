@@ -14,7 +14,7 @@ use groove_controllers::{AppState, Command};
 
 pub use actions::Act;
 pub use entries::entries;
-pub use flow::{Action, CLONE, Flow, Prompt};
+pub use flow::{Action, CLONE, Flow, Prompt, kind_chosen};
 pub use marks::mark_of;
 
 use crate::Corner;
@@ -29,8 +29,6 @@ pub enum Run {
     Flow(Action),
     /// The Settings surface, which is the window's own and asks no command.
     Settings,
-    /// The namespace picker's panel, under its picker.
-    Scope,
     Act(Act),
 }
 
@@ -48,7 +46,6 @@ impl Entry {
             Run::Command(c) => c.id(),
             Run::Flow(a) => a.id(),
             Run::Settings => "settings.open",
-            Run::Scope => "resources.select_namespace",
             Run::Act(act) => act.id(),
         }
     }
@@ -76,8 +73,6 @@ pub struct Outcome {
     pub commands: Vec<Command>,
     pub close: bool,
     pub settings: bool,
-    /// The namespace picker's panel opens.
-    pub scoping: bool,
     pub act: Option<Act>,
 }
 
@@ -120,6 +115,14 @@ pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Ve
     groove_types::ranked(rows, text, query)
 }
 
+/// Whether one word of `label` is `query`, case aside.
+fn named(label: &str, query: &str) -> bool {
+    let words = label.split(|c: char| !c.is_alphanumeric());
+    words
+        .into_iter()
+        .any(|word| word.eq_ignore_ascii_case(query.trim()))
+}
+
 impl Palette {
     /// The rows under the query: entries, or the current prompt's options.
     pub fn rows(&self, app: &AppState) -> Vec<Entry> {
@@ -141,7 +144,11 @@ impl Palette {
         };
         let (fixed, rest): (Vec<_>, Vec<_>) =
             prompt.options.into_iter().partition(|(_, v)| v == CLONE);
-        let mut rows = matching(rest, |(label, _)| label.clone(), self.query.text());
+        let query = self.query.text();
+        let mut rows = matching(rest, |(label, _)| label.clone(), query);
+        if prompt.exact {
+            rows.sort_by_key(|(label, _)| !named(label, query));
+        }
         rows.extend(fixed);
         rows
     }
@@ -200,11 +207,6 @@ impl Palette {
             Run::Command(command) => Outcome {
                 commands: vec![command],
                 close: true,
-                ..Outcome::default()
-            },
-            Run::Scope => Outcome {
-                close: true,
-                scoping: true,
                 ..Outcome::default()
             },
             Run::Settings => Outcome {

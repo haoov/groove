@@ -10,14 +10,18 @@ fn key(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) {
 }
 
 #[test]
-fn the_kinds_walk_from_the_keyboard_and_a_letter_starts_the_search() {
+fn the_kinds_walk_from_the_keyboard_and_a_letter_opens_the_kind_palette() {
     let (app, mut ui) = listing();
     ui.focus = Focus::Sidebar;
     key(Key::Down, Modifiers::default(), &mut ui, &app);
     assert_eq!(ui.session.resources.cursor, Some(0), "no search needed");
     key(Key::Char('n'), Modifiers::default(), &mut ui, &app);
-    assert!(ui.session.resources.filtering);
-    assert_eq!(ui.session.resources.filter.text(), "n");
+    let query = ui.palette().map(|one| one.query.text().to_string());
+    assert_eq!(
+        query.as_deref(),
+        Some("n"),
+        "the kind palette, on the letter"
+    );
     crate::tests::typed("ode", &mut ui, &app);
     key(Key::Enter, Modifiers::default(), &mut ui, &app);
     let listed = ui

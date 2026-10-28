@@ -26,6 +26,8 @@ pub enum Action {
     Files,
     Resources,
     SelectNamespace,
+    SelectContext,
+    SelectKind,
     Terminals,
     NewTerminal,
     Reload,

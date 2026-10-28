@@ -1,18 +1,22 @@
 //! The app's own ring: what an action does from any pane.
 
-use groove_controllers::{AppState, Command, session, shell, workspace};
+use groove_controllers::{AppState, Command, cluster, session, shell, workspace};
 
 use super::super::Key;
 use super::panes::in_rail;
+use crate::hit::Picks;
 use crate::keymap::Action;
-use crate::palette::Palette;
+use crate::palette::{Action as FlowAction, Flow, Palette};
 use crate::views::session::Tab;
+use crate::views::session::resources::Scoping;
 use crate::{Focus, Grid, Overlay, Surface, Ui};
 
 pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let selected = app.session.selected.clone();
     match action {
         Action::Palette => return palette(ui),
+        Action::SelectNamespace | Action::SelectContext => return scope(ui, app, action),
+        Action::SelectKind => return kinds(ui, app),
         Action::Settings if ui.settings.open => return ui.close_settings(),
         Action::Settings => return ui.open_settings(),
         Action::Board => return board(ui),
@@ -81,6 +85,47 @@ fn palette(ui: &mut Ui) -> Vec<Command> {
     }
     ui.overlay = Some(Overlay::Palette(Palette::default()));
     vec![Command::Session(session::Command::ListRepos)]
+}
+
+/// The scope panel asked for, or closed when it stands open.
+fn scope(ui: &mut Ui, app: &AppState, action: Action) -> Vec<Command> {
+    let Some(open) = app.session.selected() else {
+        return Vec::new();
+    };
+    let scoping = match action {
+        Action::SelectContext => Scoping::new(Picks::Contexts),
+        _ => Scoping::asked(open),
+    };
+    let same = |one: &Overlay| matches!(one, Overlay::Scope(shown) if shown.which == scoping.which);
+    if ui.close(same).is_some() {
+        return Vec::new();
+    }
+    ui.surface = Surface::Session;
+    let (scoping, commands) = scoping.opened(open);
+    ui.overlay = Some(Overlay::Scope(scoping));
+    commands
+}
+
+/// The palette on the kinds the session's contexts serve, those not yet known asked for.
+pub(super) fn kinds(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let Some(open) = app.session.selected().filter(|one| one.holds_clusters()) else {
+        return Vec::new();
+    };
+    ui.surface = Surface::Session;
+    let flow = Flow::new(FlowAction::PickKind, open.session.id.clone());
+    ui.overlay = Some(Overlay::Palette(Palette {
+        flow: Some(flow),
+        ..Palette::default()
+    }));
+    let store = &app.cluster.store;
+    let unknown = crate::views::session::resources::contexts(open)
+        .into_iter()
+        .filter(|one| store.kinds(one).is_none() && !store.discovering(one));
+    let discover = |context: &str| cluster::Command::Discover {
+        context: context.to_string(),
+        again: false,
+    };
+    unknown.map(|one| Command::Cluster(discover(one))).collect()
 }
 
 /// The board, or the session it was opened from.

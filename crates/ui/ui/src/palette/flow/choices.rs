@@ -64,5 +64,6 @@ pub(super) fn base_prompt(app: &AppState, repo: &RepoId) -> Prompt {
         options: heads,
         free: true,
         allow_empty: true,
+        exact: false,
     }
 }

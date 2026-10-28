@@ -149,8 +149,9 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
     if ui.showing(app) != crate::Surface::Session {
         return;
     }
-    if !ui.session.tab.has_sidebar() {
-        ui.session.tab = crate::views::session::Tab::Diff;
+    use crate::views::session::Tab;
+    if !matches!(ui.session.tab, Tab::Diff | Tab::Files) {
+        ui.session.tab = Tab::Diff;
     }
     ui.session.folded = false;
     ui.session.bar.open(term);

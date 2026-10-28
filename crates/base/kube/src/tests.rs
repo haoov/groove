@@ -16,6 +16,7 @@ pub(crate) fn pods() -> crate::Kind {
         plural: "pods".into(),
         namespaced: true,
         watchable: true,
+        short_names: Vec::new(),
     }
 }
 

@@ -25,6 +25,8 @@ pub enum Act {
     Open(String),
     /// Every change of the worktree thrown away, once confirmed.
     Discard,
+    /// The kind a choice of *Pick a kind* names, listed.
+    Kind(String),
 }
 
 impl Act {
@@ -38,6 +40,7 @@ impl Act {
             Act::Examine(_) => "agent.review",
             Act::Open(_) => "workspace.open_file",
             Act::Discard => "workspace.discard_all",
+            Act::Kind(_) => "resources.select_kind",
         }
     }
 }

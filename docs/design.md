@@ -34,8 +34,8 @@ the rail only as its attention count.
 - **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
   `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
   workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
-- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter starts
-  their search. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
+- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter opens
+  the kind palette on it. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
   its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files or objects,
   `ctrl+w` closes the one shown.
   Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs`.
@@ -235,10 +235,14 @@ is one icon alone is a circle. Enforced by
 the session's selector, which every tab and the terminals follow — with the selected
 worktree's MR and CI and a refresh button, and the sidebar's fold at the far end. A git
 mark leads it. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
-the contexts picked, a lone one in its hue, then the namespaces. Each picker opens a panel
-with a search: what the session holds first, a check to show it and a × to detach it, then
-what it could attach. A pick there attaches; a known context opens its namespaces; Enter
-shows one line alone, and attaches it first when the session does not hold it. A title or a
+the contexts shown, a lone one in its hue, then the namespaces. It only tells: `alt+c`
+opens the context panel and `alt+n` the namespace panel, from any tab, where the palette
+stands, with a search and the first line stood on. The context panel holds the session's
+contexts, a check to show one and a × to detach it, then what it could attach; a pick
+there attaches the whole cluster. The namespace panel lists `context/namespace` for every
+context held, `context/*` for the whole cluster, the best fuzzy match first: space shows
+one more, Enter shows one alone and gives the list the keys. Either choice turns to the
+Kubernetes tab. A title or a
 label too long for its line is cut with an ellipsis; no line wraps; a tab's status badges
 keep their room before the cut, and a badge with no room left is dropped.
 
@@ -249,7 +253,7 @@ keep their room before the cut, and a badge with no room left is dropped.
 | overview | sections, each a heading over its own card, inset from the panel's sides: the task's properties on one line — status, priority, dates, hours — a missing one left out; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on rounded grounds as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
-| kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
+| kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | the kinds the contexts serve, under headings that fold |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
 which the gutter holds together.
@@ -360,6 +364,14 @@ dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an 
 takes the last answer back into it, and on the first question returns to the entries.
 Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
 
+**A kind and a namespace are one chord away.** `alt+k` opens the palette on the kinds the
+session's contexts serve, each with its short names and its group; a short name typed whole
+comes first, and Enter lists the kind. `alt+n` opens the namespace panel, `alt+c` the
+context panel.
+Enforced by `alt_k_picks_a_kind_by_its_name_its_short_name_or_its_group_and_lists_it`,
+`alt_n_then_a_ranked_query_and_enter_shows_that_namespace_alone_and_space_adds_one` and
+`alt_c_opens_the_context_panel_and_again_shuts_it`.
+
 **`#` searches files.** A query that starts with `#` lists the selected worktree's files, a
 match in the file name first, and opens the one picked on the Files tab.
 Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
@@ -385,7 +397,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   by value, and a second click turns the order round; its edge drags the column's width,
   kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
   `bil-eu-st` keeps `billing-eu-staging` — and `label=value` words the server filters
-  on. `ctrl+shift+n` opens the namespace panel. No rule stands under the header; a row under
+  on. `alt+c` opens the context panel, `alt+n` the namespace panel, `alt+k` the kind palette. No rule stands under the header; a row under
   the pointer or selected stands on a rounded ground, as the rail's rows do. The list's tab
   and each open object's are glass tabs as the Files tab's are, an object's with its ×, no
   rule under them; the find bar is a rounded field.
@@ -436,14 +448,12 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
-- **Sidebar.** A search that narrows the kinds — `ctrl+shift+p`; a word in a kind, a
-  heading or an API group, `rbac/role` a heading and a kind — then the kinds the contexts
-  serve, indented under headings that fold: workloads, network, config, storage, RBAC and
-  other for Kubernetes' own, one a CRD group by its name, then cluster for the built-in
-  kinds not namespaced. In the search, ↑ and ↓ step through the headings and the kinds;
-  Enter folds a heading or lists a kind. No counts, no health marks. The search is a
-  rounded field, as the files' search is; a heading or a kind under the pointer lights on
-  glass, and the kind shown stands on a rounded ground.
+- **Sidebar.** The kinds the contexts serve, indented under headings that fold: workloads,
+  network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by its
+  name, then cluster for the built-in kinds not namespaced. ↑ and ↓ step through the
+  headings and the kinds; Enter folds a heading or lists a kind. No counts, no health
+  marks. A heading or a kind under the pointer lights on glass, and the kind shown stands
+  on a rounded ground.
 
 ### Review sheet
 

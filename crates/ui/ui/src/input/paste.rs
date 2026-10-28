@@ -86,7 +86,7 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
             if let Some(Overlay::Scope(scoping)) = &mut ui.overlay {
                 scoping.query.paste(text);
             }
-            keys::scope_changed(ui, app);
+            keys::scope_changed(ui);
         }
         Some(Sink::Palette) => {
             if let Some(palette) = ui.palette_mut() {
@@ -99,7 +99,7 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
             ui.board.filter.paste(text);
             ui.board.offer = 0;
         }
-        Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui, app),
+        Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui),
         Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
         Some(Sink::Agent) => return typed_at_agent(text, app),
         Some(Sink::Terminal) => return typed_at_shell(text, app),
@@ -110,7 +110,7 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
 }
 
 /// The clipboard into the session's field that has the keys, as typing it would.
-fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui) -> Vec<Command> {
     let session = &mut ui.session;
     match typed {
         Typed::Naming => {
@@ -126,10 +126,6 @@ fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui, app: &AppState) -> Vec
         Typed::Bar(term) => {
             session.bar.of(term).paste(text);
             return keys::searches(ui);
-        }
-        Typed::Kinds => {
-            session.resources.filter.paste(text);
-            keys::kinds_changed(ui, app);
         }
         Typed::Search => {
             session.resources.search.paste(text);

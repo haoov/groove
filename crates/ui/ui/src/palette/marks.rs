@@ -11,7 +11,6 @@ use crate::keymap::Action as Key;
 pub fn mark_of(entry: &Entry, app: &AppState) -> Option<Mark> {
     match &entry.run {
         Run::Settings => Some(Mark::Settings),
-        Run::Scope => Some(Mark::Cluster),
         Run::Flow(action) => Some(flowed(*action)),
         Run::Act(act) => acted(act),
         Run::Command(command) => commanded(command, app),
@@ -28,7 +27,7 @@ fn flowed(action: Action) -> Mark {
         Action::SelectWorktree | Action::PickBranch => Mark::Git,
         Action::PickRepo => Mark::Repo,
         Action::RenameExplorer => Mark::Explorer,
-        Action::AttachCluster | Action::DetachCluster => Mark::Cluster,
+        Action::AttachCluster | Action::DetachCluster | Action::PickKind => Mark::Cluster,
     }
 }
 
@@ -41,6 +40,7 @@ fn acted(act: &Act) -> Option<Mark> {
         Act::Examine(_) => Mark::Agent,
         Act::Open(_) => Mark::File,
         Act::Discard => Mark::Close,
+        Act::Kind(_) => Mark::Cluster,
     };
     Some(mark)
 }
@@ -51,7 +51,7 @@ fn keyed(key: Key) -> Option<Mark> {
         Key::Overview => Mark::Overview,
         Key::Diff => Mark::Review,
         Key::Files => Mark::Folder,
-        Key::Resources => Mark::Cluster,
+        Key::Resources | Key::SelectNamespace | Key::SelectContext => Mark::Cluster,
         Key::FoldSidebar | Key::FocusSidebar | Key::FocusRail => Mark::Sidebar,
         Key::FocusAgent => Mark::Agent,
         Key::FocusWorkspace => Mark::File,

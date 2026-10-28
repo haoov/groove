@@ -5,7 +5,7 @@ use groove_types::{SessionId, WorktreeId};
 use crate::hit::{Cursor, Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::{Edge, Layout, Split};
-use crate::tests::{ALT, WINDOW, click, drag, full_app, metrics, press, release, window};
+use crate::tests::{WINDOW, click, drag, full_app, metrics, press, release, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 use groove_ui_kit::base::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
@@ -128,7 +128,7 @@ fn the_selected_tab_stands_on_a_rounded_ground_as_a_rail_row() {
 fn a_click_on_a_palette_row_runs_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let hits = regions(&app, &ui);
     let rect = hits
         .rect_of(&Target::PaletteRow(0))
@@ -146,7 +146,7 @@ fn a_click_on_a_palette_row_runs_it() {
 fn a_click_outside_the_palette_closes_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let hits = regions(&app, &ui);
     let palette = hits.rect_of(&Target::Palette).expect("the palette");
     let rect = groove_gfx::Rect::new(palette.x - 40.0, palette.y + 40.0, 10.0, 10.0);

@@ -51,7 +51,7 @@ fn discard_every_change_asks_first() {
 fn the_input_line_stands_taller_than_a_row_and_hints_at_files() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let (frame, _) = view(
         &app,
         &ui,
@@ -96,7 +96,7 @@ fn a_file_found_in_pieces_lights_each_piece_and_the_whole_run_ranks_first() {
     let paths = ["factories/test_keycloak.py", "factories/keycloak.py"].map(file);
     app.workspace.set_paths(paths.to_vec());
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     crate::tests::typed("#factories/keycloak", &mut ui, &app);
     let rows = ui.palette().unwrap().rows(&app);
     assert_eq!(
@@ -128,7 +128,7 @@ fn a_file_found_in_pieces_lights_each_piece_and_the_whole_run_ranks_first() {
 fn a_picker_lights_its_fuzzy_letters() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     crate::tests::typed("add work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     crate::tests::typed("mg", &mut ui, &app);

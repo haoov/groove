@@ -1,53 +1,49 @@
-//! The scope pickers' panel: what the session holds, shown or not, then what it could attach.
+//! The scope pickers' panel: the contexts held and those to attach, or every `context/namespace`.
 
 use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command, cluster, session};
 use groove_types::{Attached, fuzzy};
 use groove_ui_kit::widgets::Field;
 
-use super::scope::{Pick, ResourcesUi, WHOLE_LINE, contexts, focus};
+use super::scope::{ResourcesUi, WHOLE_MARK, contexts, focus, toggle};
 use crate::hit::Picks;
 
-/// The panel under a scope picker: its search, the line the keys stand on, a context being attached.
+/// The panel under a scope picker: its search, and the line the keys stand on.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scoping {
     pub which: Picks,
     pub query: Field,
+    /// None stands on the first line that acts.
     pub cursor: Option<usize>,
-    /// A context picked among the available ones, until one of its namespaces is.
-    pub adding: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScopeLine {
-    /// A context's name over its namespaces, or a section of the contexts.
+    /// A section of the contexts.
     Heading(String),
-    Held(Pick),
+    /// A context the session holds.
+    Held(String),
     /// A context Settings knows that the session does not hold.
     Known(String),
-    /// A namespace to attach; `typed` when only the search names it.
-    Free {
-        attached: Attached,
-        typed: bool,
-    },
+    /// One namespace of a context held, or its whole cluster.
+    Namespace(Attached),
 }
 
 impl ScopeLine {
     pub fn label(&self) -> String {
         match self {
-            ScopeLine::Heading(text) | ScopeLine::Known(text) => text.clone(),
-            ScopeLine::Held(Pick::Context(context)) => context.clone(),
-            ScopeLine::Held(Pick::Pair(pair)) => named(pair).to_string(),
-            ScopeLine::Free { attached, typed } => match typed {
-                true => format!("attach {}", named(attached)),
-                false => named(attached).to_string(),
-            },
+            ScopeLine::Heading(text) | ScopeLine::Held(text) | ScopeLine::Known(text) => {
+                text.clone()
+            }
+            ScopeLine::Namespace(pair) => named(pair),
         }
     }
 }
 
-fn named(pair: &Attached) -> &str {
-    pair.namespace.as_deref().unwrap_or(WHOLE_LINE)
+/// `staging/shop`, or `staging/*` for the whole cluster.
+fn named(pair: &Attached) -> String {
+    let namespace = pair.namespace.as_deref().unwrap_or(WHOLE_MARK);
+    format!("{}/{namespace}", pair.context)
 }
 
 impl Scoping {
@@ -56,7 +52,6 @@ impl Scoping {
             which,
             query: Field::default(),
             cursor: None,
-            adding: None,
         }
     }
 
@@ -68,47 +63,49 @@ impl Scoping {
         }
     }
 
-    /// The panel opened: the namespaces of its contexts listed again.
-    pub fn opened(self, open: &Open, held: &ResourcesUi) -> (Self, Vec<Command>) {
-        let list = |context: String| Command::Cluster(cluster::Command::ListNamespaces { context });
+    /// The panel opened: the namespaces of every whole cluster held listed again.
+    pub fn opened(self, open: &Open) -> (Self, Vec<Command>) {
+        let list = |context: &str| {
+            let context = context.to_string();
+            Command::Cluster(cluster::Command::ListNamespaces { context })
+        };
         let commands = match self.which {
             Picks::Contexts => Vec::new(),
-            _ => in_panel(open, held, &self).into_iter().map(list).collect(),
+            _ => wholes(open).into_iter().map(list).collect(),
         };
         (self, commands)
     }
 }
 
-/// The contexts whose namespaces the panel lists: those picked, then one being attached.
-fn in_panel(open: &Open, held: &ResourcesUi, scoping: &Scoping) -> Vec<String> {
-    let picked = super::scope::shown_contexts(open, held);
-    let mut out: Vec<String> = picked.into_iter().map(String::from).collect();
-    if let Some(adding) = scoping.adding.clone().filter(|one| !out.contains(one)) {
-        out.push(adding);
-    }
-    out
+/// The contexts the session holds as a whole cluster.
+fn wholes(open: &Open) -> Vec<&str> {
+    let whole = |context: &&str| {
+        let held = Attached {
+            context: context.to_string(),
+            namespace: None,
+        };
+        open.clusters.contains(&held)
+    };
+    contexts(open).into_iter().filter(whole).collect()
 }
 
 /// What the panel lists under its search.
-pub fn lines(app: &AppState, open: &Open, held: &ResourcesUi, scoping: &Scoping) -> Vec<ScopeLine> {
+pub fn lines(app: &AppState, open: &Open, scoping: &Scoping) -> Vec<ScopeLine> {
     let query = scoping.query.text();
-    let hit = |label: &str| query.is_empty() || fuzzy(label, query);
     match scoping.which {
-        Picks::Contexts => context_lines(app, open, &hit),
-        _ => in_panel(open, held, scoping)
-            .into_iter()
-            .flat_map(|context| namespace_lines(app, open, &context, (query, &hit)))
-            .collect(),
+        Picks::Contexts => context_lines(app, open, query),
+        _ => namespace_lines(app, open, query),
     }
 }
 
-fn context_lines(app: &AppState, open: &Open, hit: &dyn Fn(&str) -> bool) -> Vec<ScopeLine> {
+fn context_lines(app: &AppState, open: &Open, query: &str) -> Vec<ScopeLine> {
+    let hit = |label: &str| query.is_empty() || fuzzy(label, query);
     let held = contexts(open);
     let mut out = Vec::new();
     let mine: Vec<ScopeLine> = held
         .iter()
         .filter(|one| hit(one))
-        .map(|one| ScopeLine::Held(Pick::Context(one.to_string())))
+        .map(|one| ScopeLine::Held(one.to_string()))
         .collect();
     if !mine.is_empty() {
         out.push(ScopeLine::Heading("in this session".into()));
@@ -129,59 +126,26 @@ fn context_lines(app: &AppState, open: &Open, hit: &dyn Fn(&str) -> bool) -> Vec
     out
 }
 
-/// One context: its name, the pairs held, then what it could attach.
-fn namespace_lines(
-    app: &AppState,
-    open: &Open,
-    context: &str,
-    (query, hit): (&str, &dyn Fn(&str) -> bool),
-) -> Vec<ScopeLine> {
-    let pairs: Vec<&Attached> = open
-        .clusters
-        .iter()
-        .filter(|one| one.context == context)
-        .collect();
-    let mut out: Vec<ScopeLine> = pairs
-        .iter()
-        .filter(|one| hit(named(one)))
-        .map(|one| ScopeLine::Held(Pick::Pair((*one).clone())))
-        .collect();
-    let whole = pairs.iter().any(|one| one.namespace.is_none());
-    let free = |namespace: Option<&str>, typed| ScopeLine::Free {
-        attached: Attached {
+/// Every pair the session lets the list read, the best match of `query` first.
+fn namespace_lines(app: &AppState, open: &Open, query: &str) -> Vec<ScopeLine> {
+    let whole = wholes(open);
+    let mut pairs: Vec<Attached> = Vec::new();
+    for context in contexts(open) {
+        let pair = |namespace: Option<&str>| Attached {
             context: context.to_string(),
             namespace: namespace.map(String::from),
-        },
-        typed,
-    };
-    let taken = |name: &str| {
-        pairs
-            .iter()
-            .any(|one| one.namespace.as_deref() == Some(name))
-    };
-    if !whole && hit(WHOLE_LINE) {
-        out.push(free(None, false));
+        };
+        if !whole.contains(&context) {
+            let held = open.clusters.iter().filter(|one| one.context == context);
+            pairs.extend(held.cloned());
+            continue;
+        }
+        pairs.push(pair(None));
+        let listed = app.cluster.store.namespaces(context).unwrap_or_default();
+        pairs.extend(listed.iter().map(|one| pair(Some(one))));
     }
-    let listed = app.cluster.store.namespaces(context).unwrap_or_default();
-    let open_ones = listed.iter().filter(|one| !taken(one) && hit(one));
-    let open_ones = groove_types::ranked(open_ones, |one| one.to_string(), query);
-    out.extend(open_ones.into_iter().map(|one| free(Some(one), false)));
-    let named_already = listed.iter().any(|one| one == query) || taken(query);
-    if valid(query) && !named_already {
-        out.push(free(Some(query), true));
-    }
-    if out.is_empty() {
-        return out;
-    }
-    std::iter::once(ScopeLine::Heading(context.to_string()))
-        .chain(out)
-        .collect()
-}
-
-/// A name Kubernetes takes for a namespace.
-fn valid(name: &str) -> bool {
-    let fits = |c: char| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-';
-    !name.is_empty() && name.len() <= 63 && name.chars().all(fits)
+    let ranked = groove_types::ranked(pairs, named, query);
+    ranked.into_iter().map(ScopeLine::Namespace).collect()
 }
 
 /// How a line is chosen: a click or space, Enter, or its ×.
@@ -192,7 +156,7 @@ pub enum How {
     Detach,
 }
 
-/// The line chosen: a held one shown, hidden, alone or detached; any other attached, alone on Enter, or opened.
+/// The line chosen: a context shown, hidden, alone, detached or attached; a namespace shown or alone.
 pub fn choose(
     line: &ScopeLine,
     how: How,
@@ -201,78 +165,59 @@ pub fn choose(
     held.scroll = 0.0;
     match line {
         ScopeLine::Heading(_) => Vec::new(),
-        ScopeLine::Held(pick) => kept(pick, how, open, held),
+        ScopeLine::Held(context) => kept(context, how, open, held),
         ScopeLine::Known(context) => {
-            *scoping = Scoping {
-                adding: Some(context.clone()),
-                ..Scoping::new(Picks::Namespaces)
-            };
-            let list = cluster::Command::ListNamespaces {
-                context: context.clone(),
-            };
-            vec![Command::Cluster(list)]
-        }
-        ScopeLine::Free { attached, .. } => {
-            held.hidden_contexts.remove(&attached.context);
             if how == How::Alone {
-                alone(attached, open, held);
+                held.hidden_contexts = contexts(open).into_iter().map(String::from).collect();
             }
-            if scoping.adding.as_ref() == Some(&attached.context) {
-                scoping.adding = None;
-            }
+            held.picked.retain(|one| one.context != *context);
             (scoping.query, scoping.cursor) = (Field::default(), None);
             let attach = session::Command::AttachCluster {
                 session: open.session.id.clone(),
-                attached: attached.clone(),
+                attached: Attached {
+                    context: context.clone(),
+                    namespace: None,
+                },
             };
             vec![Command::Session(attach)]
+        }
+        ScopeLine::Namespace(pair) => {
+            match how {
+                How::Toggle => toggle(held, open, pair),
+                How::Alone => focus(held, open, pair),
+                How::Detach => {}
+            }
+            Vec::new()
         }
     }
 }
 
-/// Hides every pair held and every context but `attached`'s.
-fn alone(attached: &Attached, open: &Open, held: &mut ResourcesUi) {
-    held.hidden = open.clusters.iter().cloned().collect();
-    held.hidden_contexts = contexts(open)
-        .into_iter()
-        .filter(|one| *one != attached.context)
-        .map(String::from)
-        .collect();
-}
-
-/// A held line shown or hidden, shown alone, or detached.
-fn kept(pick: &Pick, how: How, open: &Open, held: &mut ResourcesUi) -> Vec<Command> {
-    let detach = |attached: Attached| {
-        Command::Session(session::Command::DetachCluster {
-            session: open.session.id.clone(),
-            attached,
-        })
-    };
-    match (pick, how) {
-        (pick, How::Toggle) => {
-            pick.toggle(held);
+/// A held context shown or hidden, shown alone, or detached.
+fn kept(context: &str, how: How, open: &Open, held: &mut ResourcesUi) -> Vec<Command> {
+    match how {
+        How::Toggle => {
+            groove_types::toggle(&mut held.hidden_contexts, context.to_string());
             Vec::new()
         }
-        (Pick::Context(context), How::Alone) => {
+        How::Alone => {
             held.hidden_contexts = contexts(open)
                 .into_iter()
-                .filter(|one| one != context)
+                .filter(|one| *one != context)
                 .map(String::from)
                 .collect();
             Vec::new()
         }
-        (Pick::Pair(pair), How::Alone) => {
-            focus(held, open, pair);
-            Vec::new()
-        }
-        (Pick::Context(context), How::Detach) => {
+        How::Detach => {
             held.hidden_contexts.remove(context);
-            let pairs = open.clusters.iter().filter(|one| &one.context == context);
-            pairs.cloned().map(detach).collect()
-        }
-        (Pick::Pair(pair), How::Detach) => {
-            held.hidden.remove(pair);
-            vec![detach(pair.clone())]
+            held.picked.retain(|one| one.context != context);
+            let pairs = open.clusters.iter().filter(|one| one.context == context);
+            let detach = |attached: &Attached| {
+                Command::Session(session::Command::DetachCluster {
+                    session: open.session.id.clone(),
+                    attached: attached.clone(),
+                })
+            };
+            pairs.map(detach).collect()
         }
     }
 }

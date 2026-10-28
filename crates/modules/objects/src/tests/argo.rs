@@ -10,6 +10,7 @@ fn applications() -> KubeKind {
         plural: "applications".into(),
         namespaced: true,
         watchable: true,
+        short_names: Vec::new(),
     }
 }
 
