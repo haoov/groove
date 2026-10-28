@@ -1,12 +1,11 @@
 //! Where the user left the window's boundaries, as the file on disk holds them.
 
-/// Every column's width but the workspace's, and the commit box's height, in logical pixels.
+/// Every column's width but the workspace's, in logical pixels.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Panes {
     pub rail: f32,
     pub agent: f32,
     pub sidebar: f32,
-    pub commit: f32,
     /// How tall the rail's feed stands, its footer included.
     #[serde(default = "feed")]
     pub feed: f32,

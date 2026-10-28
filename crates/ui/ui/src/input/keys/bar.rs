@@ -154,7 +154,6 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
     }
     ui.session.folded = false;
     ui.session.bar.open(term);
-    ui.session.composing = false;
 }
 
 /// What a keystroke asks of the bar: a term narrowed, the search run again, or a file opened.

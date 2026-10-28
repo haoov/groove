@@ -9,7 +9,7 @@ mod paint;
 use groove_gfx::{Color, Rect};
 use groove_types::{Highlight, Severity};
 
-pub use self::gutter::{Block, Gutters, rule};
+pub use self::gutter::{Block, Gutters};
 
 use crate::base::ctx::{App, Ctx};
 
@@ -28,8 +28,8 @@ pub struct Code<'a, T> {
     pub text: &'a str,
     pub spans: &'a [Highlight],
     pub ground: Option<Color>,
-    /// The gutter's own ground and its numbers' colour.
-    pub gutter: Option<(Color, Color)>,
+    /// The colour of a changed row's numbers.
+    pub gutter: Option<Color>,
     /// A bar at the row's left edge, for what a gutter number cannot say.
     pub mark: Option<Color>,
     pub banner: bool,

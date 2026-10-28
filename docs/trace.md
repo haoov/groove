@@ -1,6 +1,6 @@
 # One action, end to end: `workspace.push`
 
-The user clicks **push** in the commit box. This page follows that click through every
+The user picks **Push** in the palette. This page follows that pick through every
 layer of [architecture.md](architecture.md), to the line it leaves on the feed. Each
 step names the file that does it.
 
@@ -30,13 +30,11 @@ The binary receives the click in `crates/ui/groove/src/app/events.rs` and hands 
 `App::input` in `crates/ui/groove/src/app.rs`. That calls `groove_ui::input::handle`,
 which finds the hit and returns the commands it means. Ui never runs an action itself.
 
-The commit box offers one action at a time. `acting` in
-`crates/ui/ui/src/input/pointer.rs` asks `commit::primary` in
-`crates/ui/ui/src/views/session/commit.rs`, which reads the worktree's `Standing` and
-returns `Command::Workspace(workspace::Command::Push)` while the branch is ahead.
-
-The same command comes from the palette, through `worktree` in
-`crates/ui/ui/src/views/overlays/actions/picked.rs`. One action, one command, wherever it starts.
+The palette lists the selected worktree's git actions through `landing` in
+`crates/ui/ui/src/palette/actions.rs`. Its Push row carries
+`Command::Workspace(workspace::Command::Push)`, and `palette_row` in
+`crates/ui/ui/src/input/pointer/menu.rs` returns it on a click. The agent's `git_push` tool
+ends in the same command. One action, one command, wherever it starts.
 
 ## 2. Dispatch — `controllers`
 
@@ -101,9 +99,9 @@ The closure in `remote` runs on the main thread:
 
 ## 7. The frame — `ui`
 
-The redraw calls `view(&AppState)`, which builds a new `Frame`. The commit box reads
-`Standing` again: the branch is no longer ahead, so the button now offers the next step,
-open an MR. Nothing in `ui` was told that the push succeeded. It reads the state.
+The redraw calls `view(&AppState)`, which builds a new `Frame`. The info line reads the
+worktree's status again: the branch is no longer ahead. Nothing in `ui` was told that the
+push succeeded. It reads the state.
 
 ## The same push from the agent
 

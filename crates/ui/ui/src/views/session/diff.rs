@@ -2,6 +2,7 @@
 
 mod blame;
 pub(crate) mod blocks;
+mod cards;
 pub(crate) mod completion;
 pub(crate) mod faults;
 mod finder;
@@ -41,11 +42,22 @@ pub(crate) use row::{edited, line_at, text_at};
 pub(crate) use scroll::scrolled;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
+    let tall = |height: f32| Spec::default().height(height);
+    let [head, _, body] = column_in(
+        area,
+        [tall(ctx.tokens.row), tall(ctx.tokens.sm), Spec::fill()],
+    );
     if app.workspace.changes.is_empty() && ui.session.face() != Face::File {
-        return hint(ctx, app, area);
+        if ui.session.tab == super::Tab::Diff {
+            header::draw(ctx, head, app, ui, "");
+        }
+        return hint(ctx, app, body);
     }
-    let [head, body] = column_in(area, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-    let [body, column] = row_in(body, [Spec::fill(), Spec::default().width(ctx.tokens.map)]);
+    let wide = |width: f32| Spec::default().width(width);
+    let [body, column, _] = row_in(
+        body,
+        [Spec::fill(), wide(ctx.tokens.map), wide(ctx.tokens.sm)],
+    );
     let cols = surface::note_cols(ctx, body, app, ui);
     ctx.app.hits.wraps(cols);
     let inline = Inline::of(app, ui, ui.session.face(), cols);

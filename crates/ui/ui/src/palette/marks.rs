@@ -54,7 +54,6 @@ fn keyed(key: Key) -> Option<Mark> {
         Key::Resources => Mark::Cluster,
         Key::FoldSidebar | Key::FocusSidebar | Key::FocusRail => Mark::Sidebar,
         Key::FocusAgent => Mark::Agent,
-        Key::FocusCommit => Mark::Commit,
         Key::FocusWorkspace => Mark::File,
         Key::Terminals | Key::NewTerminal => Mark::Terminal,
         Key::Reload => Mark::Reload,
@@ -77,7 +76,6 @@ fn commanded(command: &Command, app: &AppState) -> Option<Mark> {
                 .find(|one| one.session.id == *session)?;
             Mark::of_kind(&open.session.kind)
         }
-        Command::Workspace(workspace::Command::Commit) => Mark::Commit,
         Command::Workspace(workspace::Command::RestartServers) => Mark::Reload,
         Command::Workspace(workspace::Command::Push) => Mark::Ahead,
         Command::Workspace(workspace::Command::Pull) => Mark::Behind,

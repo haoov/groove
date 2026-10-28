@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Up;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Config, DiffView, LanguageServer};
+use groove_types::{Config, DiffMode, DiffView, LanguageServer};
 
 use crate::Ui;
 use crate::ctx::Ctx;
@@ -11,70 +11,120 @@ use crate::hit::Target;
 use crate::views::session::{Tab, files};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, row_in};
-use groove_ui_kit::shape::{hairline, square};
+use groove_ui_kit::shape::{from_left, square};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{self, Text, changes};
+use groove_ui_kit::widgets;
 
 /// The band over the diff or over the open file.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
-    hairline(ctx, band, ctx.styles.line());
-    let mut room = band;
     if ui.session.tab == Tab::Diff {
+        let mut room = band.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+        totals(ctx, &mut room, app);
         switch(ctx, &mut room, ui.session.view);
-        return totals(ctx, room, app);
+        if app.workspace.commit.is_none() {
+            from_left(&mut room, ctx.tokens.sm, 0.0);
+            modes(ctx, &mut room, app.workspace.mode);
+        }
+        return;
     }
-    if let Some(counts) = super::row::counted(app, path) {
-        changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
-    }
-    for (name, up) in servers_of(app, path).into_iter().rev() {
-        server(ctx, &mut room, &name, up);
-    }
-    if let Some(tally) = super::faults::tally(app, path) {
-        widgets::faults(ctx, &mut room, tally);
-    }
+    named(ctx, band, app, path);
+}
+
+/// The file's path from the left, then what stands beside it: unsaved, changed, faults, servers.
+fn named(ctx: &mut Ctx, band: Rect, app: &AppState, path: &str) {
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
+    let mut room = band.pad(Edges::across(md, md));
+    let style = ctx.styles.code(Role::Muted);
+    let counts = super::row::counted(app, path).unwrap_or_default();
+    let tally = super::faults::tally(app, path);
+    let servers = servers_of(app, path);
     let dirty = app
         .workspace
         .buffer(path)
         .is_some_and(|open| open.new.dirty());
+    let after = beside(ctx, (dirty, counts, tally), &servers);
+    let wide = ctx.measure(path, &style).min((room.w - after).max(0.0));
+    let slot = from_left(&mut room, wide, sm);
+    Label::new(path, style).cut_start().draw(ctx, slot);
+    let size = ctx.styles.small(Role::Warn).size;
     if dirty {
-        let size = ctx.styles.small(Role::Warn).size;
-        let wide = |width: f32| Spec::default().width(width);
-        let [rest, dot, _] = row_in(room, [Spec::fill(), wide(size), wide(ctx.tokens.sm)]);
-        room = rest;
-        let dot = square(dot, size);
-        groove_ui_kit::widgets::icon(ctx, dot, Mark::Modified, Role::Warn);
+        let dot = from_left(&mut room, size, sm);
+        groove_ui_kit::widgets::icon(ctx, square(dot, size), Mark::Modified, Role::Warn);
     }
-    let md = ctx.tokens.md;
-    let style = ctx.styles.code(Role::Muted);
-    Label::new(path, style)
-        .cut_start()
-        .draw(ctx, room.pad(Edges::across(md, md)));
+    for (count, role, sign) in [(counts.0, Role::Ok, '+'), (counts.1, Role::Bad, '-')] {
+        if count > 0 {
+            let text = format!("{sign}{count}");
+            Label::new(&text, ctx.styles.code(role)).left(ctx, &mut room, sm);
+        }
+    }
+    if let Some(tally) = tally {
+        let wide = widgets::faults_room(ctx, tally);
+        let mut slot = from_left(&mut room, wide, md);
+        widgets::faults(ctx, &mut slot, tally);
+    }
+    for (name, up) in servers {
+        server(ctx, &mut room, &name, up);
+    }
 }
 
-/// The three views from the right of `room`, the current one raised.
+/// How wide what stands beside the path is.
+fn beside(
+    ctx: &mut Ctx,
+    (dirty, counts, tally): (bool, (u32, u32), Option<(u32, u32)>),
+    servers: &[(String, Up)],
+) -> f32 {
+    let (sm, md, xs) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.xs);
+    let style = ctx.styles.code(Role::Faint);
+    let size = ctx.styles.small(Role::Warn).size;
+    let mut wide = if dirty { size + sm } else { 0.0 };
+    for (count, sign) in [(counts.0, '+'), (counts.1, '-')] {
+        if count > 0 {
+            wide += ctx.measure(&format!("{sign}{count}"), &style) + sm;
+        }
+    }
+    if let Some(tally) = tally {
+        wide += widgets::faults_room(ctx, tally) + md;
+    }
+    for (name, _) in servers {
+        wide += size + xs + ctx.measure(name, &style) + md;
+    }
+    wide + sm
+}
+
+/// The views after the totals, the current one held.
 fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
-    for view in DiffView::ALL.into_iter().rev() {
+    for view in DiffView::ALL {
         let tab = widgets::Tab::new(view.label(), Target::View(view), view == current);
-        let tab = tab.text(Text::Body).quiet(Role::Faint).tight();
-        tab.right(ctx, room, 0.0);
+        tab.left(ctx, room, ctx.tokens.xs);
     }
 }
 
-/// How many files the change touches, and what it added and removed in all.
-fn totals(ctx: &mut Ctx, mut room: Rect, app: &AppState) {
+/// What the change is read against, the one in use held.
+fn modes(ctx: &mut Ctx, room: &mut Rect, current: DiffMode) {
+    for mode in DiffMode::ALL {
+        let tab = widgets::Tab::new(mode.label(), Target::Mode(mode), mode == current);
+        tab.left(ctx, room, ctx.tokens.xs);
+    }
+}
+
+/// How many files the change touches, then what it added and removed in all, from the left.
+fn totals(ctx: &mut Ctx, room: &mut Rect, app: &AppState) {
     let files = files::changed(app);
-    let added = files.iter().map(|file| file.added).sum();
-    let deleted = files.iter().map(|file| file.deleted).sum();
-    changes(ctx, &mut room, (added, deleted), |ctx, role| {
-        ctx.styles.code(role)
-    });
+    let added: u32 = files.iter().map(|file| file.added).sum();
+    let deleted: u32 = files.iter().map(|file| file.deleted).sum();
     let said = match files.len() {
         1 => "1 file".to_string(),
         many => format!("{many} files"),
     };
-    let md = ctx.tokens.md;
-    Label::new(&said, ctx.styles.body(Role::Muted)).draw(ctx, room.pad(Edges::across(md, md)));
+    let sm = ctx.tokens.sm;
+    Label::new(&said, ctx.styles.body(Role::Muted)).left(ctx, room, sm);
+    for (count, role, sign) in [(added, Role::Ok, '+'), (deleted, Role::Bad, '-')] {
+        if count > 0 {
+            let text = format!("{sign}{count}");
+            Label::new(&text, ctx.styles.code(role)).left(ctx, room, sm);
+        }
+    }
+    from_left(room, ctx.tokens.sm, 0.0);
 }
 
 /// The servers of the open file's language that have started, and where each stands.
@@ -97,22 +147,16 @@ fn servers_of(app: &AppState, path: &str) -> Vec<(String, Up)> {
         .collect()
 }
 
-/// A server's dot, in the colour of where it stands, then its name, from the right of `room`.
+/// A server's dot, in the colour of where it stands, then its name, from the left of `room`.
 fn server(ctx: &mut Ctx, room: &mut Rect, name: &str, up: Up) {
     let role = match up {
         Up::Ready => Role::Ok,
         Up::Starting => Role::Working,
         Up::Down => Role::Bad,
     };
-    let style = ctx.styles.code(Role::Faint);
-    let (size, width) = (ctx.styles.small(role).size, ctx.measure(name, &style));
-    let wide = |width: f32| Spec::default().width(width);
-    let gaps = (wide(ctx.tokens.xs), wide(ctx.tokens.md));
-    let [rest, dot, _, label, _] = row_in(
-        *room,
-        [Spec::fill(), wide(size), gaps.0, wide(width), gaps.1],
-    );
-    *room = rest;
+    let size = ctx.styles.small(role).size;
+    let dot = from_left(room, size, ctx.tokens.xs);
     groove_ui_kit::widgets::icon(ctx, square(dot, size), Mark::Modified, role);
-    Label::new(name, style).draw(ctx, label);
+    let style = ctx.styles.code(Role::Faint);
+    Label::new(name, style).left(ctx, room, ctx.tokens.md);
 }

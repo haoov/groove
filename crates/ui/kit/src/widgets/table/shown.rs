@@ -5,7 +5,7 @@ use groove_gfx::{Edges, Rect};
 use super::{Act, Cell};
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
-use crate::shape::{hairline, hoverable};
+use crate::shape::hairline;
 
 pub enum Shown<'a, T> {
     Band(Band<'a, T>),
@@ -95,21 +95,25 @@ pub(super) fn banded<A: App>(
     ctx: &mut Ctx<'_, A>,
     line: Rect,
     band: Band<'_, A::Target>,
-    selected: bool,
+    (selected, ruled): (bool, bool),
 ) {
-    crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+    if ruled {
+        crate::shape::ground(ctx, line, crate::base::ground::Ground::Band);
+    }
     if selected {
-        crate::shape::chosen(ctx, line);
+        crate::widgets::glass_chosen(ctx, line);
     }
     if let Some(target) = band.target {
-        hoverable(ctx, line, target);
+        crate::widgets::glass_hoverable(ctx, line, target);
     }
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     if let Some(open) = band.open {
         crate::widgets::fold(ctx, &mut room, open, Role::Ghost);
     }
     under(ctx, line, room.x, band.cells);
-    hairline(ctx, line, ctx.styles.line());
+    if ruled {
+        hairline(ctx, line, ctx.styles.line());
+    }
 }
 
 /// The second line's cells one after the other from `x`, a small gap between them.

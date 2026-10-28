@@ -168,20 +168,23 @@ fn in_the_kind_search_the_arrows_step_through_the_lines_enter_folds_a_heading_or
 }
 
 #[test]
-fn the_kind_listed_stands_on_the_held_ground_between_the_rules() {
+fn the_kind_listed_stands_on_a_rounded_held_ground() {
     use groove_ui_kit::base::style::Styles;
     let (app, ui) = listing();
     let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    let held = Styles::new(app.config.theme(), window().tokens()).held();
+    let held = Styles::new(app.config.theme(), window().tokens()).glass_chosen();
+    let sm = window().tokens().sm;
     let quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
     assert!(
-        quads.into_iter().any(|one| one.color == held),
-        "a quad on the held ground"
+        quads
+            .into_iter()
+            .any(|one| one.color == held && one.shape.radius == sm),
+        "a quad on the rounded held ground"
     );
 }
 
 #[test]
-fn the_kind_the_keys_stand_on_is_raised_as_a_selected_row_is() {
+fn the_kind_the_keys_stand_on_is_lit_as_a_row_under_the_pointer_is() {
     use crate::views::session::resources::{Line, shown};
     use groove_ui_kit::base::style::Styles;
     let (app, mut ui) = listing();
@@ -193,9 +196,9 @@ fn the_kind_the_keys_stand_on_is_raised_as_a_selected_row_is() {
     (ui.session.resources.filtering, ui.session.resources.cursor) = (true, at);
     let (frame, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let row = hits.rect_of(&Target::ResourceKind(stood)).expect("its row");
-    let raised = Styles::new(app.config.theme(), window().tokens()).raised();
+    let lit = Styles::new(app.config.theme(), window().tokens()).glass_hover();
     let mut quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
-    assert!(quads.any(|one| one.rect == row && one.color == raised));
+    assert!(quads.any(|one| row.contains(one.rect.x, one.rect.y + 1.0) && one.color == lit));
 }
 
 #[test]

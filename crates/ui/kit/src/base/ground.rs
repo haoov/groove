@@ -26,6 +26,8 @@ pub enum Ground {
     Noted,
     /// A role's colour dimmed to a ground.
     Tint(Role),
+    /// A role's colour dimmed to a row's ground, stronger on a light theme.
+    RowTint(Role),
     /// A role's own colour: a drop point, a working bar.
     Solid(Role),
     /// What a line did: came, went, or changed.
@@ -44,6 +46,7 @@ impl Ground {
             Self::Held => styles.held(),
             Self::Noted => styles.noted(),
             Self::Tint(role) => styles.tint(role),
+            Self::RowTint(role) => styles.row_tint(role),
             Self::Solid(role) => styles.color(role),
             Self::Mark(mark) => styles.mark(mark),
         }

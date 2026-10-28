@@ -224,7 +224,7 @@ fn a_failed_resource_name_that_fits_at_the_small_size_stands_whole_at_the_body_s
         .rect_of(&Target::ResourceRow("shop/billing-acc".into()))
         .expect("its row");
     click(row, &mut ui, &app, &hits);
-    let name = "FailedCreatePodSandBoxAgain";
+    let name = "FailedCreatePodSandBox";
     let mut one = failing();
     if let Some(failed) = one
         .app

@@ -80,8 +80,6 @@ pub struct State {
     pub searching: Option<std::sync::Arc<Search>>,
     /// Bumped whenever a document is read again, for a cache to know.
     pub stamp: u64,
-    /// What the commit box holds, typed on the same buffer as a file.
-    pub message: Buffer,
     /// The branch's own commits, newest first.
     pub log: Vec<CommitEntry>,
     /// The worktree whose commits it holds, or has a read out for.

@@ -12,9 +12,9 @@ use crate::views::session::Showing;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{Label, ago, row};
-use groove_ui_kit::widgets::{Badge, tabs};
+use groove_ui_kit::widgets::glass_hoverable;
+use groove_ui_kit::widgets::{Badge, glass_tabs};
 
 /// One row of the list: a file's heading, or a note under it.
 pub(super) enum Item {
@@ -73,7 +73,7 @@ fn filters(ctx: &mut Ctx, strip: Rect, app: &AppState, showing: Showing) {
         .iter()
         .position(|one| *one == showing)
         .unwrap_or(0);
-    tabs(ctx, strip, &shown, at);
+    glass_tabs(ctx, strip, &shown, at);
 }
 
 /// What an empty list says, for what it shows.
@@ -125,7 +125,7 @@ pub(super) fn items(app: &AppState, showing: Showing) -> Vec<Item> {
     out
 }
 
-/// A file's heading: its name, its folder after it, the notes under it at the end.
+/// A file's heading from the left: its name, its folder, the notes under it.
 fn heading(ctx: &mut Ctx, line: Rect, path: Option<&str>, count: usize) {
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let (name, folder) = match path {
@@ -135,10 +135,14 @@ fn heading(ctx: &mut Ctx, line: Rect, path: Option<&str>, count: usize) {
         },
         None => ("on the MR", ""),
     };
-    let faint = ctx.styles.small(Role::Faint);
-    Label::new(&count.to_string(), faint).right(ctx, &mut room, ctx.tokens.sm);
-    Label::new(name, ctx.styles.label(Role::Muted)).left(ctx, &mut room, ctx.tokens.sm);
-    Label::new(folder, faint).cut_start().draw(ctx, room);
+    let (faint, sm) = (ctx.styles.small(Role::Faint), ctx.tokens.sm);
+    Label::new(name, ctx.styles.label(Role::Muted)).left(ctx, &mut room, sm);
+    if !folder.is_empty() {
+        Label::new(folder, faint)
+            .cut_start()
+            .left(ctx, &mut room, sm);
+    }
+    Label::new(&count.to_string(), faint).left(ctx, &mut room, sm);
 }
 
 /// One note on two lines: its label and subject; who, from where, which line, and when.
@@ -146,7 +150,7 @@ fn one(ctx: &mut Ctx, line: Rect, app: &AppState, at: usize) {
     let Some(note) = app.delivery.shown.get(at) else {
         return;
     };
-    hoverable(ctx, line, Target::NoteAt(at));
+    glass_hoverable(ctx, line, Target::NoteAt(at));
     let lines = note
         .anchor
         .as_ref()
@@ -158,8 +162,9 @@ fn one(ctx: &mut Ctx, line: Rect, app: &AppState, at: usize) {
     } else {
         Role::Text
     };
-    let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let half = Spec::default().height(line.h / 2.0);
+    let inner = ctx.tokens.md + ctx.tokens.sm;
+    let room = line.pad(Edges::xy(inner, ctx.tokens.xs));
+    let half = Spec::default().height(room.h / 2.0);
     let [top, bottom] = column_in(room, [half, Spec::fill()]);
     said_line(ctx, top, note, &head, role);
     who_line(ctx, bottom, note, &head);
@@ -180,20 +185,25 @@ fn said_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header, role: Ro
     Label::new(&subject(note), ctx.styles.body(role)).draw(ctx, room);
 }
 
-/// Who wrote it, from where, on which line; how many replies and how long ago at the end.
+/// Who wrote it, from where, on which line, how many replies and how long ago, from the left.
 fn who_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header) {
     let (gap, faint) = (ctx.tokens.sm, ctx.styles.small(Role::Faint));
     let age = ago(head.at.age_at(ctx.now));
-    Label::new(&age, faint).right(ctx, &mut room, gap);
     let replies = match note.replies() {
         0 => String::new(),
         1 => "1 reply".to_string(),
         many => format!("{many} replies"),
     };
-    Label::new(&replies, faint).right(ctx, &mut room, gap);
     let initials = ctx.styles.initials(Role::Muted);
     Label::new(&head.initials, initials).left(ctx, &mut room, ctx.tokens.xs);
-    for text in [head.author.as_str(), head.source, head.lines.as_str()] {
+    let said = [
+        head.author.as_str(),
+        head.source,
+        head.lines.as_str(),
+        &replies,
+        &age,
+    ];
+    for text in said.into_iter().filter(|one| !one.is_empty()) {
         Label::new(text, faint).left(ctx, &mut room, gap);
     }
 }

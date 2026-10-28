@@ -24,7 +24,6 @@ fn shown(surface: Surface) -> &'static [Edge] {
             Edge::Rail,
             Edge::Agent,
             Edge::Sidebar,
-            Edge::Commit,
             Edge::Manual,
             Edge::Feed,
         ],
@@ -43,10 +42,6 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
             (!ctx.app.layout.workspace.is_empty()).then(|| upright(ctx.app.layout.agent.right()))
         }
         Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x)),
-        Edge::Commit => (!aside.is_empty() && !ctx.app.layout.commit.is_empty()).then(|| {
-            let top = ctx.app.layout.commit.y;
-            groove_ui_kit::shape::band(aside, top - aside.y - grab / 2.0, grab)
-        }),
         Edge::Manual => {
             let manual = ctx.app.layout.manual;
             let open = manual.h > ctx.tokens.bar;

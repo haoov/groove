@@ -101,11 +101,6 @@ fn going(open: &Open) -> Vec<Entry> {
             Act::Key(Action::FocusWorkspace),
         ),
         act("Go", "Keys to the sidebar", Act::Key(Action::FocusSidebar)),
-        act(
-            "Go",
-            "Keys to the commit box",
-            Act::Key(Action::FocusCommit),
-        ),
         act("Go", "New terminal", Act::Key(Action::NewTerminal)),
         act("Go", "Reload the worktree", Act::Key(Action::Reload)),
     ]);
@@ -132,7 +127,6 @@ fn landing(app: &AppState, open: &Open) -> Vec<Entry> {
     };
     let git = |label: &str, one: workspace::Command| command("Git", label, Command::Workspace(one));
     let mut out = vec![
-        git("Commit what is staged", workspace::Command::Commit),
         git("Push", workspace::Command::Push),
         git("Pull", workspace::Command::Pull),
     ];
@@ -194,15 +188,26 @@ fn noting(app: &AppState) -> Vec<Entry> {
     out
 }
 
-/// A task finished, or opened where it is filed.
+/// The session deleted here alone; a task finished, or opened where it is filed.
 fn tasked(app: &AppState, open: &Open) -> Vec<Entry> {
+    let mut out = Vec::new();
+    if !matches!(open.session.kind, SessionKind::Explorer) {
+        let away = groove_controllers::session::Command::DeleteLocal {
+            session: open.session.id.clone(),
+        };
+        out.push(command(
+            "Session",
+            "Delete the session locally",
+            Command::Session(away),
+        ));
+    }
     if !matches!(open.session.kind, SessionKind::Task { .. }) {
-        return Vec::new();
+        return out;
     }
     let finish = task::Command::Finish {
         session: open.session.id.clone(),
     };
-    let mut out = vec![command("Task", "Finish the task", Command::Task(finish))];
+    out.push(command("Task", "Finish the task", Command::Task(finish)));
     if let Some(url) = app
         .task
         .worked(&open.session)

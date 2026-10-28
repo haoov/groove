@@ -5,6 +5,7 @@ use std::time::Duration;
 use groove_gfx::{Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
+use crate::base::tokens::ELIDE_SLACK as SLACK;
 
 const ELLIPSIS: char = '\u{2026}';
 const MINUTE: u64 = 60;
@@ -76,6 +77,7 @@ pub fn lit_cut<A: App>(
 
 /// The text as it fits `width`: whole, or cut at a character with an ellipsis.
 pub fn elide<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> String {
+    let width = width + SLACK;
     if ctx.measure(text, style) <= width {
         return text.to_string();
     }
@@ -105,6 +107,7 @@ pub fn elide_start<A: App>(
     style: &TextStyle,
     width: f32,
 ) -> String {
+    let width = width + SLACK;
     if ctx.measure(text, style) <= width {
         return text.to_string();
     }

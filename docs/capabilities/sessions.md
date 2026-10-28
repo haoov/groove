@@ -45,8 +45,7 @@ One overview for task, explorer and review sessions: the task's properties, the 
 with their worktree rows, the clusters it holds, then the body. An explorer has neither properties nor body.
 
 A worktree row joins its git status to its MR. Its skill button sends the skill that
-fits the row's state, with `agent.send_skill`. Finish is offered while no worktree of the
-session still carries an open MR.
+fits the row's state, with `agent.send_skill`. Finish is a palette row.
 
 The clusters name what is attached and nothing else: each context once, in its hue, its
 namespaces under it. No health, no counts. A session with none has no clusters section.
@@ -54,8 +53,9 @@ namespaces under it. No health, no counts. A session with none has no clusters s
 ## Agent session
 
 **The pane draws the agent's terminal**; keys go to the pty as bytes. Escape reaches the
-agent's TUI like any key. The action bar holds reload, the skills menu and the
-auto-approve switch. An ask stands on the rail row alone.
+agent's TUI like any key. The action bar stands on the terminal's own ground and holds the
+skills menu, a pill of glass at its start. Auto-approve is a setting, not a switch on the bar.
+An ask stands on the rail row alone.
 
 **Skills are scoped per launch**: the pane's menu lists exactly what this agent was
-started with. A skill saved later shows after a reload.
+started with. A skill saved later shows after a reload, from the palette.

@@ -1,4 +1,4 @@
-//! The session header: its two lines, its pickers, and the task's own actions.
+//! The strip's header and its info line: the title, the tabs, the pickers, the task's own actions.
 
 use groove_types::SessionId;
 
@@ -24,18 +24,14 @@ fn the_header_names_the_session_and_what_it_points_at() {
         2,
         "the worktree picker and the overview row"
     );
-    let head = crate::layout::Layout::of(metrics, &Ui::default()).header;
+    let info = crate::layout::Layout::of(metrics, &Ui::default()).info;
     let carets = frame.layers()[0]
         .icons
         .iter()
         .filter(|i| i.icon == groove_gfx::Icon::CaretDown)
-        .filter(|i| head.contains(i.rect.x, i.rect.y))
+        .filter(|i| info.contains(i.rect.x, i.rect.y))
         .count();
-    assert_eq!(carets, 3, "the repo, worktree and context pickers");
-    assert!(
-        texts.iter().any(|t| t == "no cluster"),
-        "the context picker"
-    );
+    assert_eq!(carets, 2, "the repo and worktree pickers");
 }
 
 #[test]
@@ -49,7 +45,7 @@ fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let header = crate::layout::Layout::of(window, &ui).header;
+    let header = crate::layout::Layout::of(window, &ui).info;
     for picker in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
         let box_ = hits
             .rect_of(&crate::hit::Target::Picker(picker))
@@ -67,13 +63,12 @@ fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
 }
 
 #[test]
-fn the_header_holds_the_title_over_the_pickers() {
+fn the_header_holds_the_title_over_the_info_line_s_pickers() {
     let app = full_app();
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let layout = crate::layout::Layout::of(window, &ui);
-    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let title = frame.layers()[0]
         .texts
         .iter()
@@ -83,111 +78,49 @@ fn the_header_holds_the_title_over_the_pickers() {
     let box_ = hits
         .rect_of(&crate::hit::Target::Picker(crate::hit::Picks::Repo))
         .expect("the repo picker");
-    assert!(title < tokens.header, "the title is on the first line");
-    assert!(box_.y >= tokens.header, "the pickers are on the second");
-    assert!(box_.bottom() <= layout.header.bottom());
+    assert!(
+        title < layout.header.bottom(),
+        "the title is on the first line"
+    );
+    assert!(box_.y >= layout.info.y, "the pickers are on the second");
+    assert!(box_.bottom() <= layout.info.bottom());
     assert_eq!(
         layout.workspace.y,
-        layout.header.bottom(),
-        "the tabs start under both lines"
+        layout.info.bottom(),
+        "the tab starts under both lines"
     );
-    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     for which in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
         let box_ = hits
             .rect_of(&crate::hit::Target::Picker(which))
             .expect("a picker");
         assert!(
-            frame.layers()[0]
-                .quads
-                .iter()
-                .any(|quad| quad.color == styles.band() && quad.rect == box_),
-            "{which:?} is a button"
+            frame.layers()[0].quads.iter().all(|quad| quad.rect != box_),
+            "{which:?} lies flat on the glass"
         );
     }
 }
 
-#[test]
-fn a_task_session_offers_to_finish_and_an_explorer_does_not() {
-    let app = working_a_task();
-    let (_, hits) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let session = SessionId::new("a");
-    assert!(
-        hits.rect_of(&crate::hit::Target::Finish(session.clone()))
-            .is_some(),
-        "the header offers it"
-    );
-
-    let plain = full_app();
-    let (_, hits) = view(
-        &plain,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    assert!(hits.rect_of(&crate::hit::Target::Finish(session)).is_none());
+/// What the palette's row to delete the session here sends, if it offers one.
+fn deleted_here(app: &groove_controllers::AppState) -> Option<groove_controllers::Command> {
+    crate::palette::entries(app)
+        .into_iter()
+        .find(|entry| entry.label == "Delete the session locally")
+        .and_then(|entry| match entry.run {
+            crate::palette::Run::Command(command) => Some(command),
+            _ => None,
+        })
 }
 
 #[test]
-fn a_worktree_with_an_open_mr_holds_the_finish_back() {
-    let mut app = working_a_task();
-    let open = app
-        .session
-        .get_mut(&SessionId::new("a"))
-        .expect("the fixture's session");
-    let worktree = open.worktrees[0].id.clone();
-    app.delivery.remembered(vec![groove_types::Mr {
-        id: groove_types::MrId::new("m1"),
-        worktree,
-        forge: groove_types::Forge::Github,
-        remote_id: "1".into(),
-        url: "https://example.test/mr/1".into(),
-        state: groove_types::MrState::Open,
-    }]);
-    let (_, hits) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    assert!(
-        hits.rect_of(&crate::hit::Target::Finish(SessionId::new("a")))
-            .is_none(),
-        "something is still open"
-    );
-}
-
-#[test]
-fn the_task_s_menu_offers_to_delete_the_session_here() {
-    let app = working_a_task();
-    let mut ui = Ui::default();
-    let window = metrics(1280, 800, 1.0);
-    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+fn a_task_or_a_review_is_deleted_here_from_the_palette_and_an_explorer_is_not() {
     let session = SessionId::new("a");
-    let caret = hits
-        .rect_of(&crate::hit::Target::TaskActions(session.clone()))
-        .expect("the header offers the rest");
-    assert!(
-        crate::tests::click(caret, &mut ui, &app, &hits).is_empty(),
-        "opening it asks for nothing"
-    );
-    assert!(ui.menu().is_some(), "the menu stands");
-
-    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let row = hits
-        .rect_of(&crate::hit::Target::MenuRow(0))
-        .expect("it holds a row");
-    let commands = crate::tests::click(row, &mut ui, &app, &hits);
-    assert_eq!(
-        commands,
-        [groove_controllers::Command::Session(
-            groove_controllers::session::Command::DeleteLocal { session }
-        )]
-    );
+    let away =
+        groove_controllers::Command::Session(groove_controllers::session::Command::DeleteLocal {
+            session,
+        });
+    assert_eq!(deleted_here(&working_a_task()), Some(away.clone()));
+    assert_eq!(deleted_here(&reviewing()), Some(away));
+    assert_eq!(deleted_here(&crate::tests::full_app()), None);
 }
 
 /// The fixture's session, reviewing someone else's merge request.
@@ -202,43 +135,6 @@ fn reviewing() -> groove_controllers::AppState {
         iid: 7,
     };
     app
-}
-
-#[test]
-fn a_review_is_deleted_here_the_way_a_task_is() {
-    let app = reviewing();
-    let mut ui = Ui::default();
-    let window = metrics(1280, 800, 1.0);
-    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let session = SessionId::new("a");
-    let caret = hits
-        .rect_of(&crate::hit::Target::TaskActions(session.clone()))
-        .expect("a review offers the rest too");
-    crate::tests::click(caret, &mut ui, &app, &hits);
-
-    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let row = hits
-        .rect_of(&crate::hit::Target::MenuRow(0))
-        .expect("it holds a row");
-    assert_eq!(
-        crate::tests::click(row, &mut ui, &app, &hits),
-        [groove_controllers::Command::Session(
-            groove_controllers::session::Command::DeleteLocal { session }
-        )]
-    );
-}
-
-#[test]
-fn an_explorer_offers_no_such_menu() {
-    let app = crate::tests::full_app();
-    let ui = Ui::default();
-    let window = metrics(1280, 800, 1.0);
-    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    assert!(
-        hits.rect_of(&crate::hit::Target::TaskActions(SessionId::new("a")))
-            .is_none(),
-        "an explorer is thrown away from the palette"
-    );
 }
 
 #[test]

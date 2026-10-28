@@ -11,7 +11,7 @@ use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::box_in;
 use crate::text::row;
-use crate::widgets::{Corner, panel_at};
+use crate::widgets::{Corner, Material, panel_at};
 
 /// A run of a line, set as code or as prose.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,7 +45,13 @@ pub fn popup<A: App>(ctx: &mut Ctx<'_, A>, at: (f32, f32), said: &[Said]) -> Rec
     let wide = laid.iter().map(|one| one.width).fold(0.0, f32::max);
     let tall: f32 = laid.iter().map(|one| height(ctx, &one.row)).sum();
     let size = (wide + pad * 2.0, tall + pad * 2.0);
-    let rect = panel_at(ctx, at, Corner::TopLeft, size, ctx.styles.line());
+    let rect = panel_at(
+        ctx,
+        at,
+        Corner::TopLeft,
+        size,
+        (ctx.styles.line(), Material::Glass),
+    );
     let mut y = rect.y + pad;
     for one in &laid {
         let h = height(ctx, &one.row);
@@ -104,14 +110,14 @@ fn grounded<A: App>(ctx: &mut Ctx<'_, A>, (line, x): (Rect, f32), text: &str, st
     let tall = style.size + pad * 2.0;
     let wide = ctx.measure(text, &style) + pad * 2.0;
     let behind = Rect::new(x - pad, line.y + (line.h - tall) / 2.0, wide, tall);
-    ctx.quad(behind, ctx.styles.prose_code_ground());
+    ctx.quad(behind, ctx.styles.glass_code_ground());
 }
 
 /// A code line in the pieces its spans cut it into.
 fn coloured<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, text: &str, spans: &[Highlight]) {
     let pad = ctx.tokens.xs;
     let ground = Rect::new(line.x - pad, line.y, line.w + pad * 2.0, line.h);
-    ctx.quad(ground, ctx.styles.prose_code_ground());
+    ctx.quad(ground, ctx.styles.glass_code_ground());
     let plain = ctx.styles.prose_code(Role::Text);
     let (mut x, mut cut) = (line.x, 0);
     for span in spans {

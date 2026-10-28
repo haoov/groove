@@ -9,9 +9,9 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::glass_hoverable;
 
 use groove_gfx::Edges;
 
@@ -46,9 +46,9 @@ fn said(app: &AppState) -> &'static str {
 /// One commit: its short name, what it says, and who made it.
 fn entry(ctx: &mut Ctx, line: Rect, one: &CommitEntry, shown: bool) {
     let target = Target::Commit(one.sha.clone());
-    hoverable(ctx, line, target);
+    glass_hoverable(ctx, line, target);
     if shown {
-        groove_ui_kit::shape::chosen(ctx, line);
+        groove_ui_kit::widgets::glass_chosen(ctx, line);
     }
     let (name, words) = match one.is_base {
         true => (ctx.styles.code(Role::Ghost), ctx.styles.body(Role::Faint)),

@@ -4,7 +4,6 @@ use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
-use crate::shape::hoverable;
 use crate::text::Label;
 use crate::widgets::fold;
 
@@ -70,7 +69,7 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
     /// Across `line`, its text in `room`, what the caller has kept of the line.
     pub fn within<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, mut room: Rect) {
         if let Some(target) = self.target {
-            hoverable(ctx, line, target);
+            crate::widgets::glass_hoverable(ctx, line, target);
         }
         if let Some(open) = self.fold {
             fold(ctx, &mut room, open, self.role);

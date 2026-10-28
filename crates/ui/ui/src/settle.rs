@@ -23,10 +23,13 @@ impl Ui {
         if self.session.tab == Tab::Resources && !held {
             self.session.tab = Tab::Overview;
         }
+        let working = matches!(self.focus, crate::Focus::Workspace | crate::Focus::Sidebar);
+        if self.session.tab != self.session.settled || working {
+            self.session.stowed = false;
+        }
         if !self.session.sidebar() && self.focus == crate::Focus::Sidebar {
             self.focus = crate::Focus::Workspace;
         }
-        self.session.composing &= self.session.commits();
         self.unfound();
         self.refound(app);
         crate::views::session::diff::blocks::follow(self, app);
@@ -69,7 +72,7 @@ impl Ui {
         match now {
             Surface::Board => {
                 let session = &mut self.session;
-                (session.bar.typing, session.composing) = (None, false);
+                session.bar.typing = None;
                 (session.resources.typing, session.resources.filtering) = (false, false);
                 if let Some(find) = session.find.as_mut() {
                     find.typing = false;

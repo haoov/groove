@@ -12,7 +12,7 @@ content at a ref; the working copy comes from disk. Git's own diff output is nev
 no patch parser. Expanding a gap is a slice of a document already held.
 
 **Two modes.** Base: against the merge-base with the base branch, or the MR's target in a
-review. Working: uncommitted changes against HEAD. Untracked files are all additions. A
+review. Local: uncommitted changes against HEAD. Untracked files are all additions. A
 throttled background fetch keeps the base fresh.
 
 **The whole change is one surface.** The file list is built from the numeric summary,
@@ -166,8 +166,8 @@ adopting the session ends its terminals.
 
 ## Git
 
-**The commit box commits the index**; stage and unstage are per file. Its menu holds
-push, pull and discard all.
+**A commit takes the index**; stage and unstage are per file. The agent commits; the
+palette holds push, pull and discard all.
 
 **A push goes to the branch's own name on origin**, and nowhere else. A pull is
 fast-forward only. [../trace.md](../trace.md) follows a push end to end.
@@ -180,8 +180,7 @@ fast-forward only. [../trace.md](../trace.md) follows a push end to end.
 from `gh auth token` and `glab auth status`, held for the run, never stored.
 
 **One MR a worktree at most.** It is created from the worktree's branch to its base
-branch or the repo's default, with a footer linking the task. The commit box's message
-titles it, and its other lines are the body; an empty box takes the task's title.
+branch or the repo's default, with a footer linking the task. It takes the task's title.
 
 **One read brings the MR, its CI and its threads.**
 
@@ -191,6 +190,5 @@ that fails marks the row *stale* and keeps what it showed. A focus gain asks abo
 everything again; a push forgets what was asked of that worktree. A host Groove cannot
 read is skipped, not reported.
 
-**A verdict — approve or request changes — is given in a review session only**, with the
-commit box's words as its comment. GitLab gives a verdict no time of its own, so the MR's
+**A verdict — approve or request changes — is given in a review session only**, with no comment of its own. GitLab gives a verdict no time of its own, so the MR's
 `updatedAt` stands for it.

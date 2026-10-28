@@ -1,7 +1,6 @@
 //! The panel every choice is made in: the palette, or a picker on what it belongs to.
 
 mod rows;
-mod scoped;
 
 use rows::{entry, matched};
 
@@ -19,7 +18,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::{PALETTE_LINES, PALETTE_ROWS};
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Lead, Row, list, modal, panel_at, stepped_input};
+use groove_ui_kit::widgets::{Lead, Material, Row, glass_list, modal, panel_at, stepped_input};
 
 /// Lines the panel shows: more centred than on a picker.
 fn limit(palette: &Palette) -> usize {
@@ -46,7 +45,7 @@ fn width(ctx: &mut Ctx, rows: &[(String, String)], prompted: bool) -> f32 {
             false => pad + ctx.tokens.icon + ctx.tokens.sm + ctx.measure(label, &style),
         })
         .fold(0.0, f32::max);
-    (widest + pad).max(ctx.tokens.menu)
+    (widest + pad).max(ctx.tokens.menu) + ctx.tokens.sm * 2.0
 }
 
 /// The command palette: an input line, then the entries or the prompt's options.
@@ -57,33 +56,26 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
     let shown = lines.len().clamp(usize::from(!typing_only), limit(palette));
     let typed = has_input(palette, &prompt, rows.len());
-    let scope = scoped::scope(app, palette);
-    let rows_high = ctx.tokens.row * (shown + usize::from(scope.is_some())) as f32;
-    let hairline = ctx.tokens.hairline;
+    let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm * 2.0;
     let height = match typed {
-        true => rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0 + hairline,
-        false => rows_high + hairline * 2.0,
+        true => rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0,
+        false => rows_high,
     };
-    let edge = ctx.styles.border();
+    let edge = (ctx.styles.border(), Material::Glass);
     let rect = match palette.anchor {
         Some(anchor) => {
             let width = width(ctx, &rows, prompt.is_some());
             panel_at(ctx, anchor.point(), anchor.corner, (width, height), edge)
         }
-        None => modal(ctx, ctx.tokens.palette, height, ctx.tokens.modal_top, edge),
+        None => {
+            let size = (ctx.tokens.palette, height);
+            modal(ctx, size, ctx.tokens.modal_top, edge)
+        }
     };
     ctx.hit(rect, Target::Palette);
     let under = match typed {
         true => input_line(ctx, rect, palette, &prompt),
-        false => {
-            let tall = |height: f32| Spec::default().height(height);
-            let [_, rest] = column_in(rect, [tall(hairline), Spec::fill()]);
-            rest
-        }
-    };
-    let under = match &scope {
-        Some(words) => scoped::draw(ctx, under, words),
-        None => under,
+        false => rect,
     };
     let body = inset(ctx, under, shown);
     let ends = (
@@ -181,12 +173,13 @@ fn input_line(
     rest
 }
 
-/// The rows' own room, inside the panel's edges.
+/// The rows' own room, inset from the panel's edges.
 fn inset(ctx: &Ctx, body: Rect, shown: usize) -> Rect {
-    let hairline = ctx.tokens.hairline;
-    let tall = Spec::default().height(ctx.tokens.row * shown as f32);
-    let [rows, _] = column_in(body, [tall, Spec::fill()]);
-    rows.pad(Edges::across(hairline, hairline))
+    let pad = ctx.tokens.sm;
+    let gap = Spec::default().height(pad);
+    let tall = Spec::default().height(ctx.tokens.glass_row * shown as f32);
+    let [_, rows, _] = column_in(body, [gap, tall, Spec::fill()]);
+    rows
 }
 
 /// What stands in the list's place when it is empty.
@@ -273,5 +266,5 @@ fn items(
     let at = shown
         .iter()
         .position(|line| *line == Line::Row(palette.selected));
-    list(ctx, body, &items, at.filter(|_| lit));
+    glass_list(ctx, body, &items, at.filter(|_| lit));
 }

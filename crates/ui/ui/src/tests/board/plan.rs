@@ -68,8 +68,8 @@ fn up_next(app: &AppState, ui: &Ui) -> Vec<String> {
 fn up_next_stands_in_the_order_the_plan_gives_it() {
     let (mut app, ui) = waiting();
     app.task.plan = vec![
-        groove_controllers::task_service::Placed::now(ExternalId::new("github.com/a/b#3")),
-        groove_controllers::task_service::Placed::now(ExternalId::new("github.com/a/b#2")),
+        groove_controllers::task_service::Placed::new(ExternalId::new("github.com/a/b#3")),
+        groove_controllers::task_service::Placed::new(ExternalId::new("github.com/a/b#2")),
     ];
     assert_eq!(
         up_next(&app, &ui),
@@ -108,45 +108,10 @@ fn a_task_dragged_by_its_place_lands_where_it_was_dropped() {
             groove_controllers::task::Command::Plan(groove_controllers::task::Landing {
                 external_id: third,
                 before: Some(ExternalId::new("github.com/a/b#1")),
-                later: false,
             })
         )]
     );
     assert!(ui.carried().is_none(), "the drag is spent");
-}
-
-#[test]
-fn a_task_dropped_under_the_divider_is_asked_for_later() {
-    let (app, mut ui) = waiting();
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let first = ExternalId::new("github.com/a/b#1");
-    let handle = hits
-        .rect_of(&Target::Place(first.clone()))
-        .expect("the row carries its place");
-    pressed(handle.x + 1.0, handle.y + 1.0, &mut ui, &app, &hits);
-    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let board = crate::layout::Layout::of(window(), &ui).board;
-    let body = crate::views::board::columns(&tokens, board);
-    let width = (body.w / 3.0).floor();
-    drag_at(
-        body.x + width + 10.0,
-        body.bottom() - 1.0,
-        &mut ui,
-        &app,
-        &hits,
-    );
-    let commands = release(&mut ui, &app, &hits);
-    assert_eq!(
-        commands,
-        [groove_controllers::Command::Task(
-            groove_controllers::task::Command::Plan(groove_controllers::task::Landing {
-                external_id: first,
-                before: None,
-                later: true,
-            })
-        )],
-        "the end of the later side"
-    );
 }
 
 #[test]

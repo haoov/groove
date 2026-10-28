@@ -1,13 +1,12 @@
 //! The list a completion offers under the caret: a label and its detail a row, the chosen one raised.
 
-use groove_gfx::Rect;
+use groove_gfx::{Color, Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::base::tokens::COMPLETION_ROWS;
 use crate::text::row;
-use crate::widgets::menu::{listed, row_of};
-use crate::widgets::{Corner, panel_at};
+use crate::widgets::{Corner, Material, panel_at};
 
 /// One row of the list.
 pub struct Offer<'a> {
@@ -41,7 +40,13 @@ pub fn completions<A: App>(
     let most = ctx.tokens.popup.min(ctx.window.w - ctx.tokens.xl);
     let wide = (pad * 2.0 + labels + after).min(most);
     let size = (wide, ctx.tokens.row * shown as f32);
-    let rect = panel_at(ctx, at, Corner::TopLeft, size, ctx.styles.line());
+    let rect = panel_at(
+        ctx,
+        at,
+        Corner::TopLeft,
+        size,
+        (ctx.styles.line(), Material::Solid),
+    );
     for (index, one) in window.iter().enumerate() {
         let line = row_of(ctx, rect, index);
         let ground = (first + index == chosen).then(|| ctx.styles.raised());
@@ -51,4 +56,23 @@ pub fn completions<A: App>(
         row(ctx, room, 0.0, one.detail, detail);
     }
     Some(rect)
+}
+
+/// Row `index` of the panel.
+fn row_of<A: App>(ctx: &Ctx<'_, A>, panel: Rect, index: usize) -> Rect {
+    let tall = ctx.tokens.row;
+    Rect::new(panel.x, panel.y + tall * index as f32, panel.w, tall)
+}
+
+/// One row: its ground when chosen, then its label from `pad`.
+fn listed<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    (line, pad): (Rect, f32),
+    (label, style): (&str, TextStyle),
+    ground: Option<Color>,
+) {
+    if let Some(ground) = ground {
+        ctx.rounded(line, ground, ctx.tokens.round);
+    }
+    row(ctx, line, pad, label, style);
 }

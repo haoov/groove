@@ -20,30 +20,26 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
-use super::commit;
 use super::state::{Pane, Tab};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::ground::Ground;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::tabs;
-use groove_ui_kit::widgets::{Side, pane};
+use groove_ui_kit::widgets::glass_aside;
+use groove_ui_kit::widgets::marked_glass_tabs;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.sidebar;
     if rect.is_empty() {
         return;
     }
-    pane(ctx, rect, Ground::Band, Side::Left);
-    let under = ctx.app.layout.commit;
-    if ui.session.commits() && !under.is_empty() {
-        commit::draw(ctx, app, ui, under);
-    }
+    glass_aside(ctx, rect);
+    let rect = rect.pad(Edges::across(ctx.tokens.sm, 0.0));
     let tall = |height: f32| Spec::default().height(height);
-    let [list, _] = column_in(rect, [Spec::fill(), tall(under.h)]);
+    let list = rect;
     let bar = bar::draw(ctx, rect, ui);
     let [_, mut column] = column_in(list, [tall(bar.h), Spec::fill()]);
     if let Some(one) = app.workspace.commit.as_ref() {
@@ -75,26 +71,26 @@ fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
         .iter()
         .map(|pane| labelled(app, ui, *pane))
         .collect();
-    let shown: Vec<(&str, Target)> = labels
+    let shown: Vec<(Option<Mark>, &str, Target)> = labels
         .iter()
         .zip(offered)
-        .map(|(label, pane)| (label.as_str(), Target::Pane(*pane)))
+        .map(|(label, pane)| (Some(pane.mark()), label.as_str(), Target::Pane(*pane)))
         .collect();
     let at = offered
         .iter()
         .position(|pane| *pane == ui.session.pane)
         .unwrap_or(0);
-    tabs(ctx, rect, &shown, at);
+    marked_glass_tabs(ctx, rect, &shown, at);
 }
 
-/// A list's own name, with what it holds when it holds anything.
+/// How many items a list holds, beside its mark; nothing when it holds none.
 fn labelled(app: &AppState, ui: &Ui, pane: Pane) -> String {
     if pane == Pane::Files && ui.session.tab != Tab::Diff {
-        return "files".to_string();
+        return String::new();
     }
     match counted(app, pane) {
-        0 => pane.label().to_string(),
-        n => format!("{} · {n}", pane.label()),
+        0 => String::new(),
+        n => n.to_string(),
     }
 }
 
@@ -116,15 +112,11 @@ fn counted(app: &AppState, pane: Pane) -> usize {
 fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let files = narrowed(app, ui);
     let grep = ui.session.bar.greps();
-    let moded = ui.session.tab == Tab::Diff && app.workspace.commit.is_none();
-    if grep || moded {
+    if grep {
         let band = Spec::default().height(ctx.tokens.header);
         let [head, rest] = column_in(column, [band, Spec::fill()]);
         column = rest;
-        match grep {
-            true => heading::found(ctx, head, app.workspace.found.len()),
-            false => heading::modes(ctx, head, app.workspace.mode),
-        }
+        heading::found(ctx, head, app.workspace.found.len());
     }
     let body = column;
     if grep {

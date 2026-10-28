@@ -143,7 +143,7 @@ fn in_pane(
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
-        Focus::Sidebar => in_sidebar((key, mods), ui, app, keymap, seen),
+        Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),
         Focus::Rail => in_rail(key, ui, app),
     }
 }

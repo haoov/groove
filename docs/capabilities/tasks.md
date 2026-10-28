@@ -46,9 +46,8 @@ item has no value for takes that item out. A Live item answers for the task its 
 works.
 
 **The plan is Groove's own.** Up next stands in the order the user gave, and no provider
-is told. Dragging a row asks `task.plan` to put the task above the row it lands on.
-Below the **later** divider a task keeps its place but leaves the plan. The shown order:
-the placed tasks, then the ones no order names, then everything under the divider.
+is told. Dragging a row asks `task.plan` to put the task above the row it lands on. The
+shown order: the placed tasks, then the ones no order names.
 
 **Attention** is a reason and an age: a review waiting, changes requested, CI failed,
 approved and unmerged, due soon, overdue. The forge's facts and the dates are folded

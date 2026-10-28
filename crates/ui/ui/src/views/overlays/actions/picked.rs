@@ -1,8 +1,6 @@
 //! What picking a row of a menu does: the commands it sends, or what the surface asks next.
 
-use groove_controllers::delivery::Say;
-use groove_controllers::{Command, delivery, workspace};
-use groove_types::ReviewVerdict;
+use groove_controllers::{Command, workspace};
 
 use super::{Act, TAB, acts};
 use crate::views::session::{Asked, Naming, Noting};
@@ -101,20 +99,6 @@ pub struct Picked {
 }
 
 impl Picked {
-    fn sends(command: workspace::Command) -> Self {
-        Self {
-            commands: vec![Command::Workspace(command)],
-            ..Self::default()
-        }
-    }
-
-    fn delivers(command: delivery::Command) -> Self {
-        Self {
-            commands: vec![Command::Delivery(command)],
-            ..Self::default()
-        }
-    }
-
     fn asks(losing: Losing) -> Self {
         Self {
             asking: Some(losing),
@@ -149,7 +133,6 @@ pub fn picked(of: &Of, at: usize) -> Picked {
             start_line: lines.0,
             end_line: lines.1,
         }),
-        (Of::Worktree { .. }, Some(act)) => worktree(*act),
         (Of::Path { path, dir }, Some(Act::NewFile)) => {
             Picked::names(named(Asked::File, path, *dir, ""))
         }
@@ -165,36 +148,6 @@ pub fn picked(of: &Of, at: usize) -> Picked {
             Picked::names(Naming::new(Asked::Copy, path, crate::views::name_of(path)))
         }
         (Of::Path { path, .. }, Some(Act::Delete)) => Picked::asks(Losing::Path(path.clone())),
-        (Of::Session(session), Some(Act::DeleteLocally)) => {
-            let away = groove_controllers::session::Command::DeleteLocal {
-                session: session.clone(),
-            };
-            Picked {
-                commands: vec![Command::Session(away)],
-                ..Picked::default()
-            }
-        }
-        _ => Picked::default(),
-    }
-}
-
-/// What picking `act` on the worktree does.
-fn worktree(act: Act) -> Picked {
-    match act {
-        Act::DiscardEverything => Picked::asks(Losing::Everything),
-        Act::Push => Picked::sends(workspace::Command::Push),
-        Act::Pull => Picked::sends(workspace::Command::Pull),
-        Act::UpdateMr => Picked::delivers(delivery::Command::UpdateMr),
-        Act::CloseMr => Picked::delivers(delivery::Command::CloseMr),
-        Act::Comment => {
-            Picked::delivers(delivery::Command::Say(Say::Review(ReviewVerdict::Comment)))
-        }
-        Act::Approve => {
-            Picked::delivers(delivery::Command::Say(Say::Review(ReviewVerdict::Approve)))
-        }
-        Act::RequestChanges => Picked::delivers(delivery::Command::Say(Say::Review(
-            ReviewVerdict::RequestChanges,
-        ))),
         _ => Picked::default(),
     }
 }

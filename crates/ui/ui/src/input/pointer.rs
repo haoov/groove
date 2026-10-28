@@ -5,7 +5,6 @@ mod board;
 mod clusters;
 mod drag;
 mod focus;
-mod header;
 mod menu;
 mod rail;
 mod resources;
@@ -26,12 +25,11 @@ use self::board::{carried, opened_session, takes};
 pub(super) use self::board::{dropped, opened_from_board, reads as board_reads};
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
-use self::header::{finishing, task_menu};
-use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
+use self::menu::{chosen, lose, palette_row, select_worktree, selector};
 use self::sidebar::{finding, narrowing, note_at, paned, twisty};
 use self::surface::{
-    blamed, closing, composed, defined, extended, folded, in_files, jump, landed, lensed, reached,
-    switch, unfolded,
+    blamed, closing, defined, extended, folded, in_files, jump, landed, lensed, reached, switch,
+    unfolded,
 };
 use super::selection;
 use crate::hit::{Hits, Target};
@@ -138,9 +136,6 @@ fn acted(
         Some(Target::Found(at)) => reached(ui, app, (hits, metrics), at),
         Some(Target::FoundIn(path)) => shut(ui, path),
         Some(Target::Map) => mapping(point.1, ui, app, hits, metrics),
-        Some(Target::Actions) => actions(ui, app, hits, metrics),
-        Some(Target::Message) => composing(ui, app, hits, metrics, point),
-        Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(target @ (Target::Pane(_) | Target::Showing(_))) => paned(ui, target),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
@@ -149,7 +144,6 @@ fn acted(
         Some(Target::Working) => one(workspace::Command::LeaveCommit),
         Some(target @ (Target::Dir(_) | Target::Group(_))) => twisty(ui, target),
         Some(target @ Target::Review(..)) => opened_from_board(target, ui, true),
-        Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         one => tasked(one, ui, app),
     }
 }
@@ -158,7 +152,6 @@ fn acted(
 fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     match target {
         Some(Target::LogHours(id)) => logging(id),
-        Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
@@ -194,7 +187,13 @@ fn one_task(command: task::Command) -> Vec<Command> {
     vec![Command::Task(command)]
 }
 fn tabbed(ui: &mut Ui, tab: Tab) -> Vec<Command> {
+    if tab == ui.session.tab && !ui.session.stowed {
+        ui.session.stowed = true;
+        ui.focus = crate::Focus::Agent;
+        return Vec::new();
+    }
     (ui.session.tab, ui.session.going) = (tab, None);
+    ui.session.stowed = false;
     Vec::new()
 }
 
@@ -247,30 +246,6 @@ fn kept(ui: &mut Ui) -> Vec<Command> {
     Vec::new()
 }
 
-fn actions(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Vec<Command> {
-    ui.overlay = Some(Overlay::Menu(worktree_menu(ui, app, hits, metrics)));
-    Vec::new()
-}
-
-/// The keyboard into the commit box, with its caret where the click landed.
-fn composing(
-    ui: &mut Ui,
-    app: &AppState,
-    hits: &Hits,
-    metrics: Metrics,
-    point: (f32, f32),
-) -> Vec<Command> {
-    ui.session.composing = true;
-    composed(app, hits, metrics, point)
-}
-
-/// The one action the commit box offers now.
-fn acting(ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    ui.session.composing = false;
-    let act = crate::views::session::commit::primary(app);
-    act.into_iter().collect()
-}
-
 /// What another surface answers for: the board's own rows, or the rail's.
 fn elsewhere(
     target: Option<&Target>,
@@ -282,7 +257,7 @@ fn elsewhere(
 ) -> Option<Vec<Command>> {
     let target = target?;
     board::acted(target, ui, app)
-        .or_else(|| rail::acted(target, ui))
+        .or_else(|| rail::acted(target, ui, app))
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))
         .or_else(|| settings::acted(target, ui, app, hits))

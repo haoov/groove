@@ -28,10 +28,6 @@ pub enum Of {
     Line { path: String, lines: (u32, u32) },
     /// One path of the explorer; `dir` while it is a directory.
     Path { path: String, dir: bool },
-    /// The worktree, from the commit box: `mr` with one to write, `review` in a review.
-    Worktree { mr: bool, review: bool },
-    /// The session, from the header's own actions.
-    Session(groove_types::SessionId),
     /// What one slot of a source's mapping can take, from its Settings row.
     Mapping(views::settings::rows::Choices),
     /// The skills this session can be sent, from the agent's own bar.

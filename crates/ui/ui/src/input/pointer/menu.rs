@@ -5,7 +5,6 @@ use groove_types::WorktreeId;
 
 use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
-use crate::layout::Layout;
 use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::{Corner, Focus, Losing, Menu, Of, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -33,7 +32,6 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of: tab_of(app, path),
         }),
-        Some(Target::Actions) => Some(worktree_menu(ui, app, hits, metrics)),
         Some(Target::Code) => lines(ui, app, hits, metrics, (x, y)).map(|of| Menu {
             at: (x, y),
             corner: Corner::TopLeft,
@@ -86,40 +84,9 @@ fn selected(app: &AppState, path: &str) -> Option<(u32, u32)> {
     Some((from.line as u32, to.line as u32))
 }
 
-/// The worktree's actions, above the caret that opened them.
-pub(super) fn worktree_menu(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Menu {
-    let box_ = Layout::of(metrics, ui).commit;
-    let right = hits
-        .rect_of(&Target::Actions)
-        .map(|caret| caret.right())
-        .unwrap_or(box_.right());
-    Menu {
-        at: (right, box_.y),
-        corner: Corner::BottomRight,
-        of: Of::Worktree {
-            mr: has_mr(app),
-            review: reviews(app),
-        },
-    }
-}
-
 /// Whether the sidebar is browsing the worktree rather than listing its change.
 fn browsing(ui: &Ui) -> bool {
     crate::views::session::files::browsing(ui)
-}
-
-/// Whether the selected worktree has a merge request to write.
-fn has_mr(app: &AppState) -> bool {
-    app.session
-        .selected_worktree()
-        .is_some_and(|worktree| app.delivery.has_mr(&worktree.id))
-}
-
-/// Whether the session looks at someone else's merge request.
-fn reviews(app: &AppState) -> bool {
-    app.session
-        .selected()
-        .is_some_and(|open| matches!(open.session.kind, groove_types::SessionKind::Review { .. }))
 }
 
 /// The answer that throws the change away: one file's, or every one.

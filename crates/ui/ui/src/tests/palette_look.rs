@@ -188,12 +188,14 @@ fn drawn(ui: &Ui, app: &AppState) -> groove_gfx::Frame {
 }
 
 #[test]
-fn the_palette_stands_on_a_shadow() {
+fn the_palette_stands_as_glass_with_no_shadow() {
     let app = full_app();
     let mut ui = Ui::default();
     press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
     let frame = drawn(&ui, &app);
-    assert!(frame.layers()[1].quads.iter().any(|q| q.shape.blur > 0.0));
+    let top = &frame.layers()[1];
+    assert_eq!(top.glass.len(), 1);
+    assert!(!top.quads.iter().any(|q| q.shape.blur > 0.0));
 }
 
 #[test]
@@ -228,7 +230,7 @@ fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
 }
 
 #[test]
-fn the_last_row_selected_meets_the_box_edge() {
+fn the_last_row_selected_keeps_the_inset_under_it() {
     let app = full_app();
     let mut ui = Ui::default();
     press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
@@ -242,55 +244,18 @@ fn the_last_row_selected_meets_the_box_edge() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let raised = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).raised();
+    let chosen = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).glass_active();
     let boxed = hits
         .rect_of(&crate::hit::Target::Palette)
         .expect("the palette");
     let mut quads = frame.layers()[1].quads.iter();
     let row = quads
-        .rfind(|q| q.color == raised)
+        .rfind(|q| q.color == chosen)
         .expect("the selected row");
     assert_eq!(
         row.rect.bottom(),
-        boxed.bottom() - tokens.hairline,
-        "no gap, the edge kept"
-    );
-}
-
-#[test]
-fn a_pinned_line_names_what_the_actions_run_on() {
-    let app = full_app();
-    let open = app.session.selected().expect("a session");
-    let branch = open.selected_worktree().expect("a worktree").branch.clone();
-    let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
-    let texts = |ui: &Ui| -> Vec<String> {
-        let frame = drawn(ui, &app);
-        frame.layers()[1]
-            .texts
-            .iter()
-            .map(|t| t.text.clone())
-            .collect()
-    };
-    let shown = texts(&ui);
-    assert!(shown.contains(&"in ".to_string()), "{shown:?}");
-    assert!(
-        shown.contains(&open.session.title) && shown.contains(&branch),
-        "{shown:?}"
-    );
-    typed("add work", &mut ui, &app);
-    press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    assert!(
-        !texts(&ui).contains(&"in ".to_string()),
-        "a step asks its own question"
-    );
-    let none = AppState::default();
-    let mut bare = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut bare, &none);
-    let frame = drawn(&bare, &none);
-    assert!(
-        !frame.layers()[1].texts.iter().any(|t| t.text == "in "),
-        "no session, no scope"
+        boxed.bottom() - tokens.sm - tokens.xs / 2.0,
+        "the inset, no more"
     );
 }
 

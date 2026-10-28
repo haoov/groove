@@ -36,11 +36,11 @@ pub(super) fn scroll(
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
         return Vec::new();
     }
-    if ui.showing(app) == Surface::Session && x < layout.workspace.x {
-        return agent(ui, app, delta, point, &layout, metrics);
-    }
     if ui.showing(app) == Surface::Session && layout.manual.contains(x, y) {
         return shelled(ui, app, delta, point, hits, metrics);
+    }
+    if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
+        return agent(ui, app, delta, point, &layout, metrics);
     }
     if ui.showing(app) == Surface::Board {
         column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));

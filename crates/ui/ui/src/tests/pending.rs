@@ -40,11 +40,10 @@ fn a_folded_sidebar_lets_go_of_the_keys() {
     let app = full_app();
     let mut ui = Ui::default();
     ui.settle(&app);
-    (ui.focus, ui.session.composing) = (crate::Focus::Sidebar, true);
+    ui.focus = crate::Focus::Sidebar;
     ui.session.folded = true;
     ui.settle(&app);
     assert_eq!(ui.focus, crate::Focus::Workspace);
-    assert!(!ui.session.composing, "the hidden commit box takes no keys");
 }
 
 #[test]

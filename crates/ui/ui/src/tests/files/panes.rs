@@ -6,7 +6,7 @@ mod listed;
 
 use super::*;
 use crate::tests::sidebar_ui;
-use crate::views::session::Pane;
+use crate::views::session::{Pane, Term};
 
 fn note(path: &str, line: u32, body: &str) -> Note {
     Note {
@@ -45,13 +45,10 @@ fn in_sidebar(app: &AppState, ui: &Ui) -> Vec<String> {
 #[test]
 fn the_strip_names_the_three_lists_and_counts_them() {
     let (app, ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one.starts_with("changed")),
-        "{drawn:?}"
-    );
-    assert!(drawn.iter().any(|one| one == "commits"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "notes · 1"), "{drawn:?}");
+    let said = |pane| tab_said(&app, &ui, pane);
+    assert_eq!(said(Pane::Files).as_deref(), Some("1"), "the changed file");
+    assert_eq!(said(Pane::Commits).as_deref(), Some(""), "a mark alone");
+    assert_eq!(said(Pane::Notes).as_deref(), Some("1"), "the open note");
 }
 
 #[test]
@@ -59,8 +56,7 @@ fn a_resolved_note_is_not_counted() {
     let mut one = note("src/lib.rs", 11, "issue: this leaks");
     one.resolved = true;
     let (app, ui) = noting(vec![one]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "notes"), "{drawn:?}");
+    assert_eq!(tab_said(&app, &ui, Pane::Notes).as_deref(), Some(""));
 }
 
 #[test]
@@ -110,25 +106,6 @@ fn the_notes_are_read_once_a_session() {
 }
 
 #[test]
-fn the_commit_box_stands_under_every_list_and_goes_with_the_sidebar() {
-    for pane in Pane::ALL {
-        let mut ui = sidebar_ui();
-        ui.session.pane = pane;
-        assert!(
-            !crate::layout::Layout::of(window(), &ui).commit.is_empty(),
-            "{pane:?} keeps it"
-        );
-    }
-    let mut folded = sidebar_ui();
-    folded.session.folded = true;
-    assert!(
-        crate::layout::Layout::of(window(), &folded)
-            .commit
-            .is_empty()
-    );
-}
-
-#[test]
 fn a_note_of_the_list_opens_the_line_it_stands_on() {
     let (app, mut ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -158,17 +135,11 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
     let tab = hits
         .rect_of(&Target::Pane(Pane::Notes))
         .expect("the list up");
-    let underlined = frame
-        .layers()
+    let held = frame.layers()[0]
+        .quads
         .iter()
-        .flat_map(|layer| layer.quads.iter())
-        .any(|quad| {
-            quad.color == styles.chosen()
-                && quad.rect.x == tab.x
-                && quad.rect.w == tab.w
-                && quad.rect.bottom() == tab.bottom()
-        });
-    assert!(underlined, "the one up is underlined in the accent");
+        .any(|quad| quad.color == styles.glass_active() && quad.rect == tab);
+    assert!(held, "the one up stands on a rounded held ground");
     let other = hits
         .rect_of(&Target::Pane(Pane::Files))
         .expect("another list");
@@ -179,25 +150,33 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
         .map(|run| run.style.color);
     assert_eq!(
         quiet,
-        Some(styles.color(groove_ui_kit::base::style::Role::Faint)),
-        "the others are dim"
+        Some(styles.color(groove_ui_kit::base::style::Role::Muted)),
+        "the others are muted"
     );
 }
 
 #[test]
-fn the_search_bar_stands_only_while_it_is_used() {
+fn one_search_field_always_stands_over_the_strip_and_switches_its_term() {
     let app = with_files(&["src/lib.rs"]);
-    let bare = sidebar_ui();
-    let (_, hits) = view(&app, &bare, window(), &mut Fonts::embedded());
+    let mut ui = sidebar_ui();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let field = hits
+        .rect_of(&Target::Term(Term::Path))
+        .expect("the path field, unasked");
     let strip = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
-    let sidebar = crate::layout::Layout::of(window(), &bare).sidebar;
-    assert_eq!(strip.y, sidebar.y, "the strip starts at the top");
-
-    let mut typing = sidebar_ui();
-    typing.session.bar.open(crate::views::session::Term::Path);
-    let (_, hits) = view(&app, &typing, window(), &mut Fonts::embedded());
-    let under = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
-    assert!(under.y > strip.y, "the bar pushes it down");
+    assert!(field.bottom() <= strip.y, "the field above the strip");
+    let switch = hits
+        .rect_of(&Target::Term(Term::Text))
+        .expect("what switches to text");
+    click(switch, &mut ui, &app, &hits);
+    assert_eq!(ui.session.bar.typing, Some(Term::Text));
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    assert!(
+        hits.rect_of(&Target::Term(Term::Path)).is_some(),
+        "and back to the path"
+    );
+    let after = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
+    assert_eq!(after.y, strip.y, "one field, whichever term it holds");
 }
 
 /// A thread the forge holds, on a line or on the MR itself.
@@ -214,4 +193,21 @@ fn a_session_s_notes_are_read_whichever_list_is_up() {
         )),
         "the surface draws them too: {asked:?}"
     );
+}
+
+#[test]
+fn a_narrow_tab_keeps_its_mark_whole_inside_it() {
+    let app = with_files(&["src/lib.rs"]);
+    let mut ui = sidebar_ui();
+    ui.split.sidebar = groove_ui_kit::base::tokens::SIDEBAR_MIN;
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    for pane in Pane::ALL {
+        let tab = hits.rect_of(&Target::Pane(pane)).expect("the tab");
+        let mark = frame.layers()[0]
+            .icons
+            .iter()
+            .find(|icon| icon.icon == pane.mark().shape() && tab.contains(icon.rect.x, icon.rect.y))
+            .expect("its mark");
+        assert!(mark.rect.right() <= tab.right(), "{pane:?} whole");
+    }
 }

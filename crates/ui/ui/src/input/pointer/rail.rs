@@ -1,15 +1,15 @@
-//! A click on the rail's own parts: the feed folded or narrowed, and the agent's asks answered.
+//! A click on the rail's own parts: a session opened on its ask, the feed folded or narrowed.
 
-use groove_controllers::{Command, agent};
+use groove_controllers::{AppState, Command, agent};
 
 use crate::Ui;
 use crate::hit::Target;
 
 /// The rail's own targets; anything else is not its to answer.
-pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
+pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
     match target {
         Target::Feed => Some(folded_feed(ui)),
-        Target::FeedScope => Some(narrowed_feed(ui)),
+        Target::FeedScope(mine) => Some(narrowed_feed(ui, *mine)),
         Target::FeedRun(key) => {
             ui.rail.open = (ui.rail.open != Some(*key)).then_some(*key);
             Some(Vec::new())
@@ -22,16 +22,18 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
             ui.rail.routines = !ui.rail.routines;
             Some(Vec::new())
         }
-        Target::Session(session) | Target::FeedLine(session) => {
-            Some(super::opened_session(ui, session.clone()))
+        Target::Session(session) => {
+            let opened = super::opened_session(ui, session.clone());
+            let ask = app.agent.activity(session).and_then(|one| one.asks.first());
+            if let Some(ask) = ask {
+                ui.overlay = Some(crate::Overlay::Examining(ask.id.clone()));
+            }
+            Some(opened)
         }
+        Target::FeedLine(session) => Some(super::opened_session(ui, session.clone())),
         Target::Approve(id) => Some(answered(ui, agent::Command::Approve { id: id.clone() })),
         Target::Refuse(id) => Some(answered(ui, agent::Command::Refuse { id: id.clone() })),
         Target::Sheet => Some(Vec::new()),
-        Target::Examine(id) => {
-            ui.overlay = Some(crate::Overlay::Examining(id.clone()));
-            Some(Vec::new())
-        }
         _ => None,
     }
 }
@@ -50,8 +52,8 @@ fn folded_feed(ui: &mut Ui) -> Vec<Command> {
 }
 
 /// The feed on every session, or on the one in hand.
-fn narrowed_feed(ui: &mut Ui) -> Vec<Command> {
-    ui.rail.mine = !ui.rail.mine;
+fn narrowed_feed(ui: &mut Ui, mine: bool) -> Vec<Command> {
+    ui.rail.mine = mine;
     ui.rail.feed = 0.0;
     Vec::new()
 }

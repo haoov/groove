@@ -202,7 +202,7 @@ fn a_review_row_s_title_stands_in_its_first_line() {
 }
 
 #[test]
-fn review_rows_stand_apart_with_a_rule_under_each() {
+fn review_rows_stand_apart_as_cards() {
     let app = waiting();
     let (ui, hits) = on_board(&app);
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -213,11 +213,10 @@ fn review_rows_stand_apart_with_a_rule_under_each() {
     let row = hits
         .rect_of(&Target::Review("acme/groove".into(), 7))
         .expect("the row");
-    let ruled = frame.layers()[0]
-        .quads
-        .iter()
-        .any(|quad| quad.color == styles.line() && (quad.rect.bottom() - row.bottom()).abs() < 1.0);
-    assert!(ruled, "a rule along the row's foot");
+    let carded = frame.layers()[0].quads.iter().any(|quad| {
+        quad.color == styles.glass_card() && row.contains(quad.rect.x, quad.rect.y + 1.0)
+    });
+    assert!(carded, "a card under the row");
 }
 
 #[test]

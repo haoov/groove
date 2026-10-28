@@ -13,7 +13,7 @@ use crate::tests::{click, window};
 
 /// The texts drawn on a wide screen, where the tab's columns have their room.
 fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let metrics = crate::tests::metrics(1960, 1440, 1.0);
     let (frame, _) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
     let body = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens())
@@ -176,7 +176,7 @@ fn a_container_not_ready_stands_unfolded_and_its_usage_tells_request_and_limit_u
         assert!(texts.iter().any(|text| text == one), "{one}: {texts:?}");
     }
     ui.hover = None;
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let metrics = crate::tests::metrics(1960, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let row = hits.rect_of(&Target::ResourceFold("container/worker".into(), false));
     click(row.expect("the worker's row"), &mut ui, &app, &hits);
@@ -223,7 +223,7 @@ fn the_wheel_scrolls_the_one_described_column() {
             .map(|one| one.y)
     };
     let (label, reason) = (at(&ui, "label-00"), at(&ui, "Reason39"));
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let metrics = crate::tests::metrics(1960, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let middle = hits
         .rect_of(&Target::ResourceView(
@@ -264,7 +264,7 @@ fn a_section_s_heading_folds_it_and_the_annotations_start_folded() {
             .any(|one| one == "meta.helm.sh/release-name"),
         "annotations folded"
     );
-    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let metrics = crate::tests::metrics(1960, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let annotations = hits
         .rect_of(&Target::ResourceSection(Section::Annotations))
@@ -329,7 +329,7 @@ fn an_event_reason_that_fits_at_the_small_size_stands_whole_at_the_body_size() {
         kind: kind("", "Event", "events", true),
         ..key.clone()
     };
-    let reason = "FailedCreatePodSandBoxAgain";
+    let reason = "FailedCreatePodSandBox";
     let event = Described {
         event: Some(EventRow {
             warning: true,
@@ -366,4 +366,19 @@ fn the_list_search_lets_go_of_the_keys_once_a_tab_shows() {
         "",
         "the search under the tab is not drawn"
     );
+}
+
+#[test]
+fn an_object_s_views_show_their_whole_names_at_every_text_size() {
+    let (mut app, ui) = opened();
+    lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
+    for text in [11.0, 12.0, 13.0, 14.0, 15.0, 16.0] {
+        let mut metrics = crate::tests::metrics(1960, 1440, 1.0);
+        metrics.text = text;
+        let (frame, _) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+        let mut texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
+        for view in ["logs", "yaml", "describe"] {
+            assert!(texts.any(|one| one.text == view), "{view} whole at {text}");
+        }
+    }
 }

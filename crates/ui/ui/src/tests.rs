@@ -6,7 +6,6 @@ mod bar;
 mod board;
 mod budget;
 mod clusters;
-mod commit;
 mod completion;
 mod definition;
 mod diagnostics;
@@ -19,6 +18,7 @@ mod finding;
 mod first_run;
 mod focus;
 mod frame;
+mod glass;
 mod hover;
 mod keymap;
 mod manual;
@@ -42,6 +42,7 @@ mod routines;
 mod scoping;
 mod settings;
 mod staging;
+mod strip;
 mod structure;
 
 use groove_controllers::session_service::Open;
@@ -205,8 +206,12 @@ fn sidebar_ui() -> Ui {
     let mut ui = Ui::default();
     ui.session.tab = crate::views::session::Tab::Diff;
     ui.focus = crate::Focus::Sidebar;
+    ui.split.sidebar = WIDE_SIDEBAR;
     ui
 }
+
+/// A sidebar wide enough for its tabs' names whole.
+const WIDE_SIDEBAR: f32 = 360.0;
 
 /// One frame drawn in the window: its bottom layer's texts, and its hits.
 fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {

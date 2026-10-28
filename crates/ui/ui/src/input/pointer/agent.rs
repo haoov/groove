@@ -1,11 +1,10 @@
 //! What a click on the agent's own row does: its skills, or its reload.
 
-use groove_controllers::{AppState, Command, agent};
+use groove_controllers::{AppState, Command};
 use groove_types::SessionId;
 
 use crate::hit::{Hits, Target};
 use crate::input::selection::{agent_cell, pressed as pressed_on};
-use crate::layout::Layout;
 use crate::{Corner, Grid, Menu, Of, Offer, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -20,8 +19,6 @@ pub(super) fn acted(
 ) -> Option<Vec<Command>> {
     match target {
         Target::Skills(session) => Some(menu(ui, app, hits, session.clone())),
-        Target::Reload(session) => Some(reloaded(ui, session.clone(), metrics)),
-        Target::AutoApprove(session) => Some(switched(app, session.clone())),
         Target::Agent => Some(pressed(ui, app, point, metrics)),
         _ => None,
     }
@@ -62,24 +59,4 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
         of: Of::Skills { session, offered },
     }));
     Vec::new()
-}
-
-/// Every write of the session let through without asking, or asking again.
-fn switched(app: &AppState, session: SessionId) -> Vec<Command> {
-    let on = !app
-        .session
-        .get(&session)
-        .is_some_and(|one| one.state.auto_approve);
-    vec![Command::Agent(agent::Command::AutoApprove { session, on })]
-}
-
-/// The agent ended and started again, on the grid its pane holds now.
-fn reloaded(ui: &Ui, session: SessionId, metrics: Metrics) -> Vec<Command> {
-    let tokens = metrics.tokens();
-    let (cols, rows) = Layout::of(metrics, ui).agent_grid(&tokens, metrics.cell);
-    vec![Command::Agent(agent::Command::Reload {
-        session,
-        cols,
-        rows,
-    })]
 }

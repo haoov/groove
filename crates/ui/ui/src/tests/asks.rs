@@ -1,4 +1,4 @@
-//! A write the agent waits on: on its session's row, in the review sheet, and the
+//! A write the agent waits on: on its session's row, in the review sheet it opens, and the
 //! switch that lets it through without asking.
 
 use groove_controllers::{Command, agent};
@@ -24,27 +24,50 @@ fn committing() -> groove_controllers::AppState {
 }
 
 #[test]
-fn a_write_waiting_stands_on_its_row_with_approve_and_review() {
+fn a_row_that_asks_says_what_it_asks_and_offers_no_buttons() {
     let app = committing();
     let ui = session_ui();
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let id = ApprovalId::new("ap-1");
-    let approve = hits.rect_of(&Target::Approve(id.clone())).expect("approve");
-    let review = hits.rect_of(&Target::Examine(id)).expect("review");
-    let rail = crate::layout::Layout::of(window(), &ui).rail;
-    assert!(
-        rail.contains(approve.x, approve.y),
-        "on the rail, not the bar"
+    assert_eq!(
+        hits.rect_of(&Target::Approve(id)),
+        None,
+        "no answer on the row"
     );
-    assert!(approve.right() <= review.x, "approve, then review");
     assert!(
         texts(&app, &ui).iter().any(|one| one == "asks to commit"),
         "the row says what it asks, whole"
     );
+    let height = |app: &groove_controllers::AppState| {
+        let (_, hits) = crate::view(app, &ui, window(), &mut Fonts::embedded());
+        let row = hits.rect_of(&Target::Session(SessionId::new("a")));
+        row.expect("the row").h
+    };
+    assert_eq!(
+        height(&app),
+        height(&asking(Vec::new())),
+        "no taller for it"
+    );
 }
 
 #[test]
-fn a_row_that_asks_stands_on_the_attention_tint_its_answers_in_text() {
+fn a_click_on_a_row_that_asks_opens_the_session_on_its_review() {
+    let app = committing();
+    let mut ui = Ui::default();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let row = hits
+        .rect_of(&Target::Session(SessionId::new("a")))
+        .expect("the row");
+    let acted = click(row, &mut ui, &app, &hits);
+    let open = groove_controllers::session::Command::Open {
+        session: SessionId::new("a"),
+    };
+    assert_eq!(acted, [Command::Session(open)]);
+    assert_eq!(ui.examining(), Some(&ApprovalId::new("ap-1")));
+}
+
+#[test]
+fn a_row_that_asks_stands_on_the_attention_tint() {
     use groove_ui_kit::base::style::{Role, Styles};
     let app = committing();
     let ui = session_ui();
@@ -59,25 +82,8 @@ fn a_row_that_asks_stands_on_the_attention_tint_its_answers_in_text() {
     let quads = &frame.layers()[0].quads;
     let tinted = quads
         .iter()
-        .any(|quad| quad.rect == row && quad.color == styles.tint(Role::Attention));
+        .any(|quad| quad.rect == row && quad.color == styles.row_tint(Role::Attention));
     assert!(tinted, "the row stands on the attention tint");
-    let approve = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| run.text == "Approve")
-        .expect("approve");
-    assert_eq!(approve.style.color, styles.color(Role::Text));
-}
-
-#[test]
-fn approving_from_the_row_asks_the_controller_to_run_it() {
-    let app = committing();
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = ApprovalId::new("ap-1");
-    let rect = hits.rect_of(&Target::Approve(id.clone())).expect("approve");
-    let acted = click(rect, &mut ui, &app, &hits);
-    assert_eq!(acted, [Command::Agent(agent::Command::Approve { id })]);
 }
 
 #[test]
@@ -85,10 +91,11 @@ fn review_shows_the_whole_write_and_its_two_answers() {
     let app = committing();
     let mut ui = session_ui();
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = ApprovalId::new("ap-1");
-    let rect = hits.rect_of(&Target::Examine(id.clone())).expect("review");
-    assert!(click(rect, &mut ui, &app, &hits).is_empty());
-    assert_eq!(ui.examining(), Some(&id));
+    let row = hits
+        .rect_of(&Target::Session(SessionId::new("a")))
+        .expect("the row");
+    click(row, &mut ui, &app, &hits);
+    assert_eq!(ui.examining(), Some(&ApprovalId::new("ap-1")));
 
     let drawn = texts(&app, &ui);
     for said in [
@@ -130,52 +137,13 @@ fn escape_puts_the_sheet_away_without_deciding() {
 }
 
 #[test]
-fn the_bar_keeps_its_skills_and_switches_auto_approve() {
-    let app = committing();
-    let mut ui = session_ui();
-    assert!(texts(&app, &ui).iter().any(|one| one == "skills"));
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let session = SessionId::new("a");
-    let rect = hits
-        .rect_of(&Target::AutoApprove(session.clone()))
-        .expect("the switch");
-    let acted = click(rect, &mut ui, &app, &hits);
-    assert_eq!(
-        acted,
-        [Command::Agent(agent::Command::AutoApprove {
-            session,
-            on: true
-        })]
-    );
-}
-
-#[test]
-fn the_answers_stand_on_a_line_of_their_own_under_the_ask() {
+fn the_bar_keeps_its_skills_and_no_switch() {
     let app = committing();
     let ui = session_ui();
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let approve = hits
-        .rect_of(&Target::Approve(ApprovalId::new("ap-1")))
-        .expect("approve");
-    let said = frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.texts.iter())
-        .find(|run| run.text == "asks to commit")
-        .expect("the ask");
-    assert!(approve.y > said.y, "the answers are under the ask");
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|one| one == "skills"), "{drawn:?}");
     assert!(
-        (approve.x - said.x).abs() <= groove_ui_kit::base::tokens::Tokens::new(1.0).sm,
-        "and start where it starts"
-    );
-    let height = |app: &groove_controllers::AppState| {
-        let (_, hits) = crate::view(app, &ui, window(), &mut Fonts::embedded());
-        hits.rect_of(&Target::Session(SessionId::new("a")))
-            .expect("the row")
-            .h
-    };
-    assert!(
-        height(&app) > height(&asking(Vec::new())),
-        "the row grows while it asks"
+        !drawn.iter().any(|one| one.starts_with("auto-approve")),
+        "{drawn:?}"
     );
 }

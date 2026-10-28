@@ -1,8 +1,7 @@
-//! The session surface: the header, the agent pane, the workspace and its tabs.
+//! The session surface: the agent pane, and the workspace's strip with its header and tabs.
 
 pub mod agent_pane;
 pub mod bar;
-pub mod commit;
 pub mod diff;
 mod face;
 pub(crate) mod files;
@@ -25,70 +24,70 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::keymap::{Action, Keymap};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, tabs};
+use groove_ui_kit::widgets::{Button, glass_pane, ground_under};
 
-/// The session: the header, then the agent pane and the workspace.
+/// The session: the agent on its ground, the workspace in a strip of glass beside it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
+    ground_under(ctx, ctx.app.layout.board, Ground::Deep);
     if ui.session.alone && app.session.selected().is_some() {
         agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
         return bar::draw(ctx, app);
     }
-    header::draw(ctx, app, ui);
+    if !ctx.app.layout.work.is_empty() {
+        glass_pane(ctx, ctx.app.layout.strip);
+    }
+    let on = |focus: crate::Focus| ui.focus == focus;
+    ctx.region(on(crate::Focus::Workspace), |ctx| {
+        header::draw(ctx, app, ui)
+    });
     if app.session.selected().is_none() {
         return empty(ctx, app);
     }
     agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     bar::draw(ctx, app);
-    workspace(ctx, app, ui);
+    if !ctx.app.layout.workspace.is_empty() {
+        ctx.region(on(crate::Focus::Workspace), |ctx| {
+            header::info(ctx, app, ui);
+            workspace(ctx, app, ui);
+        });
+        ctx.region(on(crate::Focus::Sidebar), |ctx| sidebar(ctx, app, ui));
+    }
     if let Some(session) = app.session.selected.as_ref() {
-        manual::draw(ctx, app, ui, session);
+        let terminal = on(crate::Focus::Terminal);
+        ctx.region(terminal, |ctx| manual::draw(ctx, app, ui, session));
     }
     sheet::draw(ctx, app, ui);
 }
 
-/// The workspace: the tab strip, then the tab.
+/// The tab, and the sidebar when it has one.
 fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
+    let body = ctx.app.layout.workspace;
     let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
-    let [strip, body] = column_in(ctx.app.layout.workspace, [band, Spec::fill()]);
-    let held = app
-        .session
-        .selected()
-        .is_some_and(|open| open.holds_clusters());
-    let up: Vec<Tab> = Tab::ALL
-        .into_iter()
-        .filter(|tab| *tab != Tab::Resources || held)
-        .collect();
-    let shown: Vec<(&str, Target)> = up
-        .iter()
-        .map(|tab| (tab.label(), Target::Tab(*tab)))
-        .collect();
-    let at = up
-        .iter()
-        .position(|tab| *tab == ui.session.tab)
-        .unwrap_or(0);
-    tabs(ctx, strip, &shown, at);
-    if ui.session.tab.has_sidebar() {
-        fold(ctx, strip, ui);
-    }
-
     match ui.session.tab {
-        Tab::Overview => {
-            let gap = Spec::default().height(ctx.tokens.sm);
-            let [_, body] = column_in(body, [gap, Spec::fill()]);
-            overview::draw(ctx, app, ui, body)
-        }
+        Tab::Overview => overview::draw(ctx, app, ui, body),
         Tab::Diff => diff::draw(ctx, app, ui, body),
         Tab::Files => {
             let [strip, body] = column_in(body, [band, Spec::fill()]);
             open_files::draw(ctx, strip, app, ui);
             diff::draw(ctx, app, ui, body)
         }
-        Tab::Resources => resources::draw(ctx, app, ui, body),
+        Tab::Resources => {
+            let [line, body] = column_in(body, [band, Spec::fill()]);
+            if let Some(open) = app.session.selected() {
+                header::scope(ctx, line, app, open, &ui.session.resources);
+            }
+            resources::draw(ctx, app, ui, body)
+        }
     }
+}
+
+/// The sidebar the tab has, if any.
+fn sidebar(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     match ui.session.tab {
         Tab::Resources => resources::sidebar(ctx, app, ui),
         _ if ui.session.sidebar() => files::draw(ctx, app, ui),
@@ -96,8 +95,8 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     }
 }
 
-/// What folds the sidebar away, at the far end of the strip.
-fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) {
+/// What folds the sidebar away, at the far end of `strip`. Returns the room left of it.
+pub(crate) fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) -> Rect {
     let role = match ui.session.folded {
         true => Role::Ghost,
         false => Role::Muted,
@@ -105,6 +104,7 @@ fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) {
     let mut room = strip.pad(Edges::across(0.0, ctx.tokens.sm));
     let fold = Button::icon(Mark::Sidebar, 0, Target::Fold, role);
     fold.right(ctx, &mut room, 0.0);
+    room
 }
 
 /// Nothing open: how to start.

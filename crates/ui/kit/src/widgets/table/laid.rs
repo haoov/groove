@@ -12,6 +12,8 @@ pub struct Laid {
     pub(super) offset: f32,
     pub(super) height: f32,
     pub(super) first: f32,
+    /// The room inside a carded row above its first line.
+    pub(super) inset: f32,
 }
 
 impl Laid {
@@ -23,13 +25,18 @@ impl Laid {
     /// The first line of row `row` in column `column`.
     pub fn cell(&self, row: usize, column: usize) -> Rect {
         let (x, w) = self.spans[column];
-        Rect::new(x, self.line(row).y, w, self.first)
+        Rect::new(x, self.line(row).y + self.inset, w, self.first)
     }
 
     /// The first line of row `row` from column `column`'s left edge to the end.
     pub fn from(&self, row: usize, column: usize) -> Rect {
         let (x, _) = self.spans[column];
-        Rect::new(x, self.line(row).y, self.body.right() - x, self.first)
+        Rect::new(
+            x,
+            self.line(row).y + self.inset,
+            self.body.right() - x,
+            self.first,
+        )
     }
 }
 

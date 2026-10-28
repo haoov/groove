@@ -11,6 +11,7 @@ use groove_types::{Highlight, Severity};
 
 pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
+pub(crate) use self::row::card_across;
 pub use self::rows::{Rows, code};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, Outline, Tile, head_mark, head_of};
 
@@ -32,7 +33,7 @@ pub struct Line<'a> {
     pub spans: &'a [Highlight],
     pub ground: Option<Color>,
     /// The gutter's own ground and its numbers' colour.
-    pub gutter: Option<(Color, Color)>,
+    pub gutter: Option<Color>,
     /// A bar at the row's left edge, for what a gutter number cannot say.
     pub mark: Option<Color>,
     /// A row across the whole width with no gutters: a gap, a note.
@@ -79,20 +80,11 @@ pub struct Line<'a> {
     pub blame: Option<(&'a str, Option<&'a str>)>,
     /// Its fold names the line it opens.
     pub outline: Outline<'a, usize>,
+    /// A row of a read note's card, drawn over the rows on glass, not among them.
+    pub float: bool,
 }
 
 impl<'a> Line<'a> {
-    /// Whether the row carries gutters; a row that names a file has none.
-    pub fn numbered(&self) -> bool {
-        !self.head
-            && !self.banner
-            && !self.covered
-            && self.pad.is_none()
-            && self.composed.is_none()
-            && self.said.is_none()
-            && self.acting.is_none()
-    }
-
     pub fn composed(composed: Composed) -> Self {
         Self {
             composed: Some(composed),
@@ -151,6 +143,7 @@ impl<'a> Line<'a> {
             noted: false,
             blame: None,
             outline: Outline::default(),
+            float: false,
         }
     }
 

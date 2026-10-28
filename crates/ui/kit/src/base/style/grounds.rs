@@ -3,7 +3,10 @@
 use groove_gfx::Color;
 
 use super::Styles;
-use crate::base::tokens::SCRIM_ALPHA;
+use crate::base::tokens::{
+    GLASS_ACTIVE_ALPHA, GLASS_ALPHA, GLASS_CARD_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA,
+    GLASS_DIM_ALPHA, GLASS_HOVER_ALPHA, SCRIM_ALPHA,
+};
 
 impl Styles {
     /// The work's own ground: the window, the workspace, the agent's pane.
@@ -67,5 +70,47 @@ impl Styles {
     /// Over the window, under a modal.
     pub fn scrim(&self) -> Color {
         self.palette.crust.with_alpha(SCRIM_ALPHA)
+    }
+
+    pub fn glass(&self) -> Color {
+        let tint = match self.light() {
+            true => self.palette.base,
+            false => self.palette.crust,
+        };
+        tint.with_alpha(self.alpha(GLASS_ALPHA))
+    }
+
+    /// Over the window, under a glass modal.
+    pub fn glass_dim(&self) -> Color {
+        let dim = match self.light() {
+            true => self.palette.text,
+            false => self.palette.crust,
+        };
+        dim.with_alpha(self.alpha(GLASS_DIM_ALPHA))
+    }
+
+    pub fn glass_code_ground(&self) -> Color {
+        self.prose_code_ground()
+            .with_alpha(self.alpha(GLASS_CODE_ALPHA))
+    }
+
+    /// A card that sets a section apart on glass, fainter than a row under the pointer.
+    pub fn glass_card(&self) -> Color {
+        self.palette.text.with_alpha(self.alpha(GLASS_CARD_ALPHA))
+    }
+
+    pub fn glass_hover(&self) -> Color {
+        self.palette.text.with_alpha(self.alpha(GLASS_HOVER_ALPHA))
+    }
+
+    pub fn glass_chosen(&self) -> Color {
+        self.palette.text.with_alpha(self.alpha(GLASS_CHOSEN_ALPHA))
+    }
+
+    /// What is chosen in the region that has the keys, in the accent.
+    pub fn glass_active(&self) -> Color {
+        self.palette
+            .rosewater
+            .with_alpha(self.alpha(GLASS_ACTIVE_ALPHA))
     }
 }

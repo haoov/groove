@@ -11,7 +11,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Button;
+use groove_ui_kit::widgets::{Button, floating_pane};
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -19,9 +19,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return;
     };
     ctx.layer();
-    let area = area(ctx);
-    groove_ui_kit::shape::ground(ctx, area, Ground::Work);
-    ctx.hit(area, Target::Sheet);
+    let under = area(ctx);
+    ctx.hit(under, Target::Sheet);
+    let area = floating_pane(ctx, under, Ground::Deep);
     let tall = |height: f32| Spec::default().height(height);
     let (line, tokens) = (ctx.tokens.line, ctx.tokens);
     let parts = [
@@ -82,14 +82,9 @@ fn said(ctx: &mut Ctx, rect: Rect, text: &str) {
 
 /// Approve in peach, and refuse, from the sheet's end.
 fn answers(ctx: &mut Ctx, line: Rect, id: &ApprovalId) {
-    let (mut room, raised) = (line, ctx.styles.raised());
-    let refuse = Button::new("Refuse", Target::Refuse(id.clone()), Role::Muted, raised);
-    refuse.right(ctx, &mut room, ctx.tokens.xs);
-    let approve = Button::new(
-        "Approve",
-        Target::Approve(id.clone()),
-        Role::Attention,
-        raised,
-    );
-    approve.right(ctx, &mut room, ctx.tokens.xs);
+    let (mut room, gap) = (line, ctx.tokens.sm);
+    let refuse = Target::Refuse(id.clone());
+    Button::glass("Refuse", refuse, Role::Muted, &ctx.styles).right(ctx, &mut room, gap);
+    let approve = Target::Approve(id.clone());
+    Button::glass("Approve", approve, Role::Attention, &ctx.styles).right(ctx, &mut room, gap);
 }

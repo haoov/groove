@@ -75,6 +75,11 @@ impl Styles {
         self.sans(self.tokens.title, Weight::Medium, role)
     }
 
+    /// A session's name in the strip's header.
+    pub fn session_title(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.h3, Weight::Medium, role)
+    }
+
     /// A section's name inside a surface; drawn upper case.
     pub fn heading(&self, role: Role) -> TextStyle {
         self.sans(self.tokens.heading, Weight::Medium, role)
@@ -185,14 +190,20 @@ impl Styles {
             .with_alpha(crate::base::tokens::BADGE_GROUND)
     }
 
+    /// A role's colour dimmed to a row's ground, stronger on a light theme.
+    pub fn row_tint(&self, role: Role) -> Color {
+        let alpha = self.alpha(crate::base::tokens::ROW_TINT_ALPHA);
+        self.color(role).with_alpha(alpha)
+    }
+
     /// The rules above and below a list's selected row.
     pub fn chosen(&self) -> Color {
         self.palette.rosewater
     }
 
-    /// The rules above and below the caret's row, as a chosen list row has.
+    /// The rules above and below the caret's row, in the text's own colour.
     pub fn here(&self) -> Color {
-        self.chosen()
+        self.palette.text
     }
 
     /// The bar where the caret sits.
@@ -202,9 +213,12 @@ impl Styles {
 
     /// The alpha a tint takes on this theme, stronger on a light ground.
     fn alpha(&self, (dark, light): (u8, u8)) -> u8 {
+        if self.light() { light } else { dark }
+    }
+
+    fn light(&self) -> bool {
         let base = self.palette.base;
-        let lightness = u16::from(base.r) + u16::from(base.g) + u16::from(base.b);
-        if lightness > 384 { light } else { dark }
+        u16::from(base.r) + u16::from(base.g) + u16::from(base.b) > 384
     }
 
     /// The stripes of a side with no line.

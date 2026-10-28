@@ -68,9 +68,10 @@ fn the_chip_lit_is_the_label_the_words_open_on() {
     let styles = Styles::new(app.config.theme(), Tokens::new(1.0));
     let (frame, _) = view(&app, &ui, wide(), &mut Fonts::embedded());
     let colour = |text: &str| {
-        frame.layers()[0]
-            .texts
+        frame
+            .layers()
             .iter()
+            .flat_map(|layer| layer.texts.iter())
             .find(|run| run.text == text)
             .map(|run| run.style.color)
             .expect("the chip")
@@ -110,9 +111,10 @@ fn the_field_s_edge_lights_while_it_has_the_keyboard() {
     let lit = |ui: &Ui| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
         let code = hits.rect_of(&Target::Code).expect("the rows");
-        frame.layers()[0]
-            .quads
+        frame
+            .layers()
             .iter()
+            .flat_map(|layer| layer.quads.iter())
             .filter(|quad| code.contains(quad.rect.x, quad.rect.y))
             .any(|quad| quad.color == styles.color(Role::Accent))
     };

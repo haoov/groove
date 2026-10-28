@@ -48,7 +48,8 @@ pub(super) fn draw<'a>(
         rows: Rows {
             first: ctx.tokens.row,
             under: 0.0,
-            ruled: true,
+            ruled: false,
+            carded: false,
         },
         count,
         offset: tab.scroll,
@@ -88,7 +89,8 @@ pub(super) fn single<'a>(
         rows: Rows {
             first: ctx.tokens.row,
             under: 0.0,
-            ruled: true,
+            ruled: false,
+            carded: false,
         },
         count: 1,
         offset: 0.0,

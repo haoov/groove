@@ -68,9 +68,23 @@ pub struct TextRun {
     pub clip: Rect,
 }
 
-/// Quads draw first, then text. A later layer draws over an earlier one.
+/// A pane that bends and frosts the layers below it.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Glass {
+    pub rect: Rect,
+    pub radius: f32,
+    /// The width of the curved rim.
+    pub bezel: f32,
+    pub tint: Color,
+    pub clip: Rect,
+}
+
+/// Grounds under glass, veil, glass, quads, then text; a later layer draws over an earlier one.
 #[derive(Default)]
 pub struct Layer {
+    pub under: Vec<(Rect, Color)>,
+    pub veil: Option<Color>,
+    pub glass: Vec<Glass>,
     pub quads: Vec<Quad>,
     pub texts: Vec<TextRun>,
     pub grids: Vec<CellGrid>,
@@ -102,6 +116,17 @@ impl Frame {
 
     pub fn layers(&self) -> &[Layer] {
         &self.layers
+    }
+
+    /// The first layer that holds glass.
+    pub fn backdrop(&self) -> Option<usize> {
+        self.glassed().next()
+    }
+
+    /// Every layer that holds glass, first to last.
+    pub fn glassed(&self) -> impl Iterator<Item = usize> + '_ {
+        let held = |(at, layer): (usize, &Layer)| (!layer.glass.is_empty()).then_some(at);
+        self.layers.iter().enumerate().filter_map(held)
     }
 
     pub fn clip(&self) -> Rect {
@@ -178,6 +203,30 @@ impl Frame {
             color,
             clip,
             shape,
+        });
+    }
+
+    /// Dims every layer below the top one, under what the top one draws.
+    /// A ground under the top layer's glass, which shows it blurred.
+    pub fn under(&mut self, rect: Rect, color: Color) {
+        self.top().under.push((rect, color));
+    }
+
+    pub fn veil(&mut self, color: Color) {
+        self.top().veil = Some(color);
+    }
+
+    pub fn glass(&mut self, rect: Rect, (radius, bezel): (f32, f32), tint: Color) {
+        if rect.is_empty() {
+            return;
+        }
+        let clip = self.clip();
+        self.top().glass.push(Glass {
+            rect,
+            radius,
+            bezel,
+            tint,
+            clip,
         });
     }
 

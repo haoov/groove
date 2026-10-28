@@ -83,9 +83,10 @@ fn a_note_wraps_to_the_width_of_the_frame_that_draws_it() {
         let metrics = crate::tests::metrics(width, WINDOW.1, 1.0);
         let (frame, hits) = view(&app, &ui, metrics, &mut Fonts::embedded());
         let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-        let rows = frame.layers()[0]
-            .texts
+        let rows = frame
+            .layers()
             .iter()
+            .flat_map(|layer| layer.texts.iter())
             .filter(|run| code.contains(run.x, run.y))
             .filter(|run| !run.text.trim().is_empty() && body.contains(run.text.trim()))
             .count();

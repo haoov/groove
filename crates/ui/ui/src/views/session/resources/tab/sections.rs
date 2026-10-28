@@ -2,12 +2,12 @@
 //! line each, a key and its value, an event.
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{Described, EventRow, PodPart, Timestamp};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Heading;
+use groove_ui_kit::widgets::{Heading, glass_hoverable};
 
 use super::super::around::{helm_release, lineage};
 use super::super::health::{colour, status_colour};
@@ -49,14 +49,14 @@ impl Fact {
 /// The fold caret, the section's name and what it holds; a click folds it.
 pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool), tally: &Tally) {
     let title = format!("{section:?}");
-    let heading = Heading::new(&title)
-        .fold(!shut)
-        .target(Target::ResourceSection(section));
+    glass_hoverable(ctx, rect, Target::ResourceSection(section));
+    let heading = Heading::new(&title).fold(!shut);
     let heading = match tally {
         Tally::Count(count) => heading.count(*count),
         Tally::Note(note) => heading.note(note),
     };
-    heading.within(ctx, rect, rect);
+    let md = ctx.tokens.md;
+    heading.within(ctx, rect, rect.pad(Edges::across(md, md)));
 }
 
 /// Every condition on one line: a mark, its name, and why and since when where it is not met.

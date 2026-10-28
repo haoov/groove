@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_types::Note;
 
-use super::{BETWEEN, Block, GAPS, Slot, UNDER, anchored, starts};
+use super::{BETWEEN, Block, GAPS, OVER, Slot, UNDER, anchored, starts};
 use crate::components::Room;
 use crate::views::session::Face;
 use crate::views::session::diff::wrap::{Compacted, wrapped};
@@ -24,7 +24,7 @@ pub(super) fn block(
     };
     let rows = match hidden {
         true => 0,
-        false => said.len().max(1) + BETWEEN + 1 + UNDER,
+        false => OVER + said.len().max(1) + BETWEEN + 1 + UNDER,
     };
     Some(Block {
         after,
@@ -53,12 +53,13 @@ impl Block {
     /// What one row of the block holds, counted from its first.
     pub(super) fn slot(&self, row: usize) -> Slot {
         if row + UNDER >= self.rows {
-            return Slot::Pad { room: Room::Gap };
+            return Slot::Pad { room: Room::Under };
         }
         let Some(at) = self.at else {
             let typed = GAPS + 1;
             return match row {
-                0 | 2 => Slot::Pad { room: Room::Gap },
+                0 => Slot::Pad { room: Room::Over },
+                2 => Slot::Pad { room: Room::Gap },
                 1 => Slot::Chips,
                 row if row < typed + self.typing => Slot::Typed {
                     row: row - typed,
@@ -69,6 +70,9 @@ impl Block {
                 },
                 _ => Slot::Footer { reply: false },
             };
+        };
+        let Some(row) = row.checked_sub(OVER) else {
+            return Slot::Pad { room: Room::Over };
         };
         let said = self.said.len().max(1);
         match row.checked_sub(said + BETWEEN) {
@@ -81,4 +85,16 @@ impl Block {
             Some(_) => Slot::Acts { at },
         }
     }
+}
+
+/// Each row of a note told it floats over the rows, on its card's glass.
+pub(crate) fn floated(lines: &mut [crate::components::Line<'_>], slots: &[Slot]) {
+    for (line, slot) in lines.iter_mut().zip(slots) {
+        line.float = floats(slot);
+    }
+}
+
+/// Whether a row belongs to a note, whose card floats over the rows on glass.
+pub(crate) fn floats(slot: &Slot) -> bool {
+    !matches!(slot, Slot::Code(_))
 }

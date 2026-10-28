@@ -19,14 +19,14 @@ impl<T: Clone + PartialEq> Act<'_, T> {
         let mut room = rect;
         match self {
             Act::Button(label, target) => {
-                let ground = ctx.styles.ground();
-                Button::new(label, target, Role::Muted, ground).left(ctx, &mut room, 0.0);
+                let button = Button::glass(label, target, Role::Muted, &ctx.styles);
+                button.left(ctx, &mut room, 0.0);
             }
             Act::Toggle(on, target) => {
                 Toggle::new(on, target).left(ctx, &mut room, 0.0);
             }
             Act::Mark(mark, role, target) => {
-                let hover = ctx.styles.hover();
+                let hover = ctx.styles.glass_hover();
                 Button::icon(mark, 0, target, role)
                     .hover(hover)
                     .left(ctx, &mut room, 0.0);

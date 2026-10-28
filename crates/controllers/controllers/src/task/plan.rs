@@ -4,12 +4,11 @@ use groove_types::ExternalId;
 
 use crate::{AppState, Services, Spawner};
 
-/// Where a task lands: above `before`, or at the end of the side it is dropped on.
+/// Where a task lands: above `before`, or at the end.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Landing {
     pub external_id: ExternalId,
     pub before: Option<ExternalId>,
-    pub later: bool,
 }
 
 /// One task moved in the plan, kept in the slice and written to disk.
@@ -21,12 +20,7 @@ pub(super) fn reorder(
 ) {
     let waiting = state.task.waiting(&state.session.worked());
     let shown = state.task.planned(&waiting);
-    let order = groove_task_service::moved(
-        &shown,
-        &landing.external_id,
-        landing.before.as_ref(),
-        landing.later,
-    );
+    let order = groove_task_service::moved(&shown, &landing.external_id, landing.before.as_ref());
     state.task.plan = order.clone();
     let service = services.task.clone();
     crate::spawn::record(spawner, async move { service.save(order).await });

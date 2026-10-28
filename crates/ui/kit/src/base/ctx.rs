@@ -54,6 +54,8 @@ pub struct Ctx<'a, A: App> {
     pub tick: u64,
     pub now: Timestamp,
     pub app: A,
+    /// Whether what is drawn now stands in the region that has the keys.
+    pub active: bool,
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
     hover: Option<A::Target>,
@@ -80,11 +82,27 @@ impl<'a, A: App> Ctx<'a, A> {
             tick: metrics.tick,
             now: metrics.now,
             app,
+            active: true,
             frame,
             fonts,
             hover,
             clip: None,
         }
+    }
+
+    /// The ground of what is chosen: in the accent where the keys are, else neutral.
+    pub fn chosen(&self) -> Color {
+        match self.active {
+            true => self.styles.glass_active(),
+            false => self.styles.glass_chosen(),
+        }
+    }
+
+    /// Draws a region, active or not, then stands active again.
+    pub fn region(&mut self, active: bool, draw: impl FnOnce(&mut Self)) {
+        self.active = active;
+        draw(self);
+        self.active = true;
     }
 
     pub fn hover(&self) -> Option<&A::Target> {
@@ -121,6 +139,18 @@ impl<'a, A: App> Ctx<'a, A> {
     pub(crate) fn rounded_box(&mut self, rect: Rect, ground: Color, border: Color, radius: f32) {
         self.frame.rounded(rect, ground, radius);
         self.frame.ring(rect, border, radius, 1.0);
+    }
+
+    pub(crate) fn under(&mut self, rect: Rect, color: Color) {
+        self.frame.under(rect, color);
+    }
+
+    pub(crate) fn veil(&mut self, color: Color) {
+        self.frame.veil(color);
+    }
+
+    pub(crate) fn glass(&mut self, rect: Rect, shape: (f32, f32), tint: Color) {
+        self.frame.glass(rect, shape, tint);
     }
 
     pub(crate) fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {

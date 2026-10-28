@@ -1,7 +1,6 @@
 //! The rows a surface draws, from the top of their rect.
 
 use groove_gfx::Rect;
-use groove_ui_kit::widgets::code::rule;
 
 use super::row::draw;
 use super::{Block, Gutters, Line};
@@ -15,6 +14,8 @@ pub struct Rows<'a> {
     pub gutters: Gutters,
     /// How far the text is scrolled sideways, its gutters left in place.
     pub across: f32,
+    /// Whether this pass draws the floating rows of notes' cards, or every other row.
+    pub floating: bool,
 }
 
 /// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
@@ -26,9 +27,8 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
         let mut y = rect.y - scroll + rows.first as f32 * height;
         for line in rows.lines {
             let at = groove_ui_kit::shape::band(rect, y - rect.y, height);
-            draw(ctx, at, line, block, rows.across);
-            if line.numbered() {
-                rule(ctx, at, block);
+            if line.float == rows.floating {
+                draw(ctx, at, line, block, rows.across);
             }
             drawn.push(at);
             y += height;

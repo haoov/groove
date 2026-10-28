@@ -38,7 +38,6 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::FocusAgent => ui.focus = Focus::Agent,
         Action::FocusWorkspace => ui.focus = Focus::Workspace,
         Action::FocusSidebar => sidebar(ui),
-        Action::FocusCommit => commit_box(ui),
         Action::NextTab | Action::PreviousTab => {
             let forward = action == Action::NextTab;
             if ui.focus == Focus::Terminal {
@@ -101,34 +100,22 @@ fn sidebar(ui: &mut Ui) {
     if !ui.session.tab.has_sidebar() {
         return;
     }
-    let held = !ui.session.folded && ui.focus == Focus::Sidebar && !ui.session.composing;
+    let held = !ui.session.folded && ui.focus == Focus::Sidebar;
     ui.session.folded = held;
-    ui.session.composing = false;
     ui.focus = match held {
         true => Focus::Workspace,
         false => Focus::Sidebar,
     };
 }
 
-/// The caret in the commit box, the sidebar unfolded for it.
-fn commit_box(ui: &mut Ui) {
-    if !ui.session.tab.has_sidebar() {
-        return;
-    }
-    ui.session.folded = false;
-    if ui.session.commits() {
-        ui.session.composing = true;
-        ui.focus = Focus::Sidebar;
-    }
-}
-
 /// The terminals up and given the keys, or folded away when they have them.
 fn terminals(ui: &mut Ui) {
     let held = ui.session.manual && ui.focus == Focus::Terminal;
     ui.session.manual = !held;
-    ui.focus = match held {
-        true => Focus::Workspace,
-        false => Focus::Terminal,
+    ui.focus = match (held, ui.session.stowed) {
+        (true, true) => Focus::Agent,
+        (true, false) => Focus::Workspace,
+        (false, _) => Focus::Terminal,
     };
 }
 

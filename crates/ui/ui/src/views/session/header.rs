@@ -1,81 +1,75 @@
 mod scope;
+mod tabs;
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
-use groove_types::SessionKind;
 
 use crate::components::{delivered, room_for};
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
-use groove_ui_kit::base::ground::Ground;
+use crate::views::session::resources::ResourcesUi;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::hairline;
+use groove_ui_kit::layout::{Spec, row_in};
+use groove_ui_kit::shape::strip;
 use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::{Button, Text, lead, picker};
+use groove_ui_kit::widgets::{Button, glass_pane, lead, picker};
 
-/// The workspace's first lines: what the session is, what it points at, what Resources reads.
+/// The strip's first line: what the session is, then the tabs.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
-    let rect = ctx.app.layout.header;
-    groove_ui_kit::shape::ground(ctx, rect, Ground::Work);
-    hairline(ctx, rect, ctx.styles.line());
-
-    let tall = |height: f32| Spec::default().height(height);
-    let row = tall(ctx.tokens.row);
-    let [top, under, third, _] = column_in(rect, [tall(ctx.tokens.header), row, row, Spec::fill()]);
+    let top = ctx.app.layout.header;
     let Some(open) = app.session.selected() else {
         let room = top.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);
         return;
     };
-    let rest = actions(ctx, top, app, open);
+    let rest = tabs::draw(ctx, top, app, ui);
     let page = app
         .task
         .worked(&open.session)
         .and_then(|one| one.url.as_deref());
-    titled(ctx, rest, open, page);
-    pickers(ctx, under, app, open);
-    scope::draw(ctx, third, app, open, &ui.session.resources);
-}
-
-/// The session's own actions. Returns the room left of them, which the title takes.
-fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> Rect {
-    if matches!(open.session.kind, SessionKind::Explorer) {
-        return line;
+    if !ctx.app.layout.work.is_empty() {
+        return titled(ctx, rest, open, page);
     }
-    let more = menu_caret(ctx, line, open);
-    if !finishable(app, open) {
-        return more;
+    let wide = (titled_width(ctx, open, page)).min(rest.w);
+    let line = strip(rest, rest.w - wide, wide);
+    titled(ctx, line, open, page);
+    glass_pane(ctx, strip(top, line.x - top.x, top.right() - line.x));
+}
+
+/// What the title needs: its mark, its words, the link to its page, and the padding around.
+fn titled_width(ctx: &mut Ctx, open: &Open, page: Option<&str>) -> f32 {
+    let (md, sm, icon) = (ctx.tokens.md, ctx.tokens.sm, ctx.tokens.icon);
+    let words = ctx.measure(&open.session.title, &ctx.styles.session_title(Role::Text));
+    let link = match page {
+        Some(_) => icon + sm * 2.0 + sm,
+        None => 0.0,
+    };
+    md * 2.0 + icon + sm + words + link
+}
+
+/// The line under the header: the pickers, the MR and the sidebar's fold, or a discard question.
+pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
+    let Some(open) = app.session.selected() else {
+        return;
+    };
+    let line = groove_ui_kit::shape::band(ctx.app.layout.info, 0.0, ctx.tokens.row);
+    if ui.losing() == Some(&crate::Losing::Everything) {
+        let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
+        return super::files::asking(ctx, room, "discard every change?");
     }
-    let target = Target::Finish(open.session.id.clone());
-    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
-    let finish = Button::new("finish", target, Role::Ok, band)
-        .text(Text::Label)
-        .hover(hover);
-    let mut room = more.pad(Edges::across(0.0, ctx.tokens.sm));
-    finish.right(ctx, &mut room, 0.0);
-    room
+    let line = match ui.session.tab.has_sidebar() {
+        true => super::fold(ctx, line, ui),
+        false => line,
+    };
+    pickers(ctx, line, app, open);
 }
 
-/// What opens the rest of them, at the line's right end; returns the room left of it.
-fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> Rect {
-    let target = Target::TaskActions(open.session.id.clone());
-    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
-    let more = Button::icon(Mark::Down, 0, target, Role::Muted)
-        .ground(band)
-        .hover(hover);
-    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
-    more.right(ctx, &mut room, 0.0);
-    room
-}
-
-/// Whether the session works a task with no worktree still carrying an open MR.
-fn finishable(app: &AppState, open: &Open) -> bool {
-    matches!(open.session.kind, SessionKind::Task { .. })
-        && app.delivery.all_landed(&open.worktrees)
+/// The Kubernetes tab's line: the contexts and the namespaces it reads.
+pub fn scope(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held: &ResourcesUi) {
+    scope::draw(ctx, line, app, open, held);
 }
 
 /// The session's kind and its title, cut where the actions begin, then what opens its page.
@@ -88,7 +82,7 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
         Mark::of_kind(&open.session.kind),
         Role::Faint,
     );
-    let style = ctx.styles.title(Role::Text);
+    let style = ctx.styles.session_title(Role::Text);
     let wide = match page {
         Some(_) => size + ctx.tokens.sm * 2.0 + ctx.tokens.sm,
         None => 0.0,
@@ -100,7 +94,8 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
     row(ctx, room, 0.0, &title, style);
     if let Some(url) = page {
         let target = Target::TaskPage(url.to_string());
-        let outward = Button::icon(Mark::Outward, 0, target, Role::Faint).hover(ctx.styles.hover());
+        let outward =
+            Button::icon(Mark::Outward, 0, target, Role::Faint).hover(ctx.styles.glass_hover());
         outward.at(ctx, line, after.x);
     }
 }
@@ -124,14 +119,15 @@ fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let repo_text = elide(ctx, repo, &style, repo_room);
     let branch_text = elide(ctx, branch, &style, room - repo_room);
 
-    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
     let repo = picker(
         &repo_text,
         Target::Picker(Picks::Repo),
         role_of(held.is_some()),
         band,
         hover,
-    );
+    )
+    .flat();
     let box_ = repo.at(ctx, line, x);
     let x = box_.right() + ctx.tokens.sm;
     let role = role_of(worktree.is_some());
@@ -141,7 +137,8 @@ fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
         role,
         band,
         hover,
-    );
+    )
+    .flat();
     let box_ = branch.at(ctx, line, x);
     if let Some(delivery) = delivery {
         delivered(ctx, line, box_.right() + ctx.tokens.sm, &delivery);
@@ -158,20 +155,15 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
         true => (turn(ctx.tick), Role::Working),
         false => (0, Role::Faint),
     };
-    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let hover = ctx.styles.glass_hover();
     let refresh = Button::icon(Mark::Busy, turning, Target::Refresh, role);
     let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
-    refresh
-        .lit(role)
-        .ground(band)
-        .hover(hover)
-        .right(ctx, &mut room, 0.0)
-        .x
+    refresh.lit(role).hover(hover).right(ctx, &mut room, 0.0).x
 }
 
 /// What the two pickers add around their labels, and the gaps after each.
 fn around(ctx: &mut Ctx) -> f32 {
-    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
     let bare = picker("", Target::Picker(Picks::Repo), Role::Text, band, hover).width(ctx);
     (bare + ctx.tokens.sm) * 2.0
 }

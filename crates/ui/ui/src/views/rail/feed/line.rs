@@ -10,11 +10,11 @@ use super::Line;
 use super::runs::Item;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, square};
+use groove_ui_kit::shape::circle;
 use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::widgets::{Badge, card_inset, glass_hoverable, glass_tinted, rounded_slice};
 
 /// What a line says: when it was, its mark, what was done, and what it was done to.
 struct Said<'a> {
@@ -37,14 +37,17 @@ pub(super) fn draw(
         Line::Run(run) => {
             let newest = run.items[0];
             let count = run.items.len();
+            if let Item::Bad(_) = newest {
+                glass_tinted(ctx, line, ctx.styles.row_tint(Role::Bad));
+            }
             match count {
                 1 => reachable(ctx, line, newest),
                 _ => {
                     let key = run.key();
                     if open == Some(key) {
-                        groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+                        held(ctx, line, (true, false));
                     }
-                    hoverable(ctx, line, Target::FeedRun(key));
+                    glass_hoverable(ctx, line, Target::FeedRun(key));
                 }
             }
             let mut said = said(app, newest, every);
@@ -53,11 +56,43 @@ pub(super) fn draw(
             }
             over(ctx, line, said, count);
         }
-        Line::Under(item) => {
-            reachable(ctx, line, *item);
+        Line::Under(item, last) => {
+            held(ctx, line, (false, *last));
+            let lead = ctx.tokens.md + lead(ctx);
+            reachable(ctx, line.pad(Edges::across(lead, 0.0)), *item);
             under(ctx, line, item.at(), &said(app, *item, false).subject);
         }
     }
+}
+
+/// An open run's slice of its held ground, rounded where the run opens or closes.
+fn held(ctx: &mut Ctx, line: Rect, (top, bottom): (bool, bool)) {
+    let (sm, half) = (ctx.tokens.sm, ctx.tokens.xs / 2.0);
+    let slice = line.pad(Edges {
+        top: if top { half } else { 0.0 },
+        bottom: if bottom { half } else { 0.0 },
+        left: sm,
+        right: sm,
+    });
+    let ground = ctx.styles.glass_chosen();
+    rounded_slice(ctx, slice, (top, bottom), (ground, None));
+}
+
+/// The room the mark's round takes, before the act and under it.
+fn lead(ctx: &Ctx) -> f32 {
+    ctx.tokens.icon + ctx.tokens.sm
+}
+
+/// The kind's mark in a round in `role`'s tint, or see-through, at the left of `top`.
+fn marked(ctx: &mut Ctx, top: &mut Rect, role: Option<Role>) -> Rect {
+    let slot = from_left(top, lead(ctx), ctx.tokens.sm);
+    let ground = match role {
+        Some(role) => ctx.styles.tint(role),
+        None => ctx.styles.glass_hover(),
+    };
+    circle(ctx, slot, ground);
+    let size = ctx.tokens.small;
+    slot.align((size, size), Align::Center, Align::Center)
 }
 
 /// What one item says, its session named when `every`.
@@ -127,16 +162,14 @@ fn mark_of(kind: TimelineKind) -> Mark {
 /// The line takes the pointer to the session it belongs to, when it has one.
 fn reachable(ctx: &mut Ctx, line: Rect, item: Item<'_>) {
     if let Some(session) = item.session() {
-        hoverable(ctx, line, Target::FeedLine(session.clone()));
+        glass_hoverable(ctx, line, Target::FeedLine(session.clone()));
     }
 }
 
 /// A job the user waits on, with the mark that keeps turning in the mark's place.
 fn running(ctx: &mut Ctx, line: Rect, label: &str) {
     let (mut top, _) = halves(ctx, line);
-    let size = ctx.tokens.small;
-    let slot = from_left(&mut top, ctx.tokens.icon, ctx.tokens.sm);
-    let box_ = slot.align((size, size), Align::Center, Align::Center);
+    let box_ = marked(ctx, &mut top, Some(Role::Working));
     groove_ui_kit::widgets::busy(ctx, box_, Role::Working);
     Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
 }
@@ -144,19 +177,18 @@ fn running(ctx: &mut Ctx, line: Rect, label: &str) {
 /// The mark, the act with its count and its age on the right, then the subject under the act.
 fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>, count: usize) {
     let (mut top, mut under) = halves(ctx, line);
-    let size = ctx.tokens.icon;
-    let slot = from_left(&mut top, size, ctx.tokens.sm);
-    from_left(&mut under, size, ctx.tokens.sm);
-    let mark_role = match said.role {
-        Role::Bad => Role::Bad,
-        _ => Role::Faint,
+    let (mark_role, round) = match said.role {
+        Role::Bad => (Role::Bad, Some(Role::Bad)),
+        _ => (Role::Faint, None),
     };
-    groove_ui_kit::widgets::icon(ctx, square(slot, size), said.mark, mark_role);
+    let box_ = marked(ctx, &mut top, round);
+    from_left(&mut under, lead(ctx), ctx.tokens.sm);
+    groove_ui_kit::widgets::icon(ctx, box_, said.mark, mark_role);
     let when = ago(said.at.age_at(ctx.now));
     Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut top, ctx.tokens.sm);
     Label::new(said.act, ctx.styles.strong(said.role)).left(ctx, &mut top, ctx.tokens.xs);
     if count > 1 {
-        Label::new(&count.to_string(), ctx.styles.small(Role::Ghost)).draw(ctx, top);
+        Badge::new(&count.to_string(), Role::Muted).left(ctx, &mut top, 0.0);
     }
     if !said.subject.is_empty() {
         Label::new(&said.subject, ctx.styles.small(Role::Muted)).draw(ctx, under);
@@ -166,7 +198,7 @@ fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>, count: usize) {
 /// One event of an open run: its subject under the act's column, its age on the right.
 fn under(ctx: &mut Ctx, line: Rect, at: Timestamp, subject: &str) {
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    from_left(&mut room, ctx.tokens.icon, ctx.tokens.sm);
+    from_left(&mut room, lead(ctx), ctx.tokens.sm);
     let when = ago(at.age_at(ctx.now));
     Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, ctx.tokens.sm);
     Label::new(subject, ctx.styles.small(Role::Muted)).draw(ctx, room);
@@ -174,7 +206,9 @@ fn under(ctx: &mut Ctx, line: Rect, at: Timestamp, subject: &str) {
 
 /// The line's two halves, inside its margins.
 fn halves(ctx: &Ctx, line: Rect) -> (Rect, Rect) {
-    let mut top = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let under = from_bottom(&mut top, line.h / 2.0, 0.0);
+    let (md, inset) = (ctx.tokens.md, card_inset(&ctx.tokens));
+    let mut top = line.pad(Edges::xy(md, inset));
+    let half = top.h / 2.0;
+    let under = from_bottom(&mut top, half, 0.0);
     (top, under)
 }

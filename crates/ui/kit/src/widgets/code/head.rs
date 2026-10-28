@@ -6,7 +6,6 @@ use super::{Code, head_mark};
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::ruled;
 use crate::text::Label;
 
 /// A file's head, whole, drawn from whichever of its rows `line` is.
@@ -16,11 +15,10 @@ pub(super) fn head<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::
         true => Role::Faint,
         false => Role::Text,
     };
-    let (ground, rule) = (ctx.styles.band(), ctx.styles.line());
-    ctx.quad(whole, ground);
-    ruled(ctx, whole, rule);
+    let ground = whole.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
+    ctx.rounded(ground, ctx.styles.glass_hover(), ctx.tokens.sm);
     let (xs, size) = (ctx.tokens.xs, ctx.tokens.icon);
-    let mut room = whole.pad(Edges::across(xs, 0.0));
+    let mut room = ground.pad(Edges::across(xs, ctx.tokens.sm));
     crate::widgets::caret(ctx, &mut room, (!code.folded, size), Role::Faint);
     room.take_right(ctx.tokens.md + size);
     if let Some(counts) = code.counts {

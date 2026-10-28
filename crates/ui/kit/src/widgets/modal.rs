@@ -1,6 +1,15 @@
-use groove_gfx::{Color, Rect};
+use groove_gfx::{Align, Color, Rect};
 
 use crate::base::ctx::{App, Ctx};
+use crate::base::ground::Ground;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material {
+    Solid,
+    Glass,
+}
 
 /// A panel with its named corner at `at`, edged in `border`, inside the window.
 pub fn panel_at<A: App>(
@@ -8,7 +17,7 @@ pub fn panel_at<A: App>(
     at: (f32, f32),
     corner: Corner,
     size: (f32, f32),
-    border: Color,
+    (border, panel): (Color, Material),
 ) -> Rect {
     let window = ctx.window;
     let (width, height) = size;
@@ -19,29 +28,92 @@ pub fn panel_at<A: App>(
     };
     let rect = crate::shape::kept_in((x, y), (width, height), window);
     ctx.layer();
-    lifted(ctx, rect);
-    let band = ctx.styles.band();
-    ctx.rounded_box(rect, band, border, ctx.tokens.round);
+    made(ctx, rect, border, panel);
     rect
 }
 
-/// A box centred on a dimmed window, edged in `border`, on its own layer. Returns the box.
+/// A box centred on the window, edged in `border`, on its own layer. Returns the box.
 pub fn modal<A: App>(
     ctx: &mut Ctx<'_, A>,
-    width: f32,
-    height: f32,
+    (width, height): (f32, f32),
     top: f32,
-    border: Color,
+    (border, panel): (Color, Material),
 ) -> Rect {
     let window = ctx.window;
-    let (scrim, panel) = (ctx.styles.scrim(), ctx.styles.band());
     ctx.layer();
-    ctx.quad(window, scrim);
+    match panel {
+        Material::Solid => ctx.quad(window, ctx.styles.scrim()),
+        Material::Glass => ctx.veil(ctx.styles.glass_dim()),
+    }
     let w = width.min(window.w - ctx.tokens.xl);
     let rect = Rect::new((window.w - w) / 2.0, top, w, height);
-    lifted(ctx, rect);
-    ctx.rounded_box(rect, panel, border, ctx.tokens.round);
+    made(ctx, rect, border, panel);
     rect
+}
+
+fn made<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, border: Color, panel: Material) {
+    match panel {
+        Material::Solid => {
+            lifted(ctx, rect);
+            let band = ctx.styles.band();
+            ctx.rounded_box(rect, band, border, ctx.tokens.round);
+        }
+        Material::Glass => glass_pane(ctx, rect),
+    }
+}
+
+/// A rounded pane of glass over `rect`.
+pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let shape = (ctx.tokens.glass_round, ctx.tokens.bezel);
+    ctx.glass(rect, shape, ctx.styles.glass());
+}
+
+/// A pane of glass around `content`, `pad` wider on each side and as tall as a bar. Returns the pane.
+pub fn glass_pill<A: App>(ctx: &mut Ctx<'_, A>, content: Rect, pad: f32) -> Rect {
+    let tall = ctx.tokens.bar;
+    let top = content.y + (content.h - tall) / 2.0;
+    let pill = Rect::new(content.x - pad, top, content.w + pad * 2.0, tall);
+    glass_pane(ctx, pill);
+    pill
+}
+
+/// A round button made of glass, `mark` in its middle, the whole glass lit under the pointer.
+pub fn glass_button<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    (mark, role): (Mark, Role),
+    target: A::Target,
+) -> bool {
+    let size = rect.w.min(rect.h);
+    let round = rect.align((size, size), Align::Center, Align::Center);
+    let radius = size / 2.0;
+    ctx.glass(
+        round,
+        (radius, radius.min(ctx.tokens.bezel)),
+        ctx.styles.glass(),
+    );
+    let on = ctx.interact(round, target);
+    if on {
+        ctx.rounded(round, ctx.styles.glass_hover(), radius);
+    }
+    let icon = ctx.tokens.icon;
+    let at = round.align((icon, icon), Align::Center, Align::Center);
+    let color = ctx.styles.color(role);
+    ctx.icon(at, mark, 0, color);
+    on
+}
+
+/// `rect` on `ground`, which glass drawn over it shows blurred.
+pub fn ground_under<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, ground: Ground) {
+    ctx.under(rect, ground.color(&ctx.styles));
+}
+
+/// `place` on `ground`, a pane of glass floating inside it. Returns the pane.
+pub fn floating_pane<A: App>(ctx: &mut Ctx<'_, A>, place: Rect, ground: Ground) -> Rect {
+    ground_under(ctx, place, ground);
+    let pane = place.pad(groove_gfx::Edges::all(ctx.tokens.sm));
+    glass_pane(ctx, pane);
+    pane
 }
 
 /// A soft shade under the box, dropped below it.

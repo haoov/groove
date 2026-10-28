@@ -27,3 +27,15 @@ pub fn lead<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, mark: Mark, role: Rol
     icon(ctx, at, mark, role);
     at
 }
+
+/// A round state mark at the left of `slot`, filled, or only its edge when `hollow`.
+pub fn dot<A: App>(ctx: &mut Ctx<'_, A>, slot: Rect, role: Role, hollow: bool) {
+    let size = ctx.tokens.sm;
+    let at = crate::shape::square(slot, size);
+    let at = Rect::new(at.x.round(), at.y.round(), size, size);
+    let color = ctx.styles.color(role);
+    match hollow {
+        true => ctx.ring(at, color, size / 2.0, ctx.tokens.hairline),
+        false => ctx.rounded(at, color, size / 2.0),
+    }
+}

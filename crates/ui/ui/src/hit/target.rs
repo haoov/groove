@@ -156,31 +156,23 @@ pub enum Target {
     FeedRun(crate::views::rail::RunKey),
     /// The write the agent asked for, taken or refused.
     Approve(groove_types::ApprovalId),
-    /// The sheet that shows a write before it is decided.
-    Examine(groove_types::ApprovalId),
     /// The sheet itself, which keeps a click from what it covers.
     Sheet,
-    /// The switch that lets a session's writes through without asking.
-    AutoApprove(groove_types::SessionId),
     Refuse(groove_types::ApprovalId),
     /// The agent's own row: what it can be sent, and its reload.
     Skills(SessionId),
-    Reload(SessionId),
-    /// Which sessions the feed shows.
-    FeedScope,
+    /// The feed narrowed to the session in hand, or widened to every session.
+    FeedScope(bool),
     /// One MR of the review column, by its project and its number.
     Review(String, u64),
     /// A column heading of the review table, which orders it.
     SortReview(crate::views::board::review::By),
-    /// What finishes the task a session works, and what opens its other actions.
-    Finish(groove_types::SessionId),
     /// What reads the selected worktree's MR again.
     Refresh,
     /// An MR's number, a link to its page.
     MrPage(String),
     /// What opens the task's own page at its source.
     TaskPage(String),
-    TaskActions(groove_types::SessionId),
     /// A link in prose.
     Link(String),
     /// The board's filter, and one row it offers.

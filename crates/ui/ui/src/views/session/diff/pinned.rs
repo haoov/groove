@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{At, Document, HEAD_ROWS, shown};
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::Highlight;
 
 use super::notes::Inline;
@@ -13,6 +13,7 @@ use crate::hit::Target;
 use crate::views::session::Face;
 use groove_ui_kit::base::tokens::{PINNED_DEEP, PINNED_SHARE};
 use groove_ui_kit::shape::shadow_under;
+use groove_ui_kit::widgets::glass_pane;
 
 /// One line held above the rows.
 #[derive(Clone)]
@@ -46,7 +47,7 @@ pub(super) fn draw(
     let named = pins.iter().find(|pin| pin.kind == Kind::Head);
     let pushed = named.and_then(|pin| pushed(ctx, (app, ui, inline), &pin.text, height));
     let band = groove_ui_kit::shape::band(body, pushed.unwrap_or(0.0), height);
-    let ground = ctx.styles.raised();
+    let ground = ctx.styles.glass_card();
     let read = named.is_some_and(|pin| super::row::is_read(app, &pin.text));
     let lines: Vec<Line<'_>> = pins
         .iter()
@@ -65,12 +66,13 @@ pub(super) fn draw(
         .collect();
     ctx.layer();
     ctx.clipped(body, |ctx| {
-        shadow_under(ctx, band);
+        backed(ctx, band, named.is_some());
         let rows = Rows {
             lines: &lines,
             first: 0,
             gutters,
             across: ui.session.across(),
+            floating: false,
         };
         let drawn = code(ctx, band, rows, 0.0);
         ctx.hit(band, Target::Pinned);
@@ -78,6 +80,16 @@ pub(super) fn draw(
             super::offers::head_hits(ctx, band, &pin.text);
         }
     });
+}
+
+/// The glass the pins stand on, shaped as a head's rounded row when they name a file.
+fn backed(ctx: &mut Ctx, band: Rect, head: bool) {
+    shadow_under(ctx, band);
+    let pane = match head {
+        true => band.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0)),
+        false => band,
+    };
+    glass_pane(ctx, pane);
 }
 
 /// How far the next file's head, coming up under the pinned one, pushes it up.
@@ -99,7 +111,7 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<
     if ui.session.face() == Face::File {
         return scoped(ctx, body, app, ui, inline);
     }
-    if first(ctx.tokens.code_line, ui.session.scroll()) == 0 {
+    if ui.session.scroll() <= 0.0 {
         return Vec::new();
     }
     file_under(ctx, app, ui, inline, HEAD_ROWS)

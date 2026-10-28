@@ -71,7 +71,6 @@ pub(super) fn twisty(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
 
 /// The keyboard into one term of the sidebar's bar.
 pub(super) fn narrowing(ui: &mut Ui, term: Term) -> Vec<Command> {
-    ui.session.composing = false;
     ui.session.bar.focus(term);
     Vec::new()
 }

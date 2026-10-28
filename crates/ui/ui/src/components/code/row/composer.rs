@@ -3,11 +3,10 @@
 use groove_gfx::Rect;
 
 use super::super::{Composed, label_role};
-use super::note::slotted;
+use super::note::card_across;
 use crate::ctx::Ctx;
 use crate::hit::{Composing, Target};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::card_row;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::code::Block;
 use groove_ui_kit::widgets::{Badge, Button};
@@ -26,8 +25,7 @@ const DECORATIONS: [&str; 2] = ["blocking", "non-blocking"];
 
 /// A row of the composer: the lines and the chips to pick, or the hint and its buttons.
 pub(super) fn composer(ctx: &mut Ctx, line: Rect, composed: &Composed, gutter: Block) {
-    let card = slotted(ctx, line, gutter);
-    card_row(ctx, card);
+    let card = card_across(ctx, line, gutter);
     let at = gutter.content(ctx, line);
     let mut room = groove_ui_kit::shape::span(line, at, card.right() - ctx.tokens.sm - at);
     match composed {
@@ -60,10 +58,13 @@ fn footer(
     (hint, save): (&str, &'static str),
     decorations: Option<&[String]>,
 ) {
-    let (raised, action) = (ctx.styles.raised(), ctx.styles.action());
+    let hover = ctx.styles.glass_hover();
     for (label, asked) in [(save, Composing::Save), ("cancel", Composing::Cancel)] {
-        let button = Button::new(label, Target::Compose(asked), Role::Muted, raised);
-        button.hover(action).right(ctx, &mut room, ctx.tokens.sm);
+        let button = Button::new(label, Target::Compose(asked), Role::Muted, hover);
+        button
+            .flat()
+            .hover(hover)
+            .right(ctx, &mut room, ctx.tokens.sm);
     }
     if let Some(held) = decorations {
         for one in DECORATIONS {

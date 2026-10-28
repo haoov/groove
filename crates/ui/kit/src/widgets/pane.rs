@@ -1,10 +1,9 @@
-//! A pane beside the work: its ground, and the hairline along the edge it shares.
+//! A pane on glass beside the work, and the side a thing stands at.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
-use crate::base::ground::Ground;
-use crate::shape::{ground, side_rule};
+use crate::shape::side_rule;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -12,11 +11,13 @@ pub enum Side {
     Right,
 }
 
-pub fn pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, fill: Ground, edge: Side) {
-    ground(ctx, rect, fill);
-    let x = match edge {
-        Side::Left => rect.x,
-        Side::Right => rect.right() - ctx.tokens.hairline,
-    };
-    side_rule(ctx, rect, x, ctx.styles.line());
+/// A pane on glass: no ground, a hairline down its left edge, short of the ends.
+pub fn glass_aside<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let lg = ctx.tokens.lg;
+    let span = rect.pad(Edges {
+        top: lg,
+        bottom: lg,
+        ..Edges::all(0.0)
+    });
+    side_rule(ctx, span, rect.x, ctx.styles.line());
 }

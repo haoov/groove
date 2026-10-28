@@ -76,7 +76,7 @@ Not enforced by a test.
 
 **The controllers are the API.** A function nobody can reach, and a palette entry or tool
 that is not a function, are both defects.
-*Example:* the agent's `git_push` tool calls the same `remote` the commit box does.
+*Example:* the agent's `git_push` tool calls the same `remote` the palette's Push does.
 Enforced by `every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_refuses`.
 
 **`AppState` is the sum of the services' slices**, owned on the main thread. A
@@ -216,6 +216,10 @@ directly.
   Double-line and rounded glyphs stay on the font.
 - **Never read the frame back.** The window presents.
 - Rounded rects and borders: one SDF fragment shader. Clipping: a scissor per batch.
+- **Glass costs only the frames that hold it.** Such a frame draws the layers under the
+  glass into a texture and blurs it, again for each later layer of glass; a frame without
+  glass is one pass. Enforced by
+  `a_frame_without_glass_draws_in_one_pass`.
 - **Chrome is owned and minimal**: about eight primitives on `gfx`, plus focus, hit
   testing and scroll. No general toolkit, no [home-grown layout engine](design.md#limits).
   `ui-kit` holds the context, tokens, styles, shapes, text, layout and widgets on plain
@@ -258,4 +262,4 @@ layers and the ceilings, and in `crates/ui/ui/src/tests/structure.rs` for `ui` a
 code.
 
 Golden images run on software Vulkan (`mesa-vulkan-drivers`, lavapipe) in CI. The fonts
-are vendored: IBM Plex Sans, IBM Plex Mono, JetBrains Mono NL Nerd Font Mono and Lilex, OFL.
+are vendored: Inter, IBM Plex Mono, JetBrains Mono NL Nerd Font Mono and Lilex, OFL.

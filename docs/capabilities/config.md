@@ -66,7 +66,7 @@ their switches; the routines, as [../shared.md](../shared.md) describes them.
 **The theme repaints everything at once**, the running agent and shell terminals
 included.
 
-**The UI font is IBM Plex Sans.** The mono font is IBM Plex Mono, JetBrains Mono or Lilex,
+**The UI font is Inter.** The mono font is IBM Plex Mono, JetBrains Mono or Lilex,
 all vendored, and draws code, the diff, the agent and the shells. Mono draws no
 ligatures. An empty or unknown family is IBM Plex Mono. A change redraws at once.
 
@@ -92,7 +92,7 @@ only what the user rebound.
 | Ring | Modifier | Heard |
 |---|---|---|
 | app | `alt`, `alt+shift` | from any pane; in a terminal only these chords are taken, every other alt key passes through |
-| code | `ctrl`, `ctrl+shift` | by the focused pane: the editor, the diff, find, the commit box |
+| code | `ctrl`, `ctrl+shift` | by the focused pane: the editor, the diff, find |
 | terminal | `ctrl+shift+c`, `ctrl+shift+v` | in the agent and the shells, which take every other key |
 
 **A chord matches the key without its modifier**, so it stays on its key whatever the

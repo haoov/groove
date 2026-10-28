@@ -8,11 +8,11 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::{Losing, Ui};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, square, stand};
+use groove_ui_kit::shape::{square, stand};
 use groove_ui_kit::text::{Label, elide, lit_cut, row};
+use groove_ui_kit::widgets::glass_hoverable;
 use groove_ui_kit::widgets::{changes, folder};
 
 enum Item<'a> {
@@ -79,7 +79,7 @@ fn items<'a>(ctx: &Ctx, listing: &'a Listing<'_>, ui: &Ui) -> Vec<Item<'a>> {
 
 /// A directory of the list: a folder that folds its files away, then its path.
 fn group(ctx: &mut Ctx, line: Rect, dir: &str, open: bool) {
-    hoverable(ctx, line, Target::Group(dir.to_string()));
+    glass_hoverable(ctx, line, Target::Group(dir.to_string()));
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     folder(ctx, &mut room, open, Role::Faint);
     let style = ctx.styles.body(Role::Faint);
@@ -117,10 +117,10 @@ pub(super) fn entry(
     }
     let on_row = pointed(ctx, &file.path);
     if on_row {
-        groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
+        groove_ui_kit::widgets::glass_lit(ctx, line);
     }
     if reading.open {
-        groove_ui_kit::shape::chosen(ctx, line);
+        groove_ui_kit::widgets::glass_chosen(ctx, line);
     }
     let letter = file.status.letter().to_string();
     let at = line.pad(Edges::across(indent, 0.0));

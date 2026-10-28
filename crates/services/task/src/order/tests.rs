@@ -22,17 +22,14 @@ fn task(id: &str) -> Task {
     }
 }
 
-fn placed(id: &str, later: bool) -> Placed {
-    Placed {
-        external_id: ExternalId::new(id),
-        later,
-    }
+fn placed(id: &str) -> Placed {
+    Placed::new(ExternalId::new(id))
 }
 
-fn names<'a>(planned: &[super::Planned<'a>]) -> Vec<(&'a str, bool)> {
+fn names<'a>(planned: &[super::Planned<'a>]) -> Vec<&'a str> {
     planned
         .iter()
-        .map(|one| (one.task.short_id.as_str(), one.later))
+        .map(|one| one.task.short_id.as_str())
         .collect()
 }
 
@@ -40,26 +37,17 @@ fn names<'a>(planned: &[super::Planned<'a>]) -> Vec<(&'a str, bool)> {
 fn the_plan_puts_the_tasks_it_places_before_the_ones_it_does_not() {
     let (a, b, c) = (task("a"), task("b"), task("c"));
     let tasks = [&a, &b, &c];
-    let order = [placed("c", false), placed("b", false)];
+    let order = [placed("c"), placed("b")];
     let planned = ordered(&order, &tasks);
-    assert_eq!(names(&planned), [("c", false), ("b", false), ("a", false)]);
-}
-
-#[test]
-fn a_task_under_the_divider_stands_below_every_task_over_it() {
-    let (a, b, c) = (task("a"), task("b"), task("c"));
-    let tasks = [&a, &b, &c];
-    let order = [placed("a", true), placed("b", false)];
-    let planned = ordered(&order, &tasks);
-    assert_eq!(names(&planned), [("b", false), ("c", false), ("a", true)]);
+    assert_eq!(names(&planned), ["c", "b", "a"]);
 }
 
 #[test]
 fn a_placed_task_the_sources_no_longer_answer_with_is_left_out() {
     let a = task("a");
     let tasks = [&a];
-    let order = [placed("gone", false), placed("a", false)];
-    assert_eq!(names(&ordered(&order, &tasks)), [("a", false)]);
+    let order = [placed("gone"), placed("a")];
+    assert_eq!(names(&ordered(&order, &tasks)), ["a"]);
 }
 
 #[test]
@@ -67,28 +55,15 @@ fn a_move_puts_the_task_above_the_one_it_lands_on() {
     let (a, b, c) = (task("a"), task("b"), task("c"));
     let tasks = [&a, &b, &c];
     let shown = ordered(&[], &tasks);
-    let order = moved(&shown, &c.external_id, Some(&a.external_id), false);
-    assert_eq!(
-        order,
-        [placed("c", false), placed("a", false), placed("b", false)]
-    );
+    let order = moved(&shown, &c.external_id, Some(&a.external_id));
+    assert_eq!(order, [placed("c"), placed("a"), placed("b")]);
 }
 
 #[test]
-fn a_move_with_nothing_below_it_ends_the_side_it_lands_on() {
+fn a_move_with_nothing_below_it_ends_the_order() {
     let (a, b) = (task("a"), task("b"));
     let tasks = [&a, &b];
-    let shown = ordered(&[placed("a", false), placed("b", true)], &tasks);
-    let order = moved(&shown, &a.external_id, None, false);
-    assert_eq!(
-        order,
-        [placed("a", false), placed("b", true)],
-        "the end of its own side, over the divider"
-    );
-    let order = moved(&shown, &a.external_id, None, true);
-    assert_eq!(
-        order,
-        [placed("b", true), placed("a", true)],
-        "and under it when that is where it was dropped"
-    );
+    let shown = ordered(&[placed("a"), placed("b")], &tasks);
+    let order = moved(&shown, &a.external_id, None);
+    assert_eq!(order, [placed("b"), placed("a")]);
 }

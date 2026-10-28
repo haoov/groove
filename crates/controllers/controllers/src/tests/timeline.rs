@@ -36,12 +36,8 @@ fn a_commit_leaves_its_subject_on_the_log() {
             path: "a.txt".into(),
         },
     );
-    state
-        .workspace
-        .message
-        .edit(&groove_types::Edit::Insert("fix: one\n\nwhy".into()));
-
-    send(&mut state, &services, &spawner, workspace::Command::Commit);
+    super::fixture::commit(&mut state, &spawner, "fix: one\n\nwhy");
+    spawner.drain(&mut state, &services);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     assert_eq!(
         log(&state, &services, &spawner).first(),

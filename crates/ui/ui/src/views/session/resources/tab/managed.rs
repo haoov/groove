@@ -7,7 +7,6 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{AppPart, AppResource, SyncedResource};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Shown, Tab, Text};
 
@@ -80,8 +79,7 @@ pub(super) fn draw(
 
 /// A tab a filter, each in its colour and with its count.
 fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
-    hairline(ctx, strip, ctx.styles.line());
-    let mut room = strip;
+    let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     for filter in Filter::OFFERED {
         let count = match filter {
             Filter::Syncing => stages::remaining(part),
@@ -101,7 +99,7 @@ fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
         Tab::new(&said, Target::ArgoFilter(filter), filter == on)
             .text(Text::Small)
             .quiet(role)
-            .left(ctx, &mut room, 0.0);
+            .left(ctx, &mut room, ctx.tokens.xs);
     }
 }
 

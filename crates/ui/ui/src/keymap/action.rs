@@ -15,7 +15,6 @@ pub enum Action {
     FocusAgent,
     FocusWorkspace,
     FocusSidebar,
-    FocusCommit,
     NextTab,
     PreviousTab,
     CloseOpen,
@@ -44,7 +43,6 @@ pub enum Action {
     FindPrevious,
     OpenPath,
     SearchFiles,
-    Commit,
     TerminalCopy,
     TerminalPaste,
 }

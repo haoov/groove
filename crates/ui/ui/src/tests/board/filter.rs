@@ -146,46 +146,62 @@ fn the_pointer_takes_the_light_from_the_row_the_keyboard_stands_on() {
         let rows: Vec<f32> = (0..2)
             .filter_map(|at| hits.rect_of(&Target::Offer(at)).map(|rect| rect.y))
             .collect();
-        let tall = groove_ui_kit::base::tokens::Tokens::new(1.0).row;
         let mut on = frame.layers()[1]
             .quads
             .iter()
-            .filter(|quad| quad.color == styles.hover() && quad.rect.h == tall)
-            .map(|quad| quad.rect.y)
-            .collect::<Vec<f32>>();
+            .filter(|quad| quad.color == styles.glass_active())
+            .map(|quad| {
+                rows.iter()
+                    .position(|y| quad.rect.y >= *y && quad.rect.y < y + 8.0)
+            })
+            .collect::<Vec<_>>();
         on.dedup();
-        (rows, on)
+        on
     };
-    let (rows, on) = lit(&ui);
-    assert_eq!(on, vec![rows[0]], "the keyboard stands on the first");
+    assert_eq!(lit(&ui), [Some(0)], "the keyboard stands on the first");
     ui.hover = Some(Target::Offer(1));
-    let (rows, on) = lit(&ui);
-    assert_eq!(on, vec![rows[1]], "the pointer moves it, and only it");
+    assert_eq!(lit(&ui), [Some(1)], "the pointer moves it, and only it");
 }
 
 #[test]
-fn the_header_s_button_is_drawn_with_a_rounded_border_around_it() {
+fn the_filter_stands_on_glass_at_the_top_middle_and_the_button_beside_it() {
     let app = full_app();
-    let ui = Ui {
+    let mut ui = Ui {
         surface: Surface::Board,
         ..Ui::default()
     };
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let box_ = hits.rect_of(&Target::AddTask).expect("the button");
-    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
-    let rings: Vec<_> = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| quad.color == styles.line() && quad.rect == box_)
-        .map(|quad| quad.shape)
-        .collect();
-    let ring = groove_gfx::Shape {
-        radius: tokens.round,
-        stroke: 1.0,
-        ..groove_gfx::Shape::default()
+    let board = crate::layout::Layout::of(window(), &ui).board;
+    let button = hits.rect_of(&Target::AddTask).expect("the button");
+    let filter = hits.rect_of(&Target::Filter).expect("the filter");
+    let glass = &frame.layers()[0].glass;
+    let pane = |rect: groove_gfx::Rect| glass.iter().find(|one| one.rect == rect);
+    assert!(pane(filter).is_some(), "the filter on its own glass");
+    let round = pane(button).expect("the button made of glass");
+    assert_eq!(round.radius, button.w / 2.0, "round");
+    let centre = (filter.x + filter.w / 2.0 - (board.x + board.w / 2.0)).abs();
+    assert!(centre <= 1.0, "the filter in the middle");
+    let gap = button.x - filter.right();
+    assert!(
+        gap > 0.0 && gap <= 8.0,
+        "the button just right of it: {gap}"
+    );
+    assert!(filter.y - board.y < board.h / 8.0, "both at the top");
+    let hover = groove_ui_kit::base::style::Styles::new(
+        app.config.theme(),
+        groove_ui_kit::base::tokens::Tokens::new(1.0),
+    )
+    .glass_hover();
+    let lit = |frame: &groove_gfx::Frame| {
+        frame.layers()[0]
+            .quads
+            .iter()
+            .any(|quad| quad.rect == button && quad.color == hover)
     };
-    assert_eq!(rings, vec![ring], "one ring, its corners rounded");
+    assert!(!lit(&frame), "at rest, glass alone");
+    ui.hover = Some(Target::AddTask);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    assert!(lit(&frame), "the pointer lights the whole glass");
 }
 
 #[test]

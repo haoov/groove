@@ -4,13 +4,10 @@ use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::{KindHeading, KubeKind};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::hairline;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::lit_cut;
-use groove_ui_kit::widgets::{Heading, Search, Side, pane};
+use groove_ui_kit::widgets::{Heading, Search, glass_aside, glass_field, glass_hoverable};
 
 use super::scope;
 use crate::Ui;
@@ -30,8 +27,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let Some(open) = app.session.selected().filter(|_| !rect.is_empty()) else {
         return;
     };
-    pane(ctx, rect, Ground::Band, Side::Left);
-    let [search, body] = column_in(rect, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
+    glass_aside(ctx, rect);
+    let rect = rect.pad(Edges::across(ctx.tokens.sm, 0.0));
+    let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
+    let [search, body] = column_in(rect, [tall, Spec::fill()]);
     searched(ctx, search, ui);
     let picked = scope::kind(app, open, &ui.session.resources);
     let lines = lines(app, open, ui);
@@ -51,12 +50,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         |ctx, line, one| match one {
             Line::Heading(group, open) => {
                 if stood.as_ref() == Some(one) {
-                    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
+                    groove_ui_kit::widgets::glass_lit(ctx, line);
                 }
-                let heading = Heading::new(group.label()).fold(*open);
-                heading
-                    .target(Target::ResourceGroup(group.clone()))
-                    .draw(ctx, line)
+                glass_hoverable(ctx, line, Target::ResourceGroup(group.clone()));
+                Heading::new(group.label()).fold(*open).draw(ctx, line)
             }
             Line::Kind(kind) => {
                 let marks = (picked.as_ref() == Some(kind), stood.as_ref() == Some(one));
@@ -68,13 +65,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 fn searched(ctx: &mut Ctx, line: Rect, ui: &Ui) {
     let held = &ui.session.resources;
-    groove_ui_kit::shape::ground(ctx, line, Ground::Work);
-    hairline(ctx, line, ctx.styles.line());
+    let field = glass_field(ctx, line);
     let search = Search::new(&held.filter, Target::ResourceFilter, held.filtering);
     search
         .hint("kind, group or group/kind")
         .faint(Role::Faint)
-        .draw(ctx, line);
+        .draw(ctx, field);
 }
 
 /// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.
@@ -85,11 +81,11 @@ fn named(
     (picked, highlighted): (bool, bool),
 ) {
     if highlighted {
-        groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
+        groove_ui_kit::widgets::glass_lit(ctx, line);
     }
-    hoverable(ctx, line, Target::ResourceKind(kind.clone()));
+    glass_hoverable(ctx, line, Target::ResourceKind(kind.clone()));
     if picked {
-        groove_ui_kit::shape::chosen(ctx, line);
+        groove_ui_kit::widgets::glass_chosen(ctx, line);
     }
     let role = if picked { Role::Text } else { Role::Muted };
     let style = ctx.styles.body(role);

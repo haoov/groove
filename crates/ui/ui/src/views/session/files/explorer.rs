@@ -12,10 +12,9 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::views::session::Asked;
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::widgets::glass_hoverable;
 use groove_ui_kit::widgets::{caret_after, folder};
 
 /// One row of the tree: a directory to open, or a file to read.
@@ -170,7 +169,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     let Some(naming) = ui.session.naming.as_ref() else {
         return;
     };
-    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
+    groove_ui_kit::widgets::glass_lit(ctx, line);
     let style = ctx.styles.code(Role::Text);
     let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
@@ -182,7 +181,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
 /// A directory: its folder, then its own name.
 fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
     let target = Target::Dir(held.path.clone());
-    hoverable(ctx, line, target);
+    glass_hoverable(ctx, line, target);
     let mut room = line.pad(Edges::across(indent, 0.0));
     let open = ui.session.opened.contains(&held.path);
     folder(ctx, &mut room, open, Role::Faint);
@@ -196,9 +195,9 @@ fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
 /// A file the diff says nothing about: its name, and nothing else.
 fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&String>) {
     let target = Target::File(held.path.clone());
-    groove_ui_kit::shape::hoverable(ctx, line, target);
+    groove_ui_kit::widgets::glass_hoverable(ctx, line, target);
     if open == Some(&held.path) {
-        groove_ui_kit::shape::chosen(ctx, line);
+        groove_ui_kit::widgets::glass_chosen(ctx, line);
     }
     let style = ctx.styles.body(Role::Text);
     let at = super::text_at(ctx, indent);

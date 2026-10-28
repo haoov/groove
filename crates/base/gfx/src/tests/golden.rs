@@ -13,7 +13,7 @@ use crate::{
 const MAX_CHANNEL_DIFF: u8 = 3;
 const MAX_DIFFERENT_PIXELS: f64 = 0.002;
 
-fn renderer(size: Size) -> Renderer {
+pub(super) fn renderer(size: Size) -> Renderer {
     Renderer::headless(size, Fonts::embedded()).expect(
         "a GPU adapter: without a GPU, install a software Vulkan driver (mesa-vulkan-drivers)",
     )
@@ -198,7 +198,7 @@ fn grid_matches_golden() {
     compare("grid", size, &frame);
 }
 
-fn compare(name: &str, size: Size, frame: &Frame) {
+pub(super) fn compare(name: &str, size: Size, frame: &Frame) {
     let image = renderer(size).snapshot(frame).expect("snapshot");
     let golden = golden_path(name);
     if std::env::var("GROOVE_GOLDEN").is_ok_and(|v| v == "update") {

@@ -28,7 +28,11 @@ fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let runs = &frame.layers()[0].texts;
+    let runs: Vec<&groove_gfx::TextRun> = frame
+        .layers()
+        .iter()
+        .flat_map(|layer| layer.texts.iter())
+        .collect();
     let run = |text: &str| {
         runs.iter()
             .find(|one| one.text.trim_end() == text)
@@ -59,9 +63,10 @@ fn a_split_view_draws_a_note_once_on_its_new_side() {
     let mut ui = on_diff();
     ui.session.view = groove_types::DiffView::Split;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let runs: Vec<_> = frame.layers()[0]
-        .texts
+    let runs: Vec<_> = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .filter(|one| one.text == "said once")
         .collect();
     assert_eq!(runs.len(), 1, "one side draws it");

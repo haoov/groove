@@ -4,6 +4,7 @@ mod composer;
 mod note;
 
 use self::composer::composer;
+pub(crate) use self::note::card_across;
 use self::note::{acts, note, padded};
 
 use groove_gfx::Rect;

@@ -5,17 +5,15 @@ use groove_gfx::{Edges, Rect};
 use super::super::{Acting, Header, Line, Noted, Room, label_role};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{band, card_row, framed, from_left, span, top_rule};
+use groove_ui_kit::shape::{band, from_left, span, top_rule};
 use groove_ui_kit::text::{Label, ago, elide, row};
 use groove_ui_kit::widgets::code::Block;
-use groove_ui_kit::widgets::{Badge, Button, typed_line};
+use groove_ui_kit::widgets::{Badge, Button, rounded_slice, typed_line};
 
 /// One row of a note: its part of the card, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, gutter: Block) {
-    let card = slotted(ctx, line, gutter);
-    card_row(ctx, card);
+    let card = card(ctx, line, gutter);
     let role = match said.resolved {
         true => Role::Faint,
         false => Role::Text,
@@ -34,61 +32,57 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, code: &Line<'_>, said: Noted<'_>, 
     }
     let rect = span(line, at, by - at - ctx.tokens.sm);
     let field = span(line, at - ctx.tokens.xs, card.right() - ctx.tokens.sm - at);
-    groove_ui_kit::shape::ground(ctx, field, Ground::Deep);
     if let Some(edge) = said.field {
-        let colour = match edge.lit {
-            true => ctx.styles.color(Role::Accent),
-            false => ctx.styles.line(),
-        };
-        framed(ctx, field, (edge.first, edge.last), colour);
+        let ring = edge.lit.then(|| ctx.styles.color(Role::Accent));
+        let ground = (ctx.styles.glass_hover(), ring);
+        rounded_slice(ctx, field, (edge.first, edge.last), ground);
     }
     let text = elide(ctx, code.text, &words, rect.w);
     typed_line(ctx, rect, (&text, words), (code.caret, code.held));
 }
 
-/// A comment's header: initials, author, source and label from the left; lines and age at the end.
+/// A comment's header from the left: initials, author, label, source, lines, age.
 fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Header, role: Role) {
     if head.reply {
         let rule = ctx.styles.line();
-        top_rule(ctx, card, rule);
+        top_rule(
+            ctx,
+            card.pad(Edges::across(ctx.tokens.md, ctx.tokens.md)),
+            rule,
+        );
     }
     let at = gutter.content(ctx, line);
     let mut room = span(line, at, card.right() - ctx.tokens.sm - at);
-    let faint = ctx.styles.small(Role::Faint);
-    let age = ago(head.at.age_at(ctx.now));
-    Label::new(&age, faint).right(ctx, &mut room, ctx.tokens.sm);
-    Label::new(&head.lines, faint).right(ctx, &mut room, ctx.tokens.sm);
+    let (sm, faint) = (ctx.tokens.sm, ctx.styles.small(Role::Faint));
     let initials = from_left(&mut room, ctx.tokens.xl, 0.0);
     Label::new(&head.initials, ctx.styles.initials(Role::Muted)).draw(ctx, initials);
-    Label::new(&head.author, ctx.styles.label(role)).left(ctx, &mut room, ctx.tokens.sm);
-    Label::new(head.source, faint).left(ctx, &mut room, ctx.tokens.sm);
-    let Some((label, decorations)) = head.label.as_ref() else {
-        return;
-    };
-    let mut at = Badge::new(label, label_role(label))
-        .at(ctx, line, room.x)
-        .right();
-    for decoration in decorations {
-        at = Badge::new(decoration, Role::Faint)
-            .at(ctx, line, at + ctx.tokens.xs)
-            .right();
+    Label::new(&head.author, ctx.styles.label(role)).left(ctx, &mut room, sm);
+    if let Some((label, decorations)) = head.label.as_ref() {
+        Badge::new(label, label_role(label)).left(ctx, &mut room, ctx.tokens.xs);
+        for decoration in decorations {
+            Badge::new(decoration, Role::Faint).left(ctx, &mut room, ctx.tokens.xs);
+        }
+        from_left(&mut room, ctx.tokens.xs, 0.0);
+    }
+    let age = ago(head.at.age_at(ctx.now));
+    for said in [head.source, head.lines.as_str(), age.as_str()] {
+        Label::new(said, faint).left(ctx, &mut room, sm);
     }
 }
 
 /// A row of room inside the card, a rule across it half way down when it parts two blocks.
 pub(super) fn padded(ctx: &mut Ctx, line: Rect, room: Room, gutter: Block) {
-    let card = slotted(ctx, line, gutter);
-    card_row(ctx, card);
-    if room == Room::Between {
-        let half = card.h / 2.0;
-        let lower = band(card, half, half);
-        top_rule(ctx, lower, ctx.styles.line());
+    if room != Room::Between {
+        return;
     }
+    let card = card(ctx, line, gutter);
+    let half = card.h / 2.0;
+    let lower = band(card, half, half).pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    top_rule(ctx, lower, ctx.styles.line());
 }
 
-/// A note's row on the deepest ground, and where its card stands on it.
-pub(super) fn slotted(ctx: &mut Ctx, line: Rect, gutter: Block) -> Rect {
-    groove_ui_kit::shape::ground(ctx, line, Ground::Deep);
+/// Where a note's card stands across `line`.
+pub(crate) fn card_across(ctx: &mut Ctx, line: Rect, gutter: Block) -> Rect {
     card(ctx, line, gutter)
 }
 
@@ -117,8 +111,7 @@ fn by(ctx: &mut Ctx, card: Rect, said: Noted<'_>) -> f32 {
 
 /// What a note offers, as buttons from the column its words start on.
 pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
-    let card = slotted(ctx, line, gutter);
-    card_row(ctx, card);
+    let card = card(ctx, line, gutter);
     let at = gutter.content(ctx, line);
     let mut room = span(line, at, card.right() - ctx.tokens.sm - at);
     let gap = ctx.tokens.sm;
@@ -138,7 +131,7 @@ pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
 
 /// Where a thread is answered: a field that starts the reply on a click.
 fn reply_field(ctx: &mut Ctx, room: Rect, acting: &Acting) {
-    groove_ui_kit::shape::ground(ctx, room, Ground::Deep);
+    rounded_slice(ctx, room, (true, true), (ctx.styles.glass_hover(), None));
     let pad = ctx.tokens.sm;
     let words = room.pad(Edges::across(pad, 0.0));
     Label::new("Reply…", ctx.styles.body(Role::Faint)).draw(ctx, words);
@@ -149,9 +142,9 @@ fn reply_field(ctx: &mut Ctx, room: Rect, acting: &Acting) {
 fn acted(ctx: &Ctx, acting: &Acting, button: NoteButton) -> Button<'static, Target> {
     let label = button.label(acting.resolved);
     let target = Target::Note(acting.origin.clone(), button);
-    let (role, ground) = match button {
+    let (role, hover) = match button {
         NoteButton::Delete => (Role::Bad, ctx.styles.tint(Role::Bad)),
-        _ => (Role::Muted, ctx.styles.raised()),
+        _ => (Role::Muted, ctx.styles.glass_hover()),
     };
-    Button::new(label, target, role, ground).hover(ctx.styles.action())
+    Button::new(label, target, role, hover).flat().hover(hover)
 }

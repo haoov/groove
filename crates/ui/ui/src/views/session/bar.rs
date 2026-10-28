@@ -1,80 +1,32 @@
-//! The agent's row under its screen: auto-approve, the skills, and a reload.
+//! The agent's row under its screen: the skills menu, in glass.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_gfx::Edges;
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::square;
-use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::{Button, Toggle};
+use groove_ui_kit::shape::band;
+use groove_ui_kit::widgets::{Button, glass_pill};
 
-/// What the agent waits on, or what it can be sent.
+/// What the agent can be sent.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    let line = ctx.app.layout.agent_bar;
-    groove_ui_kit::shape::ground(ctx, line, Ground::Band);
-    let (thick, rule) = (ctx.tokens.hairline, ctx.styles.line());
-    groove_ui_kit::shape::top_rule(ctx, line, rule);
-    groove_ui_kit::shape::side_rule(ctx, line, line.right() - thick, rule);
-    offered(ctx, line, app, open);
+    offered(ctx, ctx.app.layout.agent_bar, open);
 }
 
-/// The reload, the skills menu and the auto-approve switch, from the row's own end.
-fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
-    let id = open.session.id.clone();
-    let started = app.agent.agent(&id).map(|one| one.started_at);
-    let stale = started.is_some_and(|at| app.skill.newer_than(at));
-    let auto = open.state.auto_approve;
-    let (ground, xs) = (ctx.styles.ground(), ctx.tokens.xs);
-    let mut room = line.pad(Edges::across(0.0, xs));
-    let words = [
-        Button::new(
-            "reload",
-            Target::Reload(id.clone()),
-            reload_role(stale),
-            ground,
-        ),
-        Button::new("skills", Target::Skills(id.clone()), Role::Muted, ground).caret(Mark::UPWARDS),
-    ];
-    for word in words {
-        word.lit(Role::Text).right(ctx, &mut room, xs * 2.0);
-    }
-    let auto_approve = Toggle::new(auto, Target::AutoApprove(id.clone())).label("auto-approve");
-    auto_approve
-        .role(Role::Attention)
-        .right(ctx, &mut room, xs * 2.0);
-    said(ctx, line, app, open);
-}
-
-fn counted(skills: usize) -> String {
-    match skills {
-        1 => "1 skill".to_string(),
-        n => format!("{n} skills"),
-    }
-}
-
-fn reload_role(stale: bool) -> Role {
-    match stale {
-        true => Role::Attention,
-        false => Role::Muted,
-    }
-}
-
-/// What the row says when nothing waits: the agent's own name for itself.
-fn said(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
-    let size = ctx.tokens.small;
-    let box_ = square(line.pad(Edges::across(ctx.tokens.md, 0.0)), size);
-    groove_ui_kit::widgets::icon(ctx, box_, Mark::Busy, Role::Faint);
-    let style = ctx.styles.small(Role::Faint);
-    let at = ctx.tokens.md + size + ctx.tokens.xs;
-    let count = counted(app.skill.skills_for(&open.session.kind).len());
-    row(ctx, line, at, &count, style);
+/// The skills menu at the row's start, a gap above the foot.
+fn offered(ctx: &mut Ctx, line: Rect, open: &Open) {
+    let (sm, xs, tall) = (ctx.tokens.sm, ctx.tokens.xs, ctx.tokens.bar);
+    let foot = band(line, line.h - sm - tall, tall);
+    let mut room = foot.pad(Edges::across(sm + xs, sm + xs));
+    let target = Target::Skills(open.session.id.clone());
+    let skills = Button::new("skills", target, Role::Muted, ctx.styles.ground());
+    let skills = skills.flat().caret(Mark::UPWARDS).lit(Role::Text);
+    let word = skills.left(ctx, &mut room, 0.0);
+    glass_pill(ctx, word, xs);
 }

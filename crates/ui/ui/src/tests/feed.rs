@@ -7,6 +7,8 @@ use crate::hit::Target;
 use crate::tests::{app, click, window};
 use crate::{Ui, view};
 
+mod look;
+
 fn line(session: &str, at: i64, kind: TimelineKind, subject: &str) -> TimelineEvent {
     TimelineEvent {
         session: SessionId::new(session),
@@ -18,7 +20,7 @@ fn line(session: &str, at: i64, kind: TimelineKind, subject: &str) -> TimelineEv
 }
 
 /// The fixture's two sessions, with a line each.
-fn fed() -> groove_controllers::AppState {
+pub(super) fn fed() -> groove_controllers::AppState {
     let mut app = app();
     app.session.feed = vec![
         line("b", 20, TimelineKind::Push, "fix/two"),
@@ -80,7 +82,7 @@ fn the_feed_narrows_to_the_session_in_hand() {
     let app = fed();
     let mut ui = Ui::default();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let scope = hits.rect_of(&Target::FeedScope).expect("the scope");
+    let scope = hits.rect_of(&Target::FeedScope(true)).expect("the scope");
     click(scope, &mut ui, &app, &hits);
     assert!(ui.rail.mine);
     let drawn = in_rail(&app, &ui);
@@ -335,14 +337,16 @@ fn this_session_s_feed_leaves_the_title_out() {
     ui.rail.mine = true;
     let drawn = in_rail(&app, &ui);
     assert!(drawn.iter().any(|one| one == "fix: one"), "{drawn:?}");
-    assert!(
-        !drawn.iter().any(|one| one.contains(" \u{b7} ")),
-        "{drawn:?}"
-    );
+    let titled = |one: &String| {
+        ["Alpha", "Beta"]
+            .iter()
+            .any(|t| one.starts_with(t) && one != t)
+    };
+    assert!(!drawn.iter().any(titled), "{drawn:?}");
 }
 
 /// Session a's three commits, then b's push between two of its own.
-fn runs() -> groove_controllers::AppState {
+pub(super) fn runs() -> groove_controllers::AppState {
     let mut app = app();
     app.session.feed = vec![
         line("a", 70, TimelineKind::Commit, "c3"),
@@ -357,7 +361,9 @@ fn runs() -> groove_controllers::AppState {
 
 #[test]
 fn back_to_back_events_of_one_kind_fold_into_one_row() {
-    let drawn = in_rail(&runs(), &Ui::default());
+    let mut ui = Ui::default();
+    ui.split.feed = 400.0;
+    let drawn = in_rail(&runs(), &ui);
     let count = |text: &str| drawn.iter().filter(|one| *one == text).count();
     assert_eq!(
         count("commit"),

@@ -327,3 +327,14 @@ impl crate::Spawner for Held {
         self.sink.clone().expect("a held spawner made `over` one")
     }
 }
+
+/// The selected worktree's index committed with `message`, as the agent's tool does.
+pub fn commit(state: &mut AppState, spawner: &SyncSpawner, message: &str) {
+    let worktree = state
+        .session
+        .selected_worktree()
+        .cloned()
+        .expect("a worktree");
+    let asker = crate::asker::Asker::Ui;
+    crate::workspace::git::commit(state, spawner, worktree, message.into(), asker);
+}

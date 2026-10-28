@@ -104,9 +104,10 @@ fn the_row_draws_the_caret_and_what_is_held_the_way_the_commit_box_does() {
     let count = |ui: &Ui, color: groove_gfx::Color| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
         let code = hits.rect_of(&Target::Code).expect("the rows");
-        frame.layers()[0]
-            .quads
+        frame
+            .layers()
             .iter()
+            .flat_map(|layer| layer.quads.iter())
             .filter(|quad| quad.color == color && code.contains(quad.rect.x, quad.rect.y))
             .count()
     };

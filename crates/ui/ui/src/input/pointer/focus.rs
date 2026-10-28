@@ -6,9 +6,6 @@ use crate::{Focus, Ui};
 /// The pane a click lands in, the search bars let go of the keys when it is none of theirs.
 pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
     ui.focus = pane(target, ui.focus);
-    if listed(target) {
-        ui.session.composing = false;
-    }
     if matches!(ui.focus, Focus::Agent | Focus::Terminal | Focus::Rail) {
         ui.session.bar.typing = None;
         if let Some(find) = ui.session.find.as_mut() {
@@ -74,9 +71,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::Stage(_)
             | Target::Unstage(_)
             | Target::Discard
-            | Target::Keep
-            | Target::Message
-            | Target::Do,
+            | Target::Keep,
         ) => Focus::Sidebar,
         _ => focus,
     }

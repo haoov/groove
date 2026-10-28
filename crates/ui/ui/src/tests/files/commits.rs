@@ -52,10 +52,11 @@ fn the_strip_counts_the_commits_the_branch_owns() {
         commit("abc1234", "feat: one", false),
         commit("def5678", "chore: base", true),
     ]);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one == "commits · 1"),
-        "the base's own are not the branch's: {drawn:?}"
+    let said = tab_said(&app, &ui, Pane::Commits);
+    assert_eq!(
+        said.as_deref(),
+        Some("1"),
+        "the base's own are not the branch's"
     );
 }
 
@@ -116,7 +117,7 @@ fn a_shown_commit_heads_every_list_with_the_way_back() {
     for pane in Pane::ALL {
         ui.session.pane = pane;
         let drawn = in_sidebar(&app, &ui);
-        let head = ["showing commit", "abc1234", "working tree"];
+        let head = ["commit", "abc1234", "working tree"];
         assert!(
             head.iter()
                 .all(|said| drawn.iter().any(|text| text == said)),

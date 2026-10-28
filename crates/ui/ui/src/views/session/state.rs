@@ -29,6 +29,8 @@ pub struct SessionUi {
     pub folded: bool,
     /// The manual section stands open under the tab.
     pub manual: bool,
+    /// The workspace is folded into its strip, the agent wide.
+    pub stowed: bool,
     /// The session is a routine's: its agent pane alone, the window wide.
     pub alone: bool,
     /// A commit is shown in place of the working tree.
@@ -60,8 +62,6 @@ pub struct SessionUi {
     pub overview: f32,
     /// Which of the two views the stream is drawn in.
     pub view: DiffView,
-    /// The keyboard is in the commit box.
-    pub composing: bool,
     /// What the sidebar's search bar narrows by.
     pub bar: Bar,
     /// The files whose found lines are hidden under their own row.
@@ -144,6 +144,15 @@ impl Pane {
             Pane::Files => "changed",
             Pane::Commits => "commits",
             Pane::Notes => "notes",
+        }
+    }
+
+    pub fn mark(self) -> groove_ui_kit::base::mark::Mark {
+        use groove_ui_kit::base::mark::Mark;
+        match self {
+            Pane::Files => Mark::List,
+            Pane::Commits => Mark::Commits,
+            Pane::Notes => Mark::Note,
         }
     }
 }
@@ -252,11 +261,6 @@ impl SessionUi {
     /// Whether the sidebar stands beside the workspace right now.
     pub fn sidebar(&self) -> bool {
         self.tab.has_sidebar() && !self.folded && !self.alone
-    }
-
-    /// Whether the commit box stands under the sidebar: with it, unless a commit is shown.
-    pub fn commits(&self) -> bool {
-        self.sidebar() && !self.reading && self.tab != Tab::Resources
     }
 }
 

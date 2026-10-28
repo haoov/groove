@@ -47,25 +47,24 @@ fn a_row_says_what_it_is_with_its_ground_and_no_sign() {
 }
 
 #[test]
-fn a_changed_row_tints_its_gutter_and_its_numbers() {
+fn a_changed_row_wears_one_tint_across_its_gutter_and_its_numbers_lean_to_it() {
     let app = opened();
     let ui = on_diff();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let surface = crate::layout::Layout::of(window(), &ui).workspace;
     for kind in [groove_types::RowKind::Added, groove_types::RowKind::Removed] {
-        let (ground, numbers) = styles.gutter(kind).expect("a gutter");
+        let numbers = styles.gutter(kind).expect("a gutter");
         let row = styles.row_ground(kind).expect("a ground");
-        let width = |color| {
-            frame.layers()[0]
-                .quads
-                .iter()
-                .find(|quad| quad.color == color)
-                .map(|quad| quad.rect.w)
-                .expect("drawn")
-        };
+        let tints: Vec<_> = frame.layers()[0]
+            .quads
+            .iter()
+            .filter(|quad| quad.color == row)
+            .collect();
+        assert!(!tints.is_empty(), "{kind:?} tinted");
         assert!(
-            width(ground) < width(row) / 4.0,
-            "the gutter only: {kind:?}"
+            tints.iter().all(|quad| quad.rect.x <= surface.x + 1.0),
+            "the tint starts under the gutter: {kind:?}"
         );
         assert!(
             frame.layers()[0]

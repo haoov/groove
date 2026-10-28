@@ -153,13 +153,20 @@ fn call_of(state: &AppState, whose: &Whose, act: ThreadAct) -> Option<Call> {
     })
 }
 
-/// The commit box's words on the selected worktree's MR.
+/// A comment or a verdict on the selected worktree's MR, carrying the session's notes.
 pub(super) fn say_here(state: &mut AppState, services: &Services, spawner: &dyn Spawner, say: Say) {
     let Some(whose) = Whose::selected(state) else {
         return;
     };
-    let body = state.workspace.message.text().trim().to_string();
-    say_as(state, services, spawner, say, body, whose, Asker::Ui);
+    say_as(
+        state,
+        services,
+        spawner,
+        say,
+        String::new(),
+        whose,
+        Asker::Ui,
+    );
 }
 
 /// A comment, or a verdict carrying every note of the session the forge has not seen.
@@ -181,9 +188,6 @@ pub(crate) fn say_as(
         return asker.failed(state, e);
     }
     let (service, job) = (services.delivery.clone(), state.begin(say.label()));
-    let typed = asker
-        .carries_a_box()
-        .then(|| state.workspace.message.text());
     spawner.spawn(Box::pin(async move {
         let (repo, at) = (&whose.repo, &whose.worktree.id);
         let done = match say {
@@ -201,7 +205,7 @@ pub(crate) fn say_as(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if done.is_ok() {
-                    spoke(state, services, spawner, (typed, &say, &whose));
+                    spoke(state, services, spawner, (&say, &whose));
                 }
                 asker.answer(state, done, || say.said().to_string());
             },
@@ -209,16 +213,13 @@ pub(crate) fn say_as(
     }));
 }
 
-/// The box emptied when it still holds what was said, the timeline told, the MR read again.
+/// The timeline told, the MR read again.
 fn spoke(
     state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
-    (typed, say, whose): (Option<String>, &Say, &Whose),
+    (say, whose): (&Say, &Whose),
 ) {
-    if typed.is_some_and(|typed| state.workspace.message.text() == typed) {
-        state.workspace.message = groove_workspace_service::Buffer::default();
-    }
     let (kind, at) = (TimelineKind::Review, &whose.worktree.id);
     crate::timeline::log(services, spawner, &whose.session, kind, say.label(), at);
     landed(state, services, spawner, whose);

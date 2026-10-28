@@ -18,8 +18,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::Described;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::hairline;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, Tab, Text};
 
@@ -35,7 +34,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
     let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm * 2.0);
     let [top, rest] = column_in(body, [tall, Spec::fill()]);
     let object = tab.link.read(app);
-    heading(ctx, top, app, tab, object.map(|one| &**one));
+    heading(ctx, top, tab, object.map(|one| &**one));
     let Some(object) = object else {
         return standing(ctx, rest, app, tab);
     };
@@ -53,11 +52,9 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
     }
 }
 
-/// Context, namespace, kind and name, the status in its colour, then the two views.
-fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Option<&Described>) {
-    hairline(ctx, line, ctx.styles.line());
-    let link = &tab.link;
-    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+/// The status in its colour, then the views.
+fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) {
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
     let gap = ctx.tokens.sm;
     let views: &[View] = match object {
         Some(one) if one.pod.is_some() => &[View::Logs, View::Yaml, View::Describe],
@@ -65,41 +62,16 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
         _ => &[View::Yaml, View::Describe],
     };
     for view in views {
-        Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view)
-            .text(Text::Small)
-            .tight()
-            .right(ctx, &mut room, 0.0);
+        let shown = Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view);
+        let shown = shown.text(Text::Small).tight();
+        shown.right(ctx, &mut room, ctx.tokens.xs);
     }
-    let stood = object.map(stands).unwrap_or_default();
-    let mut wide = 0.0;
-    let mut badges = Vec::new();
-    for (said, role) in &stood {
-        let badge = Badge::new(said, *role);
-        let next = wide + badge.width(ctx) + gap;
-        if next > room.w {
+    let mut at = room.x;
+    for (said, role) in object.map(stands).unwrap_or_default() {
+        let badge = Badge::new(&said, role);
+        if at + badge.width(ctx) > room.right() {
             break;
         }
-        wide = next;
-        badges.push(badge);
-    }
-    let [mut crumbs, kept] = row_in(room, [Spec::fill(), Spec::default().width(wide)]);
-    let hue = app
-        .config
-        .cluster(&link.context)
-        .map(|one| Role::Hue(one.hue));
-    let faint = ctx.styles.small(Role::Ghost);
-    let last = tab.copied.as_deref();
-    let copied = |text, role| copy::Copied::new(text, role, last).small();
-    copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut crumbs, gap);
-    if let Some(namespace) = &link.namespace {
-        Label::new("›", faint).left(ctx, &mut crumbs, gap);
-        copied(namespace, Role::Muted).left(ctx, &mut crumbs, gap);
-    }
-    Label::new("›", faint).left(ctx, &mut crumbs, gap);
-    Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut crumbs, gap);
-    copied(&link.name, Role::Text).left(ctx, &mut crumbs, gap);
-    let mut at = crumbs.x.min(kept.x);
-    for badge in badges {
         at = badge.at(ctx, room, at).right() + gap;
     }
 }

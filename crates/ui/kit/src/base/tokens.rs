@@ -10,11 +10,19 @@ pub const SUGGESTED_ROWS: usize = 6;
 pub const NOTE_COLS: usize = 80;
 pub const NOTE_COLS_FEWEST: usize = 20;
 pub const SPINNER_MS: u64 = 120;
+/// How far a text may overrun its width and still stand whole.
+pub const ELIDE_SLACK: f32 = 0.5;
 pub const SCRIM_ALPHA: u8 = 120;
+pub const GLASS_ALPHA: (u8, u8) = (140, 95);
+pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
+pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
+pub const ROW_TINT_ALPHA: (u8, u8) = (28, 64);
+pub const GLASS_HOVER_ALPHA: (u8, u8) = (18, 22);
+pub const GLASS_CARD_ALPHA: (u8, u8) = (12, 16);
+pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (38, 46);
+pub const GLASS_ACTIVE_ALPHA: (u8, u8) = (51, 64);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.
 pub const GROUND_ALPHA: (u8, u8) = (12, 28);
-/// More of that colour under the row's numbers, and how far they lean to it.
-pub const GUTTER_ALPHA: (u8, u8) = (8, 16);
 pub const NUMBER_TINT: f32 = 0.4;
 /// The shade under what stands over the rows.
 pub const SHADOW_ALPHA: (u8, u8) = (110, 36);
@@ -115,6 +123,10 @@ pub struct Tokens {
     pub corner: f32,
     /// How far a button's, a menu's and a picker's corners give way.
     pub round: f32,
+    /// A glass panel's corners, the width of its curved rim, and one line of a list on it.
+    pub glass_round: f32,
+    pub bezel: f32,
+    pub glass_row: f32,
     pub edge: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
@@ -157,6 +169,7 @@ const H2: f32 = LOGICAL.h2 / LOGICAL.text;
 const H3: f32 = LOGICAL.h3 / LOGICAL.text;
 const ICON: f32 = LOGICAL.icon / LOGICAL.text;
 const ROW: f32 = LOGICAL.row / LOGICAL.text;
+const GLASS_ROW: f32 = LOGICAL.glass_row / LOGICAL.text;
 const HEADER: f32 = LOGICAL.header / LOGICAL.text;
 const LINE: f32 = LOGICAL.line / LOGICAL.code;
 const CODE_LINE: f32 = LOGICAL.code_line / LOGICAL.code;
@@ -179,12 +192,15 @@ const LOGICAL: Tokens = Tokens {
     sidebar: 260.0,
     line: 18.0,
     code_line: 21.0,
-    feed_row: 34.0,
+    feed_row: 50.0,
     feed_age: 30.0,
     bar: 36.0,
     hairline: 1.0,
     corner: 4.0,
     round: 2.0,
+    glass_round: 18.0,
+    bezel: 24.0,
+    glass_row: 32.0,
     edge: 0.5,
     grab: 8.0,
     map: 14.0,
@@ -239,6 +255,9 @@ impl Tokens {
             hairline: s(LOGICAL.hairline),
             corner: s(LOGICAL.corner),
             round: s(LOGICAL.round),
+            glass_round: s(LOGICAL.glass_round),
+            bezel: s(LOGICAL.bezel),
+            glass_row: row(GLASS_ROW, text),
             edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),
             map: s(LOGICAL.map),

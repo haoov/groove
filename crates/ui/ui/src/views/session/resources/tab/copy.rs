@@ -1,10 +1,10 @@
 //! A value a click copies, and a link ctrl+click opens: on hover, a ground and the copy mark.
 
-use groove_gfx::{Align, Rect};
+use groove_gfx::{Align, Edges, Rect};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, row_in};
-use groove_ui_kit::shape::Panel;
+use groove_ui_kit::shape::{Panel, band};
 use groove_ui_kit::text::Label;
 
 use super::super::opened::{Link, Opens};
@@ -70,8 +70,11 @@ impl<'a> Copied<'a> {
         let link = self.open.map(Box::new);
         let on = ctx.interact(spot, Target::ResourceCopy(self.copies.to_string(), link));
         if on {
-            let ground = Panel::default().ground(ctx.styles.hover());
-            ground.radius(ctx.tokens.round).draw(ctx, spot);
+            let (xs, tall) = (ctx.tokens.xs, ctx.tokens.row.min(spot.h));
+            let lit = band(spot, (spot.h - tall) / 2.0, tall);
+            let lit = lit.pad(Edges::across(-xs, -xs));
+            let ground = Panel::default().ground(ctx.styles.glass_hover());
+            ground.radius(ctx.tokens.sm).draw(ctx, lit);
         }
         let drawn = Label::new(self.text, style).draw(ctx, room);
         if on {

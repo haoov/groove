@@ -169,20 +169,28 @@ fn a_row_under_the_pointer_and_the_open_one_read_apart() {
     );
     let row = groove_ui_kit::base::tokens::Tokens::new(1.0).row;
     let grounds = |ui: &Ui| {
-        let (frame, _) = view(&app, ui, window(), &mut Fonts::embedded());
+        let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
+        let line = hits
+            .rect_of(&Target::File("a.txt".into()))
+            .expect("the row");
         let quads = frame.layers()[0].quads.clone();
         let of = |color| {
             quads
                 .iter()
-                .filter(|quad| quad.color == color && quad.rect.h == row)
+                .filter(|quad| quad.color == color && quad.rect.h > row / 2.0)
+                .filter(|quad| line.contains(quad.rect.x, quad.rect.y + 1.0))
                 .count()
         };
-        (of(styles.hover()), of(styles.chosen()))
+        (of(styles.glass_hover()), of(styles.glass_chosen()))
     };
     assert_eq!(grounds(&ui), (0, 0), "a row at rest carries neither");
     ui.hover = Some(Target::File("a.txt".into()));
     assert_eq!(grounds(&ui).0, 1, "the pointer grounds the row");
-    assert_ne!(styles.hover(), styles.chosen(), "and the two never match");
+    assert_ne!(
+        styles.glass_hover(),
+        styles.glass_chosen(),
+        "and the two never match"
+    );
     assert_ne!(
         styles.hover(),
         styles.action(),
@@ -203,11 +211,15 @@ fn the_offer_takes_a_ground_only_once_the_pointer_is_on_it() {
         frame.layers()[0]
             .quads
             .iter()
-            .filter(|quad| quad.color == styles.action())
+            .filter(|quad| quad.color == styles.glass_hover())
             .count()
     };
     ui.hover = Some(Target::File("a.txt".into()));
-    assert_eq!(lit(&ui), 0, "the word is there, with no ground of its own");
+    let row = lit(&ui);
     ui.hover = Some(Target::Stage("a.txt".into()));
-    assert_eq!(lit(&ui), 1, "and it lights up under the pointer");
+    assert_eq!(
+        lit(&ui),
+        row + 1,
+        "the word lights up only under the pointer"
+    );
 }

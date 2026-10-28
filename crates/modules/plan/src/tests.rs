@@ -7,17 +7,14 @@ async fn plan() -> Plan {
     Plan::in_memory().await.expect("a plan")
 }
 
-fn placed(id: &str, later: bool) -> Placed {
-    Placed {
-        external_id: ExternalId::new(id),
-        later,
-    }
+fn placed(id: &str) -> Placed {
+    Placed::new(ExternalId::new(id))
 }
 
 #[tokio::test]
 async fn the_order_comes_back_as_it_was_saved() {
     let plan = plan().await;
-    let order = vec![placed("b", false), placed("a", false), placed("c", true)];
+    let order = vec![placed("b"), placed("a"), placed("c")];
     plan.save(&order).await.expect("the plan is written");
     assert_eq!(plan.order().await.expect("the plan is read"), order);
 }
@@ -25,14 +22,11 @@ async fn the_order_comes_back_as_it_was_saved() {
 #[tokio::test]
 async fn a_saved_order_replaces_the_one_before_it() {
     let plan = plan().await;
-    plan.save(&[placed("a", false), placed("b", false)])
+    plan.save(&[placed("a"), placed("b")])
         .await
         .expect("the first plan");
-    plan.save(&[placed("b", true)]).await.expect("the second");
-    assert_eq!(
-        plan.order().await.expect("the plan is read"),
-        [placed("b", true)]
-    );
+    plan.save(&[placed("b")]).await.expect("the second");
+    assert_eq!(plan.order().await.expect("the plan is read"), [placed("b")]);
 }
 
 #[tokio::test]

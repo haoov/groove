@@ -17,9 +17,9 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::hairline;
+use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, Field, Row, Search};
-use groove_ui_kit::widgets::{Side, pane};
+use groove_ui_kit::widgets::{floating_pane, glass_field, glass_list, ground_under};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -45,22 +45,29 @@ pub struct SettingsUi {
 }
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    groove_ui_kit::shape::ground(ctx, ctx.window, Ground::Work);
+    ground_under(ctx, ctx.window, Ground::Deep);
     let [list, window] = row_in(
         ctx.window,
         [Spec::default().width(ctx.tokens.sidebar), Spec::fill()],
     );
-    pane(ctx, list, Ground::Band, Side::Right);
-    sections(ctx, list, app, &ui.settings);
+    let pane = floating_pane(ctx, list, Ground::Deep);
+    sections(ctx, pane, app, &ui.settings);
     form::draw(ctx, window, app, &ui.settings);
 }
 
-/// The search at the top of the list, then a row per section, the one up raised.
-fn sections(ctx: &mut Ctx, list: Rect, app: &AppState, settings: &SettingsUi) {
-    let [search, list] = column_in(
-        list,
-        [Spec::default().height(ctx.tokens.header), Spec::fill()],
+/// The title and what takes the window back, the search, then a row per section, the one up held.
+fn sections(ctx: &mut Ctx, pane: Rect, app: &AppState, settings: &SettingsUi) {
+    let tall = |height: f32| Spec::default().height(height);
+    let column = pane.pad(Edges::xy(0.0, ctx.tokens.sm));
+    let [head, search, list] = column_in(
+        column,
+        [
+            tall(ctx.tokens.header),
+            tall(ctx.tokens.row + ctx.tokens.sm),
+            Spec::fill(),
+        ],
     );
+    back(ctx, head);
     searched(ctx, search, settings);
     let up = Section::ALL.iter().position(|one| *one == settings.section);
     let up = up.filter(|_| settings.search.is_empty());
@@ -83,7 +90,7 @@ fn sections(ctx: &mut Ctx, list: Rect, app: &AppState, settings: &SettingsUi) {
             row.target(Target::SettingsSection(*section))
         })
         .collect();
-    groove_ui_kit::widgets::list(ctx, list, &rows, up);
+    glass_list(ctx, list, &rows, up);
 }
 
 /// How many things a section still needs, as its row shows it; empty for none.
@@ -100,9 +107,9 @@ fn needs(app: &AppState, section: Section) -> String {
 }
 
 fn searched(ctx: &mut Ctx, line: Rect, settings: &SettingsUi) {
-    hairline(ctx, line, ctx.styles.line());
+    let field = glass_field(ctx, line);
     let search = Search::new(&settings.search, Target::SettingsSearch, settings.typing);
-    search.hint("search a setting").draw(ctx, line);
+    search.hint("search a setting").glass(true).draw(ctx, field);
 }
 
 /// Where the sign-in's terminal stands: the lower half of the form.
@@ -111,7 +118,6 @@ pub(crate) fn login_pane(window: Rect, tokens: &Tokens) -> Rect {
         window,
         [Spec::default().width(tokens.sidebar), Spec::fill()],
     );
-    let [_, form] = column_in(form, [Spec::default().height(tokens.header), Spec::fill()]);
     let [_, lower] = column_in(
         form.pad(Edges::all(tokens.md)),
         [Spec::fill(), Spec::fill()],
@@ -119,15 +125,11 @@ pub(crate) fn login_pane(window: Rect, tokens: &Tokens) -> Rect {
     lower
 }
 
-/// The bar over the form, with what takes the window back.
+/// The title, then what takes the window back.
 fn back(ctx: &mut Ctx, line: Rect) {
-    hairline(ctx, line, ctx.styles.line());
-    let mut room = line.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
-    let word = Button::new(
-        "back · esc",
-        Target::SettingsBack,
-        Role::Muted,
-        ctx.styles.ground(),
-    );
-    word.left(ctx, &mut room, 0.0);
+    let md = ctx.tokens.md;
+    let mut room = line.pad(Edges::across(md, md));
+    let word = Button::glass("back · esc", Target::SettingsBack, Role::Muted, &ctx.styles);
+    word.right(ctx, &mut room, 0.0);
+    Label::new("Settings", ctx.styles.title(Role::Text)).draw(ctx, room);
 }

@@ -31,8 +31,12 @@ fn rail_texts(app: &AppState, ui: &Ui) -> Vec<TextRun> {
 }
 
 fn working(app: &mut AppState, id: &str, changed_at: i64) {
+    stands(app, id, AgentStatus::Working, changed_at);
+}
+
+fn stands(app: &mut AppState, id: &str, status: AgentStatus, changed_at: i64) {
     let activity = SessionActivity {
-        status: AgentStatus::Working,
+        status,
         tool: None,
         asks: Vec::new(),
         changed_at: Timestamp::new(changed_at),
@@ -91,45 +95,44 @@ fn a_title_too_long_for_the_rail_is_cut_with_an_ellipsis() {
 }
 
 #[test]
-fn the_selected_row_is_ruled_in_the_accent_and_the_hovered_row_lit_as_in_any_list() {
+fn the_selected_row_stands_inset_on_a_rounded_held_ground_and_the_hovered_one_lit() {
     let app = full_app();
     let mut ui = Ui::default();
-    let styles = groove_ui_kit::base::style::Styles::new(
-        app.config.theme(),
-        groove_ui_kit::base::tokens::Tokens::new(1.0),
-    );
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let alpha = hits
-        .rect_of(&Target::Session(SessionId::new("a")))
-        .expect("the selected row is drawn");
-    let beta = hits
-        .rect_of(&Target::Session(SessionId::new("b")))
-        .expect("the other row is drawn");
-    let raised = |frame: &groove_gfx::Frame, rect: groove_gfx::Rect| {
+    let row = |id: &str| {
+        hits.rect_of(&Target::Session(SessionId::new(id)))
+            .expect("the row")
+    };
+    let (alpha, beta) = (row("a"), row("b"));
+    let on = |frame: &groove_gfx::Frame, rect: groove_gfx::Rect, color| {
         frame.layers()[0]
             .quads
             .iter()
-            .any(|quad| quad.rect == rect && quad.color == styles.hover())
+            .any(|quad| quad.rect == rect && quad.color == color && quad.shape.radius == tokens.sm)
     };
-    let ruled = |frame: &groove_gfx::Frame, rect: groove_gfx::Rect| {
-        let rules = frame.layers()[0].quads.iter().filter(|quad| {
-            quad.color == styles.chosen() && quad.rect.x == rect.x && quad.rect.w == rect.w
-        });
-        rules
-            .filter(|quad| quad.rect.y == rect.y || quad.rect.bottom() == rect.bottom())
-            .count()
-    };
-    assert_eq!(
-        ruled(&frame, alpha),
-        2,
-        "the selected session is ruled above and below"
+    let rail = crate::layout::Layout::of(window(), &ui).rail;
+    assert!(alpha.x > rail.x, "inset from the rail's side");
+    assert!(
+        on(&frame, alpha, styles.glass_chosen()),
+        "the selected row is held"
     );
-    assert!(!raised(&frame, alpha), "and carries no background");
-    assert_eq!(ruled(&frame, beta), 0);
-    assert!(!raised(&frame, beta), "an idle row has no background");
+    let ruled = frame.layers()[0]
+        .quads
+        .iter()
+        .any(|quad| quad.color == styles.chosen() && quad.rect.right() <= rail.right());
+    assert!(!ruled, "no rules on the rail");
+    assert!(
+        !on(&frame, beta, styles.glass_hover()),
+        "an idle row has no ground"
+    );
     ui.hover = Some(Target::Session(SessionId::new("b")));
     let (hovered, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(raised(&hovered, beta), "the pointer raises its row too");
+    assert!(
+        on(&hovered, beta, styles.glass_hover()),
+        "the pointer lights its row"
+    );
 }
 
 #[test]
@@ -164,4 +167,55 @@ fn the_wheel_scrolls_the_rows_and_a_row_off_the_top_cannot_be_clicked() {
         scrolled.rect_of(&first).is_none(),
         "the first row scrolled out of the rail"
     );
+}
+
+/// Alpha idle, Beta working, Gamma done and not seen, Delta failed, opened in that order.
+fn four_states() -> AppState {
+    let mut app = app();
+    app.session.open.push(crate::tests::open("c", "Gamma"));
+    app.session.open.push(crate::tests::open("d", "Delta"));
+    working(&mut app, "b", 0);
+    stands(&mut app, "c", AgentStatus::Done { seen: false }, 0);
+    let error = AgentStatus::Error {
+        message: "exit 101".into(),
+    };
+    stands(&mut app, "d", error, 0);
+    app
+}
+
+#[test]
+fn each_row_stands_under_its_state_in_the_order_opened() {
+    let app = four_states();
+    let ui = Ui::default();
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let y = |id: &str| {
+        let row = hits.rect_of(&Target::Session(SessionId::new(id)));
+        row.expect("the row").y
+    };
+    assert!(y("d") < y("b"), "needs you, then working");
+    assert!(y("b") < y("a"), "then idle");
+    assert!(y("a") < y("c"), "done stands in idle, in the order opened");
+    let texts = crate::tests::all_texts(&frame);
+    for heading in ["NEEDS YOU · 1", "WORKING · 1", "IDLE · 2"] {
+        assert!(
+            texts.iter().any(|one| one == heading),
+            "{heading}: {texts:?}"
+        );
+    }
+}
+
+#[test]
+fn the_arrows_walk_the_rows_in_the_order_drawn() {
+    let mut app = four_states();
+    app.session.selected = Some(SessionId::new("b"));
+    let mut ui = Ui {
+        focus: crate::Focus::Rail,
+        ..Ui::default()
+    };
+    let none = crate::input::Modifiers::default();
+    let walked = crate::tests::press(crate::input::Key::Down, none, &mut ui, &app);
+    let select = groove_controllers::session::Command::Select {
+        session: SessionId::new("a"),
+    };
+    assert_eq!(walked, [groove_controllers::Command::Session(select)]);
 }

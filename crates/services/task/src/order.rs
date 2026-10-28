@@ -6,11 +6,10 @@ mod tests;
 use groove_plan::Placed;
 use groove_types::{ExternalId, Task};
 
-/// One task in the plan, and which side of the divider it stands.
+/// One task in the plan.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Planned<'a> {
     pub task: &'a Task,
-    pub later: bool,
 }
 
 /// The tasks in the user's order: the placed ones, then the rest as the source answered.
@@ -26,54 +25,24 @@ pub fn ordered<'a>(order: &[Placed], tasks: &[&'a Task]) -> Vec<Planned<'a>> {
         };
         planned.push(Planned {
             task: left.remove(at),
-            later: placed.later,
         });
     }
-    let (now, later): (Vec<Planned<'_>>, Vec<Planned<'_>>) =
-        planned.into_iter().partition(|one| !one.later);
-    let rest = left.into_iter().map(|task| Planned { task, later: false });
-    now.into_iter().chain(rest).chain(later).collect()
+    planned.extend(left.into_iter().map(|task| Planned { task }));
+    planned
 }
 
-/// The order after `id` moves above `before`, or to the end of its side.
-pub fn moved(
-    shown: &[Planned<'_>],
-    id: &ExternalId,
-    before: Option<&ExternalId>,
-    later: bool,
-) -> Vec<Placed> {
+/// The order after `id` moves above `before`, or to the end.
+pub fn moved(shown: &[Planned<'_>], id: &ExternalId, before: Option<&ExternalId>) -> Vec<Placed> {
     let mut order: Vec<Placed> = shown
         .iter()
         .filter(|one| one.task.external_id != *id)
-        .map(|one| Placed {
-            external_id: one.task.external_id.clone(),
-            later: one.later,
-        })
+        .map(|one| Placed::new(one.task.external_id.clone()))
         .collect();
-    let moving = Placed {
-        external_id: id.clone(),
-        later,
-    };
-    let at = match before {
-        Some(before) => order
-            .iter()
-            .position(|one| one.external_id == *before)
-            .unwrap_or(order.len()),
-        None => ends(&order, later),
-    };
-    order.insert(at, moving);
+    let at = before
+        .and_then(|before| order.iter().position(|one| one.external_id == *before))
+        .unwrap_or(order.len());
+    order.insert(at, Placed::new(id.clone()));
     order
-}
-
-/// Where a side of the divider ends.
-fn ends(order: &[Placed], later: bool) -> usize {
-    match later {
-        true => order.len(),
-        false => order
-            .iter()
-            .position(|one| one.later)
-            .unwrap_or(order.len()),
-    }
 }
 
 impl crate::State {
@@ -99,7 +68,7 @@ impl crate::State {
     ) -> Vec<String> {
         let waiting = self.waiting(worked);
         let planned = self.planned(&waiting).into_iter();
-        let due = planned.filter(|one| !one.later && groove_types::starts_today(one.task, today));
+        let due = planned.filter(|one| groove_types::starts_today(one.task, today));
         due.map(|one| one.task.short_id.clone()).take(cap).collect()
     }
 }
