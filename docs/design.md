@@ -231,10 +231,11 @@ share it. Finishing the task and deleting the session here are palette rows. A b
 is one icon alone is a circle. Enforced by
 `a_task_or_a_review_is_deleted_here_from_the_palette_and_an_explorer_is_not`.
 
-**Info line.** Under the header while the strip is open: the repo and worktree pickers —
-the session's selector, which every tab and the terminals follow — with the selected
-worktree's MR and CI and a refresh button, and the sidebar's fold at the far end. A git
-mark leads it. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
+**Info line.** Under the header while the strip is open: the selected repo and worktree,
+which every tab and the terminals follow, with the worktree's MR and CI and a refresh
+button, and the sidebar's fold at the far end. A git mark leads it. It only tells: `alt+w`
+opens the palette on every worktree as `repo/branch`, the best fuzzy match first, and Enter
+selects one. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
 the contexts shown, a lone one in its hue, then the namespaces. It only tells: `alt+c`
 opens the context panel and `alt+n` the namespace panel, from any tab, where the palette
 stands, with a search and the first line stood on. The context panel holds the session's
@@ -328,8 +329,8 @@ does the same, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
-**Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette with its
-pickers, every menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
+**Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
+menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
 bar's skills menu are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
@@ -349,11 +350,6 @@ caret is, two rules stand instead of a ground: a place is not a state. The row a
 on — the open file, the shown commit, the kind listed — has the two rules over the held
 ground, the accent dimmed into it. The rail is the exception: see below.
 
-**A choice about one thing opens on that thing.** A picker draws the same rows the palette
-does, filtered and keyed the same way, anchored under what was clicked, as wide as its
-rows, nothing behind it dimmed, and it asks for a query only once the list is longer than
-it shows. The palette stays in the middle of the window and dims it.
-
 **The palette keeps its groups while it filters.** Each group runs under its heading, the
 group with the best match first. A first word that starts a group's name keeps that group
 whole and on top: `go` lists every Go entry, `git pu` finds Push.
@@ -364,11 +360,13 @@ dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an 
 takes the last answer back into it, and on the first question returns to the entries.
 Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
 
-**A kind and a namespace are one chord away.** `alt+k` opens the palette on the kinds the
-session's contexts serve, each with its short names and its group; a short name typed whole
-comes first, and Enter lists the kind. `alt+n` opens the namespace panel, `alt+c` the
-context panel.
-Enforced by `alt_k_picks_a_kind_by_its_name_its_short_name_or_its_group_and_lists_it`,
+**A worktree, a kind and a namespace are one chord away.** `alt+w` opens the palette on
+the session's worktrees as `repo/branch`. `alt+k` opens it on the kinds the session's
+contexts serve, each with its short names and its group; a short name typed whole comes
+first, and Enter lists the kind. `alt+n` opens the namespace panel, `alt+c` the context
+panel.
+Enforced by `alt_w_picks_a_worktree_by_repo_and_branch_ranked`,
+`alt_k_picks_a_kind_by_its_name_its_short_name_or_its_group_and_lists_it`,
 `alt_n_then_a_ranked_query_and_enter_shows_that_namespace_alone_and_space_adds_one` and
 `alt_c_opens_the_context_panel_and_again_shuts_it`.
 

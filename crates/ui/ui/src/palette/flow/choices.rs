@@ -45,7 +45,7 @@ pub(super) fn worktree_choices(open: &Open) -> Vec<(String, String)> {
         .iter()
         .map(|w| {
             let project = open.repo_of(w).map_or("?", |r| r.project.as_str());
-            (format!("{project} · {}", w.branch), w.id.to_string())
+            (format!("{project}/{}", w.branch), w.id.to_string())
         })
         .collect()
 }

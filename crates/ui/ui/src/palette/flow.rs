@@ -3,7 +3,6 @@
 mod choices;
 mod clusters;
 mod kinds;
-mod picks;
 
 pub use self::kinds::chosen as kind_chosen;
 
@@ -26,10 +25,6 @@ pub enum Action {
     ForceDelete,
     AttachCluster,
     DetachCluster,
-    /// The header's repo picker.
-    PickRepo,
-    /// The header's branch picker.
-    PickBranch,
     /// The kind the Kubernetes list shows.
     PickKind,
 }
@@ -41,9 +36,7 @@ impl Action {
             Action::AddRepo => "session.add_repo",
             Action::AddWorktree => "session.add_worktree",
             Action::RemoveRepo => "session.remove_repo",
-            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
-                "session.select_worktree"
-            }
+            Action::SelectWorktree => "session.select_worktree",
             Action::CloseWorktree | Action::ForceCloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
@@ -99,7 +92,7 @@ pub struct Flow {
     pub answers: Vec<String>,
     /// Each answer as the breadcrumb shows it.
     pub said: Vec<String>,
-    /// The entry that started it, and the palette's query then; empty from a picker.
+    /// The entry that started it, and the palette's query then; empty from a chord.
     pub from: (String, String),
 }
 
@@ -154,8 +147,6 @@ impl Flow {
             (Action::RenameExplorer, 0) => Some(Prompt::text("title", false)),
             (Action::AttachCluster, 0) => Some(Prompt::choose("context", clusters::known(app))),
             (Action::DetachCluster, 0) => Some(Prompt::choose("cluster", clusters::held(open))),
-            (Action::PickRepo, 0) => Some(Prompt::choose("repo", picks::repos(open))),
-            (Action::PickBranch, 0) => Some(Prompt::choose("branch", picks::branches(open))),
             (Action::PickKind, 0) => Some(Prompt {
                 exact: true,
                 ..Prompt::choose("kind", kinds::choices(app, open))
@@ -225,9 +216,7 @@ impl Flow {
                 repo: RepoId::new(answer(0)),
                 force: false,
             },
-            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
-                select(session, answer(0))
-            }
+            Action::SelectWorktree => select(session, answer(0)),
             Action::CloseWorktree | Action::ForceCloseWorktree => session::Command::CloseWorktree {
                 session,
                 worktree: WorktreeId::new(answer(0)),

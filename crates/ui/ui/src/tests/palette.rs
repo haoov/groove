@@ -246,7 +246,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .map(|t| t.text.clone())
         .collect();
     assert_eq!(texts[0], "worktree", "the step, dimmed at the left");
-    assert!(texts.iter().any(|t| t == "kiwi · explorer/alpha"));
+    assert!(texts.iter().any(|t| t == "kiwi/explorer/alpha"));
     let run = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(run[0].id(), "session.close_worktree");
     assert!(ui.palette().is_none());

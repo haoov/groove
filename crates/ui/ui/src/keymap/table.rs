@@ -52,7 +52,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 45] = [
+pub const TABLE: [Spec; 46] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -179,6 +179,12 @@ pub const TABLE: [Spec; 45] = [
         ("resources.select_kind", "pick a kind", "Panes"),
         App,
         &["alt+k"],
+    ),
+    spec(
+        A::SelectWorktree,
+        ("session.select_worktree", "pick a worktree", "Panes"),
+        App,
+        &["alt+w"],
     ),
     spec(
         A::Terminals,

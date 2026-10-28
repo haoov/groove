@@ -271,18 +271,22 @@ fn a_comment_nobody_can_resolve_is_not_an_open_note() {
 }
 
 #[test]
-fn the_mr_stands_after_the_branch_picker_and_opens_its_page() {
+fn the_mr_stands_after_the_branch_and_opens_its_page() {
     let app = open_with(None);
     let mut ui = Ui::default();
     let window = metrics(1280, 800, 1.0);
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let picker = crate::hit::Target::Picker(crate::hit::Picks::Branch);
-    let branch = hits.rect_of(&picker).expect("the branch picker");
+    let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let info = crate::layout::Layout::of(window, &ui).info;
+    let mut branches = frame.layers()[0].texts.iter();
+    let branch = branches
+        .find(|run| run.text == "explorer/alpha" && info.contains(run.x, run.y + 1.0))
+        .expect("the branch");
     let url = "https://github.com/acme/groove/pull/7".to_string();
     let link = hits
         .rect_of(&crate::hit::Target::MrPage(url.clone()))
         .expect("the MR's number");
-    assert!(link.x - branch.right() < 16.0, "{link:?} after {branch:?}");
+    assert!(link.x > branch.x, "{link:?} after {branch:?}");
 
     let commands = crate::input::handle(
         crate::input::Input::Press {

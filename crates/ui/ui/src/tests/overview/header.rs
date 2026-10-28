@@ -1,4 +1,4 @@
-//! The strip's header and its info line: the title, the tabs, the pickers, the task's own actions.
+//! The strip's header and its info line: the title, the tabs, the worktree, the task's own actions.
 
 use groove_types::SessionId;
 
@@ -10,7 +10,7 @@ use crate::{Ui, view};
 fn the_header_names_the_session_and_what_it_points_at() {
     let app = full_app();
     let metrics = metrics(1280, 800, 1.0);
-    let (frame, _) = view(
+    let (frame, hits) = view(
         &app,
         &Ui::default(),
         metrics,
@@ -18,24 +18,20 @@ fn the_header_names_the_session_and_what_it_points_at() {
     );
     let texts: Vec<String> = texts_of(&frame);
     assert!(texts.iter().any(|t| t == "Alpha"), "the title");
-    assert!(texts.iter().any(|t| t == "kiwi"), "the repo picker");
+    assert!(texts.iter().any(|t| t == "kiwi"), "the repo");
     assert_eq!(
         texts.iter().filter(|t| *t == "explorer/alpha").count(),
         2,
-        "the worktree picker and the overview row"
+        "the worktree and the overview row"
     );
-    let info = crate::layout::Layout::of(metrics, &Ui::default()).info;
-    let carets = frame.layers()[0]
-        .icons
-        .iter()
-        .filter(|i| i.icon == groove_gfx::Icon::CaretDown)
-        .filter(|i| info.contains(i.rect.x, i.rect.y))
-        .count();
-    assert_eq!(carets, 2, "the repo and worktree pickers");
+    for which in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
+        let picker = crate::hit::Target::Picker(which);
+        assert!(hits.rect_of(&picker).is_none(), "{which:?} only tells");
+    }
 }
 
 #[test]
-fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
+fn a_long_title_is_cut_so_the_worktree_stays_inside_the_header() {
     let mut app = full_app();
     app.session
         .get_mut(&SessionId::new("a"))
@@ -44,16 +40,11 @@ fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
         .title = "Harden Groove: CI gates, security fixes, defect fixes, typed errors".into();
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
-    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let header = crate::layout::Layout::of(window, &ui).info;
-    for picker in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
-        let box_ = hits
-            .rect_of(&crate::hit::Target::Picker(picker))
-            .expect("the header holds both pickers");
-        assert!(
-            box_.right() <= header.right(),
-            "{picker:?} at {box_:?} runs past {header:?}"
-        );
+    for label in ["kiwi", "explorer/alpha"] {
+        let run = info_run(&frame, header, label);
+        assert!(run.x < header.right(), "{label} past {header:?}");
     }
     let cut = frame.layers()[0]
         .texts
@@ -63,11 +54,11 @@ fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
 }
 
 #[test]
-fn the_header_holds_the_title_over_the_info_line_s_pickers() {
+fn the_header_holds_the_title_over_the_info_line_s_worktree() {
     let app = full_app();
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
-    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let layout = crate::layout::Layout::of(window, &ui);
     let title = frame.layers()[0]
         .texts
@@ -75,29 +66,27 @@ fn the_header_holds_the_title_over_the_info_line_s_pickers() {
         .find(|t| t.text == "Alpha" && t.x >= layout.header.x)
         .expect("the header's title")
         .y;
-    let box_ = hits
-        .rect_of(&crate::hit::Target::Picker(crate::hit::Picks::Repo))
-        .expect("the repo picker");
+    let repo = info_run(&frame, layout.info, "kiwi");
     assert!(
         title < layout.header.bottom(),
         "the title is on the first line"
     );
-    assert!(box_.y >= layout.info.y, "the pickers are on the second");
-    assert!(box_.bottom() <= layout.info.bottom());
+    assert!(repo.y >= layout.info.y, "the worktree is on the second");
+    assert!(repo.y + repo.height <= layout.info.bottom());
     assert_eq!(
         layout.workspace.y,
         layout.info.bottom(),
         "the tab starts under both lines"
     );
-    for which in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
-        let box_ = hits
-            .rect_of(&crate::hit::Target::Picker(which))
-            .expect("a picker");
-        assert!(
-            frame.layers()[0].quads.iter().all(|quad| quad.rect != box_),
-            "{which:?} lies flat on the glass"
-        );
-    }
+}
+
+/// The text run `label` draws on the info line.
+fn info_run(frame: &groove_gfx::Frame, info: groove_gfx::Rect, label: &str) -> groove_gfx::TextRun {
+    let runs = frame.layers()[0].texts.iter();
+    let mut on = runs.filter(|run| run.text == label && info.contains(run.x, run.y + 1.0));
+    on.next()
+        .cloned()
+        .unwrap_or_else(|| panic!("{label} on the info line"))
 }
 
 /// What the palette's row to delete the session here sends, if it offers one.

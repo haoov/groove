@@ -28,6 +28,7 @@ pub enum Action {
     SelectNamespace,
     SelectContext,
     SelectKind,
+    SelectWorktree,
     Terminals,
     NewTerminal,
     Reload,

@@ -17,13 +17,11 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::Palette => return palette(ui),
         Action::SelectNamespace | Action::SelectContext => return scope(ui, app, action),
         Action::SelectKind => return kinds(ui, app),
+        Action::SelectWorktree => return worktrees(ui, app),
         Action::Settings if ui.settings.open => return ui.close_settings(),
         Action::Settings => return ui.open_settings(),
         Action::Board => return board(ui),
-        Action::NewExplorer => {
-            let open = session::Command::OpenExplorer { title: None };
-            return vec![Command::Session(open)];
-        }
+        Action::NewExplorer => return new_explorer(),
         Action::CloseSession => {
             let close = selected.map(|session| session::Command::Close { session });
             return close.map(Command::Session).into_iter().collect();
@@ -126,6 +124,29 @@ pub(super) fn kinds(ui: &mut Ui, app: &AppState) -> Vec<Command> {
         again: false,
     };
     unknown.map(|one| Command::Cluster(discover(one))).collect()
+}
+
+/// The palette on every worktree of the session, as `repo/branch`.
+fn worktrees(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let Some(open) = app
+        .session
+        .selected()
+        .filter(|one| !one.worktrees.is_empty())
+    else {
+        return Vec::new();
+    };
+    ui.surface = Surface::Session;
+    let flow = Flow::new(FlowAction::SelectWorktree, open.session.id.clone());
+    ui.overlay = Some(Overlay::Palette(Palette {
+        flow: Some(flow),
+        ..Palette::default()
+    }));
+    Vec::new()
+}
+
+fn new_explorer() -> Vec<Command> {
+    let open = session::Command::OpenExplorer { title: None };
+    vec![Command::Session(open)]
 }
 
 /// The board, or the session it was opened from.
