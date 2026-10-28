@@ -72,7 +72,7 @@ fn the_scope_line_stands_on_the_kubernetes_tab_alone() {
     let (texts, hits) = drawn(&bare, &Ui::default());
     assert!(!texts.iter().any(|one| one == "no cluster"), "{texts:?}");
     assert!(hits.rect_of(&Target::Picker(Picks::Contexts)).is_none());
-    let app = holding(vec![on("staging", Some("paxone"))]);
+    let app = holding(vec![on("staging", Some("shop"))]);
     let (_, hits) = drawn(&app, &Ui::default());
     assert!(
         hits.rect_of(&Target::Picker(Picks::Contexts)).is_none(),
@@ -264,7 +264,7 @@ fn a_paste_goes_into_the_panel_s_search_and_enter_shows_what_it_names() {
 
 #[test]
 fn the_panel_stands_on_glass() {
-    let app = holding(vec![on("staging", Some("paxone"))]);
+    let app = holding(vec![on("staging", Some("shop"))]);
     let mut ui = on_kubernetes();
     let panes = |ui: &Ui| {
         let at = crate::tests::metrics(1600, 1000, 1.0);

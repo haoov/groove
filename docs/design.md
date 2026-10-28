@@ -147,7 +147,7 @@ Each row:
  ● ⚑  TASK-51  auth refresh                2m
       asks to commit
  WORKING · 1
- ● ◎  review-3  paxone argo               now
+ ● ◎  review-3  shop argo                 now
       working
  IDLE · 2
  ● ⚑  fix/keys-50                          6m
@@ -384,7 +384,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   live; the age from the object's creation. A header sorts by its column, numbers and ages
   by value, and a second click turns the order round; its edge drags the column's width,
   kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
-  `pyth-ca-st` keeps `pythie-cayzn-staging` — and `label=value` words the server filters
+  `bil-eu-st` keeps `billing-eu-staging` — and `label=value` words the server filters
   on. `ctrl+shift+n` opens the namespace panel. No rule stands under the header; a row under
   the pointer or selected stands on a rounded ground, as the rail's rows do. The list's tab
   and each open object's are glass tabs as the Files tab's are, an object's with its ×, no
