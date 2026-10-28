@@ -10,6 +10,8 @@ pub const SUGGESTED_ROWS: usize = 6;
 pub const NOTE_COLS: usize = 80;
 pub const NOTE_COLS_FEWEST: usize = 20;
 pub const SPINNER_MS: u64 = 120;
+/// How far a text may overrun its width and still stand whole.
+pub const ELIDE_SLACK: f32 = 0.5;
 pub const SCRIM_ALPHA: u8 = 120;
 pub const GLASS_ALPHA: (u8, u8) = (140, 95);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
@@ -18,6 +20,7 @@ pub const ROW_TINT_ALPHA: (u8, u8) = (28, 64);
 pub const GLASS_HOVER_ALPHA: (u8, u8) = (18, 22);
 pub const GLASS_CARD_ALPHA: (u8, u8) = (12, 16);
 pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (38, 46);
+pub const GLASS_ACTIVE_ALPHA: (u8, u8) = (51, 64);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.
 pub const GROUND_ALPHA: (u8, u8) = (12, 28);
 pub const NUMBER_TINT: f32 = 0.4;

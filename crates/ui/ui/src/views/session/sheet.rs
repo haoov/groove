@@ -11,7 +11,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Button;
+use groove_ui_kit::widgets::{Button, floating_pane};
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -19,9 +19,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return;
     };
     ctx.layer();
-    let area = area(ctx);
-    groove_ui_kit::shape::ground(ctx, area, Ground::Work);
-    ctx.hit(area, Target::Sheet);
+    let under = area(ctx);
+    ctx.hit(under, Target::Sheet);
+    let area = floating_pane(ctx, under, Ground::Deep);
     let tall = |height: f32| Spec::default().height(height);
     let (line, tokens) = (ctx.tokens.line, ctx.tokens);
     let parts = [

@@ -47,7 +47,7 @@ pub(super) fn draw(
     let named = pins.iter().find(|pin| pin.kind == Kind::Head);
     let pushed = named.and_then(|pin| pushed(ctx, (app, ui, inline), &pin.text, height));
     let band = groove_ui_kit::shape::band(body, pushed.unwrap_or(0.0), height);
-    let ground = ctx.styles.raised();
+    let ground = ctx.styles.glass_card();
     let read = named.is_some_and(|pin| super::row::is_read(app, &pin.text));
     let lines: Vec<Line<'_>> = pins
         .iter()

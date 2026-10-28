@@ -138,7 +138,7 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
     let held = frame.layers()[0]
         .quads
         .iter()
-        .any(|quad| quad.color == styles.glass_chosen() && quad.rect == tab);
+        .any(|quad| quad.color == styles.glass_active() && quad.rect == tab);
     assert!(held, "the one up stands on a rounded held ground");
     let other = hits
         .rect_of(&Target::Pane(Pane::Files))

@@ -7,6 +7,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
+use groove_ui_kit::shape::from_right;
 use groove_ui_kit::text::row;
 use groove_ui_kit::widgets::{Search, glass_pane};
 
@@ -16,16 +17,14 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     };
     let sm = ctx.tokens.sm;
     let room = body.pad(Edges::xy(sm, sm));
-    let [bar, _] = column_in(room, [Spec::default().height(ctx.tokens.bar), Spec::fill()]);
+    let [mut top, _] = column_in(room, [Spec::default().height(ctx.tokens.bar), Spec::fill()]);
+    let wide = (ctx.tokens.palette / 2.0).min(top.w);
+    let bar = from_right(&mut top, wide, 0.0);
     ctx.layer();
     glass_pane(ctx, bar);
     let field = bar.pad(Edges::across(sm, sm));
     let search = Search::new(&find.query, Target::Finding, find.typing);
-    search
-        .code()
-        .glass(false)
-        .faint(Role::Faint)
-        .draw(ctx, field);
+    search.code().faint(Role::Faint).draw(ctx, field);
     count(ctx, field, &find.count());
 }
 

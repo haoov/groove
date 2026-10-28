@@ -244,7 +244,7 @@ fn the_last_row_selected_keeps_the_inset_under_it() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let chosen = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).glass_chosen();
+    let chosen = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).glass_active();
     let boxed = hits
         .rect_of(&crate::hit::Target::Palette)
         .expect("the palette");

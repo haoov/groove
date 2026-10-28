@@ -179,16 +179,6 @@ pub fn circle<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     ctx.rounded(round, color, size / 2.0);
 }
 
-/// Registers `target` at `rect`, on the hover ground while the pointer rests on it.
-pub fn hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target) -> bool {
-    let on = ctx.interact(rect, target);
-    if on {
-        let hover = ctx.styles.hover();
-        ctx.quad(rect, hover);
-    }
-    on
-}
-
 /// A box: a ground and a one-pixel border.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Panel {

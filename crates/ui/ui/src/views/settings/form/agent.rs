@@ -5,9 +5,11 @@ use groove_gfx::Rect;
 use super::super::rows::Value;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{from_left, square};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Toggle};
+use groove_ui_kit::widgets::{Button, Toggle, glass_button};
 
 /// A routine's switch, its run and what it does; or one trigger's switch.
 pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
@@ -37,8 +39,14 @@ pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             };
             Toggle::new(*on, flip).left(ctx, &mut room, sm);
             if *runs {
-                let run = Target::RoutineRun(id.clone());
-                Button::glass("run", run, Role::Muted, &styles).left(ctx, &mut room, sm);
+                let size = ctx.tokens.row;
+                let round = square(from_left(&mut room, size, sm), size);
+                glass_button(
+                    ctx,
+                    round,
+                    (Mark::Play, Role::Text),
+                    Target::RoutineRun(id.clone()),
+                );
             }
             Label::new(said, ctx.styles.small(Role::Faint)).draw(ctx, room);
         }

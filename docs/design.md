@@ -21,8 +21,9 @@ the rail only as its attention count.
   a button. Groove never runs it by itself.
 - **Everything is reachable from the keyboard.** The palette is the front door to every
   action. The mouse is a shortcut.
-- **Selection is a background**, one step above its ground. A selected tab adds its accent
-  underline.
+- **Selection is a background**: a rounded ground, one step above the hover's. A selected
+  tab is held the same way. In the region that has the keys it takes the accent; elsewhere
+  it stays neutral. The agent and a terminal show the keys by a solid cursor.
 - **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
   the workspace and the sidebar; the terminals keep their own chord. A second press folds
   the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
@@ -171,8 +172,8 @@ Opening a session starts its agent. Closing a row ends the agent and removes the
 session stays as it is on disk.
 
 **Routines.** A standalone routine's session stands under its own heading, `Routines · N`,
-folded by default, below the other sessions. Its row offers **Run**, which runs the routine
-now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
+folded by default, below the other sessions. Its row offers a round glass play button, which
+runs the routine now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
 appears on the board.
 
 **Feed.** Below the rows, the event log of the opened sessions, newest first, filterable to
@@ -285,7 +286,7 @@ next line at the indent of the one it left. Tab writes what the language's own f
 writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
-surface, `ctrl+f` floats a glass bar over the file's own header, with the count at its
+surface, `ctrl+f` floats a glass bar at the top right of the rows, with the count at its
 end; enter hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc
 ends it. `ctrl+shift+p` opens a file by its path.
 
@@ -310,17 +311,14 @@ ends it. `ctrl+shift+p` opens a file by its path.
 Terminals for the session, opened in its own directory, splittable, resizable, collapsible;
 its bar alone when collapsed.
 
-**Commit box.** In the sidebar under the changed files, since it acts on the staged set the
-list shows: git status, message, commit, and an actions menu — push, pull, discard all.
-Commit commits the index. The message is typed on the same kind of buffer a file is, so a
-caret, a selection, an undo and the clipboard work there too; Enter is a line of the message and
-`ctrl+Enter` commits.
+**Git.** The palette's Git group acts on the selected worktree: push, pull, the MR's own
+actions, and discard every change. No box in the window commits: the agent or a terminal
+does.
 
-**Three grounds, brightest first.** The work is the brightest the theme has: the board's
-own header. The bands sit under it: a column's heading, a menu, a file's
-head. The deepest holds the session's ground under the agent and the strip, and the
-terminal widget — nothing else. The strip and the sidebar inside it stand on glass, with no
-ground of their own. A note floats over the rows it takes as one pane of glass, on the layer
+**One deep ground, glass over it.** The deepest ground the theme has holds the session
+under the agent and the strip, the terminal widget, the board and Settings. What stands
+over it — the rail, the strip and its sidebar, the board's columns, Settings' sections —
+stands on glass, with no ground of its own. A note floats over the rows it takes as one pane of glass, on the layer
 the sticky file head uses, its replies and its buttons ruled off on it; a note being written
 does the same, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and

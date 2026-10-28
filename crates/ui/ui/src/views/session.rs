@@ -41,18 +41,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if !ctx.app.layout.work.is_empty() {
         glass_pane(ctx, ctx.app.layout.strip);
     }
-    header::draw(ctx, app, ui);
+    let on = |focus: crate::Focus| ui.focus == focus;
+    ctx.region(on(crate::Focus::Workspace), |ctx| {
+        header::draw(ctx, app, ui)
+    });
     if app.session.selected().is_none() {
         return empty(ctx, app);
     }
     agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     bar::draw(ctx, app);
     if !ctx.app.layout.workspace.is_empty() {
-        header::info(ctx, app, ui);
-        workspace(ctx, app, ui);
+        ctx.region(on(crate::Focus::Workspace), |ctx| {
+            header::info(ctx, app, ui);
+            workspace(ctx, app, ui);
+        });
+        ctx.region(on(crate::Focus::Sidebar), |ctx| sidebar(ctx, app, ui));
     }
     if let Some(session) = app.session.selected.as_ref() {
-        manual::draw(ctx, app, ui, session);
+        let terminal = on(crate::Focus::Terminal);
+        ctx.region(terminal, |ctx| manual::draw(ctx, app, ui, session));
     }
     sheet::draw(ctx, app, ui);
 }
@@ -77,6 +84,10 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             resources::draw(ctx, app, ui, body)
         }
     }
+}
+
+/// The sidebar the tab has, if any.
+fn sidebar(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     match ui.session.tab {
         Tab::Resources => resources::sidebar(ctx, app, ui),
         _ if ui.session.sidebar() => files::draw(ctx, app, ui),

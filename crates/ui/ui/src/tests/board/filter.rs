@@ -149,7 +149,7 @@ fn the_pointer_takes_the_light_from_the_row_the_keyboard_stands_on() {
         let mut on = frame.layers()[1]
             .quads
             .iter()
-            .filter(|quad| quad.color == styles.glass_chosen())
+            .filter(|quad| quad.color == styles.glass_active())
             .map(|quad| {
                 rows.iter()
                     .position(|y| quad.rect.y >= *y && quad.rect.y < y + 8.0)

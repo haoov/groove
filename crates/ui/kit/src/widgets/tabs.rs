@@ -136,7 +136,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         let pill = crate::shape::band(box_, (box_.h - tall) / 2.0, tall);
         let on = ctx.interact(pill, self.target.clone());
         let ground = match (self.selected, on) {
-            (true, _) => Some(ctx.styles.glass_chosen()),
+            (true, _) => Some(ctx.chosen()),
             (false, true) => Some(ctx.styles.glass_hover()),
             (false, false) => None,
         };

@@ -1,4 +1,4 @@
-//! The MR's own actions, as the commit box's menu offers them.
+//! The MR's own actions, as the palette's Git group offers them.
 
 use groove_controllers::delivery::{Command as Mr, Say};
 use groove_controllers::session_service::Open;

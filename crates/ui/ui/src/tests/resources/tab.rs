@@ -367,3 +367,18 @@ fn the_list_search_lets_go_of_the_keys_once_a_tab_shows() {
         "the search under the tab is not drawn"
     );
 }
+
+#[test]
+fn an_object_s_views_show_their_whole_names_at_every_text_size() {
+    let (mut app, ui) = opened();
+    lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
+    for text in [11.0, 12.0, 13.0, 14.0, 15.0, 16.0] {
+        let mut metrics = crate::tests::metrics(1960, 1440, 1.0);
+        metrics.text = text;
+        let (frame, _) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+        let mut texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
+        for view in ["logs", "yaml", "describe"] {
+            assert!(texts.any(|one| one.text == view), "{view} whole at {text}");
+        }
+    }
+}

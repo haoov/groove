@@ -118,7 +118,7 @@ fn the_selected_tab_stands_on_a_rounded_ground_as_a_rail_row() {
         let quads = frame.layers().iter().flat_map(|one| one.quads.iter());
         quads
             .into_iter()
-            .any(|quad| quad.rect == at && quad.color == styles.glass_chosen())
+            .any(|quad| quad.rect == at && quad.color == styles.glass_active())
     };
     assert!(held(Target::Tab(Tab::Diff)), "the selected tab");
     assert!(!held(Target::Tab(Tab::Overview)), "not the others");

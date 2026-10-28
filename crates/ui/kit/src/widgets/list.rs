@@ -2,7 +2,7 @@ use groove_gfx::{Align, Color, Edges, Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
-use crate::shape::{after_mark, hoverable, leading};
+use crate::shape::{after_mark, leading};
 use crate::text::{elide, lit_row, row};
 use crate::widgets::inset_row;
 
@@ -88,15 +88,17 @@ pub fn list<A: App>(
     selected: Option<usize>,
 ) -> f32 {
     let height = ctx.tokens.row;
-    let raised = ctx.styles.raised();
     let mut y = rect.y;
     for (i, item) in rows.iter().enumerate() {
         let line = Rect::new(rect.x, y, rect.w, height);
-        if let Some(color) = item.background.or((selected == Some(i)).then_some(raised)) {
+        if let Some(color) = item.background {
             ctx.quad(line, color);
         }
+        if selected == Some(i) {
+            crate::widgets::glass_chosen(ctx, line);
+        }
         if let Some(target) = &item.target {
-            hoverable(ctx, line, target.clone());
+            crate::widgets::glass_hoverable(ctx, line, target.clone());
         }
         drawn(ctx, (rect, line), item);
         y += height;

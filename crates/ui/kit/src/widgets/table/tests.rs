@@ -183,7 +183,7 @@ fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
     let band = Shown::band(vec![Cell::small("pods", Role::Text)]);
     let ((held, chosen), frame) = drawn(|ctx| {
         table.one(ctx, ROOM, band);
-        (ctx.styles.glass_chosen(), ctx.styles.chosen())
+        (ctx.styles.glass_active(), ctx.styles.chosen())
     });
     let quads = &frame.layers()[0].quads;
     let line = Rect { h: 24.0, ..ROOM };

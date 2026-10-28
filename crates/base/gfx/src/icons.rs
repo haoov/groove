@@ -47,13 +47,14 @@ pub enum Icon {
     Commit,
     Person,
     People,
+    Play,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 40] = [
+    pub(crate) const ALL: [Icon; 41] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -94,6 +95,7 @@ impl Icon {
         Icon::Commit,
         Icon::Person,
         Icon::People,
+        Icon::Play,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -138,6 +140,7 @@ impl Icon {
             Icon::Commit => include_bytes!("../../../../assets/icons/git-commit.svg"),
             Icon::Person => include_bytes!("../../../../assets/icons/user.svg"),
             Icon::People => include_bytes!("../../../../assets/icons/users.svg"),
+            Icon::Play => include_bytes!("../../../../assets/icons/play.svg"),
         }
     }
 

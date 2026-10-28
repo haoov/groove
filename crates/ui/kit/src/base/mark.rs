@@ -69,6 +69,8 @@ pub enum Mark {
     Person,
     /// Every session.
     People,
+    /// What runs a routine now.
+    Play,
     /// What a language server found wrong in a file, and what it warns of.
     Errors,
     Warnings,
@@ -151,6 +153,7 @@ impl Mark {
             Mark::Commits => Icon::Commit,
             Mark::Person => Icon::Person,
             Mark::People => Icon::People,
+            Mark::Play => Icon::Play,
         }
     }
 }

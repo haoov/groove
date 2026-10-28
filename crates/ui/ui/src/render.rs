@@ -28,10 +28,11 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         if ui.settings.open {
             settings::draw(&mut ctx, app, ui);
         } else {
-            rail::draw(&mut ctx, app, ui);
+            let rail = ui.focus == crate::Focus::Rail;
+            ctx.region(rail, |ctx| rail::draw(ctx, app, ui));
             match ui.showing(app) {
                 Surface::Session => session::draw(&mut ctx, app, ui),
-                Surface::Board => board::draw(&mut ctx, app, ui),
+                Surface::Board => ctx.region(!rail, |ctx| board::draw(ctx, app, ui)),
             }
             splitter::draw(&mut ctx, ui.showing(app));
             if ui.showing(app) == Surface::Session {

@@ -11,7 +11,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, from_left, from_right, from_top, square};
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{Button, dot, inset_row, lead};
+use groove_ui_kit::widgets::{dot, glass_button, inset_row, lead};
 
 /// The row's two lines: head and state.
 pub fn height(ctx: &Ctx) -> f32 {
@@ -28,7 +28,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let mut body = row;
     from_top(&mut body, 0.0, sm);
     let head = from_top(&mut body, ctx.tokens.line, xs);
-    let under = from_top(&mut body, head.h, 0.0);
+    let mut under = from_top(&mut body, head.h, 0.0);
 
     let mut room = head.pad(Edges::across(md, md));
     waited(ctx, app, &mut room, id);
@@ -43,12 +43,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     );
     Label::new(&open.session.title, ctx.styles.label(Role::Text)).draw(ctx, room);
 
+    if let Some(routine) = open.session.kind.routine() {
+        run(ctx, app, &mut under, id, routine);
+    }
     match asked(app, id) {
         Some((ask, waiting)) => asking(ctx, under, &ask, waiting),
         None => state(ctx, app, under, open),
-    }
-    if let Some(routine) = open.session.kind.routine() {
-        run(ctx, app, under, id, routine);
     }
 }
 
@@ -111,16 +111,16 @@ fn dot_of(app: &AppState, id: &SessionId) -> (Role, bool) {
     }
 }
 
-/// A routine session's button that runs its routine now, while no run is on it.
-fn run(ctx: &mut Ctx, app: &AppState, line: Rect, id: &SessionId, routine: &str) {
+/// A routine session's button that runs its routine now, while no run is on it, from the right of `line`.
+fn run(ctx: &mut Ctx, app: &AppState, line: &mut Rect, id: &SessionId, routine: &str) {
     if app.routine.runs.busy(id) {
         return;
     }
-    let (md, ground, hover) = (ctx.tokens.md, ctx.styles.ground(), ctx.styles.hover());
-    let mut room = line.pad(Edges::across(0.0, md));
+    let (md, size) = (ctx.tokens.md, ctx.tokens.row);
+    from_right(line, 0.0, md);
+    let round = square(from_right(line, size, ctx.tokens.sm), size);
     let target = Target::RoutineRun(routine.to_string());
-    let button = Button::new("Run", target, Role::Text, ground).hover(hover);
-    button.right(ctx, &mut room, 0.0);
+    glass_button(ctx, round, (Mark::Play, Role::Text), target);
 }
 
 /// How long the agent has waited, at the right of `room`.

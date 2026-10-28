@@ -17,7 +17,7 @@ pub fn inset_row<A: App>(
     let on = ctx.interact(row, target);
     let ground = match (tint, chosen, on) {
         (Some(tint), _, _) => Some(tint.color(&ctx.styles)),
-        (None, true, _) => Some(ctx.styles.glass_chosen()),
+        (None, true, _) => Some(ctx.chosen()),
         (None, false, true) => Some(ctx.styles.glass_hover()),
         (None, false, false) => None,
     };
@@ -26,7 +26,7 @@ pub fn inset_row<A: App>(
         ctx.rounded(row, color, round);
     }
     if chosen && tint.is_some() {
-        let edge = ctx.styles.glass_chosen();
+        let edge = ctx.chosen();
         ctx.ring(row, edge, round, ctx.tokens.hairline);
     }
     row
@@ -72,7 +72,8 @@ pub fn glass_tinted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
 
 /// The row a list stands on, held on a rounded ground.
 pub fn glass_chosen<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    glass_row(ctx, rect, ctx.styles.glass_chosen());
+    let ground = ctx.chosen();
+    glass_row(ctx, rect, ground);
 }
 
 /// One row's slice of a rounded box drawn row by row: rounded only where the box opens or closes.
@@ -106,7 +107,7 @@ pub fn glass_card_row<A: App>(
     ctx.rounded(card, ctx.styles.glass_card(), round);
     let lit = target.is_some_and(|target| ctx.interact(rect, target));
     let tint = match (selected, lit) {
-        (true, _) => Some(ctx.styles.glass_chosen()),
+        (true, _) => Some(ctx.chosen()),
         (false, true) => Some(ctx.styles.glass_hover()),
         (false, false) => None,
     };

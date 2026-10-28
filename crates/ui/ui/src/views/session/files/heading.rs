@@ -7,7 +7,6 @@ use groove_types::CommitEntry;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Button;
 
@@ -23,7 +22,6 @@ pub(super) fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
 
 /// The commit the surface shows, and what puts the working tree back.
 pub(super) fn showing(ctx: &mut Ctx, rect: Rect, one: &CommitEntry) {
-    hairline(ctx, rect, ctx.styles.line());
     let sm = ctx.tokens.sm;
     let working = Button::glass("working tree", Target::Working, Role::Muted, &ctx.styles);
     let mut room = rect.pad(Edges::across(ctx.tokens.md, sm));

@@ -94,7 +94,8 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
     row(ctx, room, 0.0, &title, style);
     if let Some(url) = page {
         let target = Target::TaskPage(url.to_string());
-        let outward = Button::icon(Mark::Outward, 0, target, Role::Faint).hover(ctx.styles.hover());
+        let outward =
+            Button::icon(Mark::Outward, 0, target, Role::Faint).hover(ctx.styles.glass_hover());
         outward.at(ctx, line, after.x);
     }
 }
