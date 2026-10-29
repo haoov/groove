@@ -137,18 +137,18 @@ pub const TABLE: [Spec; 56] = [
     ),
     pane(
         A::ResizeLeft,
-        ("pane.narrower", "pane narrower"),
+        ("pane.narrower", "boundary left"),
         &["ctrl+alt+h"],
     ),
     pane(
         A::ResizeRight,
-        ("pane.wider", "pane wider"),
+        ("pane.wider", "boundary right"),
         &["ctrl+alt+l"],
     ),
-    pane(A::ResizeUp, ("pane.taller", "pane taller"), &["ctrl+alt+k"]),
+    pane(A::ResizeUp, ("pane.taller", "boundary up"), &["ctrl+alt+k"]),
     pane(
         A::ResizeDown,
-        ("pane.shorter", "pane shorter"),
+        ("pane.shorter", "boundary down"),
         &["ctrl+alt+j"],
     ),
     pane(A::NextTab, ("tab.next", "next tab"), &["alt+]"]),

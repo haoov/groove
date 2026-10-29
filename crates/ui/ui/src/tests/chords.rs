@@ -49,7 +49,7 @@ fn alt_shift_q_closes_the_session() {
 }
 
 #[test]
-fn ctrl_alt_and_a_direction_resize_the_focused_pane() {
+fn ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way() {
     let app = full_app();
     let mut ui = Ui {
         focus: Focus::Agent,
@@ -57,9 +57,22 @@ fn ctrl_alt_and_a_direction_resize_the_focused_pane() {
     };
     let agent = ui.split.agent;
     press(Key::Char('l'), CTRL_ALT, &mut ui, &app);
-    assert!(ui.split.agent > agent, "the agent widens");
+    assert!(ui.split.agent > agent, "the agent's right edge goes right");
     press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
-    assert_eq!(ui.split.agent, agent, "and narrows back");
+    assert_eq!(ui.split.agent, agent, "and back left");
+    ui.focus = Focus::Workspace;
+    press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
+    assert!(
+        ui.split.agent < agent,
+        "the workspace's left edge goes left"
+    );
+    (ui.focus, ui.session.tab) = (Focus::Sidebar, crate::views::session::Tab::Diff);
+    let sidebar = ui.split.sidebar;
+    press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
+    assert!(
+        ui.split.sidebar > sidebar,
+        "the sidebar's left edge goes left"
+    );
     ui.focus = Focus::Terminal;
     ui.session.manual = true;
     let manual = ui.split.manual;

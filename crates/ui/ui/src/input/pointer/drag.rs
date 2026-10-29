@@ -65,20 +65,19 @@ pub(super) fn logical(value: f32, metrics: Metrics) -> f32 {
     value / metrics.scale
 }
 
-/// The focused pane one row wider or narrower, or the terminals' boundary a row up or down.
-pub(in crate::input) fn nudged(ui: &mut Ui, (across, grow): (bool, bool), metrics: Metrics) {
+/// The focused pane's boundary one row left or right, or the terminals' one up or down.
+pub(in crate::input) fn nudged(ui: &mut Ui, (across, onward): (bool, bool), metrics: Metrics) {
     use crate::Focus;
-    let (edge, outward) = match (across, ui.focus) {
-        (true, Focus::Rail) => (Edge::Rail, true),
-        (true, Focus::Agent) => (Edge::Agent, true),
-        (true, Focus::Workspace | Focus::Terminal) => (Edge::Agent, false),
-        (true, Focus::Sidebar) => (Edge::Sidebar, false),
-        (false, Focus::Terminal) => (Edge::Manual, false),
-        (false, Focus::Workspace) if ui.session.manual => (Edge::Manual, true),
+    let edge = match (across, ui.focus) {
+        (true, Focus::Rail) => Edge::Rail,
+        (true, Focus::Agent | Focus::Workspace | Focus::Terminal) => Edge::Agent,
+        (true, Focus::Sidebar) => Edge::Sidebar,
+        (false, Focus::Terminal) => Edge::Manual,
+        (false, Focus::Workspace) if ui.session.manual => Edge::Manual,
         _ => return,
     };
     let step = groove_ui_kit::base::tokens::Tokens::default().row;
-    let step = if grow == outward { step } else { -step };
+    let step = if onward { step } else { -step };
     let window = window_of(metrics);
     let at = ui.split.edge_at(edge, window, sidebar(ui)) + step;
     ui.split.drag(edge, at, window, sidebar(ui));

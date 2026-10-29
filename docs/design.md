@@ -27,11 +27,12 @@ the rail only as its attention count.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
   rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
   workspace and the sidebar unfold first, and a press while they hold the keys folds them
-  away. `ctrl+alt` with `h`, `j`, `k` or `l` resizes the region that holds the keys.
+  away. `ctrl+alt` with `h`, `j`, `k` or `l` moves the boundary of the region that holds the keys
+  that way.
   Enforced by `alt_and_a_region_s_letter_hand_it_the_keys`,
   `a_second_press_folds_the_sidebar_away`,
   `alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it` and
-  `ctrl_alt_and_a_direction_resize_the_focused_pane`.
+  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way`.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the

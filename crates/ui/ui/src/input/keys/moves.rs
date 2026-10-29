@@ -43,13 +43,13 @@ fn listing(ui: &Ui, app: &AppState) -> bool {
     }
 }
 
-/// What a resize chord asks: across or up and down, and whether the pane grows.
+/// What a resize chord asks: across or up and down, and whether the boundary goes right or down.
 pub(super) fn nudge(action: Action) -> Option<(bool, bool)> {
     match action {
         Action::ResizeLeft => Some((true, false)),
         Action::ResizeRight => Some((true, true)),
-        Action::ResizeUp => Some((false, true)),
-        Action::ResizeDown => Some((false, false)),
+        Action::ResizeUp => Some((false, false)),
+        Action::ResizeDown => Some((false, true)),
         _ => None,
     }
 }
