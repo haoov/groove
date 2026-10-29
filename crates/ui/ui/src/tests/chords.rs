@@ -56,8 +56,10 @@ fn ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way() {
         ..Ui::default()
     };
     let agent = ui.split.agent;
-    press(Key::Char('l'), CTRL_ALT, &mut ui, &app);
+    let kept = press(Key::Char('l'), CTRL_ALT, &mut ui, &app);
     assert!(ui.split.agent > agent, "the agent's right edge goes right");
+    let keep = groove_controllers::config::Command::KeepPanes(ui.split.panes());
+    assert_eq!(kept, [Command::Config(keep)], "kept for the next run");
     press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
     assert_eq!(ui.split.agent, agent, "and back left");
     ui.focus = Focus::Workspace;

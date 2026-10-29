@@ -56,7 +56,8 @@ pub(super) fn key_input(
     if let Some(action) = keymap.app(key, mods) {
         if let Some(nudge) = moves::nudge(action) {
             super::pointer::nudged(ui, nudge, seen.1);
-            return Vec::new();
+            let keep = groove_controllers::config::Command::KeepPanes(ui.split.panes());
+            return vec![Command::Config(keep)];
         }
         return app::run(action, ui, app);
     }
