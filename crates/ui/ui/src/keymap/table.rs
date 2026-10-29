@@ -61,7 +61,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, List, Terminal};
 
-pub const TABLE: [Spec; 53] = [
+pub const TABLE: [Spec; 56] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -121,6 +121,9 @@ pub const TABLE: [Spec; 53] = [
         &["alt+shift+right"],
     ),
     pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+r"]),
+    pane(A::BoardLive, ("board.live", "board live"), &["alt+1"]),
+    pane(A::BoardNext, ("board.next", "board up next"), &["alt+2"]),
+    pane(A::BoardReview, ("board.review", "board review"), &["alt+3"]),
     pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+a"]),
     pane(
         A::FocusWorkspace,
@@ -134,22 +137,18 @@ pub const TABLE: [Spec; 53] = [
     ),
     pane(
         A::ResizeLeft,
-        ("pane.narrower", "the pane narrower"),
+        ("pane.narrower", "pane narrower"),
         &["ctrl+alt+h"],
     ),
     pane(
         A::ResizeRight,
-        ("pane.wider", "the pane wider"),
+        ("pane.wider", "pane wider"),
         &["ctrl+alt+l"],
     ),
-    pane(
-        A::ResizeUp,
-        ("pane.taller", "the pane taller"),
-        &["ctrl+alt+k"],
-    ),
+    pane(A::ResizeUp, ("pane.taller", "pane taller"), &["ctrl+alt+k"]),
     pane(
         A::ResizeDown,
-        ("pane.shorter", "the pane shorter"),
+        ("pane.shorter", "pane shorter"),
         &["ctrl+alt+j"],
     ),
     pane(A::NextTab, ("tab.next", "next tab"), &["alt+]"]),

@@ -52,8 +52,8 @@ the rail only as its attention count.
   terminals, `ctrl+w` closes the one shown.
   Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs` and
   `in_a_terminal_ctrl_tab_steps_its_tabs_and_ctrl_w_closes_one`.
-- **The board walks too.** `alt+r` is the rail, `alt+a`, `alt+o` and `alt+e` the Live, Up
-  next and Review columns. The arrows walk the column; Enter, or a click, opens the session and goes
+- **The board walks too.** `alt+1`, `alt+2` and `alt+3` open it, from anywhere, on its
+  Live, Up next and Review columns; on the board `alt+r` is the rail. The arrows walk the column; Enter, or a click, opens the session and goes
   to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
   Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
