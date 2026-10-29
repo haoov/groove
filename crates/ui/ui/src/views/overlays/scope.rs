@@ -1,37 +1,35 @@
-//! A scope picker's panel, under the picker: a search line, then each context's lines.
+//! The scope panel, where the palette stands: a search line, then each context's lines.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::base::tokens::PALETTE_ROWS;
+use groove_ui_kit::base::tokens::PALETTE_LINES;
 use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{
-    Button, Corner, Lead, Material, Row, Text, glass_list, panel_at, stepped_input,
-};
+use groove_ui_kit::widgets::{Button, Lead, Material, Row, Text, glass_list, modal, stepped_input};
 
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
-use crate::views::session::resources::{Pick, ScopeLine, Scoping, scope_lines};
+use crate::views::session::resources::{ScopeLine, Scoping, scope_lines, shows};
+use groove_controllers::session_service::Open;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    let under = |which| ctx.app.hits.rect_of(&Target::Picker(which));
-    let Some(anchor) = under(scoping.which).or_else(|| under(Picks::Contexts)) else {
-        return;
-    };
-    let lines = scope_lines(app, open, &ui.session.resources, scoping);
+    let lines = scope_lines(app, open, scoping);
     let labels: Vec<String> = lines.iter().map(ScopeLine::label).collect();
-    let shown = lines.len().clamp(1, PALETTE_ROWS);
+    let shown = lines.len().clamp(1, PALETTE_LINES);
     let (high, sm, xs) = (ctx.tokens.glass_row, ctx.tokens.sm, ctx.tokens.xs);
     let height = ctx.tokens.bar + xs * 2.0 + high * shown as f32 + sm * 2.0;
-    let width = wide(ctx, &labels) + sm * 2.0;
-    let at = (anchor.x, anchor.bottom() + xs);
     let edge = (ctx.styles.border(), Material::Glass);
-    let rect = panel_at(ctx, at, Corner::TopLeft, (width, height), edge);
+    let rect = modal(
+        ctx,
+        (ctx.tokens.palette, height),
+        ctx.tokens.modal_top,
+        edge,
+    );
     ctx.hit(rect, Target::ScopePanel);
     let tall = |height: f32| Spec::default().height(height);
     let [_, line, _, body, _] = column_in(
@@ -54,7 +52,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         Label::new(hint, ctx.styles.small(Role::Faint)).draw(ctx, room);
         return;
     }
-    rows(ctx, app, (body, ui, scoping), (&lines, &labels));
+    rows(ctx, (app, open), (body, ui, scoping), (&lines, &labels));
 }
 
 /// The line the search is typed in, led by what it picks.
@@ -68,63 +66,56 @@ fn typed(ctx: &mut Ctx, line: Rect, scoping: &Scoping) {
     stepped_input(ctx, line, Lead::Step(step), typed);
 }
 
-/// The widest label, with a check's room before it and a ×'s after.
-fn wide(ctx: &mut Ctx, labels: &[String]) -> f32 {
-    let style = ctx.styles.label(Role::Text);
-    let widest = labels
-        .iter()
-        .map(|one| ctx.measure(one, &style))
-        .fold(0.0, f32::max);
-    let marks = (ctx.tokens.icon + ctx.tokens.sm) * 2.0;
-    (widest + marks + ctx.tokens.md * 2.0).max(ctx.tokens.menu)
-}
-
-/// One line: a context's name in its hue, a held line behind its check, the rest set in.
+/// One line: a heading, a held line behind its check, the rest set in.
 fn item<'a>(
     ctx: &Ctx,
-    app: &AppState,
+    (app, open): (&AppState, &Open),
     held: &crate::views::session::resources::ResourcesUi,
     (at, line, label, lit): (usize, &ScopeLine, &'a str, &'a [std::ops::Range<usize>]),
 ) -> Row<'a, Target> {
     let pad = ctx.tokens.md;
     let accent = ctx.styles.label(Role::Accent);
-    match line {
-        ScopeLine::Heading(context) => {
-            let hue = app.config.cluster(context).map(|one| Role::Hue(one.hue));
-            Row::new(pad, label, ctx.styles.small(hue.unwrap_or(Role::Faint)))
+    let shown = match line {
+        ScopeLine::Heading(_) => {
+            return Row::new(pad, label, ctx.styles.small(Role::Faint));
         }
-        ScopeLine::Held(pick) => {
-            let (mark, role) = match pick.shown(held) {
-                true => (Mark::Ticked, Role::Ok),
-                false => (Mark::Unticked, Role::Faint),
-            };
-            let style = ctx.styles.label(Role::Text);
-            Row::new(pad, label, style)
-                .lit(lit, accent)
-                .mark(mark)
-                .tint(ctx.styles.label(role).color)
-                .mark_size(ctx.tokens.small)
-                .target(Target::ScopeLine(at))
-        }
-        _ => {
-            let past = pad + ctx.tokens.icon + ctx.tokens.sm;
-            let row = Row::new(past, label, ctx.styles.label(Role::Muted));
-            row.lit(lit, accent).target(Target::ScopeLine(at))
-        }
-    }
+        ScopeLine::Held(context) => Some(!held.hidden_contexts.contains(context)),
+        ScopeLine::Namespace(pair) => Some(shows(open, held, pair)),
+        ScopeLine::Known(_) => None,
+    };
+    let Some(shown) = shown else {
+        let past = pad + ctx.tokens.icon + ctx.tokens.sm;
+        let row = Row::new(past, label, ctx.styles.label(Role::Muted));
+        return row.lit(lit, accent).target(Target::ScopeLine(at));
+    };
+    let (mark, role) = match shown {
+        true => (Mark::Ticked, Role::Ok),
+        false => (Mark::Unticked, Role::Faint),
+    };
+    let hue = match line {
+        ScopeLine::Held(context) => app.config.cluster(context).map(|one| Role::Hue(one.hue)),
+        _ => None,
+    };
+    Row::new(pad, label, ctx.styles.label(hue.unwrap_or(Role::Text)))
+        .lit(lit, accent)
+        .mark(mark)
+        .tint(ctx.styles.label(role).color)
+        .mark_size(ctx.tokens.small)
+        .target(Target::ScopeLine(at))
 }
 
-/// The lines around the cursor, as many as the panel shows; a held one ends in its ×.
+/// The lines around the cursor, as many as the panel shows; a held context ends in its ×.
 fn rows(
     ctx: &mut Ctx,
-    app: &AppState,
+    (app, open): (&AppState, &Open),
     (body, ui, scoping): (Rect, &crate::Ui, &Scoping),
     (lines, labels): (&[ScopeLine], &[String]),
 ) {
-    let first = scoping
-        .cursor
-        .unwrap_or_default()
-        .saturating_sub(PALETTE_ROWS - 1);
+    let first_pick = lines
+        .iter()
+        .position(|one| !matches!(one, ScopeLine::Heading(_)));
+    let cursor = scoping.cursor.or(first_pick);
+    let first = cursor.unwrap_or_default().saturating_sub(PALETTE_LINES - 1);
     let held = &ui.session.resources;
     let query = scoping.query.text();
     let found: Vec<_> = labels
@@ -136,20 +127,19 @@ fn rows(
         .zip(labels)
         .enumerate()
         .skip(first)
-        .take(PALETTE_ROWS)
-        .map(|(at, (line, label))| item(ctx, app, held, (at, line, label, &found[at])))
+        .take(PALETTE_LINES)
+        .map(|(at, (line, label))| item(ctx, (app, open), held, (at, line, label, &found[at])))
         .collect();
-    let selected = scoping.cursor.map(|at| at - first);
-    glass_list(ctx, body, &items, selected);
+    glass_list(ctx, body, &items, cursor.map(|at| at - first));
     let slots = column_of(
         body,
-        &vec![Spec::default().height(ctx.tokens.glass_row); PALETTE_ROWS],
+        &vec![Spec::default().height(ctx.tokens.glass_row); PALETTE_LINES],
     );
     for (slot, (at, line)) in slots
         .into_iter()
-        .zip(lines.iter().enumerate().skip(first).take(PALETTE_ROWS))
+        .zip(lines.iter().enumerate().skip(first).take(PALETTE_LINES))
     {
-        if matches!(line, ScopeLine::Held(Pick::Context(_) | Pick::Pair(_))) {
+        if matches!(line, ScopeLine::Held(_)) {
             let mut room = slot.pad(Edges::across(0.0, ctx.tokens.sm * 2.0));
             let close = Button::icon(Mark::Close, 0, Target::ScopeDetach(at), Role::Bad);
             close

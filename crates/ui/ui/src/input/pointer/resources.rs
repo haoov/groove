@@ -1,10 +1,10 @@
-//! What a click on the Resources tab does: a scope picker opens its panel, a kind is listed.
+//! What a click on the Resources tab does: a kind is listed, an object opened.
 
 use groove_controllers::{AppState, Command, workspace};
 
-use crate::hit::{Hits, Picks, Target};
+use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
-use crate::views::session::resources::{self, Dragged, How, Opens, ResourcesUi, Scoping};
+use crate::views::session::resources::{self, Dragged, How, Opens, ResourcesUi};
 use crate::{Corner, Menu, Of};
 use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -18,21 +18,14 @@ pub(super) fn acted(
     logs(target, ui, hits).or_else(|| listed(target, ui, app))
 }
 
-/// A click on the scope pickers, the sidebar, the list, or an object's tab.
+/// A click on the sidebar, the list, or an object's tab.
 fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
     let held = &mut ui.session.resources;
     match target {
-        Target::Picker(which @ (Picks::Contexts | Picks::Namespaces)) => {
-            let open = app.session.selected()?;
-            let (scoping, commands) = Scoping::new(*which).opened(open, held);
-            ui.overlay = Some(Overlay::Scope(scoping));
-            return Some(commands);
-        }
         Target::ResourceKind(kind) => {
             (held.kind, held.scroll, held.showing) = (Some(kind.clone()), 0.0, None);
         }
-        Target::ResourceSearch => (held.typing, held.filtering) = (true, false),
-        Target::ResourceFilter => (held.filtering, held.typing) = (true, false),
+        Target::ResourceSearch => held.typing = true,
         Target::ResourceGroup(group) => {
             groove_types::toggle(&mut held.folded, group.clone());
         }

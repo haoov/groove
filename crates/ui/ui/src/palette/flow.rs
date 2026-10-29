@@ -2,9 +2,13 @@
 
 mod choices;
 mod clusters;
-mod picks;
+mod kinds;
 
-use self::choices::{base_prompt, pool_choices, repo_choices, session_choices, worktree_choices};
+pub use self::kinds::chosen as kind_chosen;
+
+use self::choices::{
+    base_prompt, open_choices, pool_choices, repo_choices, session_choices, worktree_choices,
+};
 
 use groove_controllers::{AppState, Command, session};
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
@@ -16,6 +20,7 @@ pub enum Action {
     AddWorktree,
     RemoveRepo,
     SelectWorktree,
+    SelectSession,
     CloseWorktree,
     /// Closes a worktree whatever it holds that origin lacks.
     ForceCloseWorktree,
@@ -23,10 +28,8 @@ pub enum Action {
     ForceDelete,
     AttachCluster,
     DetachCluster,
-    /// The header's repo picker.
-    PickRepo,
-    /// The header's branch picker.
-    PickBranch,
+    /// The kind the Kubernetes list shows.
+    PickKind,
 }
 
 impl Action {
@@ -36,14 +39,14 @@ impl Action {
             Action::AddRepo => "session.add_repo",
             Action::AddWorktree => "session.add_worktree",
             Action::RemoveRepo => "session.remove_repo",
-            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
-                "session.select_worktree"
-            }
+            Action::SelectWorktree => "session.select_worktree",
+            Action::SelectSession => "session.select",
             Action::CloseWorktree | Action::ForceCloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
             Action::AttachCluster => "session.attach_cluster",
             Action::DetachCluster => "session.detach_cluster",
+            Action::PickKind => "resources.select_kind",
         }
     }
 }
@@ -59,6 +62,8 @@ pub struct Prompt {
     pub options: Vec<(String, String)>,
     pub free: bool,
     pub allow_empty: bool,
+    /// An option with a word that is the whole query comes first.
+    pub exact: bool,
 }
 
 impl Prompt {
@@ -68,6 +73,7 @@ impl Prompt {
             options,
             free: false,
             allow_empty: false,
+            exact: false,
         }
     }
 
@@ -77,6 +83,7 @@ impl Prompt {
             options: Vec::new(),
             free: true,
             allow_empty,
+            exact: false,
         }
     }
 }
@@ -89,7 +96,7 @@ pub struct Flow {
     pub answers: Vec<String>,
     /// Each answer as the breadcrumb shows it.
     pub said: Vec<String>,
-    /// The entry that started it, and the palette's query then; empty from a picker.
+    /// The entry that started it, and the palette's query then; empty from a chord.
     pub from: (String, String),
 }
 
@@ -117,11 +124,14 @@ impl Flow {
 
     /// The next question, or `None` when every answer is in.
     pub fn prompt(&self, app: &AppState) -> Option<Prompt> {
-        if self.action == Action::ForceDelete {
-            return self
-                .answers
-                .is_empty()
-                .then(|| Prompt::choose("session", session_choices(app)));
+        let sessions = match self.action {
+            Action::ForceDelete => Some(session_choices(app)),
+            Action::SelectSession => Some(open_choices(app, &self.session)),
+            _ => None,
+        };
+        if let Some(sessions) = sessions {
+            let first = self.answers.is_empty();
+            return first.then(|| Prompt::choose("session", sessions));
         }
         let open = app.session.get(&self.session)?;
         let step = self.answers.len();
@@ -143,10 +153,11 @@ impl Flow {
             }
             (Action::RenameExplorer, 0) => Some(Prompt::text("title", false)),
             (Action::AttachCluster, 0) => Some(Prompt::choose("context", clusters::known(app))),
-            (Action::AttachCluster, 1) => Some(clusters::namespaces(app, &self.answers[0])),
             (Action::DetachCluster, 0) => Some(Prompt::choose("cluster", clusters::held(open))),
-            (Action::PickRepo, 0) => Some(Prompt::choose("repo", picks::repos(open))),
-            (Action::PickBranch, 0) => Some(Prompt::choose("branch", picks::branches(open))),
+            (Action::PickKind, 0) => Some(Prompt {
+                exact: true,
+                ..Prompt::choose("kind", kinds::choices(app, open))
+            }),
             _ => None,
         }
     }
@@ -173,7 +184,6 @@ impl Flow {
                 (!known).then_some(Command::Session(session::Command::ListBranches { repo }))
             }
             (Action::ForceDelete, 0) => Some(Command::Session(session::Command::List)),
-            (Action::AttachCluster, 1) => Some(clusters::refresh(&self.answers[0])),
             (Action::AddWorktree, 2) => {
                 let repo = RepoId::new(&self.answers[0]);
                 let known = app.session.branches.iter().any(|(r, _)| r == &repo);
@@ -213,9 +223,10 @@ impl Flow {
                 repo: RepoId::new(answer(0)),
                 force: false,
             },
-            Action::SelectWorktree | Action::PickRepo | Action::PickBranch => {
-                select(session, answer(0))
-            }
+            Action::SelectWorktree => select(session, answer(0)),
+            Action::SelectSession => session::Command::Select {
+                session: SessionId::new(answer(0)),
+            },
             Action::CloseWorktree | Action::ForceCloseWorktree => session::Command::CloseWorktree {
                 session,
                 worktree: WorktreeId::new(answer(0)),
@@ -229,6 +240,7 @@ impl Flow {
                 session: SessionId::new(answer(0)),
             },
             Action::AttachCluster | Action::DetachCluster => clusters::command(self)?,
+            Action::PickKind => return None,
         };
         Some(Command::Session(command))
     }

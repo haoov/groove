@@ -50,21 +50,15 @@ fn asked(app: &AppState, flow: &str, answers: &[&str]) -> Command {
 }
 
 #[test]
-fn attach_picks_a_context_groove_knows_then_a_namespace_or_none_for_the_whole_cluster() {
+fn attach_picks_a_context_groove_knows_and_holds_its_whole_cluster() {
     let app = attaching();
-    let session = SessionId::new("a");
-    let whole = Command::Session(Session::AttachCluster {
-        session: session.clone(),
-        attached: on("hub", None),
-    });
-    assert_eq!(asked(&app, "attach cluster", &["hub", ""]), whole);
-    let named = Session::AttachCluster {
-        session,
-        attached: on("staging", Some("cnpg")),
+    let whole = Session::AttachCluster {
+        session: SessionId::new("a"),
+        attached: on("staging", None),
     };
     assert_eq!(
-        asked(&app, "attach cluster", &["staging", "cnpg"]),
-        Command::Session(named)
+        asked(&app, "attach cluster", &["staging"]),
+        Command::Session(whole)
     );
 }
 
@@ -89,54 +83,6 @@ fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
     assert_eq!(texts.iter().filter(|one| *one == "staging").count(), 1);
-}
-
-#[test]
-fn picking_a_context_lists_its_namespaces_behind_the_whole_cluster() {
-    let mut app = attaching();
-    let mut palette = Palette::default();
-    typed_into(&mut palette, "attach cluster", &app);
-    palette.key(Key::Enter, &app);
-    typed_into(&mut palette, "hub", &app);
-    palette.key(Key::Enter, &app);
-    let flow = palette.flow.clone().expect("the flow");
-    let list = groove_controllers::cluster::Command::ListNamespaces {
-        context: "hub".into(),
-    };
-    assert_eq!(flow.refresh(&app), Some(Command::Cluster(list)));
-    app.cluster
-        .store
-        .set_namespaces("hub", vec!["argocd".into(), "kube-system".into()]);
-    let prompt = palette.prompt(&app).expect("the namespace prompt");
-    let values: Vec<&str> = prompt
-        .options
-        .iter()
-        .map(|(_, value)| value.as_str())
-        .collect();
-    assert_eq!(values, ["", "argocd", "kube-system"]);
-    assert_eq!(
-        prompt.options[0].0, "* whole cluster",
-        "as the scope panel says it"
-    );
-}
-
-#[test]
-fn opening_the_namespace_step_again_lists_the_namespaces_again() {
-    let mut app = attaching();
-    app.cluster
-        .store
-        .set_namespaces("hub", vec!["argocd".into()]);
-    let mut palette = Palette::default();
-    typed_into(&mut palette, "attach cluster", &app);
-    palette.key(Key::Enter, &app);
-    typed_into(&mut palette, "hub", &app);
-    let outcome = palette.key(Key::Enter, &app);
-    let list = groove_controllers::cluster::Command::ListNamespaces {
-        context: "hub".into(),
-    };
-    assert_eq!(outcome.commands, [Command::Cluster(list)]);
-    let prompt = palette.prompt(&app).expect("the namespace prompt");
-    assert_eq!(prompt.options.len(), 2, "the last list shows meanwhile");
 }
 
 #[test]

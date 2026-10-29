@@ -23,9 +23,10 @@ use groove_types::DiffView;
 
 use self::board::{carried, opened_session, takes};
 pub(super) use self::board::{dropped, opened_from_board, reads as board_reads};
+pub(super) use self::drag::nudged;
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
-use self::menu::{chosen, lose, palette_row, select_worktree, selector};
+use self::menu::{chosen, lose, palette_row, select_worktree};
 use self::sidebar::{finding, narrowing, note_at, paned, twisty};
 use self::surface::{
     blamed, closing, defined, extended, folded, in_files, jump, landed, lensed, reached, switch,
@@ -120,7 +121,6 @@ fn acted(
     match target {
         Some(Target::Tab(tab)) => tabbed(ui, tab),
         Some(Target::Fold) => aside(ui),
-        Some(Target::Picker(which)) => selector(ui, app, hits, which),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::File(path)) => opened(ui, app, path, metrics),
         Some(Target::View(view)) => viewing(ui, app, view, (hits, metrics)),

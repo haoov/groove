@@ -15,7 +15,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::strip;
 use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::{Button, glass_pane, lead, picker};
+use groove_ui_kit::widgets::{Button, Text, glass_pane, lead};
 
 /// The strip's first line: what the session is, then the tabs.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
@@ -50,7 +50,7 @@ fn titled_width(ctx: &mut Ctx, open: &Open, page: Option<&str>) -> f32 {
     md * 2.0 + icon + sm + words + link
 }
 
-/// The line under the header: the pickers, the MR and the sidebar's fold, or a discard question.
+/// The line under the header: the repo and worktree, the MR and the sidebar's fold, or a discard question.
 pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
     let Some(open) = app.session.selected() else {
         return;
@@ -64,7 +64,7 @@ pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
         true => super::fold(ctx, line, ui),
         false => line,
     };
-    pickers(ctx, line, app, open);
+    worktree_line(ctx, line, app, open);
 }
 
 /// The Kubernetes tab's line: the contexts and the namespaces it reads.
@@ -100,8 +100,8 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
     }
 }
 
-/// The pickers every tab follows, each label cut to the room the line has, the MR after them.
-fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
+/// The repo and worktree every tab follows, each label cut to the room the line has, the MR after them.
+fn worktree_line(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let worktree = open.selected_worktree();
     let held = open.selected_repo();
     let (repo, branch) = named(open);
@@ -119,26 +119,15 @@ fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let repo_text = elide(ctx, repo, &style, repo_room);
     let branch_text = elide(ctx, branch, &style, room - repo_room);
 
-    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
-    let repo = picker(
-        &repo_text,
-        Target::Picker(Picks::Repo),
-        role_of(held.is_some()),
-        band,
-        hover,
-    )
-    .flat();
+    let repo = shown(ctx, &repo_text, Picks::Repo, role_of(held.is_some()));
     let box_ = repo.at(ctx, line, x);
     let x = box_.right() + ctx.tokens.sm;
-    let role = role_of(worktree.is_some());
-    let branch = picker(
+    let branch = shown(
+        ctx,
         &branch_text,
-        Target::Picker(Picks::Branch),
-        role,
-        band,
-        hover,
-    )
-    .flat();
+        Picks::Branch,
+        role_of(worktree.is_some()),
+    );
     let box_ = branch.at(ctx, line, x);
     if let Some(delivery) = delivery {
         delivered(ctx, line, box_.right() + ctx.tokens.sm, &delivery);
@@ -161,14 +150,21 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
     refresh.lit(role).hover(hover).right(ctx, &mut room, 0.0).x
 }
 
-/// What the two pickers add around their labels, and the gaps after each.
+/// A label of the line, which only tells; `alt+w` changes it.
+fn shown<'a>(ctx: &Ctx, label: &'a str, which: Picks, role: Role) -> Button<'a, Target> {
+    Button::new(label, Target::Picker(which), role, ctx.styles.band())
+        .text(Text::Body)
+        .flat()
+        .inert(true)
+}
+
+/// What the two labels add around their text, and the gaps after each.
 fn around(ctx: &mut Ctx) -> f32 {
-    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
-    let bare = picker("", Target::Picker(Picks::Repo), Role::Text, band, hover).width(ctx);
+    let bare = shown(ctx, "", Picks::Repo, Role::Text).width(ctx);
     (bare + ctx.tokens.sm) * 2.0
 }
 
-/// The repo and the branch the pickers name, each as it stands or as what it lacks.
+/// The repo and the branch the line names, each as it stands or as what it lacks.
 fn named(open: &Open) -> (&str, &str) {
     let repo = open.selected_repo().map(|r| r.project.as_str());
     let branch = open.selected_worktree().map(|w| w.branch.as_str());

@@ -6,6 +6,7 @@ mod bar;
 mod board;
 mod filter;
 mod listed;
+mod moves;
 mod naming;
 mod noting;
 mod offered;
@@ -32,7 +33,7 @@ use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
-pub(in crate::input) use resources::{kinds_changed, search_changed};
+pub(in crate::input) use resources::search_changed;
 pub(in crate::input) use scope::{pick, scope_changed};
 
 pub(super) fn key_input(
@@ -51,7 +52,13 @@ pub(super) fn key_input(
         ui.overlay = None;
         return Vec::new();
     }
+    let (key, mods) = moves::arrowed((key, mods), ui, app, &keymap);
     if let Some(action) = keymap.app(key, mods) {
+        if let Some(nudge) = moves::nudge(action) {
+            super::pointer::nudged(ui, nudge, seen.1);
+            let keep = groove_controllers::config::Command::KeepPanes(ui.split.panes());
+            return vec![Command::Config(keep)];
+        }
         return app::run(action, ui, app);
     }
     if let Some(commands) = scope::in_scope(key, mods, ui, app) {
@@ -90,8 +97,8 @@ fn in_session(
             }
             return in_bar(key, mods, ui, app, keymap);
         }
-        Some(Typed::Kinds | Typed::Search) => {
-            return resources::in_resources((key, mods), ui, app, seen);
+        Some(Typed::Search) => {
+            return resources::in_resources((key, mods), ui, app);
         }
         None => {}
     }
@@ -136,6 +143,11 @@ fn in_pane(
     }
     if ui.focus == Focus::Workspace
         && let Some(commands) = offered::in_list((key, mods), ui, app)
+    {
+        return commands;
+    }
+    if ui.focus == Focus::Terminal
+        && let Some(commands) = opened::in_terminal((key, mods), app, keymap)
     {
         return commands;
     }

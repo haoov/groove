@@ -41,6 +41,15 @@ const fn opened(
     spec(action, (id, label, "Panes"), Ring::Code, chords)
 }
 
+/// An action on the focused pane's content, in the Code group.
+const fn code(
+    action: Action,
+    (id, label): (&'static str, &'static str),
+    chords: &'static [&'static str],
+) -> Spec {
+    spec(action, (id, label, "Code"), Ring::Code, chords)
+}
+
 const fn pane(
     action: Action,
     (id, label): (&'static str, &'static str),
@@ -50,14 +59,14 @@ const fn pane(
 }
 
 use Action as A;
-use Ring::{App, Code, Terminal};
+use Ring::{App, Code, List, Terminal};
 
-pub const TABLE: [Spec; 43] = [
+pub const TABLE: [Spec; 56] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
         App,
-        &["alt+k"],
+        &["alt+shift+;"],
     ),
     spec(
         A::Settings,
@@ -69,7 +78,13 @@ pub const TABLE: [Spec; 43] = [
         A::Board,
         ("board.toggle", "board, or back", "General"),
         App,
-        &["alt+h"],
+        &["alt+shift+b"],
+    ),
+    spec(
+        A::FindFile,
+        ("palette.files", "find a file", "General"),
+        App,
+        &["alt+f"],
     ),
     spec(
         A::NewExplorer,
@@ -81,7 +96,7 @@ pub const TABLE: [Spec; 43] = [
         A::CloseSession,
         ("session.close", "close session", "Sessions"),
         App,
-        &["alt+shift+w"],
+        &["alt+shift+q"],
     ),
     spec(
         A::NextSession,
@@ -95,26 +110,47 @@ pub const TABLE: [Spec; 43] = [
         App,
         &["alt+shift+up"],
     ),
-    spec(
+    pane(
         A::FocusLeft,
-        ("pane.left", "pane to the left", "Panes"),
-        App,
+        ("pane.left", "pane to the left"),
         &["alt+shift+left"],
     ),
-    spec(
+    pane(
         A::FocusRight,
-        ("pane.right", "pane to the right", "Panes"),
-        App,
+        ("pane.right", "pane to the right"),
         &["alt+shift+right"],
     ),
-    pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+1"]),
-    pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+2"]),
+    pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+r"]),
+    pane(A::BoardLive, ("board.live", "board live"), &["alt+1"]),
+    pane(A::BoardNext, ("board.next", "board up next"), &["alt+2"]),
+    pane(A::BoardReview, ("board.review", "board review"), &["alt+3"]),
+    pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+a"]),
     pane(
         A::FocusWorkspace,
-        ("pane.workspace", "the workspace"),
-        &["alt+3"],
+        ("pane.workspace", "the workspace: open, focus, fold"),
+        &["alt+o"],
     ),
-    pane(A::FocusSidebar, ("pane.sidebar", "the sidebar"), &["alt+4"]),
+    pane(
+        A::FocusSidebar,
+        ("pane.sidebar", "the sidebar: open, focus, fold"),
+        &["alt+e"],
+    ),
+    pane(
+        A::ResizeLeft,
+        ("pane.narrower", "boundary left"),
+        &["ctrl+alt+h"],
+    ),
+    pane(
+        A::ResizeRight,
+        ("pane.wider", "boundary right"),
+        &["ctrl+alt+l"],
+    ),
+    pane(A::ResizeUp, ("pane.taller", "boundary up"), &["ctrl+alt+k"]),
+    pane(
+        A::ResizeDown,
+        ("pane.shorter", "boundary down"),
+        &["ctrl+alt+j"],
+    ),
     pane(A::NextTab, ("tab.next", "next tab"), &["alt+]"]),
     pane(A::PreviousTab, ("tab.previous", "previous tab"), &["alt+["]),
     opened(
@@ -132,59 +168,70 @@ pub const TABLE: [Spec; 43] = [
         ("open.previous", "previous open tab"),
         &["ctrl+shift+tab", "ctrl+pageup"],
     ),
-    spec(
-        A::FoldSidebar,
-        ("sidebar.fold", "fold the sidebar", "Panes"),
-        App,
-        &["alt+shift+b"],
-    ),
-    spec(
+    pane(
         A::Overview,
-        ("tab.overview", "overview tab", "Panes"),
-        App,
+        ("tab.overview", "overview tab"),
         &["alt+shift+1"],
     ),
-    spec(
-        A::Diff,
-        ("tab.diff", "diff tab", "Panes"),
-        App,
-        &["alt+shift+2"],
-    ),
-    spec(
-        A::Files,
-        ("tab.files", "files tab", "Panes"),
-        App,
-        &["alt+shift+3"],
-    ),
-    spec(
+    pane(A::Diff, ("tab.diff", "diff tab"), &["alt+shift+2"]),
+    pane(A::Files, ("tab.files", "files tab"), &["alt+shift+3"]),
+    pane(
         A::Resources,
-        ("tab.resources", "kubernetes tab", "Panes"),
-        App,
+        ("tab.resources", "kubernetes tab"),
         &["alt+shift+4"],
     ),
-    spec(
-        A::Terminals,
-        ("terminals.toggle", "terminals", "Panes"),
-        App,
-        &["alt+'"],
+    pane(
+        A::SelectNamespace,
+        ("resources.select_namespace", "pick the namespaces"),
+        &["alt+n"],
     ),
-    spec(
+    pane(
+        A::SelectContext,
+        ("resources.select_context", "pick the contexts"),
+        &["alt+c"],
+    ),
+    pane(
+        A::SelectKind,
+        ("resources.select_kind", "pick a kind"),
+        &["alt+k"],
+    ),
+    pane(
+        A::SelectWorktree,
+        ("session.select_worktree", "pick a worktree"),
+        &["alt+w"],
+    ),
+    pane(
+        A::SelectSession,
+        ("session.select", "pick a session"),
+        &["alt+s"],
+    ),
+    pane(A::Terminals, ("terminals.toggle", "terminals"), &["alt+'"]),
+    pane(
         A::NewTerminal,
-        ("terminals.new", "new terminal", "Panes"),
-        App,
+        ("terminals.new", "new terminal"),
         &["alt+shift+'"],
     ),
-    spec(
+    pane(
         A::Reload,
-        ("workspace.load", "reload the workspace", "Panes"),
-        App,
+        ("workspace.load", "reload the workspace"),
         &["alt+shift+r"],
     ),
-    spec(A::Save, ("editor.save", "save", "Code"), Code, &["ctrl+s"]),
     spec(
+        A::ListDown,
+        ("list.down", "down a list", "Lists"),
+        List,
+        &["ctrl+j"],
+    ),
+    spec(
+        A::ListUp,
+        ("list.up", "up a list", "Lists"),
+        List,
+        &["ctrl+k"],
+    ),
+    code(A::Save, ("editor.save", "save"), &["ctrl+s"]),
+    code(
         A::Hover,
-        ("editor.hover", "what the servers say here", "Code"),
-        Code,
+        ("editor.hover", "what the servers say here"),
         &["ctrl+k"],
     ),
     spec(
@@ -197,65 +244,39 @@ pub const TABLE: [Spec; 43] = [
         Code,
         &["ctrl+space"],
     ),
-    spec(A::Undo, ("editor.undo", "undo", "Code"), Code, &["ctrl+z"]),
-    spec(
+    code(A::Undo, ("editor.undo", "undo"), &["ctrl+z"]),
+    code(
         A::Redo,
-        ("editor.redo", "redo", "Code"),
-        Code,
+        ("editor.redo", "redo"),
         &["ctrl+shift+z", "ctrl+y"],
     ),
-    spec(
+    code(
         A::SelectAll,
-        ("editor.select_all", "select all", "Code"),
-        Code,
+        ("editor.select_all", "select all"),
         &["ctrl+a"],
     ),
-    spec(A::Copy, ("editor.copy", "copy", "Code"), Code, &["ctrl+c"]),
-    spec(A::Cut, ("editor.cut", "cut", "Code"), Code, &["ctrl+x"]),
-    spec(
-        A::Paste,
-        ("editor.paste", "paste", "Code"),
-        Code,
-        &["ctrl+v"],
-    ),
-    spec(
+    code(A::Copy, ("editor.copy", "copy"), &["ctrl+c"]),
+    code(A::Cut, ("editor.cut", "cut"), &["ctrl+x"]),
+    code(A::Paste, ("editor.paste", "paste"), &["ctrl+v"]),
+    code(
         A::Find,
-        ("find.open", "find in the file or the list", "Code"),
-        Code,
+        ("find.open", "find in the file or the list"),
         &["ctrl+f"],
     ),
-    spec(
-        A::SelectNamespace,
-        ("resources.select_namespace", "select a namespace", "Code"),
-        Code,
-        &["ctrl+shift+n"],
-    ),
-    spec(
-        A::FindNext,
-        ("find.next", "next match", "Code"),
-        Code,
-        &["ctrl+n"],
-    ),
-    spec(
+    code(A::FindNext, ("find.next", "next match"), &["enter"]),
+    code(
         A::FindPrevious,
-        ("find.previous", "previous match", "Code"),
-        Code,
+        ("find.previous", "previous match"),
+        &["shift+enter"],
+    ),
+    code(
+        A::OpenPath,
+        ("files.open_path", "open a file by path"),
         &["ctrl+p"],
     ),
-    spec(
-        A::OpenPath,
-        (
-            "files.open_path",
-            "open a file by path, or search the kinds",
-            "Code",
-        ),
-        Code,
-        &["ctrl+shift+p"],
-    ),
-    spec(
+    code(
         A::SearchFiles,
-        ("files.search", "search in files", "Code"),
-        Code,
+        ("files.search", "search in files"),
         &["ctrl+shift+f"],
     ),
     spec(

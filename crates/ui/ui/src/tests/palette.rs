@@ -29,7 +29,7 @@ fn entries_follow_what_the_session_holds() {
             "Rename explorer",
             "Delete session",
             "Close session",
-            "Switch to Beta"
+            "Switch session"
         ]
     );
     let full = labels(&with_repo(app()));
@@ -58,7 +58,7 @@ fn the_every_day_actions_follow_the_session_too() {
         "Overview",
         "Diff",
         "Files",
-        "Show or hide the sidebar",
+        "Keys to the sidebar",
         "Terminals",
         "New terminal",
         "Reload the agent",
@@ -90,10 +90,37 @@ fn a_tab_picked_in_the_palette_is_the_tab_its_chord_opens() {
 
 #[test]
 fn the_query_filters_and_ranks() {
-    let rows = matching(entries(&app()), |e| e.label.clone(), "beta");
-    assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].label, "Switch to Beta");
+    let rows = matching(entries(&app()), |e| e.label.clone(), "switch se");
+    assert_eq!(rows[0].label, "Switch session");
     assert!(matching(entries(&app()), |e| e.label.clone(), "zzz").is_empty());
+}
+
+#[test]
+fn alt_s_picks_another_open_session_by_its_title_or_its_id() {
+    let mut app = app();
+    app.session
+        .open
+        .push(crate::tests::open("gh-o-r-7", "Gamma"));
+    let mut ui = Ui::default();
+    let alt = Modifiers {
+        alt: true,
+        ..Default::default()
+    };
+    press(Key::Char('s'), alt, &mut ui, &app);
+    let rows = |ui: &Ui| {
+        let palette = ui.palette().expect("the session palette");
+        let rows = palette.options(&app).into_iter().map(|(label, _)| label);
+        rows.collect::<Vec<_>>()
+    };
+    assert_eq!(rows(&ui), ["Beta \u{b7} b", "Gamma \u{b7} gh-o-r-7"]);
+    typed("r-7", &mut ui, &app);
+    assert_eq!(rows(&ui), ["Gamma \u{b7} gh-o-r-7"]);
+    let picked = press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    let select = groove_controllers::session::Command::Select {
+        session: groove_types::SessionId::new("gh-o-r-7"),
+    };
+    assert_eq!(picked, [groove_controllers::Command::Session(select)]);
+    assert!(ui.palette().is_none(), "the palette shuts");
 }
 
 #[test]
@@ -227,7 +254,7 @@ fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
 fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let metrics = metrics(1280, 800, 1.0);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts: Vec<String> = frame.layers()[1]
@@ -246,7 +273,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .map(|t| t.text.clone())
         .collect();
     assert_eq!(texts[0], "worktree", "the step, dimmed at the left");
-    assert!(texts.iter().any(|t| t == "kiwi · explorer/alpha"));
+    assert!(texts.iter().any(|t| t == "kiwi/explorer/alpha"));
     let run = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(run[0].id(), "session.close_worktree");
     assert!(ui.palette().is_none());
@@ -407,7 +434,7 @@ fn backspace_on_an_empty_query_takes_the_last_answer_back() {
 fn the_input_line_names_the_step_it_answers() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed("add work", &mut ui, &app);
     let first = |ui: &Ui| {
         let (frame, _) = view(

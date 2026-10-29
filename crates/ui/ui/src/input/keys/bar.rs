@@ -43,9 +43,8 @@ pub(super) fn finding(
             ui.session.find = None;
             return Some(Vec::new());
         }
-        key if keymap.is(Action::FindNext, key, mods) => find.step(true),
-        key if keymap.is(Action::FindPrevious, key, mods) => find.step(false),
-        Key::Enter if find.typing => find.typing = false,
+        key if find.typing && keymap.is(Action::FindNext, key, mods) => find.step(true),
+        key if find.typing && keymap.is(Action::FindPrevious, key, mods) => find.step(false),
         key if find.typing => match typing(key, mods, &mut find.query) {
             true => return Some(refound(ui, app, seen)),
             false => return Some(Vec::new()),
@@ -149,8 +148,9 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
     if ui.showing(app) != crate::Surface::Session {
         return;
     }
-    if !ui.session.tab.has_sidebar() {
-        ui.session.tab = crate::views::session::Tab::Diff;
+    use crate::views::session::Tab;
+    if !matches!(ui.session.tab, Tab::Diff | Tab::Files) {
+        ui.session.tab = Tab::Diff;
     }
     ui.session.folded = false;
     ui.session.bar.open(term);

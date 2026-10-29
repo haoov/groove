@@ -55,6 +55,7 @@ pub async fn helm_revision(
         plural: "secrets".into(),
         namespaced: true,
         watchable: true,
+        short_names: Vec::new(),
     };
     let labels = format!("owner=helm,name={release}");
     let narrowed = Narrowed {

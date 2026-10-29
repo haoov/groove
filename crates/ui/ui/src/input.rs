@@ -177,6 +177,11 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             ui.session.view = view;
             ui.session.tab = Tab::Diff;
         }
+        Act::Mode(mode) => {
+            ui.session.tab = Tab::Diff;
+            let set = groove_controllers::workspace::Command::SetMode { mode };
+            return vec![Command::Workspace(set)];
+        }
         Act::Note => {
             let Some(open) = app.workspace.active() else {
                 return Vec::new();
@@ -193,6 +198,15 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
         }
         Act::Examine(id) => ui.overlay = Some(crate::Overlay::Examining(id)),
         Act::Discard => ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Everything)),
+        Act::Kind(value) => {
+            let open = app.session.selected();
+            let kind = open.and_then(|open| crate::palette::kind_chosen(app, open, &value));
+            let held = &mut ui.session.resources;
+            (held.kind, held.scroll, held.showing) = (kind.or(held.kind.take()), 0.0, None);
+            ui.surface = crate::Surface::Session;
+            ui.session.tab = Tab::Resources;
+            ui.focus = crate::Focus::Workspace;
+        }
         Act::Open(path) => {
             ui.session.tab = Tab::Files;
             ui.focus = crate::Focus::Workspace;

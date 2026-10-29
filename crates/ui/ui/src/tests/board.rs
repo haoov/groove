@@ -11,7 +11,7 @@ use groove_types::{ExternalId, SessionKind};
 
 use crate::hit::{Hits, Target};
 use crate::input::Key;
-use crate::tests::{ALT, click, full_app, press, render, task, window};
+use crate::tests::{click, full_app, press, render, task, window};
 use crate::{Surface, Ui, view};
 
 fn on_board(app: &AppState) -> (Ui, Hits) {
@@ -57,7 +57,12 @@ fn the_key_into_the_board_reads_what_a_click_reads() {
     let row = hits.rect_of(&Target::Board).expect("the board row");
     let clicked = click(row, &mut ui, &app, &hits);
     ui.surface = Surface::Session;
-    let pressed = crate::tests::press(crate::input::Key::Char('h'), ALT, &mut ui, &app);
+    let pressed = crate::tests::press(
+        crate::input::Key::Char('b'),
+        crate::tests::ALT_SHIFT,
+        &mut ui,
+        &app,
+    );
     assert_eq!(
         pressed.iter().map(|c| c.id()).collect::<Vec<_>>(),
         clicked.iter().map(|c| c.id()).collect::<Vec<_>>()
@@ -109,7 +114,7 @@ fn a_task_with_a_session_of_its_own_is_live_and_not_up_next() {
 fn the_chord_opens_the_board_and_closes_it_again() {
     let app = full_app();
     let mut ui = Ui::default();
-    let opened = press(Key::Char('h'), ALT, &mut ui, &app);
+    let opened = press(Key::Char('b'), crate::tests::ALT_SHIFT, &mut ui, &app);
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         opened.iter().map(|c| c.id()).collect::<Vec<_>>(),
@@ -121,7 +126,7 @@ fn the_chord_opens_the_board_and_closes_it_again() {
         ],
         "the board reads its three columns, and the skills the shared repo holds now"
     );
-    let closed = press(Key::Char('h'), ALT, &mut ui, &app);
+    let closed = press(Key::Char('b'), crate::tests::ALT_SHIFT, &mut ui, &app);
     assert_eq!(ui.surface, Surface::Session);
     assert!(closed.is_empty(), "nothing is read on the way out");
 }

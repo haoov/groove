@@ -1,4 +1,4 @@
-//! The panel every choice is made in: the palette, or a picker on what it belongs to.
+//! The panel every choice is made in, in the middle of the window.
 
 mod rows;
 
@@ -15,38 +15,10 @@ use crate::keymap::Keymap;
 use crate::palette::Palette;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::base::tokens::{PALETTE_LINES, PALETTE_ROWS};
+use groove_ui_kit::base::tokens::PALETTE_LINES;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Lead, Material, Row, glass_list, modal, panel_at, stepped_input};
-
-/// Lines the panel shows: more centred than on a picker.
-fn limit(palette: &Palette) -> usize {
-    match palette.anchor {
-        Some(_) => PALETTE_ROWS,
-        None => PALETTE_LINES,
-    }
-}
-
-/// Whether the panel offers a line to type in: the palette always, a picker once needed.
-fn has_input(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
-    let free = prompt.as_ref().is_some_and(|prompt| prompt.free);
-    palette.anchor.is_none() || free || rows > PALETTE_ROWS || !palette.query.is_empty()
-}
-
-/// How wide an anchored panel stands: its widest drawn row, at least a menu's width.
-fn width(ctx: &mut Ctx, rows: &[(String, String)], prompted: bool) -> f32 {
-    let style = ctx.styles.label(Role::Text);
-    let pad = ctx.tokens.md;
-    let widest = rows
-        .iter()
-        .map(|(group, label)| match prompted {
-            true => pad + ctx.measure(group, &style),
-            false => pad + ctx.tokens.icon + ctx.tokens.sm + ctx.measure(label, &style),
-        })
-        .fold(0.0, f32::max);
-    (widest + pad).max(ctx.tokens.menu) + ctx.tokens.sm * 2.0
-}
+use groove_ui_kit::widgets::{Lead, Material, Row, glass_list, modal, stepped_input};
 
 /// The command palette: an input line, then the entries or the prompt's options.
 pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
@@ -54,29 +26,18 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let rows = listed(app, palette, &prompt);
     let lines = lines(&rows, prompt.is_none());
     let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
-    let shown = lines.len().clamp(usize::from(!typing_only), limit(palette));
-    let typed = has_input(palette, &prompt, rows.len());
+    let shown = lines.len().clamp(usize::from(!typing_only), PALETTE_LINES);
     let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm * 2.0;
-    let height = match typed {
-        true => rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0,
-        false => rows_high,
-    };
+    let height = rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0;
     let edge = (ctx.styles.border(), Material::Glass);
-    let rect = match palette.anchor {
-        Some(anchor) => {
-            let width = width(ctx, &rows, prompt.is_some());
-            panel_at(ctx, anchor.point(), anchor.corner, (width, height), edge)
-        }
-        None => {
-            let size = (ctx.tokens.palette, height);
-            modal(ctx, size, ctx.tokens.modal_top, edge)
-        }
-    };
+    let rect = modal(
+        ctx,
+        (ctx.tokens.palette, height),
+        ctx.tokens.modal_top,
+        edge,
+    );
     ctx.hit(rect, Target::Palette);
-    let under = match typed {
-        true => input_line(ctx, rect, palette, &prompt),
-        false => rect,
-    };
+    let under = input_line(ctx, rect, palette, &prompt);
     let body = inset(ctx, under, shown);
     let ends = (
         shortcuts(app, palette, &prompt),
@@ -234,7 +195,7 @@ fn items(
     (rows, lines): (&[(String, String)], &[Line]),
     (chords, marks): (Vec<Option<String>>, Vec<Option<Mark>>),
 ) {
-    let first = first_line(lines, palette.selected, limit(palette));
+    let first = first_line(lines, palette.selected, PALETTE_LINES);
     let head_style = ctx.styles.heading(Role::Faint);
     let heads: Vec<String> = rows.iter().map(|(group, _)| group.to_uppercase()).collect();
     let texts: Vec<&str> = rows
@@ -247,8 +208,7 @@ fn items(
         .iter()
         .map(|text| matched(text, query, fuzzy))
         .collect();
-    let shown = &lines[first..lines.len().min(first + limit(palette))];
-    let lit = palette.anchor.is_none() || palette.keyed;
+    let shown = &lines[first..lines.len().min(first + PALETTE_LINES)];
     let pad = ctx.tokens.md;
     let items: Vec<Row<'_, _>> = shown
         .iter()
@@ -257,7 +217,7 @@ fn items(
             Line::Row(i) => {
                 let chord = chords.get(i).and_then(Option::as_deref);
                 let mark = marks.get(i).copied().flatten();
-                let selected = lit && palette.selected == i;
+                let selected = palette.selected == i;
                 entry(ctx, texts[i], (chord, mark, &found[i]), selected)
                     .target(Target::PaletteRow(i))
             }
@@ -266,5 +226,5 @@ fn items(
     let at = shown
         .iter()
         .position(|line| *line == Line::Row(palette.selected));
-    glass_list(ctx, body, &items, at.filter(|_| lit));
+    glass_list(ctx, body, &items, at);
 }

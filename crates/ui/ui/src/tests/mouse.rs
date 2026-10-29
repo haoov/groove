@@ -2,10 +2,10 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::{SessionId, WorktreeId};
 
-use crate::hit::{Cursor, Hits, Picks, Target};
+use crate::hit::{Cursor, Hits, Target};
 use crate::input::Key;
 use crate::layout::{Edge, Layout, Split};
-use crate::tests::{ALT, WINDOW, click, drag, full_app, metrics, press, release, window};
+use crate::tests::{WINDOW, click, drag, full_app, metrics, press, release};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 use groove_ui_kit::base::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
@@ -42,29 +42,32 @@ fn a_click_on_a_worktree_row_selects_it() {
 }
 
 #[test]
-fn the_repo_picker_lists_repos_and_the_branch_picker_their_worktrees() {
+fn alt_w_picks_a_worktree_by_repo_and_branch_ranked() {
     let app = two_repos();
-    let picked = |which: Picks| {
-        let mut ui = Ui::default();
-        let hits = regions(&app, &ui);
-        let rect = hits
-            .rect_of(&Target::Picker(which))
-            .expect("the header has one");
-        assert!(click(rect, &mut ui, &app, &hits).is_empty());
-        let prompt = ui.palette().and_then(|p| p.prompt(&app)).expect("a picker");
-        let labels: Vec<String> = prompt.options.into_iter().map(|(label, _)| label).collect();
-        (prompt.label, labels)
+    let mut ui = Ui::default();
+    let alt = crate::input::Modifiers {
+        alt: true,
+        ..Default::default()
+    };
+    press(Key::Char('w'), alt, &mut ui, &app);
+    let rows = |ui: &Ui| {
+        let palette = ui.palette().expect("the worktree palette");
+        let rows = palette.options(&app).into_iter().map(|(label, _)| label);
+        rows.collect::<Vec<_>>()
     };
     assert_eq!(
-        picked(Picks::Repo),
-        ("repo", vec!["kiwi".into(), "pomme".into()])
+        rows(&ui),
+        ["kiwi/explorer/alpha", "kiwi/fix/y", "pomme/main"]
     );
-    let branches = vec!["explorer/alpha".to_string(), "fix/y".into()];
-    assert_eq!(
-        picked(Picks::Branch),
-        ("branch", branches),
-        "only the selected repo's"
-    );
+    crate::tests::typed("po/ma", &mut ui, &app);
+    assert_eq!(rows(&ui).first().map(String::as_str), Some("pomme/main"));
+    let picked = press(Key::Enter, Default::default(), &mut ui, &app);
+    let select = groove_controllers::session::Command::SelectWorktree {
+        session: SessionId::new("a"),
+        worktree: WorktreeId::new("wt-2"),
+    };
+    assert_eq!(picked, [groove_controllers::Command::Session(select)]);
+    assert!(ui.palette().is_none(), "the palette shuts");
 }
 
 /// The fixture's repo with a second worktree, and a second repo with one of its own.
@@ -128,7 +131,7 @@ fn the_selected_tab_stands_on_a_rounded_ground_as_a_rail_row() {
 fn a_click_on_a_palette_row_runs_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let hits = regions(&app, &ui);
     let rect = hits
         .rect_of(&Target::PaletteRow(0))
@@ -146,7 +149,7 @@ fn a_click_on_a_palette_row_runs_it() {
 fn a_click_outside_the_palette_closes_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let hits = regions(&app, &ui);
     let palette = hits.rect_of(&Target::Palette).expect("the palette");
     let rect = groove_gfx::Rect::new(palette.x - 40.0, palette.y + 40.0, 10.0, 10.0);
@@ -313,30 +316,6 @@ fn wide(split: Split) -> Layout {
         split,
         true,
     )
-}
-
-#[test]
-fn a_picker_asks_for_a_query_only_once_it_is_worth_one() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    let hits = regions(&app, &ui);
-    let picker = hits
-        .rect_of(&Target::Picker(Picks::Repo))
-        .expect("the header has one");
-    click(picker, &mut ui, &app, &hits);
-    let shown = |ui: &Ui| {
-        let (frame, _) = view(&app, ui, window(), &mut Fonts::embedded());
-        frame
-            .layers()
-            .iter()
-            .flat_map(|layer| layer.texts.iter())
-            .any(|run| run.text == "worktree" || run.text == "a")
-    };
-    assert!(!shown(&ui), "two worktrees need no filter");
-    if let Some(palette) = ui.palette_mut() {
-        palette.query.insert('a');
-    }
-    assert!(shown(&ui), "and it appears the moment something is typed");
 }
 
 #[test]

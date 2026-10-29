@@ -166,13 +166,6 @@ impl Ui {
             self.overlay = None;
         }
         let mut commands = outcome.commands;
-        if let (true, Some(open)) = (outcome.scoping, app.session.selected()) {
-            self.surface = Surface::Session;
-            let scoping = views::session::resources::Scoping::asked(open);
-            let (scoping, listing) = scoping.opened(open, &self.session.resources);
-            self.overlay = Some(Overlay::Scope(scoping));
-            commands.extend(listing);
-        }
         if outcome.settings {
             commands.extend(self.open_settings());
         }

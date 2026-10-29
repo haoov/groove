@@ -3,9 +3,8 @@
 use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::WorktreeId;
 
-use crate::hit::{Hits, Picks, Target};
+use crate::hit::{Hits, Target};
 use crate::input::Key;
-use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::{Corner, Focus, Losing, Menu, Of, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -134,25 +133,6 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
         ui.focus = Focus::Workspace;
     }
     picked.commands
-}
-
-/// The repo picker lists the repos, the branch picker the repo's worktrees, under the picker.
-pub(super) fn selector(ui: &mut Ui, app: &AppState, hits: &Hits, which: Picks) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    let action = match which {
-        Picks::Repo => Action::PickRepo,
-        _ => Action::PickBranch,
-    };
-    let flow = Flow::new(action, session);
-    let commands = flow.refresh(app).into_iter().collect();
-    ui.overlay = Some(Overlay::Palette(Palette {
-        flow: Some(flow),
-        anchor: hits.rect_of(&Target::Picker(which)).map(Anchor::under),
-        ..Palette::default()
-    }));
-    commands
 }
 
 pub(super) fn select_worktree(app: &AppState, worktree: WorktreeId) -> Vec<Command> {

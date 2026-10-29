@@ -77,6 +77,7 @@ pub async fn namespaces(paths: &[PathBuf], context: &str) -> Result<Vec<String>>
         plural: "namespaces".into(),
         namespaced: false,
         watchable: true,
+        short_names: Vec::new(),
     };
     let query = groove_kube::Query {
         kind: &kind,

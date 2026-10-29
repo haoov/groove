@@ -22,7 +22,7 @@ fn the_chord_opens_the_bar_on_the_worktree_and_typing_searches_it() {
 fn the_two_terms_narrow_together_whichever_is_typed_first() {
     let app = app();
     let mut ui = on_code();
-    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_ONLY, &mut ui, &app);
     typed("ui", &mut ui, &app);
     assert_eq!(ui.session.bar.path.text(), "ui");
 
@@ -42,7 +42,7 @@ fn the_two_terms_narrow_together_whichever_is_typed_first() {
         "the text is looked for only under the path"
     );
 
-    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_ONLY, &mut ui, &app);
     assert_eq!(
         ui.session.bar.text.text(),
         "Aligned",
@@ -121,10 +121,10 @@ fn the_field_stands_unasked_and_the_chord_puts_the_keys_in_its_text() {
 fn a_click_on_a_term_keeps_what_it_holds() {
     let app = app();
     let mut ui = crate::tests::sidebar_ui();
-    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_ONLY, &mut ui, &app);
     typed("src", &mut ui, &app);
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
-    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_ONLY, &mut ui, &app);
     typed("ui", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
 

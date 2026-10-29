@@ -222,3 +222,49 @@ async fn a_watch_line_it_cannot_read_says_why_instead_of_a_status_0() {
         "{read:?}"
     );
 }
+
+#[tokio::test]
+async fn aggregated_discovery_reads_each_kind_s_short_names() {
+    let server = MockServer::start().await;
+    let group = |name: &str, resource: serde_json::Value| {
+        serde_json::json!({
+            "kind": "APIGroupDiscoveryList", "apiVersion": "apidiscovery.k8s.io/v2", "metadata": {},
+            "items": [{ "metadata": { "name": name },
+                        "versions": [{ "version": "v1", "resources": [resource] }] }]
+        })
+    };
+    let pods = serde_json::json!({ "resource": "pods", "scope": "Namespaced",
+        "responseKind": { "group": "", "version": "v1", "kind": "Pod" },
+        "verbs": ["list", "watch"], "shortNames": ["po"] });
+    let deployments = serde_json::json!({ "resource": "deployments", "scope": "Namespaced",
+        "responseKind": { "group": "apps", "version": "v1", "kind": "Deployment" },
+        "verbs": ["list", "watch"], "shortNames": ["deploy"] });
+    let plain = |body: serde_json::Value| ResponseTemplate::new(200).set_body_json(body);
+    Mock::given(path("/api"))
+        .respond_with(plain(group("", pods)))
+        .mount(&server)
+        .await;
+    Mock::given(path("/apis"))
+        .respond_with(plain(group("apps", deployments)))
+        .mount(&server)
+        .await;
+    let (_dir, client) = client(&server).await;
+    let kinds = client.kinds().await.expect("the kinds");
+    let named: Vec<(&str, &str, Vec<String>)> = kinds
+        .iter()
+        .map(|one| {
+            (
+                one.group.as_str(),
+                one.kind.as_str(),
+                one.short_names.clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        named,
+        [
+            ("", "Pod", vec!["po".to_string()]),
+            ("apps", "Deployment", vec!["deploy".to_string()])
+        ]
+    );
+}

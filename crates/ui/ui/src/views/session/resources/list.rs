@@ -132,7 +132,7 @@ fn standing(
     keys: &[WatchKey],
 ) -> Option<(String, Role)> {
     let store = &app.cluster.store;
-    if scope::held(open, held).next().is_none() {
+    if scope::held(open, held).is_empty() {
         return Some((
             "nothing picked: pick a context and a namespace above".into(),
             Role::Faint,

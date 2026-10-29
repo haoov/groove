@@ -10,12 +10,13 @@ use crate::input::{Key, Modifiers};
 pub use rebind::{rebinds, rebound, reset};
 pub use table::{Action, Spec, TABLE};
 
-/// Where a chord is heard: from anywhere, in the focused pane's content, or in a terminal.
+/// Where a chord is heard: from anywhere, in the focused pane's content, in a terminal, or in a list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ring {
     App,
     Code,
     Terminal,
+    List,
 }
 
 /// Each action with the chords it answers to now.

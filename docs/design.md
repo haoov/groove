@@ -24,23 +24,37 @@ the rail only as its attention count.
 - **Selection is a background**: a rounded ground, one step above the hover's. A selected
   tab is held the same way. In the region that has the keys it takes the accent; elsewhere
   it stays neutral. The agent and a terminal show the keys by a solid cursor.
-- **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
-  the workspace and the sidebar; the terminals keep their own chord. A second press folds
-  the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
-- **A list walks from the keyboard.** In the sidebar the arrows step through the rows, Enter
+- **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
+  rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
+  workspace and the sidebar unfold first, and a press while they hold the keys folds them
+  away. `ctrl+alt` with `h`, `j`, `k` or `l` moves the boundary of the region that holds the keys
+  that way.
+  Enforced by `alt_and_a_region_s_letter_hand_it_the_keys`,
+  `a_second_press_folds_the_sidebar_away`,
+  `alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it` and
+  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way`.
+- **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
+  the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
+  closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
+  agent's and the terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
+  Enforced by `alt_shift_q_closes_the_session`.
+- **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
+  palette's included, as the arrows do. Enforced by
+  `ctrl_j_and_ctrl_k_walk_a_list_as_the_arrows_do`. In the sidebar the arrows step through the rows, Enter
   does what a click does, Space stages a changed file, Left and Right fold a folder, and
   `[` and `]` change the list.
   Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
 - **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
   `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
   workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
-- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter starts
-  their search. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
-  its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files or objects,
-  `ctrl+w` closes the one shown.
-  Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs`.
-- **The board walks too.** `alt+1` is the rail, `alt+2` to `alt+4` the Live, Up next and
-  Review columns. The arrows walk the column; Enter, or a click, opens the session and goes
+- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter opens
+  the kind palette on it. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
+  its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files, objects or
+  terminals, `ctrl+w` closes the one shown.
+  Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs` and
+  `in_a_terminal_ctrl_tab_steps_its_tabs_and_ctrl_w_closes_one`.
+- **The board walks too.** `alt+1`, `alt+2` and `alt+3` open it, from anywhere, on its
+  Live, Up next and Review columns; on the board `alt+r` is the rail. The arrows walk the column; Enter, or a click, opens the session and goes
   to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
   Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
@@ -221,7 +235,7 @@ Enforced by `the_folded_drawer_is_a_capsule_as_narrow_as_its_bar`,
 The rail, the agent pane and the sidebar each have a width the user drags, kept between
 runs. The strip takes what is left, folded or open. A boundary moves the two parts it stands
 between and nothing else. The sidebar folds from the info line's far end or with
-`alt+shift+b`.
+`alt+e`.
 
 ### Workspace
 
@@ -231,14 +245,19 @@ share it. Finishing the task and deleting the session here are palette rows. A b
 is one icon alone is a circle. Enforced by
 `a_task_or_a_review_is_deleted_here_from_the_palette_and_an_explorer_is_not`.
 
-**Info line.** Under the header while the strip is open: the repo and worktree pickers —
-the session's selector, which every tab and the terminals follow — with the selected
-worktree's MR and CI and a refresh button, and the sidebar's fold at the far end. A git
-mark leads it. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
-the contexts picked, a lone one in its hue, then the namespaces. Each picker opens a panel
-with a search: what the session holds first, a check to show it and a × to detach it, then
-what it could attach. A pick there attaches; a known context opens its namespaces; Enter
-shows one line alone, and attaches it first when the session does not hold it. A title or a
+**Info line.** Under the header while the strip is open: the selected repo and worktree,
+which every tab and the terminals follow, with the worktree's MR and CI and a refresh
+button, and the sidebar's fold at the far end. A git mark leads it. It only tells: `alt+w`
+opens the palette on every worktree as `repo/branch`, the best fuzzy match first, and Enter
+selects one. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
+the contexts shown, a lone one in its hue, then the namespaces. It only tells: `alt+c`
+opens the context panel and `alt+n` the namespace panel, from any tab, where the palette
+stands, with a search and the first line stood on. The context panel holds the session's
+contexts, a check to show one and a × to detach it, then what it could attach; a pick
+there attaches the whole cluster. The namespace panel lists `context/namespace` for every
+context held, `context/*` for the whole cluster, the best fuzzy match first: space shows
+one more, Enter shows one alone and gives the list the keys. Either choice turns to the
+Kubernetes tab. A title or a
 label too long for its line is cut with an ellipsis; no line wraps; a tab's status badges
 keep their room before the cut, and a badge with no room left is dropped.
 
@@ -249,7 +268,7 @@ keep their room before the cut, and a badge with no room left is dropped.
 | overview | sections, each a heading over its own card, inset from the panel's sides: the task's properties on one line — status, priority, dates, hours — a missing one left out; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on rounded grounds as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
-| kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | a search that narrows the kinds, then the kinds the contexts serve, under headings that fold |
+| kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | the kinds the contexts serve, under headings that fold |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
 which the gutter holds together.
@@ -287,8 +306,10 @@ writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
 surface, `ctrl+f` floats a glass bar at the top right of the rows, with the count at its
-end; enter hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc
-ends it. `ctrl+shift+p` opens a file by its path.
+end; enter and shift+enter step to the next and the previous match, esc ends it and leaves
+the caret on the match. `ctrl+p` opens a file by its path, `alt+f` the palette on the
+worktree's files. Enforced by `enter_and_shift_enter_step_the_matches_and_wrap` and
+`alt_f_opens_the_palette_on_the_worktree_s_files`.
 
 **Finding your way in a big change.** Three answers, and none of them is a bigger tree:
 
@@ -324,8 +345,8 @@ does the same, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
-**Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette with its
-pickers, every menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
+**Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
+menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
 bar's skills menu are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
@@ -345,11 +366,6 @@ caret is, two rules stand instead of a ground: a place is not a state. The row a
 on — the open file, the shown commit, the kind listed — has the two rules over the held
 ground, the accent dimmed into it. The rail is the exception: see below.
 
-**A choice about one thing opens on that thing.** A picker draws the same rows the palette
-does, filtered and keyed the same way, anchored under what was clicked, as wide as its
-rows, nothing behind it dimmed, and it asks for a query only once the list is longer than
-it shows. The palette stays in the middle of the window and dims it.
-
 **The palette keeps its groups while it filters.** Each group runs under its heading, the
 group with the best match first. A first word that starts a group's name keeps that group
 whole and on top: `go` lists every Go entry, `git pu` finds Push.
@@ -359,6 +375,18 @@ Enforced by `a_group_named_first_comes_first_and_whole`.
 dimmed, before the caret: `repo`, then `branch`, then `target`. Backspace on an empty field
 takes the last answer back into it, and on the first question returns to the entries.
 Enforced by `backspace_on_an_empty_query_takes_the_last_answer_back`.
+
+**A session, a worktree, a kind and a namespace are one chord away.** `alt+s` opens the
+palette on the other open sessions by title and id, `alt+w` on the session's worktrees as
+`repo/branch`. `alt+k` opens it on the kinds the session's
+contexts serve, each with its short names and its group; a short name typed whole comes
+first, and Enter lists the kind. `alt+n` opens the namespace panel, `alt+c` the context
+panel.
+Enforced by `alt_s_picks_another_open_session_by_its_title_or_its_id`,
+`alt_w_picks_a_worktree_by_repo_and_branch_ranked`,
+`alt_k_picks_a_kind_by_its_name_its_short_name_or_its_group_and_lists_it`,
+`alt_n_then_a_ranked_query_and_enter_shows_that_namespace_alone_and_space_adds_one` and
+`alt_c_opens_the_context_panel_and_again_shuts_it`.
 
 **`#` searches files.** A query that starts with `#` lists the selected worktree's files, a
 match in the file name first, and opens the one picked on the Files tab.
@@ -385,7 +413,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   by value, and a second click turns the order round; its edge drags the column's width,
   kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
   `bil-eu-st` keeps `billing-eu-staging` — and `label=value` words the server filters
-  on. `ctrl+shift+n` opens the namespace panel. No rule stands under the header; a row under
+  on. `alt+c` opens the context panel, `alt+n` the namespace panel, `alt+k` the kind palette. No rule stands under the header; a row under
   the pointer or selected stands on a rounded ground, as the rail's rows do. The list's tab
   and each open object's are glass tabs as the Files tab's are, an object's with its ×, no
   rule under them; the find bar is a rounded field.
@@ -436,14 +464,12 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
-- **Sidebar.** A search that narrows the kinds — `ctrl+shift+p`; a word in a kind, a
-  heading or an API group, `rbac/role` a heading and a kind — then the kinds the contexts
-  serve, indented under headings that fold: workloads, network, config, storage, RBAC and
-  other for Kubernetes' own, one a CRD group by its name, then cluster for the built-in
-  kinds not namespaced. In the search, ↑ and ↓ step through the headings and the kinds;
-  Enter folds a heading or lists a kind. No counts, no health marks. The search is a
-  rounded field, as the files' search is; a heading or a kind under the pointer lights on
-  glass, and the kind shown stands on a rounded ground.
+- **Sidebar.** The kinds the contexts serve, indented under headings that fold: workloads,
+  network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by its
+  name, then cluster for the built-in kinds not namespaced. ↑ and ↓ step through the
+  headings and the kinds; Enter folds a heading or lists a kind. No counts, no health
+  marks. A heading or a kind under the pointer lights on glass, and the kind shown stands
+  on a rounded ground.
 
 ### Review sheet
 

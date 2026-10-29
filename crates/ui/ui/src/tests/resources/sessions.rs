@@ -50,17 +50,14 @@ fn each_session_keeps_its_own_object_tabs() {
 fn a_session_left_while_searching_comes_back_with_no_search_holding_the_keys() {
     let (mut app, mut ui) = super::listing();
     ui.settle(&app);
-    (ui.session.resources.typing, ui.session.resources.filtering) = (true, true);
+    ui.session.resources.typing = true;
     let (a, b) = (SessionId::new("a"), SessionId::new("b"));
     app.session.select(&b, Timestamp::new(0));
     ui.settle(&app);
     app.session.select(&a, Timestamp::new(0));
     ui.settle(&app);
     let held = &ui.session.resources;
-    assert!(
-        !held.typing && !held.filtering,
-        "the searches let go of the keys"
-    );
+    assert!(!held.typing, "the search lets go of the keys");
 }
 
 #[test]

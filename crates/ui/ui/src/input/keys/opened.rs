@@ -1,4 +1,4 @@
-//! The open files' and objects' tabs from the keyboard: the next, the previous, the one closed.
+//! The open files', objects' and terminals' tabs from the keyboard: the next, the previous, the one closed.
 
 use groove_controllers::{AppState, Command};
 
@@ -65,4 +65,22 @@ fn objects(action: Action, ui: &mut Ui) {
         _ => (at + len - 1) % len,
     };
     (held.showing, held.typing) = (next.checked_sub(1), false);
+}
+
+/// The chord's action on the terminals' tabs; `None` for another.
+pub(super) fn in_terminal(
+    (key, mods): (Key, Modifiers),
+    app: &AppState,
+    keymap: &Keymap,
+) -> Option<Vec<Command>> {
+    let action = [Action::CloseOpen, Action::NextOpen, Action::PreviousOpen]
+        .into_iter()
+        .find(|one| keymap.is(*one, key, mods))?;
+    if action != Action::CloseOpen {
+        return Some(super::app::terminal_tab(app, action == Action::NextOpen));
+    }
+    let session = app.session.selected.clone()?;
+    let tab = app.shell.shells(&session)?.selected?;
+    let close = groove_controllers::shell::Command::CloseTab { session, tab };
+    Some(vec![Command::Shell(close)])
 }

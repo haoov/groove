@@ -1,7 +1,7 @@
 //! What a prompt offers to pick: clones, sessions, repos, worktrees, and a base branch.
 
 use groove_controllers::{AppState, session_service::Open};
-use groove_types::RepoId;
+use groove_types::{RepoId, SessionId};
 
 use super::{CLONE, CLONE_LABEL, Prompt};
 
@@ -33,6 +33,19 @@ pub(super) fn session_choices(app: &AppState) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Every open session but `current`, as the rail lists them.
+pub(super) fn open_choices(app: &AppState, current: &SessionId) -> Vec<(String, String)> {
+    let others = app
+        .session
+        .open
+        .iter()
+        .filter(|one| one.session.id != *current);
+    let label = |one: &Open| format!("{} \u{b7} {}", one.session.title, one.session.id);
+    others
+        .map(|one| (label(one), one.session.id.to_string()))
+        .collect()
+}
+
 pub(super) fn repo_choices(open: &Open) -> Vec<(String, String)> {
     open.repos
         .iter()
@@ -45,7 +58,7 @@ pub(super) fn worktree_choices(open: &Open) -> Vec<(String, String)> {
         .iter()
         .map(|w| {
             let project = open.repo_of(w).map_or("?", |r| r.project.as_str());
-            (format!("{project} · {}", w.branch), w.id.to_string())
+            (format!("{project}/{}", w.branch), w.id.to_string())
         })
         .collect()
 }
@@ -64,5 +77,6 @@ pub(super) fn base_prompt(app: &AppState, repo: &RepoId) -> Prompt {
         options: heads,
         free: true,
         allow_empty: true,
+        exact: false,
     }
 }

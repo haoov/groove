@@ -53,6 +53,8 @@ pub struct KubeKind {
     pub namespaced: bool,
     /// It can be listed and watched.
     pub watchable: bool,
+    /// What kubectl takes for it too: `po`, `deploy`.
+    pub short_names: Vec<String>,
 }
 
 /// What one watcher reads: a kind of a context, in one namespace or across the cluster.

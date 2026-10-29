@@ -95,6 +95,7 @@ fn a_key_names_one_object_only_by_its_name_field() {
         plural: "pods".into(),
         namespaced: true,
         watchable: true,
+        short_names: Vec::new(),
     };
     let named = crate::FollowKey::named("kind", &pods, Some("shop"), "api-0");
     assert_eq!(named.named_one(), Some("api-0"));

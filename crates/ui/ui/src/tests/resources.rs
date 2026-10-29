@@ -33,6 +33,7 @@ pub(super) fn kind(group: &str, name: &str, plural: &str, namespaced: bool) -> K
         plural: plural.into(),
         namespaced,
         watchable: true,
+        short_names: Vec::new(),
     }
 }
 

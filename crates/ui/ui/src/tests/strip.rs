@@ -182,11 +182,7 @@ fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
         .and_then(|one| one.worktrees.first())
         .map(|one| one.id.clone());
     let worktree = Target::Worktree(worktree.expect("a worktree"));
-    for target in [
-        Target::Picker(crate::hit::Picks::Repo),
-        Target::ShellSplit,
-        worktree,
-    ] {
+    for target in [Target::ShellSplit, worktree] {
         ui.hover = Some(target.clone());
         let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
         let at = hits.rect_of(&target).expect("drawn");

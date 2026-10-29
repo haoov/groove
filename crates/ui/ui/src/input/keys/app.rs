@@ -1,25 +1,29 @@
 //! The app's own ring: what an action does from any pane.
 
-use groove_controllers::{AppState, Command, session, shell, workspace};
+use groove_controllers::{AppState, Command, cluster, session, shell, workspace};
 
 use super::super::Key;
 use super::panes::in_rail;
+use crate::hit::Picks;
 use crate::keymap::Action;
-use crate::palette::Palette;
+use crate::palette::{Action as FlowAction, Flow, Palette};
 use crate::views::session::Tab;
+use crate::views::session::resources::Scoping;
 use crate::{Focus, Grid, Overlay, Surface, Ui};
 
 pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let selected = app.session.selected.clone();
     match action {
         Action::Palette => return palette(ui),
+        Action::FindFile => return files(ui),
+        Action::SelectNamespace | Action::SelectContext => return scope(ui, app, action),
+        Action::SelectKind => return kinds(ui, app),
+        Action::SelectWorktree | Action::SelectSession => return flowed(action, ui, app),
         Action::Settings if ui.settings.open => return ui.close_settings(),
         Action::Settings => return ui.open_settings(),
         Action::Board => return board(ui),
-        Action::NewExplorer => {
-            let open = session::Command::OpenExplorer { title: None };
-            return vec![Command::Session(open)];
-        }
+        Action::BoardLive | Action::BoardNext | Action::BoardReview => return column(action, ui),
+        Action::NewExplorer => return new_explorer(),
         Action::CloseSession => {
             let close = selected.map(|session| session::Command::Close { session });
             return close.map(Command::Session).into_iter().collect();
@@ -36,7 +40,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         }
         Action::FocusRail => ui.focus = Focus::Rail,
         Action::FocusAgent => ui.focus = Focus::Agent,
-        Action::FocusWorkspace => ui.focus = Focus::Workspace,
+        Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
         Action::NextTab | Action::PreviousTab => {
             let forward = action == Action::NextTab;
@@ -45,7 +49,6 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             }
             ui.session.tab = stepped_tab(ui.session.tab, forward, holds_clusters(app));
         }
-        Action::FoldSidebar => ui.session.folded = !ui.session.folded,
         Action::Overview => ui.session.tab = Tab::Overview,
         Action::Diff => ui.session.tab = Tab::Diff,
         Action::Files => ui.session.tab = Tab::Files,
@@ -74,6 +77,22 @@ fn on_board(action: Action, ui: &mut Ui) {
     };
 }
 
+/// The board up on one of its columns, the keys on it.
+fn column(action: Action, ui: &mut Ui) -> Vec<Command> {
+    use crate::views::board::List;
+    let list = match action {
+        Action::BoardLive => List::Live,
+        Action::BoardNext => List::Next,
+        _ => List::Review,
+    };
+    let reads = match ui.surface {
+        Surface::Board => Vec::new(),
+        Surface::Session => crate::input::pointer::board_reads(),
+    };
+    (ui.surface, ui.board.list, ui.focus) = (Surface::Board, Some(list), Focus::Workspace);
+    reads
+}
+
 /// The palette, or closed when it stands open.
 fn palette(ui: &mut Ui) -> Vec<Command> {
     if ui.close(|one| matches!(one, Overlay::Palette(_))).is_some() {
@@ -81,6 +100,74 @@ fn palette(ui: &mut Ui) -> Vec<Command> {
     }
     ui.overlay = Some(Overlay::Palette(Palette::default()));
     vec![Command::Session(session::Command::ListRepos)]
+}
+
+/// The scope panel asked for, or closed when it stands open.
+fn scope(ui: &mut Ui, app: &AppState, action: Action) -> Vec<Command> {
+    let Some(open) = app.session.selected() else {
+        return Vec::new();
+    };
+    let scoping = match action {
+        Action::SelectContext => Scoping::new(Picks::Contexts),
+        _ => Scoping::asked(open),
+    };
+    let same = |one: &Overlay| matches!(one, Overlay::Scope(shown) if shown.which == scoping.which);
+    if ui.close(same).is_some() {
+        return Vec::new();
+    }
+    ui.surface = Surface::Session;
+    let (scoping, commands) = scoping.opened(open);
+    ui.overlay = Some(Overlay::Scope(scoping));
+    commands
+}
+
+/// The palette on the kinds the session's contexts serve, those not yet known asked for.
+pub(super) fn kinds(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let Some(open) = app.session.selected().filter(|one| one.holds_clusters()) else {
+        return Vec::new();
+    };
+    ui.surface = Surface::Session;
+    let flow = Flow::new(FlowAction::PickKind, open.session.id.clone());
+    ui.overlay = Some(Overlay::Palette(Palette {
+        flow: Some(flow),
+        ..Palette::default()
+    }));
+    let store = &app.cluster.store;
+    let unknown = crate::views::session::resources::contexts(open)
+        .into_iter()
+        .filter(|one| store.kinds(one).is_none() && !store.discovering(one));
+    let discover = |context: &str| cluster::Command::Discover {
+        context: context.to_string(),
+        again: false,
+    };
+    unknown.map(|one| Command::Cluster(discover(one))).collect()
+}
+
+/// The palette on the session's worktrees, as `repo/branch`, or on the other open sessions.
+fn flowed(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let open = app.session.selected();
+    let flow = match action {
+        Action::SelectSession => {
+            let session = open.map(|one| one.session.id.clone());
+            let session = session.unwrap_or_else(|| groove_types::SessionId::new(""));
+            Flow::new(FlowAction::SelectSession, session)
+        }
+        _ => match open.filter(|one| !one.worktrees.is_empty()) {
+            Some(open) => Flow::new(FlowAction::SelectWorktree, open.session.id.clone()),
+            None => return Vec::new(),
+        },
+    };
+    ui.surface = Surface::Session;
+    ui.overlay = Some(Overlay::Palette(Palette {
+        flow: Some(flow),
+        ..Palette::default()
+    }));
+    Vec::new()
+}
+
+fn new_explorer() -> Vec<Command> {
+    let open = session::Command::OpenExplorer { title: None };
+    vec![Command::Session(open)]
 }
 
 /// The board, or the session it was opened from.
@@ -93,6 +180,24 @@ fn board(ui: &mut Ui) -> Vec<Command> {
         Surface::Board => crate::input::pointer::board_reads(),
         Surface::Session => Vec::new(),
     }
+}
+
+/// The workspace unfolded, then given the keys, then folded away under the agent.
+fn workspace(ui: &mut Ui) {
+    let held = !ui.session.stowed && ui.focus == Focus::Workspace;
+    ui.session.stowed = held;
+    ui.focus = match held {
+        true => Focus::Agent,
+        false => Focus::Workspace,
+    };
+}
+
+/// The palette on the selected worktree's files.
+fn files(ui: &mut Ui) -> Vec<Command> {
+    let mut palette = Palette::default();
+    palette.query.set("#");
+    ui.overlay = Some(Overlay::Palette(palette));
+    vec![Command::Workspace(workspace::Command::ListPaths)]
 }
 
 /// The sidebar unfolded and given the keys, or folded away when it has them.
@@ -168,7 +273,7 @@ fn stepped_tab(tab: Tab, forward: bool, clusters: bool) -> Tab {
 }
 
 /// The selected session's next or previous terminal tab, from the last back to the first.
-fn terminal_tab(app: &AppState, forward: bool) -> Vec<Command> {
+pub(super) fn terminal_tab(app: &AppState, forward: bool) -> Vec<Command> {
     let Some(session) = app.session.selected.clone() else {
         return Vec::new();
     };

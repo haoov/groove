@@ -25,6 +25,7 @@ fn a_built_in_kind_stands_under_its_heading_a_crd_under_its_group() {
         plural: String::new(),
         namespaced,
         watchable: true,
+        short_names: Vec::new(),
     };
     let builtin = KindHeading::Builtin;
     let cases = [

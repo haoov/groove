@@ -11,7 +11,7 @@ pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
         if let Some(find) = ui.session.find.as_mut() {
             find.typing = false;
         }
-        (ui.session.resources.typing, ui.session.resources.filtering) = (false, false);
+        ui.session.resources.typing = false;
     }
 }
 
@@ -47,7 +47,6 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
-            | Target::ResourceFilter
             | Target::ResourceKind(_)
             | Target::ResourceGroup(_)
             | Target::ResourceSort(_)

@@ -4,7 +4,7 @@
 use groove_controllers::config_service::Preference;
 use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command, agent, config, task, workspace};
-use groove_types::{ApprovalId, DiffView, SessionKind, ThemeName};
+use groove_types::{ApprovalId, DiffMode, DiffView, SessionKind, ThemeName};
 
 use super::{Entry, Run};
 use crate::keymap::Action;
@@ -16,6 +16,8 @@ pub enum Act {
     /// What the keymap action does from its chord.
     Key(Action),
     View(DiffView),
+    /// What the diff is read against: the base or the local changes.
+    Mode(DiffMode),
     /// A note on the caret's line of the open file.
     Note,
     Notes(Showing),
@@ -25,6 +27,8 @@ pub enum Act {
     Open(String),
     /// Every change of the worktree thrown away, once confirmed.
     Discard,
+    /// The kind a choice of *Pick a kind* names, listed.
+    Kind(String),
 }
 
 impl Act {
@@ -33,11 +37,14 @@ impl Act {
             Act::Key(action) => crate::keymap::id_of(*action),
             Act::View(DiffView::Inline) => "diff.inline",
             Act::View(DiffView::Split) => "diff.split",
+            Act::Mode(DiffMode::Base) => "diff.base",
+            Act::Mode(DiffMode::Working) => "diff.local",
             Act::Note => "notes.add",
             Act::Notes(_) => "notes.show",
             Act::Examine(_) => "agent.review",
             Act::Open(_) => "workspace.open_file",
             Act::Discard => "workspace.discard_all",
+            Act::Kind(_) => "resources.select_kind",
         }
     }
 }
@@ -87,11 +94,6 @@ fn going(open: &Open) -> Vec<Entry> {
         out.push(act("Go", "Kubernetes", Act::Key(Action::Resources)));
     }
     out.extend([
-        act(
-            "Go",
-            "Show or hide the sidebar",
-            Act::Key(Action::FoldSidebar),
-        ),
         act("Go", "Terminals", Act::Key(Action::Terminals)),
         act("Go", "Keys to the rail", Act::Key(Action::FocusRail)),
         act("Go", "Keys to the agent", Act::Key(Action::FocusAgent)),
@@ -107,7 +109,7 @@ fn going(open: &Open) -> Vec<Entry> {
     out
 }
 
-/// The diff's two views, while a worktree is selected.
+/// The diff's two views and its two modes, while a worktree is selected.
 fn diffing(app: &AppState) -> Vec<Entry> {
     if app.session.selected_worktree().is_none() {
         return Vec::new();
@@ -116,6 +118,8 @@ fn diffing(app: &AppState) -> Vec<Entry> {
     vec![
         act("Diff", "Inline view", Act::View(DiffView::Inline)),
         act("Diff", "Split view", Act::View(DiffView::Split)),
+        act("Diff", "Against the base", Act::Mode(DiffMode::Base)),
+        act("Diff", "Local changes", Act::Mode(DiffMode::Working)),
         command("Code", "Restart the language servers", restart),
     ]
 }

@@ -1,4 +1,4 @@
-//! The palette's reach: the MR, the skills, the discard, and how its input line stands.
+//! The palette's reach: the MR, the skills, the discard, the diff's mode, and how its input line stands.
 
 use groove_controllers::AppState;
 
@@ -51,7 +51,7 @@ fn discard_every_change_asks_first() {
 fn the_input_line_stands_taller_than_a_row_and_hints_at_files() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let (frame, _) = view(
         &app,
         &ui,
@@ -96,7 +96,7 @@ fn a_file_found_in_pieces_lights_each_piece_and_the_whole_run_ranks_first() {
     let paths = ["factories/test_keycloak.py", "factories/keycloak.py"].map(file);
     app.workspace.set_paths(paths.to_vec());
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     crate::tests::typed("#factories/keycloak", &mut ui, &app);
     let rows = ui.palette().unwrap().rows(&app);
     assert_eq!(
@@ -128,7 +128,7 @@ fn a_file_found_in_pieces_lights_each_piece_and_the_whole_run_ranks_first() {
 fn a_picker_lights_its_fuzzy_letters() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     crate::tests::typed("add work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     crate::tests::typed("mg", &mut ui, &app);
@@ -148,4 +148,20 @@ fn a_picker_lights_its_fuzzy_letters() {
         .map(|t| t.text.clone())
         .collect();
     assert_eq!(lit, ["m", "g"], "a word start each");
+}
+
+#[test]
+fn the_palette_reads_the_diff_against_the_base_or_the_local_changes() {
+    let app = full_app();
+    let diff = grouped(&app, "Diff");
+    assert!(diff.contains(&"Against the base".to_string()), "{diff:?}");
+    let mut ui = Ui::default();
+    let mut palette = Palette::default();
+    typed_into(&mut palette, "local changes", &app);
+    let outcome = palette.key(Key::Enter, &app);
+    let asked = ui.closed_palette(outcome, &app);
+    let mode = groove_types::DiffMode::Working;
+    let set = groove_controllers::workspace::Command::SetMode { mode };
+    assert_eq!(asked, [groove_controllers::Command::Workspace(set)]);
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Diff);
 }
