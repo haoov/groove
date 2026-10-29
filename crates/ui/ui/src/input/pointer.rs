@@ -23,6 +23,7 @@ use groove_types::DiffView;
 
 use self::board::{carried, opened_session, takes};
 pub(super) use self::board::{dropped, opened_from_board, reads as board_reads};
+pub(super) use self::drag::nudged;
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
 use self::menu::{chosen, lose, palette_row, select_worktree};

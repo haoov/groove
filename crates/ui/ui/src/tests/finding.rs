@@ -57,32 +57,26 @@ fn the_bar_opens_on_the_chord_and_finds_as_it_is_typed() {
 }
 
 #[test]
-fn enter_hands_the_keyboard_back_and_the_bar_stays() {
-    let app = app();
-    let mut ui = on_code();
-    press(Key::Char('f'), ctrl(), &mut ui, &app);
-    typed("one", &mut ui, &app);
-    press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    let find = ui.session.find.as_ref().expect("the bar stays up");
-    assert!(!find.typing, "typing goes to the code now");
-    assert_eq!(find.query.text(), "one", "and it keeps what was searched");
-}
-
-#[test]
-fn the_chords_step_the_matches_and_wrap() {
+fn enter_and_shift_enter_step_the_matches_and_wrap() {
     let app = app();
     let mut ui = on_code();
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("one", &mut ui, &app);
     let at = |ui: &Ui| ui.session.find.as_ref().expect("the bar").at;
-    press(Key::Char('n'), ctrl(), &mut ui, &app);
+    let shift = Modifiers {
+        shift: true,
+        ..Modifiers::default()
+    };
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(at(&ui), 1);
-    press(Key::Char('n'), ctrl(), &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(at(&ui), 2);
-    press(Key::Char('n'), ctrl(), &mut ui, &app);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(at(&ui), 0, "the last match wraps to the first");
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Enter, shift, &mut ui, &app);
     assert_eq!(at(&ui), 2, "and back the other way");
+    let find = ui.session.find.as_ref().expect("the bar stays up");
+    assert!(find.typing, "and keeps the keys");
 }
 
 #[test]
@@ -137,7 +131,7 @@ fn a_match_in_the_open_file_is_held_by_the_caret() {
     let mut ui = on_code();
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("one", &mut ui, &app);
-    let commands = press(Key::Char('n'), ctrl(), &mut ui, &app);
+    let commands = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     let ids: Vec<&str> = commands.iter().map(|command| command.id()).collect();
     assert_eq!(
         ids,
@@ -277,8 +271,8 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
     );
 
     typed("one", &mut ui, &app);
-    press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    assert_eq!(carets(&ui), 1, "enter hands it back");
+    press(Key::Escape, Modifiers::default(), &mut ui, &app);
+    assert_eq!(carets(&ui), 1, "escape hands it back");
 }
 
 #[test]

@@ -24,10 +24,22 @@ the rail only as its attention count.
 - **Selection is a background**: a rounded ground, one step above the hover's. A selected
   tab is held the same way. In the region that has the keys it takes the accent; elsewhere
   it stays neutral. The agent and a terminal show the keys by a solid cursor.
-- **A region is one chord away.** `alt+1` to `alt+4` hand the keys to the rail, the agent,
-  the workspace and the sidebar; the terminals keep their own chord. A second press folds
-  the sidebar away. Enforced by `a_second_press_folds_the_sidebar_away`.
-- **A list walks from the keyboard.** In the sidebar the arrows step through the rows, Enter
+- **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
+  rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
+  workspace and the sidebar unfold first, and a press while they hold the keys folds them
+  away. `ctrl+alt` with `h`, `j`, `k` or `l` resizes the region that holds the keys.
+  Enforced by `alt_and_a_region_s_letter_hand_it_the_keys`,
+  `a_second_press_folds_the_sidebar_away`,
+  `alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it` and
+  `ctrl_alt_and_a_direction_resize_the_focused_pane`.
+- **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
+  the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
+  closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
+  agent's and the terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
+  Enforced by `alt_shift_q_closes_the_session`.
+- **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
+  palette's included, as the arrows do. Enforced by
+  `ctrl_j_and_ctrl_k_walk_a_list_as_the_arrows_do`. In the sidebar the arrows step through the rows, Enter
   does what a click does, Space stages a changed file, Left and Right fold a folder, and
   `[` and `]` change the list.
   Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
@@ -36,11 +48,12 @@ the rail only as its attention count.
   workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
 - **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter opens
   the kind palette on it. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
-  its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files or objects,
-  `ctrl+w` closes the one shown.
-  Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs`.
-- **The board walks too.** `alt+1` is the rail, `alt+2` to `alt+4` the Live, Up next and
-  Review columns. The arrows walk the column; Enter, or a click, opens the session and goes
+  its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files, objects or
+  terminals, `ctrl+w` closes the one shown.
+  Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs` and
+  `in_a_terminal_ctrl_tab_steps_its_tabs_and_ctrl_w_closes_one`.
+- **The board walks too.** `alt+r` is the rail, `alt+a`, `alt+o` and `alt+e` the Live, Up
+  next and Review columns. The arrows walk the column; Enter, or a click, opens the session and goes
   to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
   Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
@@ -221,7 +234,7 @@ Enforced by `the_folded_drawer_is_a_capsule_as_narrow_as_its_bar`,
 The rail, the agent pane and the sidebar each have a width the user drags, kept between
 runs. The strip takes what is left, folded or open. A boundary moves the two parts it stands
 between and nothing else. The sidebar folds from the info line's far end or with
-`alt+shift+b`.
+`alt+e`.
 
 ### Workspace
 
@@ -292,8 +305,10 @@ writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
 surface, `ctrl+f` floats a glass bar at the top right of the rows, with the count at its
-end; enter hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc
-ends it. `ctrl+shift+p` opens a file by its path.
+end; enter and shift+enter step to the next and the previous match, esc ends it and leaves
+the caret on the match. `ctrl+p` opens a file by its path, `alt+f` the palette on the
+worktree's files. Enforced by `enter_and_shift_enter_step_the_matches_and_wrap` and
+`alt_f_opens_the_palette_on_the_worktree_s_files`.
 
 **Finding your way in a big change.** Three answers, and none of them is a bigger tree:
 

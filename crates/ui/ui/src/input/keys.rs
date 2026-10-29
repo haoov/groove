@@ -6,6 +6,7 @@ mod bar;
 mod board;
 mod filter;
 mod listed;
+mod moves;
 mod naming;
 mod noting;
 mod offered;
@@ -51,7 +52,12 @@ pub(super) fn key_input(
         ui.overlay = None;
         return Vec::new();
     }
+    let (key, mods) = moves::arrowed((key, mods), ui, app, &keymap);
     if let Some(action) = keymap.app(key, mods) {
+        if let Some(nudge) = moves::nudge(action) {
+            super::pointer::nudged(ui, nudge, seen.1);
+            return Vec::new();
+        }
         return app::run(action, ui, app);
     }
     if let Some(commands) = scope::in_scope(key, mods, ui, app) {
@@ -136,6 +142,11 @@ fn in_pane(
     }
     if ui.focus == Focus::Workspace
         && let Some(commands) = offered::in_list((key, mods), ui, app)
+    {
+        return commands;
+    }
+    if ui.focus == Focus::Terminal
+        && let Some(commands) = opened::in_terminal((key, mods), app, keymap)
     {
         return commands;
     }

@@ -52,7 +52,7 @@ fn keyed(key: Key) -> Option<Mark> {
         Key::Diff => Mark::Review,
         Key::Files => Mark::Folder,
         Key::Resources | Key::SelectNamespace | Key::SelectContext => Mark::Cluster,
-        Key::FoldSidebar | Key::FocusSidebar | Key::FocusRail => Mark::Sidebar,
+        Key::FocusSidebar | Key::FocusRail => Mark::Sidebar,
         Key::FocusAgent => Mark::Agent,
         Key::FocusWorkspace => Mark::File,
         Key::Terminals | Key::NewTerminal => Mark::Terminal,

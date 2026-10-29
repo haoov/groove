@@ -327,7 +327,7 @@ fn the_board_s_columns_walk_by_key_and_enter_goes_or_stays() {
     use crate::input::Modifiers;
     let app = waiting();
     let (mut ui, _) = on_board(&app);
-    press(Key::Char('2'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char('a'), crate::tests::ALT, &mut ui, &app);
     assert_eq!(ui.board.list, Some(crate::views::board::List::Live));
     press(Key::Down, Modifiers::default(), &mut ui, &app);
     assert!(
@@ -349,11 +349,11 @@ fn the_board_s_columns_walk_by_key_and_enter_goes_or_stays() {
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(ui.surface, crate::Surface::Session, "Enter goes to it");
     ui.surface = crate::Surface::Board;
-    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     press(Key::Down, Modifiers::default(), &mut ui, &app);
     let opened = press(Key::Enter, ctrl, &mut ui, &app);
     assert_eq!(opened[0].id(), "session.open_review");
     assert_eq!(ui.surface, crate::Surface::Board);
-    press(Key::Char('1'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char('r'), crate::tests::ALT, &mut ui, &app);
     assert_eq!(ui.focus, crate::Focus::Rail);
 }

@@ -15,6 +15,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let selected = app.session.selected.clone();
     match action {
         Action::Palette => return palette(ui),
+        Action::FindFile => return files(ui),
         Action::SelectNamespace | Action::SelectContext => return scope(ui, app, action),
         Action::SelectKind => return kinds(ui, app),
         Action::SelectWorktree | Action::SelectSession => return flowed(action, ui, app),
@@ -38,7 +39,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         }
         Action::FocusRail => ui.focus = Focus::Rail,
         Action::FocusAgent => ui.focus = Focus::Agent,
-        Action::FocusWorkspace => ui.focus = Focus::Workspace,
+        Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
         Action::NextTab | Action::PreviousTab => {
             let forward = action == Action::NextTab;
@@ -47,7 +48,6 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             }
             ui.session.tab = stepped_tab(ui.session.tab, forward, holds_clusters(app));
         }
-        Action::FoldSidebar => ui.session.folded = !ui.session.folded,
         Action::Overview => ui.session.tab = Tab::Overview,
         Action::Diff => ui.session.tab = Tab::Diff,
         Action::Files => ui.session.tab = Tab::Files,
@@ -165,6 +165,24 @@ fn board(ui: &mut Ui) -> Vec<Command> {
     }
 }
 
+/// The workspace unfolded, then given the keys, then folded away under the agent.
+fn workspace(ui: &mut Ui) {
+    let held = !ui.session.stowed && ui.focus == Focus::Workspace;
+    ui.session.stowed = held;
+    ui.focus = match held {
+        true => Focus::Agent,
+        false => Focus::Workspace,
+    };
+}
+
+/// The palette on the selected worktree's files.
+fn files(ui: &mut Ui) -> Vec<Command> {
+    let mut palette = Palette::default();
+    palette.query.set("#");
+    ui.overlay = Some(Overlay::Palette(palette));
+    vec![Command::Workspace(workspace::Command::ListPaths)]
+}
+
 /// The sidebar unfolded and given the keys, or folded away when it has them.
 fn sidebar(ui: &mut Ui) {
     if !ui.session.tab.has_sidebar() {
@@ -238,7 +256,7 @@ fn stepped_tab(tab: Tab, forward: bool, clusters: bool) -> Tab {
 }
 
 /// The selected session's next or previous terminal tab, from the last back to the first.
-fn terminal_tab(app: &AppState, forward: bool) -> Vec<Command> {
+pub(super) fn terminal_tab(app: &AppState, forward: bool) -> Vec<Command> {
     let Some(session) = app.session.selected.clone() else {
         return Vec::new();
     };

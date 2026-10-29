@@ -293,7 +293,7 @@ fn folding_the_sidebar_gives_its_room_to_the_workspace_and_no_one_else() {
     let sm = window().tokens().sm;
     assert_eq!(folded.workspace.w, open.workspace.w + open.sidebar.w + sm);
 
-    press(Key::Char('b'), ALT_SHIFT, &mut ui, &app);
+    press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     assert!(!ui.session.folded, "the chord brings it back");
     assert_eq!(Layout::of(window(), &ui).sidebar.w, open.sidebar.w);
 }
@@ -327,7 +327,7 @@ fn folding_the_sidebar_asks_nothing_of_the_worktree() {
     let fold = hits.rect_of(&Target::Fold).expect("the fold");
     assert!(click(fold, &mut ui, &app, &hits).is_empty());
     assert!(click(fold, &mut ui, &app, &hits).is_empty());
-    assert!(press(Key::Char('b'), ALT_SHIFT, &mut ui, &app).is_empty());
+    assert!(press(Key::Char('e'), crate::tests::ALT, &mut ui, &app).is_empty());
 }
 
 #[test]

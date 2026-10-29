@@ -130,15 +130,15 @@ fn a_click_on_the_overview_takes_the_keys_from_the_agent() {
 }
 
 #[test]
-fn alt_and_a_number_hand_the_keys_to_a_region() {
+fn alt_and_a_region_s_letter_hand_it_the_keys() {
     let app = full_app();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     for (key, focus) in [
-        ('1', Focus::Rail),
-        ('2', Focus::Agent),
-        ('3', Focus::Workspace),
-        ('4', Focus::Sidebar),
+        ('r', Focus::Rail),
+        ('a', Focus::Agent),
+        ('o', Focus::Workspace),
+        ('e', Focus::Sidebar),
     ] {
         press(Key::Char(key), crate::tests::ALT, &mut ui, &app);
         assert_eq!(ui.focus, focus, "alt+{key}");
@@ -150,16 +150,16 @@ fn a_second_press_folds_the_sidebar_away() {
     let app = full_app();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
-    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     assert!(!ui.session.folded && ui.focus == Focus::Sidebar);
-    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     assert!(ui.session.folded, "folded on the second press");
     assert_eq!(
         ui.focus,
         Focus::Workspace,
         "the keys go back to the workspace"
     );
-    press(Key::Char('4'), crate::tests::ALT, &mut ui, &app);
+    press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     assert!(!ui.session.folded && ui.focus == Focus::Sidebar, "and back");
 }
 

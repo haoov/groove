@@ -90,11 +90,6 @@ fn going(open: &Open) -> Vec<Entry> {
         out.push(act("Go", "Kubernetes", Act::Key(Action::Resources)));
     }
     out.extend([
-        act(
-            "Go",
-            "Show or hide the sidebar",
-            Act::Key(Action::FoldSidebar),
-        ),
         act("Go", "Terminals", Act::Key(Action::Terminals)),
         act("Go", "Keys to the rail", Act::Key(Action::FocusRail)),
         act("Go", "Keys to the agent", Act::Key(Action::FocusAgent)),

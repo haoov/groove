@@ -58,7 +58,7 @@ fn the_every_day_actions_follow_the_session_too() {
         "Overview",
         "Diff",
         "Files",
-        "Show or hide the sidebar",
+        "Keys to the sidebar",
         "Terminals",
         "New terminal",
         "Reload the agent",

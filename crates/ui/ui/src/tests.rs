@@ -5,6 +5,7 @@ mod attaching;
 mod bar;
 mod board;
 mod budget;
+mod chords;
 mod clusters;
 mod completion;
 mod definition;
@@ -70,6 +71,11 @@ const ALT_SHIFT: Modifiers = Modifiers {
     ctrl: false,
     shift: true,
     alt: true,
+};
+const CTRL_ONLY: Modifiers = Modifiers {
+    ctrl: true,
+    shift: false,
+    alt: false,
 };
 const CTRL_SHIFT: Modifiers = Modifiers {
     ctrl: true,

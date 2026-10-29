@@ -43,9 +43,8 @@ pub(super) fn finding(
             ui.session.find = None;
             return Some(Vec::new());
         }
-        key if keymap.is(Action::FindNext, key, mods) => find.step(true),
-        key if keymap.is(Action::FindPrevious, key, mods) => find.step(false),
-        Key::Enter if find.typing => find.typing = false,
+        key if find.typing && keymap.is(Action::FindNext, key, mods) => find.step(true),
+        key if find.typing && keymap.is(Action::FindPrevious, key, mods) => find.step(false),
         key if find.typing => match typing(key, mods, &mut find.query) {
             true => return Some(refound(ui, app, seen)),
             false => return Some(Vec::new()),
