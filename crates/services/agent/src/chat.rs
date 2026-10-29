@@ -57,7 +57,7 @@ impl State {
     pub(crate) fn echoed(&mut self, session: &SessionId, text: String) {
         let followed = self.chats.iter_mut().find(|(id, _)| id == session);
         if let Some((_, followed)) = followed {
-            followed.chat.hear(Heard::Queued(text));
+            followed.chat.hear(Heard::Sent(text));
         }
     }
 

@@ -71,8 +71,7 @@ fn spot(lines: &[Line], (x, y): (f32, f32)) -> Option<(usize, usize)> {
     Some((last, lines[last].chars()))
 }
 
-/// The two ends of what a double click takes under a point: the word, or the spaces or marks
-/// between words; a triple click takes the whole run.
+/// The ends of what a double click takes under a point, its word; a triple click, its whole run.
 pub fn around(lines: &[Line], point: (f32, f32), count: u32) -> Option<((f32, f32), (f32, f32))> {
     let (at, _) = spot(lines, point)?;
     let line = &lines[at];

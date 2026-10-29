@@ -1,5 +1,4 @@
-//! A glance's commands and MCP calls on a card: the last ones by their first line, or, opened,
-//! every one whole with what it gave back.
+//! A glance's commands and MCP calls on a card: the last few, or opened, each whole with its output.
 
 use groove_gfx::{Edges, Rect};
 use groove_types::chat::Run;
@@ -19,10 +18,19 @@ type Said = (Option<String>, String, Role);
 
 /// What leads a call's first line: a prompt for a command, the tool's own name for an MCP call.
 fn lead(run: &Run) -> String {
-    match &run.tool {
-        Some(tool) => tool.rsplit("__").next().unwrap_or(tool).to_string(),
-        None => "$".to_string(),
+    run.tool_name().unwrap_or("$").to_string()
+}
+
+/// How many lines the card holds.
+fn count(ran: &[Run], opened: bool) -> usize {
+    if !opened {
+        return ran.len().min(COMMANDS);
     }
+    let lines = |one: &Run| {
+        let printed = one.output.as_deref().map_or(0, |out| out.lines().count());
+        one.command.lines().count().max(1) + printed
+    };
+    ran.iter().map(lines).sum()
 }
 
 /// The card's lines.
@@ -35,7 +43,11 @@ fn said(ran: &[Run], opened: bool) -> Vec<Said> {
             .enumerate()
             .map(|(at, one)| {
                 let first = one.command.lines().next().unwrap_or_default().to_string();
-                let role = if at == last { Role::Muted } else { Role::Ghost };
+                let role = match (one.failed, at == last) {
+                    (true, _) => Role::Bad,
+                    (false, true) => Role::Muted,
+                    (false, false) => Role::Ghost,
+                };
                 (Some(lead(one)), first, role)
             })
             .collect();
@@ -60,7 +72,7 @@ fn said(ran: &[Run], opened: bool) -> Vec<Said> {
 }
 
 pub(super) fn height(ctx: &Ctx, ran: &[Run], opened: bool) -> f32 {
-    said(ran, opened).len() as f32 * ctx.tokens.code_line + ctx.tokens.sm * 2.0
+    count(ran, opened) as f32 * ctx.tokens.code_line + ctx.tokens.sm * 2.0
 }
 
 /// The card in `room`; a click on it opens or closes it.

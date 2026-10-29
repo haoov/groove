@@ -101,6 +101,19 @@ pub struct AgentUi {
     pub opened: Vec<String>,
 }
 
+impl AgentUi {
+    /// A point on the screen as one of the conversation's own, its scroll taken out.
+    pub fn unscrolled(&self, (x, y): (f32, f32)) -> (f32, f32) {
+        (x, y - self.scroll)
+    }
+
+    /// The ends of what a drag holds of the conversation, on the screen at its scroll.
+    pub fn held(&self) -> Option<((f32, f32), (f32, f32))> {
+        let ((a, b), (c, d)) = self.reading?;
+        Some(((a, b + self.scroll), (c, d + self.scroll)))
+    }
+}
+
 /// What is asked before a change is thrown away.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Losing {

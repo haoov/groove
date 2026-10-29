@@ -102,6 +102,7 @@ impl Ui {
         };
         if session_left {
             (self.session.going, self.session.revealing) = (None, None);
+            (self.agent.reading, self.agent.scroll) = (None, 0.0);
         }
         if session_left && !promoted {
             self.swap_resources(was.0, now.0.clone());

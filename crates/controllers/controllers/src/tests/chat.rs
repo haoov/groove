@@ -67,7 +67,7 @@ fn a_message_sent_from_groove_s_prompt_reaches_the_agent_and_waits_in_the_conver
     });
     let chat = state.agent.chat(&id).unwrap();
     assert_eq!(
-        chat.queued(),
+        chat.sent(),
         ["hello"],
         "shown before the transcript says it"
     );

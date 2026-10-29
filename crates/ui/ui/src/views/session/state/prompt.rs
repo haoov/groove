@@ -25,7 +25,7 @@ impl Prompt {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.buffer.text().is_empty()
+        self.buffer.lines() <= 1 && self.buffer.line(0).is_none_or(|one| one.is_empty())
     }
 
     /// One edit, the caret kept in sight.

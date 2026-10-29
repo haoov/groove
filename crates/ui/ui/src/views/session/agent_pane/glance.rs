@@ -1,5 +1,4 @@
-//! Thinking, looks and commands folded into one row: a mark and count for each, the time they took,
-//! then the card of the commands run.
+//! Thinking, looks, commands and MCP calls folded into one row, with their card under it.
 
 use groove_gfx::{Align, Edges, Rect};
 use groove_types::Hue;

@@ -38,16 +38,14 @@ pub(super) fn acted(
     }
 }
 
-/// A press on the conversation: a selection begins, or takes the word or the run under a second
-/// or third click.
+/// A press on the conversation: a selection begins, or takes the word or run under a 2nd or 3rd click.
 fn reading(ui: &mut Ui, hits: &Hits, point: (f32, f32)) -> Vec<Command> {
-    let scroll = ui.agent.scroll;
     let count = ui.clicked.map_or(1, |click| click.count);
     let (from, to) = match count {
         1 => (point, point),
         count => read::around(hits.read(), point, count).unwrap_or((point, point)),
     };
-    ui.agent.reading = Some(((from.0, from.1 - scroll), (to.0, to.1 - scroll)));
+    ui.agent.reading = Some((ui.agent.unscrolled(from), ui.agent.unscrolled(to)));
     ui.held = Some(Held::Reading);
     Vec::new()
 }
@@ -72,7 +70,7 @@ fn typing(ui: &mut Ui, hits: &Hits, point: (f32, f32), metrics: Metrics) -> Vec<
 pub(super) fn dragged(ui: &mut Ui, hits: &Hits, point: (f32, f32), metrics: Metrics) {
     match ui.held {
         Some(Held::Reading) => {
-            let to = (point.0, point.1 - ui.agent.scroll);
+            let to = ui.agent.unscrolled(point);
             if let Some((_, head)) = ui.agent.reading.as_mut() {
                 *head = to;
             }
@@ -91,11 +89,9 @@ pub(super) fn dragged(ui: &mut Ui, hits: &Hits, point: (f32, f32), metrics: Metr
 
 /// The conversation's text the drag held, to the clipboard.
 pub(in crate::input) fn read_out(ui: &Ui, hits: &Hits) -> Vec<Command> {
-    let Some((from, to)) = ui.agent.reading else {
+    let Some(points) = ui.agent.held() else {
         return Vec::new();
     };
-    let scroll = ui.agent.scroll;
-    let points = ((from.0, from.1 + scroll), (to.0, to.1 + scroll));
     let lines = hits.read();
     let text = read::text(lines, &read::held(lines, points));
     if text.is_empty() {

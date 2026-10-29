@@ -63,7 +63,6 @@ struct Reader {
     strong: usize,
     em: usize,
     link: Option<String>,
-    head: bool,
     cell: usize,
 }
 
@@ -92,9 +91,9 @@ impl Reader {
             Tag::Paragraph if self.item_is_empty() => {}
             Tag::Paragraph => self.begin(Kind::Paragraph),
             Tag::TableHead | Tag::TableRow => {
-                self.head = matches!(tag, Tag::TableHead);
+                let head = matches!(tag, Tag::TableHead);
                 self.cell = 0;
-                self.begin(Kind::Row { head: self.head });
+                self.begin(Kind::Row { head });
             }
             Tag::Heading { level, .. } => self.begin(Kind::Heading(heading(level))),
             Tag::List(start) => {

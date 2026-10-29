@@ -1,5 +1,4 @@
-//! A table's rows laid out: each column as wide as its widest cell, all shrunk to the width when
-//! they do not fit, a cut cell elided.
+//! A table's rows in columns as wide as their widest cell, shrunk to fit, a cut cell elided.
 
 use super::layout::{Ground, Line, Piece, blank, style_of};
 use super::parse::{Block, Kind};

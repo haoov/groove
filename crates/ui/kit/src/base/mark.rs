@@ -77,6 +77,8 @@ pub enum Mark {
     /// The agent thought, and looked at files.
     Thought,
     Looked,
+    /// A file the agent changed.
+    Edited,
 }
 
 impl Mark {
@@ -142,7 +144,7 @@ impl Mark {
             Mark::Folder => Icon::Folder,
             Mark::FolderOpen => Icon::FolderOpen,
             Mark::Routine => Icon::Repeat,
-            Mark::Overview => Icon::Eye,
+            Mark::Overview | Mark::Looked => Icon::Eye,
             Mark::Add => Icon::Plus,
             Mark::Reload => Icon::Notch,
             Mark::Commit => Icon::Check,
@@ -158,7 +160,7 @@ impl Mark {
             Mark::People => Icon::People,
             Mark::Play => Icon::Play,
             Mark::Thought => Icon::Bulb,
-            Mark::Looked => Icon::Eye,
+            Mark::Edited => Icon::Pencil,
         }
     }
 }

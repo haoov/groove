@@ -1,14 +1,14 @@
 //! One row of the conversation: how tall it stands at a width, and how it draws.
 
 use groove_controllers::session_service::Open;
-use groove_gfx::{Align, Edges, Rect};
+use groove_gfx::{Edges, Rect};
 use groove_types::chat::{Edit, Entry, Tool};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::markdown::{blocks, laid, prose};
+use groove_ui_kit::markdown::{self, prose};
 use groove_ui_kit::shape::{band, from_left, from_right};
-use groove_ui_kit::text::{Label, row, wrapped};
-use groove_ui_kit::widgets::{changes, glass_hoverable, glass_tinted, icon};
+use groove_ui_kit::text::{Label, row, rows, wrapped};
+use groove_ui_kit::widgets::{changes, changes_room, glass_hoverable, glass_tinted, lead};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -21,19 +21,13 @@ pub(super) enum Row<'a> {
 }
 
 pub(super) fn height(ctx: &mut Ctx, shown: Row, (width, opened): (f32, &[String])) -> f32 {
-    let (sm, line) = (ctx.tokens.sm, ctx.tokens.line);
     let entry = match shown {
         Row::Entry(entry) => entry,
-        Row::Queued(text) => &Entry::You(text.to_string()),
+        Row::Queued(text) => return bubble_height(ctx, text, width),
     };
     match entry {
-        Entry::You(text) => {
-            let style = ctx.styles.body(Role::Text);
-            let inner = bubble_width(ctx, width) - bubble_pad(ctx) * 2.0;
-            let lines = wrapped(ctx, text, &style, inner);
-            lines.len() as f32 * line + sm * 2.0
-        }
-        Entry::Said(text) => laid(ctx, &blocks(text), width, Role::Text).height,
+        Entry::You(text) => bubble_height(ctx, text, width),
+        Entry::Said(text) => markdown::height(ctx, text, width, Role::Text),
         Entry::Glance(glance) => {
             super::glance::height(ctx, glance, super::glance::opened(glance, opened))
         }
@@ -65,6 +59,12 @@ pub(super) fn draw(
         Entry::Edit(edit) => edited(ctx, open, at, edit),
         Entry::Tool(tool) => called(ctx, at, tool),
     }
+}
+
+fn bubble_height(ctx: &mut Ctx, text: &str, width: f32) -> f32 {
+    let style = ctx.styles.body(Role::Text);
+    let inner = bubble_width(ctx, width) - bubble_pad(ctx) * 2.0;
+    rows(ctx, text, &style, inner) as f32 * ctx.tokens.line + ctx.tokens.sm * 2.0
 }
 
 /// The room a bubble leaves between its rim and its words.
@@ -109,14 +109,17 @@ fn edited(ctx: &mut Ctx, open: &Open, at: Rect, edit: &Edit) {
     let mut room = at;
     let (verb, mark, role) = match edit.created {
         true => ("write", Mark::File, Role::Ok),
-        false => ("edit", Mark::Modified, Role::Warn),
+        false => ("edit", Mark::Edited, Role::Warn),
     };
     lead(ctx, &mut room, mark, role);
     Label::new(verb, ctx.styles.body(Role::Faint)).left(ctx, &mut room, ctx.tokens.sm);
     let shown = super::within(open, &edit.path).map_or_else(|| tail(&edit.path), |(_, rel)| rel);
     let style = ctx.styles.code(Role::Text);
     let counts = edit.patch.map(|one| (one.added, one.removed));
-    let wide = ctx.measure(&shown, &style) + ctx.tokens.md * 2.0 + counted_room(ctx, counts);
+    let counted = counts.map_or(0.0, |counts| {
+        changes_room(ctx, counts, |ctx, role| ctx.styles.code(role))
+    });
+    let wide = ctx.measure(&shown, &style) + ctx.tokens.md * 2.0 + counted;
     let wide = wide.min(room.w);
     let chip = from_left(&mut room, wide, ctx.tokens.sm);
     let line = edit.patch.map_or(1, |one| one.line);
@@ -130,16 +133,6 @@ fn edited(ctx: &mut Ctx, open: &Open, at: Rect, edit: &Edit) {
     if edit.failed {
         Label::new("failed", ctx.styles.small(Role::Bad)).draw(ctx, room);
     }
-}
-
-fn counted_room(ctx: &mut Ctx, counts: Option<(u32, u32)>) -> f32 {
-    let Some((added, removed)) = counts else {
-        return 0.0;
-    };
-    let style = ctx.styles.code(Role::Ok);
-    let words = [format!("+{added}"), format!("-{removed}")];
-    let wide: f32 = words.iter().map(|one| ctx.measure(one, &style)).sum();
-    wide + ctx.tokens.sm * 2.0 + ctx.tokens.md
 }
 
 /// A path outside the session's worktrees, by its last two parts.
@@ -162,12 +155,4 @@ fn called(ctx: &mut Ctx, at: Rect, tool: &Tool) {
     if let Some(detail) = &tool.detail {
         Label::new(detail, ctx.styles.code(Role::Text)).draw(ctx, room);
     }
-}
-
-/// The row's mark at its left.
-fn lead(ctx: &mut Ctx, room: &mut Rect, mark: Mark, role: Role) {
-    let size = ctx.tokens.icon;
-    let slot = from_left(room, size, ctx.tokens.sm);
-    let at = slot.align((size, size), Align::Center, Align::Center);
-    icon(ctx, at, mark, role);
 }

@@ -31,22 +31,25 @@ pub(super) fn draw(
     };
     let room = pane.pad(above);
     ctx.hit(room, Target::Chat);
-    let (entries, queued) = chat.map_or((&[][..], &[][..]), |one| (one.entries(), one.queued()));
+    let none: &[String] = &[];
+    let (entries, queued) = chat.map_or((&[][..], none), |one| (one.entries(), one.queued()));
+    let sent = chat.map_or(none, Chat::sent);
     let mut body = pane;
     from_bottom(&mut body, pane.bottom() - ends + ctx.tokens.md, 0.0);
     let body = body.pad(Edges::xy(ctx.tokens.md, ctx.tokens.sm));
-    if entries.is_empty() && queued.is_empty() {
+    let pending = pending(chat, working);
+    if entries.is_empty() && queued.is_empty() && sent.is_empty() && pending.is_none() {
         let style = ctx.styles.body(Role::Faint);
         return row(ctx, band(body, 0.0, ctx.tokens.row), 0.0, EMPTY, style);
     }
-    let pending = pending(chat, working);
     let mut extent = 0.0;
     let runs = ctx.read(|ctx| {
         ctx.clipped(room, |ctx| {
-            let shown = queued.iter().rev().map(|one| Row::Queued(one));
+            let waiting = queued.iter().chain(sent).rev();
+            let shown = waiting.map(|one| Row::Queued(one));
             let shown = shown.chain(pending.iter().map(Row::Entry));
             let shown = shown.chain(entries.iter().rev().map(Row::Entry));
-            let live = working.then_some(queued.len());
+            let live = working.then_some(queued.len() + sent.len());
             let seen = (open, live, &ui.agent.opened[..]);
             extent = rows(ctx, (seen, shown), ui.agent.scroll, (body, room))
         })
@@ -119,17 +122,23 @@ fn line(ctx: &mut Ctx, run: Run) -> Line {
 
 /// What a drag holds of the conversation, banded under its text.
 fn held(ctx: &mut Ctx, ui: &Ui, room: Rect) {
-    let Some((from, to)) = ui.agent.reading else {
+    let Some(points) = ui.agent.held() else {
         return;
     };
-    let scroll = ui.agent.scroll;
-    let points = ((from.0, from.1 + scroll), (to.0, to.1 + scroll));
-    let lines = ctx.app.hits.read().to_vec();
+    let lines = ctx.app.hits.read();
+    let bands: Vec<(Rect, (f32, f32))> = read::held(lines, points)
+        .into_iter()
+        .map(|(at, start, end)| {
+            (
+                lines[at].rect,
+                (lines[at].edges[start], lines[at].edges[end]),
+            )
+        })
+        .collect();
     let color = ctx.styles.held();
     ctx.clipped(room, |ctx| {
-        for (at, start, end) in read::held(&lines, points) {
-            let line = &lines[at];
-            text_band(ctx, line.rect, (line.edges[start], line.edges[end]), color);
+        for (rect, span) in bands {
+            text_band(ctx, rect, span, color);
         }
     });
 }

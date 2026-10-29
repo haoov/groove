@@ -27,10 +27,7 @@ fn run(command: &str) -> Run {
 }
 
 fn look(at: &str) -> Heard {
-    Heard::Look {
-        id: at.into(),
-        at: at.into(),
-    }
+    Heard::Look(at.into())
 }
 
 #[test]
@@ -168,15 +165,27 @@ fn a_command_keeps_what_it_printed_and_a_sent_message_waits_until_the_transcript
     assert_eq!(glance.ran[0].output.as_deref(), Some("1 failed"));
     assert!(glance.ran[0].failed);
 
+    chat.hear(Heard::Sent("go on".into()));
     chat.hear(Heard::Queued("go on".into()));
-    chat.hear(Heard::Queued("go on".into()));
-    assert_eq!(
-        chat.queued(),
-        ["go on"],
+    assert_eq!(chat.queued(), ["go on"]);
+    assert!(
+        chat.sent().is_empty(),
         "the echo and Claude's own queue are one"
     );
+    chat.hear(Heard::Queued("and then".into()));
+    chat.hear(Heard::Sent("a long paste".into()));
     chat.hear(Heard::You("go on".into()));
-    assert!(chat.queued().is_empty());
+    assert_eq!(chat.queued(), ["and then"]);
+    chat.hear(Heard::You("a long paste, as Claude wrote it".into()));
+    assert!(
+        chat.sent().is_empty(),
+        "the oldest sent goes when nothing says the same"
+    );
+    assert_eq!(
+        chat.queued(),
+        ["and then"],
+        "a message Claude queued waits on"
+    );
 }
 
 #[test]

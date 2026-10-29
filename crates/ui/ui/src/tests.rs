@@ -34,6 +34,7 @@ mod palette_more;
 mod pasting;
 mod pending;
 mod perf;
+mod perf_chat;
 mod perf_editor;
 mod perf_servers;
 mod rail;

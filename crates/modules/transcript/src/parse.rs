@@ -175,10 +175,9 @@ fn used(block: &Value) -> Option<Heard> {
             command: text("command")?,
             about: text("description"),
         },
-        _ if LOOKS.contains(&name) => Heard::Look {
-            id,
-            at: looked_at(input).unwrap_or_else(|| name.to_string()),
-        },
+        _ if LOOKS.contains(&name) => {
+            Heard::Look(looked_at(input).unwrap_or_else(|| name.to_string()))
+        }
         _ if SILENT.contains(&name) => return None,
         _ => Heard::Tool {
             id,

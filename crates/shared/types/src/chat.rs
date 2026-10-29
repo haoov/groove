@@ -1,11 +1,15 @@
 //! The agent's conversation as Groove draws it: what each transcript record says, and the rows it makes.
 
+mod rows;
+
+pub use rows::{Edit, Entry, Glance, Run, Tool};
+
 use crate::Timestamp;
 
 /// The prefix an MCP tool's name carries; its calls fold into a glance.
 const MCP: &str = "mcp__";
 
-/// The rows a conversation keeps at most; the oldest go first.
+/// The rows a conversation keeps at most; past it, the oldest quarter goes at once.
 const MOST: usize = 2000;
 
 /// What one transcript record says, in the order it says it.
@@ -19,10 +23,7 @@ pub enum Heard {
     Said(String),
     Thought,
     /// A tool that only looks, and what it looked at.
-    Look {
-        id: String,
-        at: String,
-    },
+    Look(String),
     Edit {
         id: String,
         path: String,
@@ -40,6 +41,8 @@ pub enum Heard {
     Dequeued(Option<String>),
     /// Every waiting message taken back to be edited.
     Recalled,
+    /// Words sent from Groove's own prompt, before the transcript says them.
+    Sent(String),
     Tool {
         id: String,
         name: String,
@@ -69,67 +72,14 @@ pub struct Patch {
     pub line: u32,
 }
 
-/// One row of the conversation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Entry {
-    You(String),
-    Said(String),
-    /// Thinking, looks, commands and MCP calls back to back, folded into one row.
-    Glance(Glance),
-    Edit(Edit),
-    Tool(Tool),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Edit {
-    pub id: String,
-    pub path: String,
-    pub created: bool,
-    pub patch: Option<Patch>,
-    pub failed: bool,
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Glance {
-    pub thoughts: u32,
-    pub looked: Vec<String>,
-    pub ran: Vec<Run>,
-    /// The last thing glanced was a command or a call.
-    pub running: bool,
-    /// What the last thing glanced does, in a few words.
-    pub doing: Option<String>,
-    /// From the first thing glanced to the record after the last.
-    pub since: Option<Timestamp>,
-    pub until: Option<Timestamp>,
-}
-
-/// A shell command or an MCP tool's call, and what it gave back once it ended.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Run {
-    pub id: String,
-    /// The MCP tool called; none for a shell command.
-    pub tool: Option<String>,
-    /// The command, or what the tool was given.
-    pub command: String,
-    pub output: Option<String>,
-    pub failed: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tool {
-    pub id: String,
-    pub name: String,
-    pub detail: Option<String>,
-    /// `None` while it runs, then whether it failed.
-    pub failed: Option<bool>,
-}
-
 /// A session's conversation, row by row.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Chat {
     entries: Vec<Entry>,
     /// Messages waiting for the agent's turn, shown after the rows.
     queued: Vec<String>,
+    /// Messages sent from Groove that neither the queue nor the transcript says yet.
+    sent: Vec<String>,
     /// When the last record was written.
     now: Option<Timestamp>,
 }
@@ -143,22 +93,26 @@ impl Chat {
         &self.queued
     }
 
+    pub fn sent(&self) -> &[String] {
+        &self.sent
+    }
+
     /// When the last record was written.
     pub fn now(&self) -> Option<Timestamp> {
         self.now
     }
 
-    /// One record's say: a new row, a look or a command folded into the glance before it, or a result on its call.
+    /// One record's say: a new row, a step folded into the glance before it, or a result on its call.
     pub fn hear(&mut self, heard: Heard) {
         let entry = match heard {
             Heard::Clock(at) => return self.clocked(at),
             Heard::You(text) => {
-                self.dequeued(Some(text.clone()));
+                self.said(&text);
                 Entry::You(text)
             }
             Heard::Said(text) => Entry::Said(text),
             Heard::Thought => return self.glanced(|one| one.thoughts += 1),
-            Heard::Look { at, .. } => {
+            Heard::Look(at) => {
                 return self.glanced(|one| {
                     one.doing = Some(format!("read {at}"));
                     one.looked.push(at);
@@ -170,11 +124,14 @@ impl Chat {
                 return self.ran((id, None, command), doing);
             }
             Heard::Tool { id, name, detail } if name.starts_with(MCP) => {
-                let doing = name.rsplit("__").next().unwrap_or(&name).replace('_', " ");
+                let doing = rows::short(&name).replace('_', " ");
                 return self.ran((id, Some(name), detail.unwrap_or_default()), doing);
             }
-            Heard::Queued(text) if self.queued.contains(&text) => return,
-            Heard::Queued(text) => return self.queued.push(text),
+            Heard::Queued(text) => {
+                self.sent.retain(|one| *one != text);
+                return self.queued.push(text);
+            }
+            Heard::Sent(text) => return self.sent.push(text),
             Heard::Dequeued(text) => return self.dequeued(text),
             Heard::Recalled => return self.queued.clear(),
             Heard::Edit { id, path, created } => Entry::Edit(Edit {
@@ -230,6 +187,17 @@ impl Chat {
         }
     }
 
+    /// The user's words in the transcript: the waiting message saying them goes, else the oldest sent.
+    fn said(&mut self, text: &str) {
+        if let Some(at) = self.queued.iter().position(|one| one == text) {
+            self.queued.remove(at);
+        } else if let Some(at) = self.sent.iter().position(|one| one == text) {
+            self.sent.remove(at);
+        } else if !self.sent.is_empty() {
+            self.sent.remove(0);
+        }
+    }
+
     fn dequeued(&mut self, text: Option<String>) {
         let at = match text {
             Some(text) => self.queued.iter().position(|one| *one == text),
@@ -257,8 +225,8 @@ impl Chat {
     }
 
     fn push(&mut self, entry: Entry) {
-        if self.entries.len() == MOST {
-            self.entries.remove(0);
+        if self.entries.len() >= MOST {
+            self.entries.drain(..MOST / 4);
         }
         self.entries.push(entry);
     }
@@ -266,23 +234,4 @@ impl Chat {
 
 fn first_line(text: &str) -> String {
     text.lines().next().unwrap_or_default().to_string()
-}
-
-impl Entry {
-    /// Whether the tool call `id` is one of its own.
-    fn answers(&self, id: &str) -> bool {
-        match self {
-            Entry::Glance(glance) => glance.ran.iter().any(|one| one.id == id),
-            one => one.id() == Some(id),
-        }
-    }
-
-    /// The tool call it stands for, when it stands for one.
-    pub fn id(&self) -> Option<&str> {
-        match self {
-            Entry::Edit(one) => Some(&one.id),
-            Entry::Tool(one) => Some(&one.id),
-            _ => None,
-        }
-    }
 }

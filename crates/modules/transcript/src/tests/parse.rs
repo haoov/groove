@@ -61,10 +61,7 @@ fn the_agent_s_blocks_are_heard_by_what_they_do() {
         [
             Heard::Thought,
             Heard::Said("I add a cache.".into()),
-            Heard::Look {
-                id: "r".into(),
-                at: "service.py".into()
-            },
+            Heard::Look("service.py".into()),
             edit("w", "/w/cache.py", true),
             edit("e", "/w/service.py", false),
             Heard::Ran {

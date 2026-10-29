@@ -154,6 +154,16 @@ pub fn wrapped<A: App>(
     lines
 }
 
+/// How many lines `wrapped` breaks the text into, as an earlier frame counted them when one did.
+pub fn rows<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> usize {
+    if let Some(rows) = ctx.kept_rows(text, style, width) {
+        return rows;
+    }
+    let rows = wrapped(ctx, text, style, width).len();
+    ctx.keep_rows(text, style, width, rows);
+    rows
+}
+
 /// The text cut after each space, a line break its own word.
 pub(crate) fn words(text: &str) -> Vec<&str> {
     let mut out = Vec::new();
