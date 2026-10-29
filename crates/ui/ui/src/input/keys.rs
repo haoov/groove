@@ -12,6 +12,7 @@ mod noting;
 mod offered;
 mod opened;
 mod panes;
+mod prompt;
 mod resources;
 mod scope;
 mod worded;
@@ -116,7 +117,7 @@ fn in_pane(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
+    let raw = raw(ui);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return app::copied(ui.focus, app);
     }
@@ -140,11 +141,9 @@ fn in_pane(
         if let Some(commands) = resources::in_table((key, mods), ui, app, seen) {
             return commands;
         }
-    }
-    if ui.focus == Focus::Workspace
-        && let Some(commands) = offered::in_list((key, mods), ui, app)
-    {
-        return commands;
+        if let Some(commands) = offered::in_list((key, mods), ui, app) {
+            return commands;
+        }
     }
     if ui.focus == Focus::Terminal
         && let Some(commands) = opened::in_terminal((key, mods), app, keymap)
@@ -152,11 +151,20 @@ fn in_pane(
         return commands;
     }
     match ui.focus {
+        Focus::Agent if !ui.agent.terminal => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),
         Focus::Rail => in_rail(key, ui, app),
+    }
+}
+
+/// Whether the pane with the keys is a terminal, which takes every key as typed.
+fn raw(ui: &Ui) -> bool {
+    match ui.focus {
+        Focus::Agent => ui.agent.terminal,
+        focus => focus == Focus::Terminal,
     }
 }
 

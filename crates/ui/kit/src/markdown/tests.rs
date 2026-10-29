@@ -50,3 +50,17 @@ fn a_single_line_break_stays_a_break_as_on_the_forges() {
     let texts: Vec<&str> = found[0].spans.iter().map(|one| one.text.as_str()).collect();
     assert_eq!(texts, ["first line", "\n", "second line"]);
 }
+
+#[test]
+fn a_table_keeps_its_rows_and_each_span_its_cell() {
+    let found = blocks("| a | b |\n|---|---|\n| one | **two** |\n");
+    assert_eq!(found[0].kind, Kind::Row { head: true });
+    assert_eq!(found[1].kind, Kind::Row { head: false });
+    let cells: Vec<(usize, &str)> = found[1]
+        .spans
+        .iter()
+        .map(|one| (one.cell, one.text.as_str()))
+        .collect();
+    assert_eq!(cells, [(0, "one"), (1, "two")]);
+    assert_eq!(plain("| a | b |\n|---|---|\n"), "a  ·  b");
+}

@@ -3,19 +3,16 @@
 use groove_gfx::Fonts;
 use groove_types::Ask;
 
+use crate::Ui;
 use crate::hit::Target;
 use crate::tests::window;
-use crate::{Surface, Ui};
 
 fn agent_app(asks: Vec<Ask>) -> groove_controllers::AppState {
     super::bar::asking(asks)
 }
 
 fn session_ui() -> Ui {
-    Ui {
-        surface: Surface::Session,
-        ..Ui::default()
-    }
+    super::bar::session_ui()
 }
 
 /// A terminal whose program has asked for the mouse.

@@ -150,7 +150,7 @@ pub struct Tokens {
     pub aside_near: f32,
     pub aside_mid: f32,
     pub aside_far: f32,
-    /// The palette's box.
+    /// The palette's box; `palette` is also the agent's prompt at its widest.
     pub modal: f32,
     pub palette: f32,
     pub modal_top: f32,

@@ -24,6 +24,8 @@ pub enum Ground {
     Plain,
     Code,
     Rule,
+    /// A table's head row, ruled under.
+    Head,
 }
 
 /// One line, `y` from the prose's top; its mark at its own `x` from the left edge.
@@ -46,16 +48,26 @@ pub struct Laid {
 pub fn laid<A: App>(ctx: &mut Ctx<'_, A>, blocks: &[Block], width: f32, role: Role) -> Laid {
     let mut laid = Laid::default();
     let mut before: Option<Kind> = None;
-    for block in blocks {
+    let mut at = 0;
+    while let Some(block) = blocks.get(at) {
         laid.height += gap(ctx, before, block.kind);
+        let rows = blocks[at..]
+            .iter()
+            .take_while(|one| matches!(one.kind, Kind::Row { .. }))
+            .count();
         let lines = match block.kind {
+            Kind::Row { .. } => {
+                let table = &blocks[at..at + rows];
+                super::table::laid(ctx, table, (laid.height, width), role)
+            }
             Kind::Code => code(ctx, block, laid.height),
             Kind::Rule => vec![rule(ctx, laid.height)],
             _ => wrapped(ctx, block, (laid.height, width), role),
         };
         laid.height = lines.last().map_or(laid.height, |one| one.y + one.h);
         laid.lines.extend(lines);
-        before = Some(block.kind);
+        at += rows.max(1);
+        before = blocks.get(at - 1).map(|one| one.kind);
     }
     laid
 }
@@ -135,7 +147,7 @@ fn wrapped<A: App>(
     lines
 }
 
-fn blank(y: f32, h: f32, mark: Option<(f32, Bullet)>, quoted: bool) -> Line {
+pub(super) fn blank(y: f32, h: f32, mark: Option<(f32, Bullet)>, quoted: bool) -> Line {
     Line {
         y,
         h,

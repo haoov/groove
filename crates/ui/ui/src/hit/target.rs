@@ -158,8 +158,6 @@ pub enum Target {
     /// The sheet itself, which keeps a click from what it covers.
     Sheet,
     Refuse(groove_types::ApprovalId),
-    /// The agent's own row: what it can be sent, and its reload.
-    Skills(SessionId),
     /// The feed narrowed to the session in hand, or widened to every session.
     FeedScope(bool),
     /// One MR of the review column, by its project and its number.
@@ -231,6 +229,17 @@ pub enum Target {
     View(DiffView),
     /// The agent's pane.
     Agent,
+    /// The agent's conversation, or its terminal in its place.
+    AgentView,
+    /// The conversation's column, the file an edit wrote at its hunk's first line, and the prompt.
+    Chat,
+    Edited {
+        path: String,
+        line: u32,
+    },
+    Prompt,
+    /// A glance's commands, by its first command.
+    Commands(String),
     /// One button of a note's own row.
     Note(groove_types::NoteOrigin, NoteButton),
     /// What the composer of the note being typed offers.
@@ -241,10 +250,14 @@ impl Target {
     /// What the pointer says over it: a row is a pointer, and these are not.
     pub(super) fn cursor(&self) -> Cursor {
         match self {
-            Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
-                Cursor::Text
-            }
+            Target::Term(_)
+            | Target::Finding
+            | Target::Filter
+            | Target::Message
+            | Target::Code
+            | Target::Prompt => Cursor::Text,
             Target::Agent
+            | Target::Chat
             | Target::Shell(_)
             | Target::Pinned
             | Target::Palette

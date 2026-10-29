@@ -23,6 +23,7 @@ fn bare_config() -> groove_types::Config {
 fn an_alt_key_groove_does_not_claim_reaches_the_agent() {
     let app = full_app();
     let mut ui = Ui::default();
+    ui.agent.terminal = true;
     let sent = press(Key::Char('b'), ALT, &mut ui, &app);
     let Some(Command::Agent(agent::Command::Send { bytes, .. })) = sent.first() else {
         panic!("the shell's word back: {sent:?}");

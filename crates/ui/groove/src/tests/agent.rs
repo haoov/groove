@@ -55,6 +55,14 @@ fn printing(state: &mut AppState, said: &str) {
     ));
 }
 
+/// The agent pane showing the terminal in place of the conversation.
+fn terminal() -> groove_ui::AgentUi {
+    groove_ui::AgentUi {
+        terminal: true,
+        ..Default::default()
+    }
+}
+
 #[test]
 fn dragging_over_the_agent_screen_holds_the_cells_it_crossed() {
     let home = tempfile::tempdir().unwrap();
@@ -63,6 +71,7 @@ fn dragging_over_the_agent_screen_holds_the_cells_it_crossed() {
     printing(&mut state, "hello world");
     let mut ui = Ui {
         surface: groove_ui::Surface::Session,
+        agent: terminal(),
         ..Ui::default()
     };
 
@@ -127,6 +136,7 @@ fn a_paste_with_no_text_on_the_clipboard_reaches_the_agent_as_the_key() {
     let (mut state, services) = working(home.path(), &spawner);
     let mut ui = Ui {
         surface: groove_ui::Surface::Session,
+        agent: terminal(),
         focus: groove_ui::Focus::Agent,
         ..Ui::default()
     };
@@ -170,6 +180,7 @@ fn a_paste_that_lands_after_the_keys_moved_is_dropped() {
     let (mut state, _services) = working(home.path(), &spawner);
     let mut ui = Ui {
         surface: groove_ui::Surface::Session,
+        agent: terminal(),
         focus: groove_ui::Focus::Agent,
         overlay: Some(groove_ui::Overlay::Palette(Default::default())),
         ..Ui::default()
@@ -200,6 +211,7 @@ fn a_paste_that_lands_after_another_session_is_selected_is_dropped() {
     let (mut state, _services) = working(home.path(), &spawner);
     let ui = Ui {
         surface: groove_ui::Surface::Session,
+        agent: terminal(),
         focus: groove_ui::Focus::Agent,
         ..Ui::default()
     };

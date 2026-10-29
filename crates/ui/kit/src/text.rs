@@ -193,6 +193,16 @@ pub fn ago(age: Duration) -> String {
     format!("{}y", seconds / YEAR)
 }
 
+/// How long something took: `12s`, `1m 05s`, `2h 03m`.
+pub fn lasted(took: Duration) -> String {
+    let seconds = took.as_secs();
+    match (seconds / HOUR, seconds / MINUTE % MINUTE, seconds % MINUTE) {
+        (0, 0, s) => format!("{s}s"),
+        (0, m, s) => format!("{m}m {s:02}s"),
+        (h, m, _) => format!("{h}h {m:02}m"),
+    }
+}
+
 /// One line of text, elided to the room it is drawn in.
 #[derive(Debug, Clone, Copy)]
 pub struct Label<'a> {

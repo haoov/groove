@@ -74,6 +74,9 @@ pub enum Mark {
     /// What a language server found wrong in a file, and what it warns of.
     Errors,
     Warnings,
+    /// The agent thought, and looked at files.
+    Thought,
+    Looked,
 }
 
 impl Mark {
@@ -154,6 +157,8 @@ impl Mark {
             Mark::Person => Icon::Person,
             Mark::People => Icon::People,
             Mark::Play => Icon::Play,
+            Mark::Thought => Icon::Bulb,
+            Mark::Looked => Icon::Eye,
         }
     }
 }

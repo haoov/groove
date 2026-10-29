@@ -70,6 +70,10 @@ pub enum Held {
     Clicking(Grid),
     /// A column of the Resources list being made wider or narrower.
     Column(views::session::resources::Dragged),
+    /// Text of the agent's conversation, being selected.
+    Reading,
+    /// Text of Groove's own prompt, being selected.
+    Prompt,
 }
 
 /// A terminal's grid: the agent's, or one of the session's shells.
@@ -79,13 +83,22 @@ pub enum Grid {
     Shell(u64),
 }
 
-/// What the pointer is doing to the agent's screen.
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+/// The agent pane: its conversation or its terminal, the prompt, and what the pointer does to the screen.
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct AgentUi {
     /// Wheel pixels not yet worth a line.
     pub carried: f32,
     /// Shift was held: the selection is ours even where the program reads the mouse.
     pub bypassed: bool,
+    /// The agent's terminal shows in place of its conversation.
+    pub terminal: bool,
+    pub prompt: views::session::Prompt,
+    /// How far the conversation is scrolled up from its end, in pixels.
+    pub scroll: f32,
+    /// What a drag holds of the conversation: where it started and where it is, the scroll taken out.
+    pub reading: Option<((f32, f32), (f32, f32))>,
+    /// The glances whose commands show whole, by their first command.
+    pub opened: Vec<String>,
 }
 
 /// What is asked before a change is thrown away.

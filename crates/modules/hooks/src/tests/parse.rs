@@ -74,3 +74,12 @@ fn what_is_not_a_hook_is_refused() {
     assert!(post("s", br#"{"hook_event_name": "Whatever"}"#).is_none());
     assert!(post("s", b"{}").is_none());
 }
+
+#[test]
+fn a_hook_names_the_session_s_transcript() {
+    let body =
+        br#"{"hook_event_name": "Stop", "transcript_path": "/home/u/.claude/projects/w/s.jsonl"}"#;
+    let post = post("s", body).expect("a hook");
+    let path = post.transcript.expect("a transcript");
+    assert_eq!(path.to_str(), Some("/home/u/.claude/projects/w/s.jsonl"));
+}

@@ -1,5 +1,6 @@
-//! The agent capability: each session's agent and its asks.
+//! The agent capability: each session's agent, its conversation and its asks.
 
+mod chat;
 mod files;
 pub(crate) mod launch;
 mod listed;
@@ -22,8 +23,10 @@ pub use groove_types::Screen;
 
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
+pub use chat::follower;
 pub use files::Held;
 pub use groove_sync::Turn;
+pub use groove_transcript::Heeded;
 pub use launch::{LaunchPaths, launch, palette};
 
 /// One session's agent. `terminal` is `None` when the launch failed.
@@ -48,6 +51,7 @@ pub struct State {
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     writes: Vec<files::Line>,
+    chats: Vec<(SessionId, chat::Followed)>,
 }
 
 impl State {
@@ -113,6 +117,7 @@ impl State {
     /// Removes the agent and any launch it waits on; the caller ends its terminal.
     pub fn end(&mut self, session: &SessionId) -> Option<Agent> {
         self.pending.retain(|(id, _)| id != session);
+        self.unfollow(session);
         let at = self.agents.iter().position(|(id, _)| id == session)?;
         Some(self.agents.remove(at).1)
     }
@@ -195,6 +200,14 @@ pub enum Event {
         tool: Option<ToolCall>,
         at: Timestamp,
     },
+    /// One read of the session's transcript.
+    Heard {
+        session: SessionId,
+        transcript: std::path::PathBuf,
+        heard: Vec<groove_types::chat::Heard>,
+    },
+    /// Words sent from Groove's own prompt.
+    Said { session: SessionId, text: String },
 }
 
 pub fn apply(state: &mut State, event: Event) {
@@ -224,6 +237,12 @@ pub fn apply(state: &mut State, event: Event) {
                 hook(activity, kind, tool, at);
             }
         }
+        Event::Heard {
+            session,
+            transcript,
+            heard,
+        } => state.heard(&session, &transcript, heard),
+        Event::Said { session, text } => state.echoed(&session, text),
     }
 }
 

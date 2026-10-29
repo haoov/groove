@@ -1,5 +1,6 @@
 mod actions;
 mod agent;
+mod chat;
 mod cluster;
 mod config;
 mod deleting;

@@ -24,6 +24,7 @@ pub fn compact(text: &str, cols: usize) -> Vec<Row> {
     let mut out: Vec<Row> = Vec::new();
     let mut before: Option<Kind> = None;
     for block in blocks(text) {
+        let block = block.flattened();
         let joined = matches!(
             (before, block.kind),
             (Some(Kind::Item(_)), Kind::Item(_)) | (Some(Kind::Code), Kind::Code)

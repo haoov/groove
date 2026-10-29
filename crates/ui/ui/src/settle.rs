@@ -101,7 +101,7 @@ impl Ui {
             _ => false,
         };
         if session_left {
-            self.session.going = None;
+            (self.session.going, self.session.revealing) = (None, None);
         }
         if session_left && !promoted {
             self.swap_resources(was.0, now.0.clone());

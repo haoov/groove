@@ -210,10 +210,37 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | a top bar · the agent's pty · action bar: skills menu |
+| **Agent pane** | a top bar · the agent's conversation and its prompt, or its pty · the terminal toggle |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
+
+**The agent pane draws the conversation.** The user's message is a bubble. One sent from the
+prompt, or typed while the agent works, waits faint after the rows until the transcript says it.
+Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a count for each,
+a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls; a click
+opens it to every one whole, with what it gave back. While the agent works, the last group's mark
+spins and its time runs, and a group of its own stands past the last record until one comes. A
+write is one row: its file links to the hunk in the Diff tab, with its `+N -N`. A table is laid in
+columns. A drag selects text and copies it on release; a double click takes a word, a triple click
+its line. Ctrl and a click follow a URL, or open a path in the Files tab at its line.
+The prompt is glass over the agent's bar, a gap between, as the workspace stands over the
+terminals, centred and no wider than the palette. The conversation scrolls on under it and the
+bar, and at the top under the top bar. The bar holds the terminal toggle at its start, which shows
+the pty in place of the conversation, and back. The prompt edits as a note does, grows to eight
+rows and then scrolls. Enter sends it to the agent, shift+Enter breaks the line.
+Enforced by `the_conversation_shows_in_place_of_the_terminal_and_the_bar_brings_the_terminal_back`,
+`a_click_on_a_command_card_shows_every_command_whole_with_what_it_printed`,
+`while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
+`a_table_keeps_its_rows_and_each_span_its_cell`,
+`a_drag_over_the_conversation_copies_what_it_holds`,
+`a_double_click_takes_a_word_and_a_triple_click_its_line`,
+`ctrl_and_a_click_follow_a_link_or_open_a_file_at_its_line`,
+`the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does`,
+`a_double_click_in_the_prompt_takes_its_word`,
+`the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it`,
+`enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line` and
+`a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff`.
 
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
@@ -346,13 +373,13 @@ does the same, its field a rounded field. Enforced by
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
-menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
-bar's skills menu are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
+menu, the cluster scope panel, the board's filter offers, the language servers' popup, the agent's
+prompt and the terminal toggle are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_floats_as_a_pane_of_glass_inside_its_place`,
 `the_strip_stands_as_glass_on_the_agent_s_ground`,
-`the_bar_offers_the_skills_in_glass_on_the_screen_s_ground`,
+`the_bar_offers_the_other_face_in_glass_on_the_screen_s_ground`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
 `the_panel_stands_on_glass`,

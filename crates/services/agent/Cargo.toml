@@ -1,6 +1,6 @@
 [package]
 name = "groove-agent-service"
-description = "The agent capability: each session's agent, its terminal and its asks"
+description = "The agent capability: each session's agent, its terminal, its conversation and its asks"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,6 +14,7 @@ groove-mcp = { path = "../../modules/mcp" }
 groove-sync = { path = "../../modules/sync" }
 groove-terminal = { path = "../../modules/terminal" }
 groove-tools = { path = "../../modules/tools" }
+groove-transcript = { path = "../../modules/transcript" }
 groove-types = { path = "../../shared/types" }
 tokio = { workspace = true, features = ["sync"] }
 

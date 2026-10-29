@@ -4,8 +4,10 @@ use groove_types::DiffView;
 
 pub use super::tab::{Face, Tab};
 pub use noting::{Noting, Writing};
+pub use prompt::Prompt;
 
 mod noting;
+mod prompt;
 
 use super::find::Finding;
 use groove_ui_kit::widgets::Field;
@@ -18,6 +20,8 @@ pub struct SessionUi {
     pub settled: Tab,
     /// The tab to show once the repo asked for is selected and read, and its commit shown when one.
     pub going: Option<(Tab, Option<String>)>,
+    /// The file and line an edit's link opened, scrolled to once the diff holds them.
+    pub revealing: Option<(String, u32)>,
     /// The session and the worktree selected when last settled.
     pub seen: (
         Option<groove_types::SessionId>,

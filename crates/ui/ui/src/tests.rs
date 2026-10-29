@@ -5,6 +5,7 @@ mod attaching;
 mod bar;
 mod board;
 mod budget;
+mod chat;
 mod chords;
 mod clusters;
 mod completion;

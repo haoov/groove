@@ -1,5 +1,6 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
+mod chat;
 mod pointer;
 pub mod skills;
 mod start;
@@ -9,6 +10,7 @@ use groove_types::{ApprovalId, SessionId};
 
 use crate::{AppState, Services, Spawner};
 
+pub use chat::hooked;
 pub use start::start;
 pub(crate) use start::{asking, launch_dir, rewrite};
 
@@ -24,6 +26,8 @@ pub enum Command {
     End { session: SessionId },
     /// `agent.send`: bytes to the PTY, as typed.
     Send { session: SessionId, bytes: Vec<u8> },
+    /// `agent.say`: words from Groove's own prompt, sent to the agent as a prompt.
+    Say { session: SessionId, text: String },
     /// `agent.resize`: the pane's grid to the PTY.
     Resize {
         session: SessionId,
@@ -96,6 +100,7 @@ impl Command {
             Command::Start { .. } => "agent.start",
             Command::End { .. } => "agent.end",
             Command::Send { .. } => "agent.send",
+            Command::Say { .. } => "agent.say",
             Command::Resize { .. } => "agent.resize",
             Command::Approve { .. } => "agent.approve",
             Command::Refuse { .. } => "agent.refuse",
@@ -130,6 +135,7 @@ pub fn dispatch(
         } => start(state, spawner, session, (cols, rows)),
         Command::End { session } => end(state, &session),
         Command::Send { session, bytes } => send(state, &session, &bytes),
+        Command::Say { session, text } => chat::say(state, spawner, &session, &text),
         Command::Resize {
             session,
             cols,

@@ -4,6 +4,7 @@ mod compact;
 mod draw;
 pub mod layout;
 pub mod parse;
+mod table;
 #[cfg(test)]
 mod tests;
 
@@ -19,9 +20,9 @@ use crate::base::style::Role;
 
 /// The first block's text, without its marks.
 pub fn plain(text: &str) -> String {
-    let blocks = blocks(text);
-    let first = blocks.iter().find(|one| !one.spans.is_empty());
-    let words = first.map(|one| one.spans.iter().map(|span| span.text.as_str()));
+    let blocks = blocks(text).into_iter().map(parse::Block::flattened);
+    let first = blocks.into_iter().find(|one| !one.spans.is_empty());
+    let words = first.map(|one| one.spans.into_iter().map(|span| span.text));
     words
         .into_iter()
         .flatten()

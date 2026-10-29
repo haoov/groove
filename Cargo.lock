@@ -1324,6 +1324,7 @@ dependencies = [
  "groove-sync",
  "groove-terminal",
  "groove-tools",
+ "groove-transcript",
  "groove-types",
  "serde_json",
  "tempfile",
@@ -1837,6 +1838,16 @@ dependencies = [
  "groove-types",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "groove-transcript"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

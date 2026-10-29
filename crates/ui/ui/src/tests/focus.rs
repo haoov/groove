@@ -57,6 +57,7 @@ fn the_chord_walks_the_panes_left_to_right() {
 fn a_key_reaches_the_agent_only_while_the_agent_has_the_keyboard() {
     let app = full_app();
     let mut ui = Ui::default();
+    ui.agent.terminal = true;
     let typed = press(
         Key::Char('a'),
         crate::input::Modifiers::default(),

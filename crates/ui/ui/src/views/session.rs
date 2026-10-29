@@ -15,7 +15,9 @@ mod sheet;
 mod state;
 mod tab;
 
-pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Showing, Tab, Term, Writing};
+pub use state::{
+    Asked, Bar, Face, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
+};
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -35,21 +37,19 @@ use groove_ui_kit::widgets::{Button, glass_pane, ground_under};
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ground_under(ctx, ctx.app.layout.board, Ground::Deep);
     if ui.session.alone && app.session.selected().is_some() {
-        agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
-        return bar::draw(ctx, app);
+        agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
+        return bar::draw(ctx, app, ui);
     }
     if !ctx.app.layout.work.is_empty() {
         glass_pane(ctx, ctx.app.layout.strip);
     }
     let on = |focus: crate::Focus| ui.focus == focus;
-    ctx.region(on(crate::Focus::Workspace), |ctx| {
-        header::draw(ctx, app, ui)
-    });
     if app.session.selected().is_none() {
+        ctx.region(on(crate::Focus::Workspace), |ctx| {
+            header::draw(ctx, app, ui)
+        });
         return empty(ctx, app);
     }
-    agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
-    bar::draw(ctx, app);
     if !ctx.app.layout.workspace.is_empty() {
         ctx.region(on(crate::Focus::Workspace), |ctx| {
             header::info(ctx, app, ui);
@@ -57,6 +57,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         });
         ctx.region(on(crate::Focus::Sidebar), |ctx| sidebar(ctx, app, ui));
     }
+    agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
+    bar::draw(ctx, app, ui);
+    ctx.region(on(crate::Focus::Workspace), |ctx| {
+        header::draw(ctx, app, ui)
+    });
     if let Some(session) = app.session.selected.as_ref() {
         let terminal = on(crate::Focus::Terminal);
         ctx.region(terminal, |ctx| manual::draw(ctx, app, ui, session));
