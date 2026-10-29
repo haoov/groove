@@ -36,6 +36,7 @@ fn acted(act: &Act) -> Option<Mark> {
         Act::Key(key) => keyed(*key)?,
         Act::View(DiffView::Inline) => Mark::Inline,
         Act::View(DiffView::Split) => Mark::Split,
+        Act::Mode(_) => Mark::Review,
         Act::Note | Act::Notes(_) => Mark::Note,
         Act::Examine(_) => Mark::Agent,
         Act::Open(_) => Mark::File,

@@ -13,7 +13,9 @@ no patch parser. Expanding a gap is a slice of a document already held.
 
 **Two modes.** Base: against the merge-base with the base branch, or the MR's target in a
 review. Local: uncommitted changes against HEAD. Untracked files are all additions. A
-throttled background fetch keeps the base fresh.
+throttled background fetch keeps the base fresh. The diff header's tabs and the palette's *Against the base* and *Local
+changes* switch the mode. Enforced by
+`the_palette_reads_the_diff_against_the_base_or_the_local_changes`.
 
 **The whole change is one surface.** The file list is built from the numeric summary,
 with no content. The files on screen hold their documents; the others give theirs up. A

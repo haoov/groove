@@ -177,6 +177,11 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             ui.session.view = view;
             ui.session.tab = Tab::Diff;
         }
+        Act::Mode(mode) => {
+            ui.session.tab = Tab::Diff;
+            let set = groove_controllers::workspace::Command::SetMode { mode };
+            return vec![Command::Workspace(set)];
+        }
         Act::Note => {
             let Some(open) = app.workspace.active() else {
                 return Vec::new();
