@@ -1,7 +1,42 @@
 //! Copies the offscreen texture back for the tests. Nothing else reads a frame.
 
+use std::ops::{Deref, DerefMut};
+use std::sync::{Mutex, MutexGuard};
+
 use crate::renderer::Target;
-use crate::{Frame, Renderer, Result, Size};
+use crate::{Fonts, Frame, Renderer, Result, Size};
+
+/// One headless renderer alive at a time: lavapipe crashes when several devices draw at once.
+static TURN: Mutex<()> = Mutex::new(());
+
+pub struct Headless {
+    renderer: Renderer,
+    _turn: MutexGuard<'static, ()>,
+}
+
+pub fn headless(size: Size) -> Headless {
+    let turn = TURN.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let renderer = Renderer::headless(size, Fonts::embedded()).expect(
+        "a GPU adapter: without a GPU, install a software Vulkan driver (mesa-vulkan-drivers)",
+    );
+    Headless {
+        renderer,
+        _turn: turn,
+    }
+}
+
+impl Deref for Headless {
+    type Target = Renderer;
+    fn deref(&self) -> &Renderer {
+        &self.renderer
+    }
+}
+
+impl DerefMut for Headless {
+    fn deref_mut(&mut self) -> &mut Renderer {
+        &mut self.renderer
+    }
+}
 
 pub struct Image {
     pub size: Size,

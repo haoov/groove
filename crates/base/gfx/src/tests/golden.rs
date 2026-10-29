@@ -5,18 +5,14 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use super::readback::Image;
-use crate::{
-    CellGrid, Color, Font, Fonts, Frame, Icon, Palette, Rect, Renderer, Size, TextStyle, Weight,
-};
+use super::readback::{Headless, Image, headless};
+use crate::{CellGrid, Color, Font, Frame, Icon, Palette, Rect, Size, TextStyle, Weight};
 
 const MAX_CHANNEL_DIFF: u8 = 3;
 const MAX_DIFFERENT_PIXELS: f64 = 0.002;
 
-pub(super) fn renderer(size: Size) -> Renderer {
-    Renderer::headless(size, Fonts::embedded()).expect(
-        "a GPU adapter: without a GPU, install a software Vulkan driver (mesa-vulkan-drivers)",
-    )
+pub(super) fn renderer(size: Size) -> Headless {
+    headless(size)
 }
 
 fn style(size: f32, weight: Weight, color: Color) -> TextStyle {

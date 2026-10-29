@@ -1,10 +1,11 @@
 //! Rounded quads: their corners give way, their middles stay whole, a ring holds only its edge.
 
-use crate::{Color, Fonts, Frame, Rect, Renderer, Size};
+use super::readback::headless;
+use crate::{Color, Frame, Rect, Size};
 
 fn drawn(draw: impl FnOnce(&mut Frame)) -> super::readback::Image {
     let size = Size::new(32, 32);
-    let mut r = Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter");
+    let mut r = headless(size);
     let mut frame = Frame::new(size, Color::BLACK);
     draw(&mut frame);
     r.snapshot(&frame).expect("snapshot")

@@ -1,16 +1,15 @@
 //! What the text pass keeps between frames, so a still window shapes nothing twice.
 
-use crate::{
-    Cell, CellGrid, Color, Family, Font, Fonts, Frame, Palette, Renderer, Size, TextStyle, Weight,
-};
+use super::readback::{Headless, headless};
+use crate::{Cell, CellGrid, Color, Family, Font, Fonts, Frame, Palette, Size, TextStyle, Weight};
 
 const WINDOW: Size = Size {
     width: 400,
     height: 200,
 };
 
-fn renderer() -> Renderer {
-    Renderer::headless(WINDOW, Fonts::embedded()).expect("a GPU adapter")
+fn renderer() -> Headless {
+    headless(WINDOW)
 }
 
 fn style() -> TextStyle {
