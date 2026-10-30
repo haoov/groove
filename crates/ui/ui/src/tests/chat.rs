@@ -17,6 +17,7 @@ use crate::tests::{
 use crate::views::session::Tab;
 use crate::{Focus, Surface, Ui};
 
+mod asked;
 mod reading;
 
 const WORKTREE: &str = "/code/worktrees/a/kiwi/explorer/alpha";

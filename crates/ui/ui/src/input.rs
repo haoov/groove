@@ -1,5 +1,6 @@
 //! Keys and clicks to commands; the agent pane takes every key but the app ring, copy, file search and paste.
 
+mod answer;
 pub(crate) mod follow;
 mod keys;
 mod paste;

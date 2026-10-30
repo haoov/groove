@@ -97,9 +97,17 @@ pub struct AgentUi {
     pub reading: Option<((f32, f32), (f32, f32))>,
     /// The glances whose commands show whole, by their first command.
     pub opened: Vec<String>,
+    /// The options picked so far for the ask that id names, one per question.
+    pub picked: Option<(String, Vec<String>)>,
 }
 
 impl AgentUi {
+    /// The options picked for the ask `id`; none for any other.
+    pub fn picked(&self, id: &str) -> Vec<String> {
+        let held = self.picked.as_ref().filter(|(one, _)| one == id);
+        held.map(|(_, picked)| picked.clone()).unwrap_or_default()
+    }
+
     /// A point on the screen as one of the conversation's own, its scroll taken out.
     pub fn unscrolled(&self, (x, y): (f32, f32)) -> (f32, f32) {
         (x, y - self.scroll)

@@ -5,7 +5,7 @@ pub mod read;
 mod target;
 
 pub use note::{Composing, NoteButton};
-pub use target::Target;
+pub use target::{Answering, Target};
 
 use groove_gfx::Rect;
 

@@ -1,10 +1,10 @@
-//! Keys at Groove's own prompt: typed into it as into a note, Enter sends it, shift+Enter breaks the line, Up and Down recall what was sent, Escape interrupts.
+//! Keys at Groove's own prompt: typed into it as into a note, Enter sends it, shift+Enter breaks the line, Up and Down recall what was sent, Escape interrupts; empty while the agent asks, they answer it.
 
 use groove_controllers::{AppState, Command, agent};
 use groove_types::Edit;
 use groove_types::chat::Entry;
 
-use super::super::{Key, Modifiers};
+use super::super::{Key, Modifiers, answer};
 use super::worded::asked_of_note;
 use crate::Ui;
 use crate::hit::Hits;
@@ -17,6 +17,10 @@ pub(super) fn keyed(
     (keymap, hits): (&Keymap, &Hits),
 ) -> Vec<Command> {
     let plain = mods == Modifiers::default();
+    let answering = plain && ui.agent.prompt.is_empty();
+    if let Some(button) = answering.then(|| answer::keyed(app, ui, key)).flatten() {
+        return answer::answered(ui, app, button);
+    }
     let prompt = &mut ui.agent.prompt;
     prompt.scroll = hits.typed().scroll;
     match key {

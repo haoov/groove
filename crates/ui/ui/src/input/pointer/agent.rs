@@ -29,6 +29,7 @@ pub(super) fn acted(
             }
             Some(Vec::new())
         }
+        Target::Answer(button) => Some(crate::input::answer::answered(ui, app, button.clone())),
         Target::Edited { path, line } => Some(crate::input::reveal::opened(ui, app, path, *line)),
         _ => None,
     }

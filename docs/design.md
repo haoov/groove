@@ -210,7 +210,7 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | a top bar · the agent's pty, or its conversation and its prompt |
+| **Agent pane** | a top bar · the agent's pty, or its conversation, what it asks, and its prompt |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
@@ -218,7 +218,10 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 **The agent pane draws the conversation** when *conversation view* is on (Settings › Agent);
 off, it shows the pty. With it on, an agent starts headless: Claude Code's stream-json on its
 pipes, no pty. A message, a skill and an interrupt go over that stream, and the transcript still
-draws the rows. Escape in an empty prompt interrupts the turn. The agent's rows stand at the left and the user's bubbles at the right,
+draws the rows. A tool Claude asks leave for stands on glass over the prompt: its name, what it
+acts on, *allow* and *refuse*. A question shows its options one a row, one question at a time. In an empty
+prompt Enter allows, Escape refuses and a digit picks an option. With nothing asked, Escape
+interrupts the turn. The agent's rows stand at the left and the user's bubbles at the right,
 each side at most nine tenths of the width. One sent from the
 prompt, or typed while the agent works, waits faint after the rows until the transcript says it.
 Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a count for each,
@@ -240,6 +243,9 @@ Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn
 `while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
 `an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
 `up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
+`a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
+`a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
+`escape_on_an_empty_prompt_interrupts_the_agent_when_nothing_is_asked`,
 `a_headless_agent_hears_a_message_asks_leave_settles_and_stops_on_an_interrupt`,
 `a_table_keeps_its_rows_and_each_span_its_cell`,
 `a_drag_over_the_conversation_copies_what_it_holds`,

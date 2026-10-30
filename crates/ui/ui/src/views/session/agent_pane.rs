@@ -1,5 +1,6 @@
 //! The agent pane: its conversation over Groove's own prompt, or its terminal in their place.
 
+mod asked;
 mod chat;
 mod commands;
 mod entry;
@@ -33,8 +34,14 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
             let chat = app.agent.chat(&open.session.id);
             let laid = prompt::laid(ctx, ui);
             let working = agent.activity.status == AgentStatus::Working;
-            chat::draw(ctx, (open, chat, working), ui, laid.pane.y);
+            let first = agent.permissions.first();
+            let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
+            let ends = asked::ends(ctx, asked, laid.pane);
+            chat::draw(ctx, (open, chat, working), ui, ends);
             ctx.layer();
+            if let Some((one, picked)) = asked {
+                asked::draw(ctx, one, picked, laid.pane);
+            }
             prompt::draw(ctx, ui, &laid, focused);
         }
         (Some(terminal), _) => {

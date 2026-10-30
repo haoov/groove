@@ -238,6 +238,8 @@ pub enum Target {
     Prompt,
     /// A glance's commands, by its first command.
     Commands(String),
+    /// An answer to what the headless agent asks.
+    Answer(Answering),
     /// One button of a note's own row.
     Note(groove_types::NoteOrigin, NoteButton),
     /// What the composer of the note being typed offers.
@@ -269,4 +271,12 @@ impl Target {
             _ => Cursor::Pointer,
         }
     }
+}
+
+/// What answers a headless agent's ask: leave to run the tool, a refusal, or one option of its question.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Answering {
+    Allow,
+    Refuse,
+    Pick(String),
 }
