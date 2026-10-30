@@ -200,7 +200,8 @@ detached work on the pool: it gathers its changes and sends one batch a frame at
 and lives while something reads it.
 
 **Keystrokes never touch a device on the main thread.** The terminal module's writer
-thread owns the pty's input side; send and resize queue on its channel and return.
+thread owns the pty's input side; send and resize queue on its channel and return. A
+headless agent's stream queues its messages the same way, for a task on the pool to write.
 
 **Redraw.** `ControlFlow::Wait`, a dirty flag, one `view(&AppState) → Frame` a batch.
 

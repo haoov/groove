@@ -1,7 +1,9 @@
 //! The agent's conversation as Groove draws it: what each transcript record says, and the rows it makes.
 
+mod asked;
 mod rows;
 
+pub use asked::{Permission, Question};
 pub use rows::{Edit, Entry, Glance, Run, Tool};
 
 use crate::Timestamp;

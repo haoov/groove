@@ -1,4 +1,4 @@
-//! Keys at Groove's own prompt: typed into it as into a note, Enter sends it, shift+Enter breaks the line, Up and Down recall what was sent.
+//! Keys at Groove's own prompt: typed into it as into a note, Enter sends it, shift+Enter breaks the line, Up and Down recall what was sent, Escape interrupts.
 
 use groove_controllers::{AppState, Command, agent};
 use groove_types::Edit;
@@ -16,9 +16,9 @@ pub(super) fn keyed(
     app: &AppState,
     (keymap, hits): (&Keymap, &Hits),
 ) -> Vec<Command> {
+    let plain = mods == Modifiers::default();
     let prompt = &mut ui.agent.prompt;
     prompt.scroll = hits.typed().scroll;
-    let plain = mods == Modifiers::default();
     match key {
         Key::Up if plain && (prompt.is_empty() || prompt.recalled.is_some()) => {
             let back = prompt.recalled.unwrap_or(0) + 1;
@@ -30,9 +30,7 @@ pub(super) fn keyed(
         }
         Key::Enter if mods.shift => prompt.edit(&Edit::Newline),
         Key::Enter => return said(ui, app),
-        Key::Escape if prompt.is_empty() => {
-            return super::agent::to_agent(key, mods, app).into_iter().collect();
-        }
+        Key::Escape if prompt.is_empty() => return interrupted(app),
         key => {
             let asked = asked_of_note(&prompt.buffer, keymap, key, mods);
             if let Some(edit) = asked.edit {
@@ -63,6 +61,13 @@ fn recalled(ui: &mut Ui, app: &AppState, back: usize) {
         Some(Some(text)) => ui.agent.prompt.recall(Some((back, text))),
         Some(None) => {}
     }
+}
+
+/// The selected session's agent stopped where it stands.
+fn interrupted(app: &AppState) -> Vec<Command> {
+    let session = app.session.selected.clone();
+    let stop = session.map(|session| Command::Agent(agent::Command::Interrupt { session }));
+    stop.into_iter().collect()
 }
 
 /// What the prompt holds, sent to the selected session's agent; the prompt empties and the conversation shows its end.

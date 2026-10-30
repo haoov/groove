@@ -1318,12 +1318,26 @@ name = "groove-agent-service"
 version = "1.0.0-beta.2"
 dependencies = [
  "groove-agent-launch",
+ "groove-agent-stream",
  "groove-approvals",
  "groove-hooks",
  "groove-mcp",
  "groove-sync",
  "groove-terminal",
  "groove-tools",
+ "groove-transcript",
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "groove-agent-stream"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-agent-launch",
+ "groove-exec",
  "groove-transcript",
  "groove-types",
  "serde_json",

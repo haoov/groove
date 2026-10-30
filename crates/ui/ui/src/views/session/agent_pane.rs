@@ -29,7 +29,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
         return note(ctx, "starting the agent…");
     };
     match (&agent.terminal, &agent.activity.status) {
-        (Some(_), _) if app.config.conversation() => {
+        _ if agent.stream.is_some() || app.config.conversation() && agent.terminal.is_some() => {
             let chat = app.agent.chat(&open.session.id);
             let laid = prompt::laid(ctx, ui);
             let working = agent.activity.status == AgentStatus::Working;
@@ -45,6 +45,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
         (None, AgentStatus::Error { message }) => note(ctx, message),
         (None, _) => note(ctx, "starting the agent…"),
     }
+}
+
+/// Whether the selected session's agent shows its conversation: headless, or by the user's choice.
+pub(crate) fn conversing(app: &AppState) -> bool {
+    let session = app.session.selected.as_ref();
+    let headless = session.and_then(|one| app.agent.stream(one)).is_some();
+    headless || app.config.conversation()
 }
 
 fn note(ctx: &mut Ctx, text: &str) {

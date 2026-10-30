@@ -1,6 +1,9 @@
-//! An agent launched for its session: the command line, its paths, and what its terminal reports.
+//! An agent launched for its session: the command line, its paths, and what its terminal or stream reports.
 
-use groove_agent_service::{Event as AgentEvent, Held, Hooks, LaunchPaths, launch, palette};
+use groove_agent_service::{
+    Event as AgentEvent, Held, Hooks, LaunchPaths, Run, StreamHooks, launch, launch_headless,
+    palette,
+};
 use groove_types::{Error, Session, SessionId, Timestamp};
 
 use super::skills;
@@ -34,10 +37,9 @@ pub(crate) fn asking(
         shared: shared_copy(state),
         cwd: state.config.worktree_root(&state.env.home),
         palette: palette(state.config.theme()),
-        hooks: Hooks {
-            on_damage: on_damage(&sink, &session),
-            on_exit: on_exit(&sink, &session, launched),
-        },
+        headless: state.config.conversation(),
+        sink,
+        launched,
         session,
         size,
         prompt,
@@ -63,35 +65,37 @@ struct Launch {
     cwd: std::path::PathBuf,
     size: (u16, u16),
     palette: groove_types::AnsiPalette,
-    hooks: Hooks,
+    /// On a stream rather than a terminal.
+    headless: bool,
+    sink: std::sync::Arc<dyn crate::Deliver>,
+    launched: u64,
     prompt: Option<String>,
 }
 
-/// The launch files written and the agent spawned on its terminal.
-async fn launched_in(one: Launch) -> Result<groove_agent_service::Terminal, Error> {
+/// The launch files written and the agent spawned, headless or on its terminal.
+async fn launched_in(one: Launch) -> Result<Run, Error> {
     let paths = LaunchPaths {
         plugin_dirs: groove_skill_service::skills::plugin_dirs(&one.dirs).await?,
         knowledge: groove_skill_service::listing::knowledge(one.shared.as_deref()).await,
         ..one.paths
     };
     let (session, prompt) = (&one.session, one.prompt.as_deref());
-    launch(
-        session,
-        &paths,
-        &one.cwd,
-        one.size,
-        one.palette,
-        one.hooks,
-        prompt,
-    )
-    .await
+    let on_exit = on_exit(&one.sink, session, one.launched);
+    if one.headless {
+        let on_heard = on_heard(&one.sink, session, one.launched);
+        let hooks = StreamHooks { on_heard, on_exit };
+        let stream = launch_headless(session, &paths, &one.cwd, hooks, prompt).await;
+        return stream.map(Run::Stream);
+    }
+    let on_damage = on_damage(&one.sink, session);
+    let hooks = Hooks { on_damage, on_exit };
+    let (cwd, size, palette) = (&one.cwd, one.size, one.palette);
+    let terminal = launch(session, &paths, cwd, size, palette, hooks, prompt).await;
+    terminal.map(Run::Terminal)
 }
 
 /// The launch kept on its session, or ended when the session went; a start held meanwhile runs.
-fn stored(
-    (id, launched): (SessionId, u64),
-    result: Result<groove_agent_service::Terminal, Error>,
-) -> Continuation {
+fn stored((id, launched): (SessionId, u64), result: Result<Run, Error>) -> Continuation {
     Box::new(
         move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
             let held = state.agent.written(&id);
@@ -101,7 +105,7 @@ fn stored(
                 None => result.ok(),
             };
             if let Some(orphan) = orphan {
-                let _ = orphan.terminate();
+                orphan.terminate();
             }
             if let Some((size, prompt)) = held {
                 asking(state, spawner, id, size, prompt);
@@ -169,6 +173,30 @@ fn on_damage(
             apply(Event::Agent(AgentEvent::Damaged { session: id }), state)
         })
     }))
+}
+
+/// What the stream says beside the transcript, applied to the launch it came from.
+fn on_heard(
+    sink: &std::sync::Arc<dyn crate::Deliver>,
+    session: &Session,
+    launch: u64,
+) -> Box<dyn Fn(groove_agent_service::StreamHeard) + Send + Sync> {
+    let (sink, id) = (sink.clone(), session.id.clone());
+    Box::new(move |heard| {
+        let session = id.clone();
+        sink.deliver(Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                let at = Timestamp::now();
+                let event = AgentEvent::Streamed {
+                    session,
+                    launch,
+                    heard,
+                    at,
+                };
+                apply(Event::Agent(event), state);
+            },
+        ));
+    })
 }
 
 fn on_exit(

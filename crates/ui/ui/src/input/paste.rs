@@ -101,7 +101,9 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
         }
         Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui),
         Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
-        Some(Sink::Agent) if app.config.conversation() => ui.agent.prompt.edit(&lines(text)),
+        Some(Sink::Agent) if crate::views::session::agent_pane::conversing(app) => {
+            ui.agent.prompt.edit(&lines(text))
+        }
         Some(Sink::Agent) => return typed_at_agent(text, app),
         Some(Sink::Terminal) => return typed_at_shell(text, app),
         Some(Sink::Buffer) => return pasted_in_buffer(text, ui, app),

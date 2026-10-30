@@ -184,7 +184,7 @@ pub struct GitConfig {
 pub struct Preferences {
     #[serde(default)]
     pub auto_approve_default: bool,
-    /// The agent pane draws the conversation in place of the terminal.
+    /// Agents start headless and the pane draws their conversation in place of the terminal.
     #[serde(default)]
     pub conversation: bool,
     #[serde(default)]

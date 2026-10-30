@@ -205,7 +205,8 @@ fn looked_at(input: Option<&Value>) -> Option<String> {
         .map(str::to_string)
 }
 
-fn detail(input: Option<&Value>) -> Option<String> {
+/// The first line of the input field worth showing, cut short.
+pub fn detail(input: Option<&Value>) -> Option<String> {
     let found = DETAILS.iter().find_map(|key| input?.get(key)?.as_str())?;
     let first = found.lines().next().unwrap_or_default();
     Some(first.chars().take(DETAIL_MAX).collect())

@@ -13,7 +13,7 @@ use groove_types::chat::Heard;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::sync::watch;
 
-pub use parse::line;
+pub use parse::{detail, line};
 
 /// How long the follower waits before it reads again.
 const PACE: Duration = Duration::from_millis(150);

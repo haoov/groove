@@ -163,7 +163,7 @@ fn in_pane(
 /// Whether the pane with the keys is a terminal, which takes every key as typed.
 fn raw(ui: &Ui, app: &AppState) -> bool {
     match ui.focus {
-        Focus::Agent => !app.config.conversation(),
+        Focus::Agent => !crate::views::session::agent_pane::conversing(app),
         focus => focus == Focus::Terminal,
     }
 }

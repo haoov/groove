@@ -1,4 +1,4 @@
-//! The agent's conversation: its hooks name the transcript, and the transcript is followed.
+//! The agent's conversation: its hooks name the transcript, the transcript is followed, and the user speaks to it.
 
 use std::path::PathBuf;
 
@@ -59,3 +59,34 @@ pub(super) fn say(state: &mut AppState, spawner: &dyn Spawner, session: &Session
     };
     apply(Event::Agent(said), state);
 }
+
+/// The turn stopped: a control message to a headless agent, Escape to one on a terminal.
+pub(super) fn interrupt(state: &mut AppState, session: &SessionId) {
+    match state.agent.stream(session) {
+        Some(stream) => drop(stream.interrupt()),
+        None => super::send(state, session, b"\x1b"),
+    }
+}
+
+/// The ask `id` answered: the tool runs on the picked answers, or the agent hears it may not.
+pub(super) fn answer(
+    state: &mut AppState,
+    session: &SessionId,
+    id: &str,
+    (allow, picked): (bool, &[String]),
+) {
+    let Some(asked) = state.agent.answered(session, id, Timestamp::now()) else {
+        return;
+    };
+    let Some(stream) = state.agent.stream(session) else {
+        return;
+    };
+    let _ = match allow {
+        true => stream.allow(id, asked.answered(picked)),
+        false => stream.deny(id, REFUSED),
+    };
+}
+
+/// What a headless agent hears when the user refuses a tool.
+const REFUSED: &str =
+    "The user refused this tool call. Do not run it again; ask what to do instead.";

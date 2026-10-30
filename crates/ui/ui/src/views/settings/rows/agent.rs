@@ -26,7 +26,7 @@ pub(super) fn agent(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     let conversation = Row::new(
         Section::Agent,
         "conversation view",
-        "in place of the terminal",
+        "headless, from its next start",
         drawn,
     );
     let mut out = grouped("Approvals", vec![approve]);

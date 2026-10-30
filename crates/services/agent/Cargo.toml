@@ -1,6 +1,6 @@
 [package]
 name = "groove-agent-service"
-description = "The agent capability: each session's agent, its terminal, its conversation and its asks"
+description = "The agent capability: each session's agent, its terminal or its stream, its conversation and its asks"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 groove-agent-launch = { path = "../../modules/agent-launch" }
+groove-agent-stream = { path = "../../modules/stream" }
 groove-approvals = { path = "../../modules/approvals" }
 groove-hooks = { path = "../../modules/hooks" }
 groove-mcp = { path = "../../modules/mcp" }
