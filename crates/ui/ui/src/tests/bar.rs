@@ -4,7 +4,6 @@ use groove_controllers::agent_service::Agent;
 use groove_gfx::Fonts;
 use groove_types::{AgentStatus, ApprovalId, Ask, SessionActivity, SessionId, Timestamp};
 
-use crate::hit::Target;
 use crate::tests::{app, render, window};
 use crate::{Surface, Ui};
 
@@ -47,14 +46,9 @@ fn drawn(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
     render(app, ui, window()).0
 }
 
-/// The session, its agent's terminal shown.
 pub(super) fn session_ui() -> Ui {
     Ui {
         surface: Surface::Session,
-        agent: crate::AgentUi {
-            terminal: true,
-            ..Default::default()
-        },
         ..Ui::default()
     }
 }
@@ -83,12 +77,17 @@ fn skill(name: &str, label: &str, kinds: &[&str]) -> groove_types::Skill {
 }
 
 #[test]
-fn the_bar_offers_the_other_face_in_glass_on_the_screen_s_ground() {
+fn the_bar_stands_empty_on_the_screen_s_ground() {
     let app = offering(vec![skill("co-review", "co review", &[])]);
     let ui = session_ui();
     let drawn = drawn(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "conversation"), "{drawn:?}");
-    for gone in ["skills", "reload", "1 skill", "auto-approve"] {
+    for gone in [
+        "skills",
+        "reload",
+        "1 skill",
+        "auto-approve",
+        "conversation",
+    ] {
         assert!(!drawn.iter().any(|one| one == gone), "{gone}: {drawn:?}");
     }
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
@@ -98,7 +97,7 @@ fn the_bar_offers_the_other_face_in_glass_on_the_screen_s_ground() {
         .glass
         .iter()
         .filter(|one| bar.contains(one.rect.x, one.rect.y + 1.0));
-    assert_eq!(pills.count(), 1, "the other face, a pill of glass");
+    assert_eq!(pills.count(), 0, "no pill of glass");
     let deep =
         groove_ui_kit::base::style::Styles::new(app.config.theme(), crate::Tokens::new(1.0)).deep();
     let pane = crate::layout::Layout::of(window(), &ui).agent;
@@ -117,7 +116,6 @@ fn the_bar_offers_the_other_face_in_glass_on_the_screen_s_ground() {
 
 #[test]
 fn the_row_stands_under_the_screen_and_the_grid_gives_way() {
-    let app = offering(Vec::new());
     let ui = session_ui();
     let layout = crate::layout::Layout::of(window(), &ui);
     let tokens = crate::Tokens::new(1.0);
@@ -136,14 +134,6 @@ fn the_row_stands_under_the_screen_and_the_grid_gives_way() {
         layout.agent.y + tokens.sm,
         "the screen starts at the top as it did"
     );
-
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| run.text == "conversation")
-        .expect("the toggle's word");
-    assert!(word.y >= layout.agent_bar.y, "and its words with it");
 }
 
 #[test]
@@ -289,30 +279,4 @@ fn a_trackpad_that_moves_a_little_still_moves_the_screen() {
         asked += nudge(&mut ui).len();
     }
     assert!(asked > 0, "what is under a line is carried, not lost");
-}
-
-#[test]
-fn the_toggle_stands_as_tall_as_the_terminals_bar() {
-    let app = offering(Vec::new());
-    let ui = session_ui();
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits.rect_of(&Target::AgentView);
-    let word = word.expect("the toggle");
-    let layout = crate::layout::Layout::of(window(), &ui);
-    let tokens = crate::Tokens::new(1.0);
-    let pill = frame.layers()[0]
-        .glass
-        .iter()
-        .find(|one| one.rect.contains(word.x + 1.0, word.y + 1.0))
-        .expect("the pill");
-    assert_eq!(
-        pill.rect.bottom(),
-        window().size.height as f32 - tokens.sm,
-        "a gap above the foot"
-    );
-    assert_eq!(
-        (pill.rect.y, pill.rect.h),
-        (layout.manual.y, layout.manual.h),
-        "level with the terminals"
-    );
 }

@@ -90,8 +90,6 @@ pub struct AgentUi {
     pub carried: f32,
     /// Shift was held: the selection is ours even where the program reads the mouse.
     pub bypassed: bool,
-    /// The agent's terminal shows in place of its conversation.
-    pub terminal: bool,
     pub prompt: views::session::Prompt,
     /// How far the conversation is scrolled up from its end, in pixels.
     pub scroll: f32,

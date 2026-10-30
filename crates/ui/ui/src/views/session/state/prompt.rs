@@ -10,12 +10,15 @@ pub struct Prompt {
     pub scroll: f32,
     /// The rows follow the caret, until the wheel moves them.
     pub follow: bool,
+    /// How many messages back it holds, while it holds that message unedited.
+    pub recalled: Option<usize>,
 }
 
 impl PartialEq for Prompt {
     fn eq(&self, other: &Self) -> bool {
         let held = |one: &Self| (one.buffer.text(), one.buffer.selections().to_vec());
-        held(self) == held(other) && (self.scroll, self.follow) == (other.scroll, other.follow)
+        let rest = |one: &Self| (one.scroll, one.follow, one.recalled);
+        held(self) == held(other) && rest(self) == rest(other)
     }
 }
 
@@ -31,7 +34,16 @@ impl Prompt {
     /// One edit, the caret kept in sight.
     pub fn edit(&mut self, edit: &Edit) {
         self.buffer.edit(edit);
-        self.follow = true;
+        (self.follow, self.recalled) = (true, None);
+    }
+
+    /// A message sent before, `back` from the newest; none empties it.
+    pub fn recall(&mut self, said: Option<(usize, &str)>) {
+        *self = Self::default();
+        if let Some((back, text)) = said {
+            self.edit(&Edit::Insert(text.replace('\r', "")));
+            self.recalled = Some(back);
+        }
     }
 
     /// The wheel moved its rows.

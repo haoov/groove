@@ -5,8 +5,9 @@ use groove_gfx::{Edges, Rect};
 use groove_types::chat::{Edit, Entry, Tool};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::SPEAKER_SHARE;
 use groove_ui_kit::markdown::{self, prose};
-use groove_ui_kit::shape::{band, from_left, from_right};
+use groove_ui_kit::shape::{band, from_left, from_right, strip};
 use groove_ui_kit::text::{Label, row, rows, wrapped};
 use groove_ui_kit::widgets::{changes, changes_room, glass_hoverable, glass_tinted, lead};
 
@@ -21,6 +22,7 @@ pub(super) enum Row<'a> {
 }
 
 pub(super) fn height(ctx: &mut Ctx, shown: Row, (width, opened): (f32, &[String])) -> f32 {
+    let width = width * SPEAKER_SHARE;
     let entry = match shown {
         Row::Entry(entry) => entry,
         Row::Queued(text) => return bubble_height(ctx, text, width),
@@ -29,9 +31,10 @@ pub(super) fn height(ctx: &mut Ctx, shown: Row, (width, opened): (f32, &[String]
         Entry::You(text) => bubble_height(ctx, text, width),
         Entry::Said(text) => markdown::height(ctx, text, width, Role::Text),
         Entry::Glance(glance) => {
-            super::glance::height(ctx, glance, super::glance::opened(glance, opened))
+            let opened = super::glance::opened(glance, opened);
+            super::glance::height(ctx, glance, opened, width)
         }
-        Entry::Edit(_) | Entry::Tool(_) => ctx.tokens.row,
+        Entry::Edit(_) | Entry::Tool(_) | Entry::Interrupted => ctx.tokens.row,
     }
 }
 
@@ -40,14 +43,16 @@ pub(super) fn draw(
     ctx: &mut Ctx,
     (open, live, opened): (&Open, bool, &[String]),
     shown: Row,
-    (at, visible): (Rect, Rect),
+    (whole, visible): (Rect, Rect),
 ) {
+    let at = strip(whole, 0.0, whole.w * SPEAKER_SHARE);
     let entry = match shown {
+        Row::Queued(text) => return you(ctx, whole, text, Role::Faint),
+        Row::Entry(Entry::You(text)) => return you(ctx, whole, text, Role::Text),
         Row::Entry(entry) => entry,
-        Row::Queued(text) => return you(ctx, at, text, Role::Faint),
     };
     match entry {
-        Entry::You(text) => you(ctx, at, text, Role::Text),
+        Entry::You(_) => {}
         Entry::Said(text) => {
             let link = |url: &str| Target::Link(url.to_string());
             prose(ctx, (at, visible), text, Role::Text, link);
@@ -58,12 +63,17 @@ pub(super) fn draw(
         }
         Entry::Edit(edit) => edited(ctx, open, at, edit),
         Entry::Tool(tool) => called(ctx, at, tool),
+        Entry::Interrupted => {
+            let mut room = at;
+            lead(ctx, &mut room, Mark::Close, Role::Warn);
+            Label::new("interrupted", ctx.styles.body(Role::Faint)).draw(ctx, room);
+        }
     }
 }
 
 fn bubble_height(ctx: &mut Ctx, text: &str, width: f32) -> f32 {
     let style = ctx.styles.body(Role::Text);
-    let inner = bubble_width(ctx, width) - bubble_pad(ctx) * 2.0;
+    let inner = width - bubble_pad(ctx) * 2.0;
     rows(ctx, text, &style, inner) as f32 * ctx.tokens.line + ctx.tokens.sm * 2.0
 }
 
@@ -72,17 +82,11 @@ fn bubble_pad(ctx: &Ctx) -> f32 {
     ctx.tokens.lg + ctx.tokens.xs
 }
 
-/// A user's message leaves this much room at its left.
-fn bubble_width(ctx: &Ctx, width: f32) -> f32 {
-    let room = ctx.tokens.xl * 2.0;
-    (width - room).max(room)
-}
-
-/// The user's words on a rounded ground at the right.
+/// The user's words on a rounded ground at the right, as wide as the agent's side.
 fn you(ctx: &mut Ctx, at: Rect, text: &str, role: Role) {
     let (sm, pad, line) = (ctx.tokens.sm, bubble_pad(ctx), ctx.tokens.line);
     let style = ctx.styles.body(role);
-    let most = bubble_width(ctx, at.w);
+    let most = at.w * SPEAKER_SHARE;
     let lines = wrapped(ctx, text, &style, most - pad * 2.0);
     let widest = lines
         .iter()

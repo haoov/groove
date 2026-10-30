@@ -121,12 +121,12 @@ fn agent(
         return Vec::new();
     };
     let tokens = metrics.tokens();
-    if !ui.agent.terminal && hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
+    if app.config.conversation() && hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
         ui.agent.prompt.scroll = hits.typed().scroll;
         ui.wheeled(Scroller::Prompt, delta.down(tokens.code_line), hits);
         return Vec::new();
     }
-    if !ui.agent.terminal {
+    if app.config.conversation() {
         let far = hits.extent(Scroller::Chat);
         ui.agent.scroll = (ui.agent.scroll + delta.down(tokens.row)).clamp(0.0, far);
         return Vec::new();

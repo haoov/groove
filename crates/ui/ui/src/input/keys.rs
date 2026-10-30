@@ -117,7 +117,7 @@ fn in_pane(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    let raw = raw(ui);
+    let raw = raw(ui, app);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return app::copied(ui.focus, app);
     }
@@ -151,7 +151,7 @@ fn in_pane(
         return commands;
     }
     match ui.focus {
-        Focus::Agent if !ui.agent.terminal => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
+        Focus::Agent if !raw => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
@@ -161,9 +161,9 @@ fn in_pane(
 }
 
 /// Whether the pane with the keys is a terminal, which takes every key as typed.
-fn raw(ui: &Ui) -> bool {
+fn raw(ui: &Ui, app: &AppState) -> bool {
     match ui.focus {
-        Focus::Agent => ui.agent.terminal,
+        Focus::Agent => !app.config.conversation(),
         focus => focus == Focus::Terminal,
     }
 }

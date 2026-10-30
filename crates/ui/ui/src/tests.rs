@@ -36,6 +36,7 @@ mod pending;
 mod perf;
 mod perf_chat;
 mod perf_editor;
+mod perf_moves;
 mod perf_servers;
 mod rail;
 mod regions;

@@ -12,11 +12,17 @@ use groove_ui_kit::widgets::{busy, icon};
 use super::commands;
 use crate::ctx::Ctx;
 
-pub(super) fn height(ctx: &Ctx, glance: &Glance, opened: bool) -> f32 {
-    match glance.ran.is_empty() {
-        true => ctx.tokens.row,
-        false => ctx.tokens.row + ctx.tokens.xs + commands::height(ctx, &glance.ran, opened),
+pub(super) fn height(ctx: &Ctx, glance: &Glance, opened: bool, width: f32) -> f32 {
+    if glance.ran.is_empty() {
+        return ctx.tokens.row;
     }
+    let card = commands::height(ctx, &glance.ran, opened, width - lead(ctx));
+    ctx.tokens.row + ctx.tokens.xs + card
+}
+
+/// The room the card leaves under the row's first mark.
+fn lead(ctx: &Ctx) -> f32 {
+    ctx.tokens.icon + ctx.tokens.xs
 }
 
 /// The row, its last mark turning while `live`, then the commands under it, whole when `opened`.
@@ -50,8 +56,12 @@ pub(super) fn draw(ctx: &mut Ctx, at: Rect, glance: &Glance, (live, opened): (bo
     if glance.ran.is_empty() {
         return;
     }
-    let lead = ctx.tokens.icon + ctx.tokens.xs;
-    commands::draw(ctx, room.pad(Edges::across(lead, 0.0)), &glance.ran, opened);
+    commands::draw(
+        ctx,
+        room.pad(Edges::across(lead(ctx), 0.0)),
+        &glance.ran,
+        opened,
+    );
 }
 
 /// Whether the commands' card is open: by its first command.

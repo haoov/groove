@@ -19,6 +19,9 @@ const DETAILS: [&str; 9] = [
     "description",
 ];
 
+/// What Claude Code writes as the user's words when the user stops a turn.
+const INTERRUPTED: &str = "[Request interrupted by user";
+
 const PASTED: &str = "<pasted_content";
 const PASTED_END: &str = "</pasted_content";
 
@@ -61,7 +64,7 @@ fn heard(record: &Value) -> Vec<Heard> {
     }
 }
 
-/// The user's words; a slash command by its name; Claude's own tags say nothing.
+/// The user's words; a slash command by its name; an interrupt; Claude's own tags say nothing.
 fn prompt(text: &str) -> Option<Heard> {
     if let Some(name) = between(text, "<command-name>", "</command-name>") {
         let args = between(text, "<command-args>", "</command-args>").unwrap_or_default();
@@ -69,6 +72,9 @@ fn prompt(text: &str) -> Option<Heard> {
     }
     let text = unpasted(text);
     let text = text.trim();
+    if text.starts_with(INTERRUPTED) {
+        return Some(Heard::Interrupted);
+    }
     (!text.is_empty() && !text.starts_with('<')).then(|| Heard::You(text.to_string()))
 }
 

@@ -9,7 +9,7 @@ use groove_gfx::{Fonts, Renderer, Size};
 use groove_types::chat::{Heard, Outcome, Patch};
 use groove_types::{AgentStatus, Timestamp};
 
-use super::chat::{chat_ui, talking};
+use super::chat::{chat_ui, conversing, talking};
 use crate::tests::window;
 use crate::{Ui, view};
 
@@ -85,7 +85,7 @@ fn turn(at: usize) -> Vec<Heard> {
 /// How far back a long scroll goes, in pixels.
 const DEEP: f32 = 200_000.0;
 
-fn chatty(turns: usize) -> AppState {
+pub(super) fn chatty(turns: usize) -> AppState {
     talking((0..turns).flat_map(turn).collect())
 }
 
@@ -111,7 +111,7 @@ fn time_a_frame_of_the_conversation() {
         ui.agent.scroll = 0.0;
         app.agent.agents[0].1.activity.status = AgentStatus::Working;
         let working = timed(&app, &ui, &mut fonts, 20);
-        ui.agent.terminal = true;
+        conversing(&mut app, false);
         let terminal = timed(&app, &ui, &mut fonts, 20);
         println!(
             "{turns:>5} turns: {bottom:>10?} at the end, {middle:>10?} scrolled far back, \
@@ -125,10 +125,10 @@ fn time_a_frame_of_the_conversation() {
 fn time_the_draw_of_the_conversation() {
     let size = Size::new(crate::tests::WINDOW.0, crate::tests::WINDOW.1);
     let mut renderer = Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter");
-    let app = chatty(100);
+    let mut app = chatty(100);
     for terminal in [false, true] {
         let mut ui = chat_ui();
-        ui.agent.terminal = terminal;
+        conversing(&mut app, !terminal);
         for _ in 0..3 {
             let (frame, _) = view(&app, &ui, window(), renderer.fonts());
             renderer.render(&frame).expect("rendered");

@@ -210,28 +210,34 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | a top bar · the agent's conversation and its prompt, or its pty · the terminal toggle |
+| **Agent pane** | a top bar · the agent's pty, or its conversation and its prompt |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
 
-**The agent pane draws the conversation.** The user's message is a bubble. One sent from the
+**The agent pane draws the conversation** when *conversation view* is on (Settings › Agent);
+off, it shows the pty. The agent's rows stand at the left and the user's bubbles at the right,
+each side at most nine tenths of the width. One sent from the
 prompt, or typed while the agent works, waits faint after the rows until the transcript says it.
 Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a count for each,
-a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls; a click
-opens it to every one whole, with what it gave back. While the agent works, the last group's mark
+a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls,
+each one line cut with `…`; a click opens it to every one whole and wrapped, with what it gave back.
+An interrupt is a row of its own, and no group turns after it. While the agent works, the last group's mark
 spins and its time runs, and a group of its own stands past the last record until one comes. A
 write is one row: its file links to the hunk in the Diff tab, with its `+N -N`. A table is laid in
 columns. A drag selects text and copies it on release; a double click takes a word, a triple click
 its line. Ctrl and a click follow a URL, or open a path in the Files tab at its line.
-The prompt is glass over the agent's bar, a gap between, as the workspace stands over the
+The prompt is glass a bar's height above the pane's foot, as the workspace stands over the
 terminals, centred and no wider than the palette. The conversation scrolls on under it and the
-bar, and at the top under the top bar. The bar holds the terminal toggle at its start, which shows
-the pty in place of the conversation, and back. The prompt edits as a note does, grows to eight
+bar, and at the top under the top bar. The prompt edits as a note does, grows to eight
 rows and then scrolls. Enter sends it to the agent, shift+Enter breaks the line.
-Enforced by `the_conversation_shows_in_place_of_the_terminal_and_the_bar_brings_the_terminal_back`,
+Up in an empty prompt brings back the user's last message, and each Up the one before; Down
+steps forward, and past the newest empties the prompt.
+Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on`,
 `a_click_on_a_command_card_shows_every_command_whole_with_what_it_printed`,
 `while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
+`an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
+`up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
 `a_table_keeps_its_rows_and_each_span_its_cell`,
 `a_drag_over_the_conversation_copies_what_it_holds`,
 `a_double_click_takes_a_word_and_a_triple_click_its_line`,
@@ -374,12 +380,11 @@ does the same, its field a rounded field. Enforced by
 
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
 menu, the cluster scope panel, the board's filter offers, the language servers' popup, the agent's
-prompt and the terminal toggle are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
+prompt are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_floats_as_a_pane_of_glass_inside_its_place`,
 `the_strip_stands_as_glass_on_the_agent_s_ground`,
-`the_bar_offers_the_other_face_in_glass_on_the_screen_s_ground`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
 `the_panel_stands_on_glass`,
@@ -537,7 +542,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
-| Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
+| Agent | auto-approve default · conversation view · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |

@@ -319,19 +319,18 @@ fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
 }
 
 #[test]
-fn the_auto_approve_default_stands_in_the_agent_section() {
+fn the_auto_approve_default_and_the_conversation_view_stand_in_the_agent_section() {
     let (app, mut ui) = opened();
     let app = crate::tests::bar::sourced(app, false, false);
-    let shown = |ui: &Ui| {
-        drawn(&app, ui)
-            .0
-            .iter()
-            .any(|t| t == "auto-approve default")
-    };
+    let shown = |ui: &Ui, row: &str| drawn(&app, ui).0.iter().any(|t| t == row);
     ui.settings.section = crate::views::settings::Section::Agent;
-    assert!(shown(&ui));
+    assert!(shown(&ui, "auto-approve default"));
+    assert!(shown(&ui, "conversation view"));
     ui.settings.section = crate::views::settings::Section::Preferences;
-    assert!(!shown(&ui), "Preferences no longer holds it");
+    assert!(
+        !shown(&ui, "auto-approve default"),
+        "Preferences no longer holds it"
+    );
 }
 
 fn skill(id: &str, enabled: bool) -> groove_types::Skill {

@@ -43,6 +43,8 @@ pub enum Heard {
     Recalled,
     /// Words sent from Groove's own prompt, before the transcript says them.
     Sent(String),
+    /// The user stopped the agent's turn.
+    Interrupted,
     Tool {
         id: String,
         name: String,
@@ -111,6 +113,7 @@ impl Chat {
                 Entry::You(text)
             }
             Heard::Said(text) => Entry::Said(text),
+            Heard::Interrupted => Entry::Interrupted,
             Heard::Thought => return self.glanced(|one| one.thoughts += 1),
             Heard::Look(at) => {
                 return self.glanced(|one| {

@@ -229,8 +229,6 @@ pub enum Target {
     View(DiffView),
     /// The agent's pane.
     Agent,
-    /// The agent's conversation, or its terminal in its place.
-    AgentView,
     /// The conversation's column, the file an edit wrote at its hunk's first line, and the prompt.
     Chat,
     Edited {

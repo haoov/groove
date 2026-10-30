@@ -1,7 +1,6 @@
 //! The session surface: the agent pane, and the workspace's strip with its header and tabs.
 
 pub mod agent_pane;
-pub mod bar;
 pub mod diff;
 mod face;
 pub(crate) mod files;
@@ -37,8 +36,7 @@ use groove_ui_kit::widgets::{Button, glass_pane, ground_under};
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ground_under(ctx, ctx.app.layout.board, Ground::Deep);
     if ui.session.alone && app.session.selected().is_some() {
-        agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
-        return bar::draw(ctx, app, ui);
+        return agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
     }
     if !ctx.app.layout.work.is_empty() {
         glass_pane(ctx, ctx.app.layout.strip);
@@ -58,7 +56,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         ctx.region(on(crate::Focus::Sidebar), |ctx| sidebar(ctx, app, ui));
     }
     agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
-    bar::draw(ctx, app, ui);
     ctx.region(on(crate::Focus::Workspace), |ctx| {
         header::draw(ctx, app, ui)
     });

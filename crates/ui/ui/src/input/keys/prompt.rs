@@ -1,7 +1,8 @@
-//! Keys at Groove's own prompt: typed into it as into a note, Enter sends it, shift+Enter breaks the line.
+//! Keys at Groove's own prompt: typed into it as into a note, Enter sends it, shift+Enter breaks the line, Up and Down recall what was sent.
 
 use groove_controllers::{AppState, Command, agent};
 use groove_types::Edit;
+use groove_types::chat::Entry;
 
 use super::super::{Key, Modifiers};
 use super::worded::asked_of_note;
@@ -17,7 +18,16 @@ pub(super) fn keyed(
 ) -> Vec<Command> {
     let prompt = &mut ui.agent.prompt;
     prompt.scroll = hits.typed().scroll;
+    let plain = mods == Modifiers::default();
     match key {
+        Key::Up if plain && (prompt.is_empty() || prompt.recalled.is_some()) => {
+            let back = prompt.recalled.unwrap_or(0) + 1;
+            recalled(ui, app, back);
+        }
+        Key::Down if plain && prompt.recalled.is_some() => {
+            let back = prompt.recalled.unwrap_or(1) - 1;
+            recalled(ui, app, back);
+        }
         Key::Enter if mods.shift => prompt.edit(&Edit::Newline),
         Key::Enter => return said(ui, app),
         Key::Escape if prompt.is_empty() => {
@@ -32,6 +42,27 @@ pub(super) fn keyed(
         }
     }
     Vec::new()
+}
+
+/// The user's message `back` from the newest into the prompt; 0 empties it, past the oldest changes nothing.
+fn recalled(ui: &mut Ui, app: &AppState, back: usize) {
+    let Some(session) = app.session.selected.as_ref() else {
+        return;
+    };
+    let mine = app
+        .agent
+        .chat(session)
+        .into_iter()
+        .flat_map(|one| one.entries());
+    let mut mine = mine.rev().filter_map(|one| match one {
+        Entry::You(text) => Some(text.as_str()),
+        _ => None,
+    });
+    match back.checked_sub(1).map(|at| mine.nth(at)) {
+        None => ui.agent.prompt.recall(None),
+        Some(Some(text)) => ui.agent.prompt.recall(Some((back, text))),
+        Some(None) => {}
+    }
 }
 
 /// What the prompt holds, sent to the selected session's agent; the prompt empties and the conversation shows its end.

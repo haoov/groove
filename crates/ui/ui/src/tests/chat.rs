@@ -25,6 +25,7 @@ const WORKTREE: &str = "/code/worktrees/a/kiwi/explorer/alpha";
 pub(super) fn talking(heard: Vec<Heard>) -> AppState {
     let mut app = with_repo(super::bar::asking(Vec::new()));
     app.agent.agents[0].1.terminal = Some(super::agent::mouse_reader());
+    conversing(&mut app, true);
     let (session, transcript) = (SessionId::new("a"), PathBuf::from("/t/a.jsonl"));
     app.agent.follow(&session, transcript.clone());
     let event = Event::Heard {
@@ -34,6 +35,14 @@ pub(super) fn talking(heard: Vec<Heard>) -> AppState {
     };
     apply(&mut app.agent, event);
     app
+}
+
+/// Settings turn the conversation view on, or off for the terminal.
+pub(super) fn conversing(app: &mut AppState, on: bool) {
+    let file = serde_json::json!({ "git": { "worktree_root": "~" } });
+    let mut config: groove_types::Config = serde_json::from_value(file).expect("a config");
+    config.preferences.conversation = on;
+    app.config.config = Some(config);
 }
 
 pub(super) fn ran(command: &str) -> Heard {
@@ -75,8 +84,8 @@ fn edit(path: &str, line: u32) -> Vec<Heard> {
 }
 
 #[test]
-fn the_conversation_shows_in_place_of_the_terminal_and_the_bar_brings_the_terminal_back() {
-    let app = talking(vec![
+fn the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on() {
+    let mut app = talking(vec![
         Heard::You("cache the quotes".into()),
         Heard::Clock(groove_types::Timestamp::new(100)),
         Heard::Thought,
@@ -85,8 +94,8 @@ fn the_conversation_shows_in_place_of_the_terminal_and_the_bar_brings_the_termin
         Heard::Clock(groove_types::Timestamp::new(126)),
         Heard::Queued("then commit".into()),
     ]);
-    let mut ui = chat_ui();
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let ui = chat_ui();
+    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let texts = all_texts(&frame);
     let shown = [
         "cache the quotes",
@@ -95,18 +104,17 @@ fn the_conversation_shows_in_place_of_the_terminal_and_the_bar_brings_the_termin
         "cargo test",
         "26s",
         "then commit",
-        "terminal",
     ];
     for said in shown {
         assert!(texts.iter().any(|one| one == said), "{said}: {texts:?}");
     }
-    let toggle = hits.rect_of(&Target::AgentView).expect("the bar's toggle");
-    assert!(click(toggle, &mut ui, &app, &hits).is_empty());
-    assert!(ui.agent.terminal, "the terminal shows");
+    conversing(&mut app, false);
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let texts = all_texts(&frame);
-    assert!(!texts.iter().any(|one| one == "cache the quotes"));
-    assert!(texts.iter().any(|one| one == "conversation"), "{texts:?}");
+    assert!(
+        !texts.iter().any(|one| one == "cache the quotes"),
+        "the terminal shows"
+    );
 }
 
 #[test]
@@ -135,6 +143,27 @@ fn an_empty_prompt_sends_nothing() {
     let mut ui = chat_ui();
     typed("   ", &mut ui, &app);
     assert!(press(Key::Enter, Modifiers::default(), &mut ui, &app).is_empty());
+}
+
+#[test]
+fn up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns() {
+    let app = talking(vec![
+        Heard::You("first".into()),
+        Heard::Said("ok".into()),
+        Heard::You("second".into()),
+    ]);
+    let mut ui = chat_ui();
+    let step = |key, ui: &mut Ui| {
+        press(key, Modifiers::default(), ui, &app);
+        ui.agent.prompt.text()
+    };
+    assert_eq!(step(Key::Up, &mut ui), "second");
+    assert_eq!(step(Key::Up, &mut ui), "first");
+    assert_eq!(step(Key::Up, &mut ui), "first", "the oldest stays");
+    assert_eq!(step(Key::Down, &mut ui), "second");
+    assert_eq!(step(Key::Down, &mut ui), "", "past the newest it empties");
+    typed("draft", &mut ui, &app);
+    assert_eq!(step(Key::Up, &mut ui), "draft", "a draft is kept");
 }
 
 #[test]

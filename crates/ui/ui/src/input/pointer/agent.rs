@@ -19,10 +19,6 @@ pub(super) fn acted(
 ) -> Option<Vec<Command>> {
     match target {
         Target::Agent => Some(pressed(ui, app, point, metrics)),
-        Target::AgentView => {
-            ui.agent.terminal = !ui.agent.terminal;
-            Some(Vec::new())
-        }
         Target::Chat => Some(reading(ui, hits, point)),
         Target::Prompt => Some(typing(ui, hits, point, metrics)),
         Target::Commands(id) => {

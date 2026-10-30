@@ -92,10 +92,10 @@ fn rows<'a>(
 /// The session, the row that is live, by its place from the end, and the glances opened.
 type Seen<'a> = (&'a Open, Option<usize>, &'a [String]);
 
-/// While the agent works past its last glance, a glance of its own that runs until a record says more.
+/// While the agent works past its last glance and was not stopped, a glance of its own that runs until a record says more.
 fn pending(chat: Option<&Chat>, working: bool) -> Option<Entry> {
     let last = chat.and_then(|one| one.entries().last());
-    if !working || matches!(last, Some(Entry::Glance(_))) {
+    if !working || matches!(last, Some(Entry::Glance(_) | Entry::Interrupted)) {
         return None;
     }
     Some(Entry::Glance(Glance {

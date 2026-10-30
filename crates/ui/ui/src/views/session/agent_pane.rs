@@ -29,7 +29,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
         return note(ctx, "starting the agent…");
     };
     match (&agent.terminal, &agent.activity.status) {
-        (Some(_), _) if !ui.agent.terminal => {
+        (Some(_), _) if app.config.conversation() => {
             let chat = app.agent.chat(&open.session.id);
             let laid = prompt::laid(ctx, ui);
             let working = agent.activity.status == AgentStatus::Working;

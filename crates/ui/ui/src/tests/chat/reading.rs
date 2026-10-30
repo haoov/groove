@@ -119,3 +119,13 @@ fn while_the_agent_works_past_its_last_record_a_turning_glance_says_so() {
     let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
     assert!(all_texts(&frame).iter().any(|one| one == "thought"));
 }
+
+#[test]
+fn an_interrupt_ends_the_turn_and_no_glance_turns_after_it() {
+    let mut app = talking(vec![ran("cargo test"), Heard::Interrupted]);
+    app.agent.agents[0].1.activity.status = AgentStatus::Working;
+    let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
+    let texts = all_texts(&frame);
+    assert!(texts.iter().any(|one| one == "interrupted"), "{texts:?}");
+    assert!(!texts.iter().any(|one| one == "thought"), "{texts:?}");
+}

@@ -12,6 +12,7 @@ pub enum Entry {
     Glance(Glance),
     Edit(Edit),
     Tool(Tool),
+    Interrupted,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,7 +66,7 @@ impl Entry {
             Entry::Glance(glance) => glance.ran.iter().any(|one| one.id == id),
             Entry::Edit(one) => one.id == id,
             Entry::Tool(one) => one.id == id,
-            Entry::You(_) | Entry::Said(_) => false,
+            Entry::You(_) | Entry::Said(_) | Entry::Interrupted => false,
         }
     }
 }

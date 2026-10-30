@@ -184,6 +184,9 @@ pub struct GitConfig {
 pub struct Preferences {
     #[serde(default)]
     pub auto_approve_default: bool,
+    /// The agent pane draws the conversation in place of the terminal.
+    #[serde(default)]
+    pub conversation: bool,
     #[serde(default)]
     pub thresholds: Thresholds,
     #[serde(default = "default_poll_interval")]
@@ -202,6 +205,7 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             auto_approve_default: false,
+            conversation: false,
             thresholds: Thresholds::default(),
             poll_interval_secs: default_poll_interval(),
             stale_after_secs: default_stale_after(),

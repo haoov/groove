@@ -84,6 +84,8 @@ pub const CODE_MIN: f32 = 160.0;
 pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
+/// How much of the conversation's width one side's rows take.
+pub const SPEAKER_SHARE: f32 = 0.9;
 
 /// How much of the raised ground stands under a selection and under the word at the caret.
 pub const HELD: f32 = 0.8;

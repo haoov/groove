@@ -101,7 +101,6 @@ fn an_empty_clipboard_asks_nothing() {
 fn the_agent_takes_what_is_pasted_when_it_has_the_keyboard() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.agent.terminal = true;
     ui.session.tab = Tab::Diff;
     let asked = paste("one\ntwo", &mut ui, &app);
     assert_eq!(

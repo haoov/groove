@@ -23,6 +23,17 @@ fn the_user_s_prompt_and_a_slash_command_are_heard_as_typed() {
 }
 
 #[test]
+fn an_interrupt_is_heard_as_one_and_not_as_the_user_s_words() {
+    let stopped = |text: &str| json!({"type": "user", "message": {"content": [{"type": "text", "text": text}]}});
+    assert_eq!(
+        said(stopped("[Request interrupted by user]")),
+        [Heard::Interrupted]
+    );
+    let in_tool = stopped("[Request interrupted by user for tool use]");
+    assert_eq!(said(in_tool), [Heard::Interrupted]);
+}
+
+#[test]
 fn meta_and_side_chain_records_say_nothing() {
     let meta = json!({"type": "user", "isMeta": true, "message": {"content": "skill body"}});
     let side = json!({"type": "assistant", "isSidechain": true,
