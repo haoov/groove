@@ -42,6 +42,10 @@ fn ground<A: App>(ctx: &mut Ctx<'_, A>, row: Rect, line: &Line) {
             let middle = row.y + (row.h - hairline) / 2.0;
             ctx.quad(Rect::new(row.x, middle, row.w, hairline), ctx.styles.line());
         }
+        Ground::Head => {
+            let foot = row.bottom() - hairline;
+            ctx.quad(Rect::new(row.x, foot, row.w, hairline), ctx.styles.line());
+        }
         Ground::Plain => {}
     }
     if line.quoted {

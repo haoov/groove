@@ -1,5 +1,6 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
+mod chat;
 mod pointer;
 pub mod skills;
 mod start;
@@ -9,6 +10,7 @@ use groove_types::{ApprovalId, SessionId};
 
 use crate::{AppState, Services, Spawner};
 
+pub use chat::hooked;
 pub use start::start;
 pub(crate) use start::{asking, launch_dir, rewrite};
 
@@ -24,6 +26,17 @@ pub enum Command {
     End { session: SessionId },
     /// `agent.send`: bytes to the PTY, as typed.
     Send { session: SessionId, bytes: Vec<u8> },
+    /// `agent.say`: words from Groove's own prompt, sent to the agent as a prompt.
+    Say { session: SessionId, text: String },
+    /// `agent.interrupt`: the agent's turn stopped where it stands.
+    Interrupt { session: SessionId },
+    /// `agent.answer`: the tool a headless agent asked for runs, on the picked answers, or does not.
+    Answer {
+        session: SessionId,
+        id: String,
+        allow: bool,
+        picked: Vec<String>,
+    },
     /// `agent.resize`: the pane's grid to the PTY.
     Resize {
         session: SessionId,
@@ -96,6 +109,9 @@ impl Command {
             Command::Start { .. } => "agent.start",
             Command::End { .. } => "agent.end",
             Command::Send { .. } => "agent.send",
+            Command::Say { .. } => "agent.say",
+            Command::Interrupt { .. } => "agent.interrupt",
+            Command::Answer { .. } => "agent.answer",
             Command::Resize { .. } => "agent.resize",
             Command::Approve { .. } => "agent.approve",
             Command::Refuse { .. } => "agent.refuse",
@@ -130,6 +146,14 @@ pub fn dispatch(
         } => start(state, spawner, session, (cols, rows)),
         Command::End { session } => end(state, &session),
         Command::Send { session, bytes } => send(state, &session, &bytes),
+        Command::Say { session, text } => chat::say(state, spawner, &session, &text),
+        Command::Interrupt { session } => chat::interrupt(state, &session),
+        Command::Answer {
+            session,
+            id,
+            allow,
+            picked,
+        } => chat::answer(state, &session, &id, (allow, &picked)),
         Command::Resize {
             session,
             cols,
@@ -196,8 +220,12 @@ pub(crate) fn forget(state: &mut AppState, spawner: &dyn Spawner, session: &Sess
 
 pub fn end(state: &mut AppState, session: &SessionId) {
     crate::tools::drop_asks(state, session);
-    if let Some(terminal) = state.agent.end(session).and_then(|a| a.terminal) {
-        let _ = terminal.terminate();
+    if let Some(run) = state
+        .agent
+        .end(session)
+        .and_then(groove_agent_service::Run::of)
+    {
+        run.terminate();
     }
 }
 

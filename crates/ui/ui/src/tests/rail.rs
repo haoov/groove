@@ -44,6 +44,8 @@ fn stands(app: &mut AppState, id: &str, status: AgentStatus, changed_at: i64) {
     };
     let agent = Agent {
         terminal: None,
+        stream: None,
+        permissions: Vec::new(),
         activity,
         started_at: Timestamp::new(0),
         launch: 0,

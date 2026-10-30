@@ -102,6 +102,7 @@ impl App {
         self.ui.settle(&self.state);
         self.prepare(metrics);
         groove_ui::input::land(&mut self.ui, &self.state, &self.hits, metrics);
+        groove_ui::input::reveal(&mut self.ui, &self.state, metrics);
         groove_ui::input::word(&mut self.ui, &self.state, metrics.tick);
         let Some(renderer) = &mut self.renderer else {
             return;

@@ -1,10 +1,11 @@
 //! What the pointer can reach: the last rect registered over a point wins.
 
 mod note;
+pub mod read;
 mod target;
 
 pub use note::{Composing, NoteButton};
-pub use target::Target;
+pub use target::{Answering, Target};
 
 use groove_gfx::Rect;
 
@@ -60,6 +61,10 @@ pub enum Scroller {
     Resources,
     /// The Resources tab's kinds sidebar.
     Kinds,
+    /// The agent's conversation, from its end.
+    Chat,
+    /// Groove's own prompt, from its first row.
+    Prompt,
     /// One of the board's columns.
     Column(u8),
 }
@@ -77,13 +82,15 @@ impl Scroller {
             Scroller::Across => 6,
             Scroller::Resources => 7,
             Scroller::Kinds => 8,
+            Scroller::Chat => 9,
+            Scroller::Prompt => 10,
             Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
 
 /// The scrollers ahead of the board's columns.
-const OWN: usize = 9;
+const OWN: usize = 11;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]
@@ -97,6 +104,8 @@ pub struct Hits {
     chars: Chars,
     /// Under the caret, where the code surface drew it.
     caret: Option<(f32, f32)>,
+    read: Vec<read::Line>,
+    typed: read::Typed,
 }
 
 impl Hits {
@@ -147,6 +156,23 @@ impl Hits {
 
     pub fn caret(&self) -> Option<(f32, f32)> {
         self.caret
+    }
+
+    /// The conversation's text, in reading order.
+    pub fn reading(&mut self, lines: Vec<read::Line>) {
+        self.read = read::ordered(lines);
+    }
+
+    pub fn read(&self) -> &[read::Line] {
+        &self.read
+    }
+
+    pub fn typing(&mut self, typed: read::Typed) {
+        self.typed = typed;
+    }
+
+    pub fn typed(&self) -> &read::Typed {
+        &self.typed
     }
 
     /// The last thing drawn over this point.

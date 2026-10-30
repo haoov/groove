@@ -1,4 +1,4 @@
-//! The Agent section's rows: how new sessions approve, then the skills they are given.
+//! The Agent section's rows: how new sessions approve, how the agent shows, then the skills they are given.
 
 use groove_controllers::AppState;
 use groove_controllers::config_service::Preference;
@@ -19,7 +19,18 @@ pub(super) fn agent(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
         "writes ask new sessions",
         toggle,
     );
+    let drawn = Value::Toggle {
+        on: held.conversation,
+        flip: Preference::Conversation(!held.conversation),
+    };
+    let conversation = Row::new(
+        Section::Agent,
+        "conversation view",
+        "headless, from its next start",
+        drawn,
+    );
     let mut out = grouped("Approvals", vec![approve]);
+    out.extend(grouped("View", vec![conversation]));
     out.extend(shared(app, settings));
     out.extend(super::skills::skills(app, settings));
     out.extend(super::routines::routines(app));

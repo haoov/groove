@@ -28,7 +28,7 @@ mod typed;
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
 pub use completions::{Offer, completions};
-pub use counts::{changes, counts, counts_room, faults, faults_room};
+pub use counts::{changes, changes_room, counts, counts_room, faults, faults_room};
 pub use field::Field;
 pub use fold::{caret, fold, fold_turn, folder};
 pub use heading::Heading;

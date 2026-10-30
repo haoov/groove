@@ -40,7 +40,7 @@ pub(super) fn scroll(
         return shelled(ui, app, delta, point, hits, metrics);
     }
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
-        return agent(ui, app, delta, point, &layout, metrics);
+        return agent(ui, app, delta, point, (&layout, hits, metrics));
     }
     if ui.showing(app) == Surface::Board {
         column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));
@@ -115,13 +115,23 @@ fn agent(
     app: &AppState,
     delta: Delta,
     point: (f32, f32),
-    layout: &Layout,
-    metrics: Metrics,
+    (layout, hits, metrics): (&Layout, &Hits, Metrics),
 ) -> Vec<Command> {
     let Some(session) = app.session.selected.clone() else {
         return Vec::new();
     };
     let tokens = metrics.tokens();
+    let conversing = crate::views::session::agent_pane::conversing(app);
+    if conversing && hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
+        ui.agent.prompt.scroll = hits.typed().scroll;
+        ui.wheeled(Scroller::Prompt, delta.down(tokens.code_line), hits);
+        return Vec::new();
+    }
+    if conversing {
+        let far = hits.extent(Scroller::Chat);
+        ui.agent.scroll = (ui.agent.scroll + delta.down(tokens.row)).clamp(0.0, far);
+        return Vec::new();
+    }
     let lines = turned(ui, delta, tokens.line);
     if lines == 0 {
         return Vec::new();

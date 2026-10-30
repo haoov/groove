@@ -94,12 +94,20 @@ pub fn send(
     args: Option<&str>,
 ) {
     let said = format!("/{id} {}", args.unwrap_or_default());
+    if let Some(stream) = state.agent.stream(session) {
+        let _ = stream.say(said.trim_end());
+        return;
+    }
     super::send(state, session, said.as_bytes());
     entered(spawner, session);
 }
 
-/// Words pasted into the agent's prompt, then the return that submits them.
+/// Words said to a headless agent, or pasted into its terminal's prompt and submitted.
 pub(crate) fn typed(state: &mut AppState, spawner: &dyn Spawner, session: &SessionId, words: &str) {
+    if let Some(stream) = state.agent.stream(session) {
+        let _ = stream.say(words);
+        return;
+    }
     if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.paste(words);
     }

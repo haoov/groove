@@ -42,6 +42,8 @@ fn printing(state: &mut AppState, said: &str) {
         session,
         groove_controllers::agent_service::Agent {
             terminal: Some(terminal),
+            stream: None,
+            permissions: Vec::new(),
             activity: groove_types::SessionActivity {
                 status: groove_types::AgentStatus::Idle,
                 tool: None,

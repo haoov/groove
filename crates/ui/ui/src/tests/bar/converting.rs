@@ -1,6 +1,14 @@
-//! Converting a session to a task: one row for each source that is set up.
+//! Converting a session to a task from the palette: one entry for each source that is set up.
 
 use super::*;
+
+/// The skills the palette offers, by label.
+fn offered(app: &groove_controllers::AppState) -> Vec<String> {
+    let all = crate::palette::entries(app).into_iter();
+    all.filter(|one| one.group == "Skills")
+        .map(|one| one.label)
+        .collect()
+}
 
 #[test]
 fn a_conversion_files_in_each_source_that_is_set_up() {
@@ -9,42 +17,19 @@ fn a_conversion_files_in_each_source_that_is_set_up() {
         true,
         true,
     );
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Skills(SessionId::new("a")))
-        .expect("the skills word");
-    click(word, &mut ui, &app, &hits);
-
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = all_texts(&frame);
+    let labels = offered(&app);
+    for one in ["convert to task in GitHub", "convert to task in Notion"] {
+        assert!(labels.iter().any(|label| label == one), "{labels:?}");
+    }
     assert!(
-        drawn.iter().any(|one| one == "convert to task in GitHub"),
-        "{drawn:?}"
+        !labels.iter().any(|one| one == "convert to task"),
+        "{labels:?}"
     );
-    assert!(
-        drawn.iter().any(|one| one == "convert to task in Notion"),
-        "{drawn:?}"
-    );
-    assert!(
-        !drawn.iter().any(|one| one == "convert to task"),
-        "{drawn:?}"
-    );
-
-    let row = hits
-        .rect_of(&crate::hit::Target::MenuRow(0))
-        .expect("a row of it");
-    let acted = click(row, &mut ui, &app, &hits);
-    assert_eq!(
-        acted,
-        vec![groove_controllers::Command::Agent(
-            groove_controllers::agent::Command::SendSkill {
-                session: SessionId::new("a"),
-                id: "groove:convert-explorer".into(),
-                args: Some("github".into()),
-            }
-        )]
-    );
+    let open = app.session.selected().expect("a session");
+    let sources = groove_controllers::task_service::source_ids(app.config.config.as_ref());
+    let first = app.skill.offers(&open.session.kind, &sources).remove(0);
+    assert_eq!(first.id, "groove:convert-explorer");
+    assert_eq!(first.args.as_deref(), Some("github"));
 }
 
 #[test]
@@ -58,35 +43,19 @@ fn filing_a_task_and_sharing_a_fact_stay_off_the_menu_and_converting_names_each_
         true,
         true,
     );
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Skills(SessionId::new("a")))
-        .expect("the skills word");
-    click(word, &mut ui, &app, &hits);
-
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = all_texts(&frame);
-    let rows: Vec<&String> = drawn.iter().filter(|one| one.contains(" in ")).collect();
+    let labels = offered(&app);
+    let rows: Vec<&String> = labels.iter().filter(|one| one.contains(" in ")).collect();
     let mut once = rows.clone();
     once.sort();
     once.dedup();
-    assert_eq!(
-        rows.len(),
-        2,
-        "two sources, one skill on the menu: {rows:?}"
-    );
+    assert_eq!(rows.len(), 2, "two sources, one skill: {rows:?}");
     assert!(
-        !drawn
+        !labels
             .iter()
             .any(|one| one.starts_with("create task") || one.starts_with("share a fact")),
-        "{drawn:?}"
+        "{labels:?}"
     );
-    assert_eq!(
-        once.len(),
-        rows.len(),
-        "no row says what another says: {rows:?}"
-    );
+    assert_eq!(once.len(), rows.len(), "no entry says what another says");
 }
 
 #[test]
@@ -96,16 +65,9 @@ fn one_source_files_without_naming_it() {
         false,
         true,
     );
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let word = hits
-        .rect_of(&Target::Skills(SessionId::new("a")))
-        .expect("the skills word");
-    click(word, &mut ui, &app, &hits);
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = all_texts(&frame);
+    let labels = offered(&app);
     assert!(
-        drawn.iter().any(|one| one == "convert to task"),
-        "{drawn:?}"
+        labels.iter().any(|one| one == "convert to task"),
+        "{labels:?}"
     );
 }

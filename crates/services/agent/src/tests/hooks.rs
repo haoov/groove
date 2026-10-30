@@ -6,6 +6,8 @@ fn state() -> State {
     let mut state = State::default();
     let agent = Agent {
         terminal: None,
+        stream: None,
+        permissions: Vec::new(),
         activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
         started_at: Timestamp::new(100),
         launch: 0,

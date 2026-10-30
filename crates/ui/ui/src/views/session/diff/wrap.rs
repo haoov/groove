@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use groove_controllers::workspace_service::Buffer;
 use groove_types::{Note, labelled};
 use groove_ui_kit::markdown::{Row, compact};
 
@@ -94,4 +95,29 @@ pub(crate) fn pieces(text: &str, cols: usize) -> Vec<(usize, usize, usize)> {
         }
     }
     out
+}
+
+/// A row's words, the caret's column on it, and what is held on it.
+pub(crate) type Marked = (String, Option<usize>, Option<(usize, usize, bool)>);
+
+pub(crate) fn marked(buffer: &Buffer, (line, start, end): (usize, usize, usize)) -> Marked {
+    let whole = buffer.line(line).unwrap_or_default();
+    let chars = whole.chars().count();
+    let tail = end >= chars;
+    let body: String = whole.chars().skip(start).take(end - start).collect();
+    let caret = buffer.caret();
+    let on = caret.line == line && caret.column >= start && (caret.column < end || tail);
+    let held = buffer
+        .selections()
+        .first()
+        .and_then(|one| one.on(line, chars));
+    let held = held.and_then(|(from, to, through)| {
+        let (from, to) = (from.max(start), to.min(end));
+        (from < to || (from == to && to == end && through && tail)).then_some((
+            from - start,
+            to - start,
+            through && tail,
+        ))
+    });
+    (body, on.then(|| caret.column - start), held)
 }

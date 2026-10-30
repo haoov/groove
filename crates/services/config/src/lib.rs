@@ -33,6 +33,7 @@ pub enum Preference {
     FontSize(Font, f32),
     MonoFamily(FontFamily),
     AutoApproveDefault(bool),
+    Conversation(bool),
     ReviewWaitingDays(u32),
     DueSoonDays(u32),
     ApprovedUnmergedDays(u32),
@@ -134,6 +135,11 @@ impl State {
         self.preferences().auto_approve_default
     }
 
+    pub fn conversation(&self) -> bool {
+        let held = self.config.as_ref();
+        held.is_some_and(|config| config.preferences.conversation)
+    }
+
     /// The chords rebound, whole; the config to write, or `None` before first run.
     pub fn rebind(&mut self, keymap: BTreeMap<String, Vec<String>>) -> Option<&Config> {
         let config = self.config.as_mut()?;
@@ -157,6 +163,7 @@ impl State {
             }
             Preference::MonoFamily(family) => ui.mono_font_family = family.stored().into(),
             Preference::AutoApproveDefault(on) => held.auto_approve_default = on,
+            Preference::Conversation(on) => held.conversation = on,
             Preference::ReviewWaitingDays(days) => held.thresholds.review_waiting_days = days,
             Preference::DueSoonDays(days) => held.thresholds.due_soon_days = days,
             Preference::ApprovedUnmergedDays(days) => held.thresholds.approved_unmerged_days = days,

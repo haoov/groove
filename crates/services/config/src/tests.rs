@@ -74,8 +74,10 @@ fn a_preference_changed_is_what_its_readers_answer_after() {
     assert!(state.set(Preference::PollIntervalSecs(120)).is_some());
     assert!(state.set(Preference::AutoApproveDefault(true)).is_some());
     assert!(state.set(Preference::DueSoonDays(5)).is_some());
+    assert!(state.set(Preference::Conversation(true)).is_some());
     assert_eq!(state.poll_interval(), 120);
     assert!(state.auto_approve_default());
+    assert!(state.conversation());
     assert_eq!(state.thresholds().due_soon_days, 5);
 }
 

@@ -210,10 +210,52 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | a top bar · the agent's pty · action bar: skills menu |
+| **Agent pane** | a top bar · the agent's pty, or its conversation, what it asks, and its prompt |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
+
+**The agent pane draws the conversation** when *conversation view* is on (Settings › Agent);
+off, it shows the pty. With it on, an agent starts headless: Claude Code's stream-json on its
+pipes, no pty. A message, a skill and an interrupt go over that stream, and the transcript still
+draws the rows. A tool Claude asks leave for stands on glass over the prompt: its name, what it
+acts on, *allow* and *refuse*. A question shows its options one a row, one question at a time. In an empty
+prompt Enter allows, Escape refuses and a digit picks an option. With nothing asked, Escape
+interrupts the turn. The agent's rows stand at the left and the user's bubbles at the right,
+each side at most nine tenths of the width. One sent from the
+prompt, or typed while the agent works, waits faint after the rows until the transcript says it.
+Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a count for each,
+a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls,
+each one line cut with `…`; a click opens it to every one whole and wrapped, with what it gave back.
+An interrupt is a row of its own, and no group turns after it. While the agent works, the last group's mark
+spins and its time runs, and a group of its own stands past the last record until one comes. A
+write is one row: its file links to the hunk in the Diff tab, with its `+N -N`. A table is laid in
+columns. A drag selects text and copies it on release; a double click takes a word, a triple click
+its line. Ctrl and a click follow a URL, or open a path in the Files tab at its line.
+The prompt is glass a bar's height above the pane's foot, as the workspace stands over the
+terminals, centred and no wider than the palette. The conversation scrolls on under it and the
+bar, and at the top under the top bar. The prompt edits as a note does, grows to eight
+rows and then scrolls. Enter sends it to the agent, shift+Enter breaks the line.
+Up in an empty prompt brings back the user's last message, and each Up the one before; Down
+steps forward, and past the newest empties the prompt.
+Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on`,
+`a_click_on_a_command_card_shows_every_command_whole_with_what_it_printed`,
+`while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
+`an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
+`up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
+`a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
+`a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
+`escape_on_an_empty_prompt_interrupts_the_agent_when_nothing_is_asked`,
+`a_headless_agent_hears_a_message_asks_leave_settles_and_stops_on_an_interrupt`,
+`a_table_keeps_its_rows_and_each_span_its_cell`,
+`a_drag_over_the_conversation_copies_what_it_holds`,
+`a_double_click_takes_a_word_and_a_triple_click_its_line`,
+`ctrl_and_a_click_follow_a_link_or_open_a_file_at_its_line`,
+`the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does`,
+`a_double_click_in_the_prompt_takes_its_word`,
+`the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it`,
+`enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line` and
+`a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff`.
 
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
@@ -346,13 +388,12 @@ does the same, its field a rounded field. Enforced by
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
-menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
-bar's skills menu are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
+menu, the cluster scope panel, the board's filter offers, the language servers' popup, the agent's
+prompt are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_floats_as_a_pane_of_glass_inside_its_place`,
 `the_strip_stands_as_glass_on_the_agent_s_ground`,
-`the_bar_offers_the_skills_in_glass_on_the_screen_s_ground`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
 `the_panel_stands_on_glass`,
@@ -510,7 +551,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
-| Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
+| Agent | auto-approve default · conversation view · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |

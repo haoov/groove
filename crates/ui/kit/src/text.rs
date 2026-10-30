@@ -154,6 +154,16 @@ pub fn wrapped<A: App>(
     lines
 }
 
+/// How many lines `wrapped` breaks the text into, as an earlier frame counted them when one did.
+pub fn rows<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> usize {
+    if let Some(rows) = ctx.kept_rows(text, style, width) {
+        return rows;
+    }
+    let rows = wrapped(ctx, text, style, width).len();
+    ctx.keep_rows(text, style, width, rows);
+    rows
+}
+
 /// The text cut after each space, a line break its own word.
 pub(crate) fn words(text: &str) -> Vec<&str> {
     let mut out = Vec::new();
@@ -191,6 +201,16 @@ pub fn ago(age: Duration) -> String {
         }
     }
     format!("{}y", seconds / YEAR)
+}
+
+/// How long something took: `12s`, `1m 05s`, `2h 03m`.
+pub fn lasted(took: Duration) -> String {
+    let seconds = took.as_secs();
+    match (seconds / HOUR, seconds / MINUTE % MINUTE, seconds % MINUTE) {
+        (0, 0, s) => format!("{s}s"),
+        (0, m, s) => format!("{m}m {s:02}s"),
+        (h, m, _) => format!("{h}h {m:02}m"),
+    }
 }
 
 /// One line of text, elided to the room it is drawn in.
