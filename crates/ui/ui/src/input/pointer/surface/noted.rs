@@ -15,12 +15,6 @@ pub(crate) fn noted(
     origin: NoteOrigin,
     button: NoteButton,
 ) -> Vec<Command> {
-    if button == NoteButton::Ask {
-        if let Some(about) = asked_about(app, &origin) {
-            crate::input::ask::asked(ui, about);
-        }
-        return Vec::new();
-    }
     if button == NoteButton::Fold {
         let unfolded = &mut ui.session.unfolded;
         match unfolded.iter().position(|one| *one == origin) {
@@ -43,7 +37,7 @@ fn own(ui: &mut Ui, app: &AppState, id: AnnotationId, button: NoteButton) -> Vec
         NoteButton::Resolve => Some(delivery::Command::Note(resolving(app, id))),
         NoteButton::Delete => Some(delivery::Command::Note(NoteAct::Delete { id })),
         NoteButton::Post => Some(delivery::Command::Thread(ThreadAct::Post { id })),
-        NoteButton::Reply | NoteButton::Fold | NoteButton::Ask => None,
+        NoteButton::Reply | NoteButton::Fold => None,
     };
     act.map(Command::Delivery).into_iter().collect()
 }
@@ -66,19 +60,6 @@ fn thread_act(
         })),
         _ => None,
     }
-}
-
-/// The note `origin` names, as the agent is asked about it: where it stands and its first words.
-fn asked_about(app: &AppState, origin: &NoteOrigin) -> Option<String> {
-    let note = app
-        .delivery
-        .shown
-        .iter()
-        .find(|one| one.origin == *origin)?;
-    let said = &note.said.first()?.body;
-    let at = note.anchor.as_ref().map(crate::input::ask::place);
-    let at = at.map_or("the MR".to_string(), |one| format!("the note on {one}"));
-    Some(format!("About {at}: \"{}\"\n", said.trim()))
 }
 
 /// An empty row under the thread, for the words that answer it.

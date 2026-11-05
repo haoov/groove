@@ -370,15 +370,11 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
             crate::hit::NoteButton::Resolve,
         ))
         .expect("and is resolved");
-    let ask = hits
-        .rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Ask))
-        .expect("and is asked about");
     assert!(
-        field.w > resolve.w * 3.0,
+        field.w > resolve.w * 4.0,
         "the reply is a field across the row"
     );
-    assert!(ask.x > field.right(), "asking the agent stands after it");
-    assert!(resolve.x > ask.right(), "resolve stands at its end");
+    assert!(resolve.x > field.right(), "resolve stands at its end");
     assert!(
         hits.rect_of(&Target::Note(origin, crate::hit::NoteButton::Delete))
             .is_none(),

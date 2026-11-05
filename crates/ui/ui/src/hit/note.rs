@@ -10,8 +10,6 @@ pub enum NoteButton {
     Reply,
     /// A resolved note folded to one line, or opened out of it.
     Fold,
-    /// The note put in the agent's prompt, to ask about it.
-    Ask,
 }
 
 impl NoteButton {
@@ -25,7 +23,6 @@ impl NoteButton {
             (NoteButton::Post, _) => "post to MR",
             (NoteButton::Reply, _) => "reply",
             (NoteButton::Fold, _) => "fold",
-            (NoteButton::Ask, _) => "ask agent",
         }
     }
 }
