@@ -12,7 +12,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::COMPLETION_ROWS;
 use groove_ui_kit::shape::{band, from_bottom};
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::{Offer, completions, glass_pane, typed_line};
+use groove_ui_kit::widgets::{Offer, Row, glass_list, glass_pane, typed_line};
 
 /// The most rows the prompt grows to; past them it scrolls.
 const PROMPT_LINES: usize = 8;
@@ -67,15 +67,40 @@ pub(super) fn draw(ctx: &mut Ctx, ui: &Ui, laid: &Laid, focused: bool) {
     ctx.app.hits.typing(typed);
 }
 
-/// The commands `/` offers, standing over the prompt, the chosen one raised.
+/// The commands `/` offers on glass over the prompt, as wide as it: a row each around the chosen
+/// one, its name then what it does.
 pub(super) fn offers(ctx: &mut Ctx, offers: &[Offer], chosen: usize, pane: Rect) {
     if offers.is_empty() {
         return;
     }
-    let shown = COMPLETION_ROWS.min(offers.len()) as f32;
+    let shown = COMPLETION_ROWS.min(offers.len());
+    let chosen = chosen.min(offers.len() - 1);
+    let first = chosen.saturating_sub(shown - 1).min(offers.len() - shown);
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
+    let tall = ctx.tokens.glass_row * shown as f32 + sm * 2.0;
+    let card = band(pane, -(sm + tall), tall);
     ctx.layer();
-    let top = pane.y - shown * ctx.tokens.row - ctx.tokens.sm;
-    completions(ctx, (pane.x, top), offers, chosen.min(offers.len() - 1));
+    glass_pane(ctx, card);
+    let (name, about) = (ctx.styles.body(Role::Text), ctx.styles.small(Role::Faint));
+    let window = &offers[first..first + shown];
+    let widest = window
+        .iter()
+        .map(|one| ctx.measure(one.label, &name))
+        .fold(0.0, f32::max);
+    let rows: Vec<Row<'_, Target>> = window
+        .iter()
+        .enumerate()
+        .map(|(at, one)| {
+            let row = Row::new(md, one.label, name).aside(widest + md * 2.0, one.detail, about);
+            row.target(Target::Offered(first + at))
+        })
+        .collect();
+    glass_list(
+        ctx,
+        card.pad(Edges::xy(0.0, sm)),
+        &rows,
+        Some(chosen - first),
+    );
 }
 
 /// How far the rows scroll: as the wheel left them, or to keep the caret in sight.

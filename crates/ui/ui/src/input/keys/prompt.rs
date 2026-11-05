@@ -64,18 +64,11 @@ fn offering(key: Key, plain: bool, ui: &mut Ui, app: &AppState) -> Option<Vec<Co
         Key::Up => ui.agent.offered = chosen.checked_sub(1).unwrap_or(offers.len() - 1),
         Key::Down => ui.agent.offered = (chosen + 1) % offers.len(),
         Key::Escape => ui.agent.hushed = true,
-        Key::Tab => taken(ui, &name),
-        Key::Enter if !whole => taken(ui, &name),
+        Key::Tab => crate::input::ask::command(ui, &name),
+        Key::Enter if !whole => crate::input::ask::command(ui, &name),
         _ => return None,
     }
     Some(Vec::new())
-}
-
-/// The command `name` in the prompt, ready for its arguments.
-fn taken(ui: &mut Ui, name: &str) {
-    ui.agent.prompt = Default::default();
-    ui.agent.prompt.edit(&Edit::Insert(format!("/{name} ")));
-    ui.agent.offered = 0;
 }
 
 /// The user's message `back` from the newest into the prompt; 0 empties it, past the oldest changes nothing.

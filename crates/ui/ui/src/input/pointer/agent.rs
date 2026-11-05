@@ -38,6 +38,13 @@ pub(super) fn acted(
             }
             Some(Vec::new())
         }
+        Target::Offered(at) => {
+            let offers = crate::views::session::agent_pane::offered::offered(app, ui);
+            if let Some(name) = offers.get(*at).map(|one| one.label.to_string()) {
+                crate::input::ask::command(ui, &name);
+            }
+            Some(Vec::new())
+        }
         Target::FoldAgents => {
             ui.agent.docked = !ui.agent.docked;
             Some(Vec::new())

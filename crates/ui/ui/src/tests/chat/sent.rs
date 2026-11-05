@@ -161,3 +161,22 @@ fn the_bar_under_the_prompt_says_the_model_the_context_and_the_plan_used() {
     let line = "opus-5-5 · context 82k · 5h 48% · week 9%";
     assert!(texts.iter().any(|one| one == line), "{texts:?}");
 }
+
+#[test]
+fn a_click_on_an_offered_command_takes_it() {
+    use crate::tests::typed;
+    let mut app = talking(Vec::new());
+    let review = groove_types::chat::Slash {
+        name: "review".into(),
+        about: "reviews the branch".into(),
+    };
+    app.agent.agents[0].1.commands = vec![review];
+    let mut ui = chat_ui();
+    typed("/rev", &mut ui, &app);
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let row = hits
+        .rect_of(&Target::Offered(0))
+        .expect("the offered command");
+    click(row, &mut ui, &app, &hits);
+    assert_eq!(ui.agent.prompt.text(), "/review ");
+}

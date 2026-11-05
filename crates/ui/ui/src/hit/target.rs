@@ -240,6 +240,8 @@ pub enum Target {
     Commands(String),
     /// An answer to what the headless agent asks.
     Answer(Answering),
+    /// One of the commands `/` offers, by its place in the offers.
+    Offered(usize),
     /// An agent's row in the dock: its card, opened and in sight.
     Subagent(String),
     /// The dock of agents at work, folded to its head or opened.
