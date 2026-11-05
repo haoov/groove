@@ -209,17 +209,3 @@ async fn a_subagent_s_own_records_the_plan_s_use_and_a_refusing_limit_are_heard(
     let limits = groove_types::chat::Limits::default();
     assert_eq!(scene.hears().await, Heard::Limits { limits, refused });
 }
-
-#[tokio::test]
-async fn the_main_agent_s_words_are_heard_as_it_writes_them_and_a_subagent_s_are_not() {
-    let mut scene = scene();
-    let delta = |parent: Value, text: &str| {
-        json!({"type": "stream_event", "parent_tool_use_id": parent,
-            "event": {"type": "content_block_delta", "index": 0,
-                "delta": {"type": "text_delta", "text": text}}})
-    };
-    scene.says(delta(json!("a1"), "inside")).await;
-    scene.says(delta(Value::Null, "Rivers car")).await;
-    let writing = groove_types::chat::Heard::Writing("Rivers car".into());
-    assert_eq!(scene.hears().await, Heard::Chat(writing));
-}

@@ -114,22 +114,6 @@ fn a_long_line_of_code_the_agent_shows_wraps_instead_of_running_out_of_sight() {
 }
 
 #[test]
-fn the_agent_s_words_show_as_it_writes_them() {
-    let app = talking(vec![
-        Heard::You("rivers?".into()),
-        Heard::Writing("Rivers carry fresh wa".into()),
-    ]);
-    let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
-    let texts = all_texts(&frame);
-    assert!(
-        texts
-            .iter()
-            .any(|one| one.contains("Rivers carry fresh wa")),
-        "{texts:?}"
-    );
-}
-
-#[test]
 fn a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one() {
     use crate::input::{Key, Modifiers};
     use crate::tests::{press, typed};

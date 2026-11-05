@@ -3,11 +3,6 @@
 use super::{Chat, Limits};
 
 impl Chat {
-    /// The agent's words as it writes them.
-    pub fn writing(&self) -> &str {
-        &self.writing
-    }
-
     pub fn model(&self) -> Option<&str> {
         self.model.as_deref()
     }

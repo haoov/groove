@@ -30,8 +30,6 @@ pub struct Chat {
     sent: Vec<String>,
     /// When the last record was written.
     now: Option<Timestamp>,
-    /// The agent's words as it writes them, until the transcript says them.
-    writing: String,
     model: Option<String>,
     context: Option<u64>,
 }
@@ -62,8 +60,7 @@ impl Chat {
                 self.said(&text);
                 Entry::You(text)
             }
-            Heard::Said(text) => self.written(text),
-            Heard::Writing(text) => return self.writing.push_str(&text),
+            Heard::Said(text) => Entry::Said(text),
             Heard::Used { model, context } => return self.used(model, context),
             Heard::Interrupted => self.stopped(),
             Heard::Failed(text) => return self.failed(text),
@@ -100,12 +97,6 @@ impl Chat {
             Heard::Result { id, outcome } => return self.answered(&id, outcome),
         };
         self.push(entry);
-    }
-
-    /// The agent's words whole, in the place of what was written of them so far.
-    fn written(&mut self, text: String) -> Entry {
-        self.writing.clear();
-        Entry::Said(text)
     }
 
     /// What went wrong, once while it repeats.

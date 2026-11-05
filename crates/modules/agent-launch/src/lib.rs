@@ -90,12 +90,9 @@ impl Launch {
             "--output-format",
             "stream-json",
         ];
-        let flags = flags.into_iter().chain([
-            "--verbose",
-            "--include-partial-messages",
-            "--permission-prompt-tool",
-            "stdio",
-        ]);
+        let flags = flags
+            .into_iter()
+            .chain(["--verbose", "--permission-prompt-tool", "stdio"]);
         self.args.extend(flags.map(str::to_string));
         self
     }

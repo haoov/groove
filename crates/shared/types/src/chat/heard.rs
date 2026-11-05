@@ -17,8 +17,6 @@ pub enum Heard {
         model: String,
         context: u64,
     },
-    /// A piece of the agent's words as it writes them, before the transcript holds them whole.
-    Writing(String),
     Thought,
     /// A tool that only looks, and what it looked at.
     Look(String),

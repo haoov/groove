@@ -274,19 +274,6 @@ fn an_interrupt_stops_a_working_subagent_and_a_failure_is_a_row() {
 }
 
 #[test]
-fn the_words_being_written_grow_until_the_transcript_says_them_whole() {
-    let mut chat = heard([
-        Heard::Writing("Rivers ".into()),
-        Heard::Writing("carry".into()),
-    ]);
-    assert_eq!(chat.writing(), "Rivers carry");
-    chat.hear(Heard::Said("Rivers carry water.".into()));
-    assert_eq!(chat.writing(), "");
-    let stopped = heard([Heard::Writing("half".into()), Heard::Interrupted]);
-    assert_eq!(stopped.writing(), "");
-}
-
-#[test]
 fn the_usage_line_says_the_model_the_context_and_the_plan_s_windows_it_knows() {
     let limits = crate::chat::Limits {
         five_hour: Some(0.48),
