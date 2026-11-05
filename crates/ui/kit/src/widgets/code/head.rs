@@ -16,7 +16,7 @@ pub(super) fn head<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::
         false => Role::Text,
     };
     let ground = whole.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
-    ctx.rounded(ground, ctx.styles.glass_hover(), ctx.tokens.sm);
+    ctx.rounded(ground, ctx.styles.glass_hover(), ctx.tokens.glass_round);
     let (xs, size) = (ctx.tokens.xs, ctx.tokens.icon);
     let mut room = ground.pad(Edges::across(xs, ctx.tokens.sm));
     crate::widgets::caret(ctx, &mut room, (!code.folded, size), Role::Faint);

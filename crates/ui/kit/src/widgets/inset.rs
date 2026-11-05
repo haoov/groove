@@ -21,7 +21,7 @@ pub fn inset_row<A: App>(
         (None, false, true) => Some(ctx.styles.glass_hover()),
         (None, false, false) => None,
     };
-    let round = ctx.tokens.sm;
+    let round = ctx.tokens.glass_round;
     if let Some(color) = ground {
         ctx.rounded(row, color, round);
     }
@@ -35,7 +35,7 @@ pub fn inset_row<A: App>(
 /// A list row's rounded ground on glass, inset as the rail's rows are.
 fn glass_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let inset = rect.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
-    ctx.rounded(inset, color, ctx.tokens.sm);
+    ctx.rounded(inset, color, ctx.tokens.glass_round);
 }
 
 /// Registers `target` at `rect`, lit on a rounded ground while the pointer rests on it.
@@ -51,7 +51,7 @@ pub fn glass_hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Targ
 pub fn glass_field<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) -> Rect {
     let down = ((rect.h - ctx.tokens.row) / 2.0).max(0.0);
     let field = rect.pad(Edges::xy(ctx.tokens.sm, down));
-    ctx.rounded(field, ctx.styles.glass_hover(), ctx.tokens.sm);
+    ctx.rounded(field, ctx.styles.glass_hover(), ctx.tokens.glass_round);
     field
 }
 
@@ -83,7 +83,7 @@ pub fn rounded_slice<A: App>(
     (top, bottom): (bool, bool),
     (ground, edge): (Color, Option<Color>),
 ) {
-    let round = ctx.tokens.sm;
+    let round = ctx.tokens.glass_round;
     let up = if top { 0.0 } else { round };
     let down = if bottom { 0.0 } else { round };
     let whole = Rect::new(rect.x, rect.y - up, rect.w, rect.h + up + down);

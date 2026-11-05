@@ -189,7 +189,7 @@ fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
         let lit = frame.layers()[0]
             .quads
             .iter()
-            .any(|quad| quad.rect == at && quad.shape.radius == tokens.sm);
+            .any(|quad| quad.rect == at && quad.shape.radius == tokens.glass_round);
         assert!(lit, "{target:?} on a rounded ground");
     }
     let new = hits.rect_of(&Target::ShellNew).expect("the + button");

@@ -141,7 +141,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             (false, false) => None,
         };
         if let Some(color) = ground {
-            ctx.rounded(pill, color, ctx.tokens.sm);
+            ctx.rounded(pill, color, ctx.tokens.glass_round);
         }
         let (style, pad, lead) = (self.style(ctx), self.pad(ctx), self.lead(ctx));
         let mut end = pill;

@@ -109,10 +109,9 @@ fn the_selected_row_stands_inset_on_a_rounded_held_ground_and_the_hovered_one_li
     };
     let (alpha, beta) = (row("a"), row("b"));
     let on = |frame: &groove_gfx::Frame, rect: groove_gfx::Rect, color| {
-        frame.layers()[0]
-            .quads
-            .iter()
-            .any(|quad| quad.rect == rect && quad.color == color && quad.shape.radius == tokens.sm)
+        frame.layers()[0].quads.iter().any(|quad| {
+            quad.rect == rect && quad.color == color && quad.shape.radius == tokens.glass_round
+        })
     };
     let rail = crate::layout::Layout::of(window(), &ui).rail;
     assert!(alpha.x > rail.x, "inset from the rail's side");

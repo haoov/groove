@@ -93,7 +93,7 @@ fn a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground() {
         .find(|q| q.color == hover)
         .expect("the ground");
     assert_eq!(ground.rect, row);
-    assert_eq!(ground.shape.radius, tokens.sm);
+    assert_eq!(ground.shape.radius, tokens.glass_round);
 }
 
 #[test]
