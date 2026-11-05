@@ -40,6 +40,8 @@ pub struct Agent {
     pub stream: Option<Stream>,
     /// The tools a headless agent waits to be let run.
     pub permissions: Vec<groove_types::chat::Permission>,
+    /// The commands a headless agent's prompt takes after `/`.
+    pub commands: Vec<groove_types::chat::Slash>,
     pub activity: SessionActivity,
     /// When this agent was launched, which says whether a skill is newer than it.
     pub started_at: Timestamp,
@@ -115,6 +117,7 @@ impl State {
             terminal,
             stream,
             permissions: Vec::new(),
+            commands: Vec::new(),
             activity: activity(status, now),
             started_at: now,
             launch,

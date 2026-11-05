@@ -6,6 +6,7 @@ mod commands;
 mod dock;
 mod entry;
 mod glance;
+pub(crate) mod offered;
 mod prompt;
 mod subagent;
 
@@ -73,6 +74,7 @@ fn conversation(
         dock::draw(ctx, at, &docked, ui.agent.docked);
     }
     prompt::draw(ctx, ui, &laid, focused);
+    prompt::offers(ctx, &offered::offered(app, ui), ui.agent.offered, laid.pane);
 }
 
 /// Whether the selected session's agent shows its conversation: headless, or by the user's choice.

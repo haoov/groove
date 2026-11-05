@@ -26,6 +26,8 @@ pub enum Heard {
     Withdrawn(String),
     /// A turn ended, finished or interrupted.
     Settled,
+    /// The commands its prompt takes after `/`.
+    Commands(Vec<chat::Slash>),
     /// What the conversation hears beside the transcript: a subagent's steps, a limit, the agent's end.
     Chat(chat::Heard),
 }

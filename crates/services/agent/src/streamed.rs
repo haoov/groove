@@ -87,6 +87,7 @@ pub(crate) fn heard(
         }
         StreamHeard::Withdrawn(id) => agent.permissions.retain(|one| one.id != id),
         StreamHeard::Chat(one) => state.streamed(session, one),
+        StreamHeard::Commands(listed) => agent.commands = listed,
         StreamHeard::Settled => {
             agent.permissions.clear();
             let busy = matches!(

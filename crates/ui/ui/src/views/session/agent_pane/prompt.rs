@@ -9,9 +9,10 @@ use crate::hit::{Scroller, Target};
 use crate::views::session::Prompt;
 use crate::views::session::diff::wrap::{marked, pieces};
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::COMPLETION_ROWS;
 use groove_ui_kit::shape::{band, from_bottom};
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::{glass_pane, typed_line};
+use groove_ui_kit::widgets::{Offer, completions, glass_pane, typed_line};
 
 /// The most rows the prompt grows to; past them it scrolls.
 const PROMPT_LINES: usize = 8;
@@ -64,6 +65,17 @@ pub(super) fn draw(ctx: &mut Ctx, ui: &Ui, laid: &Laid, focused: bool) {
     let extent = (laid.rows.len() - laid.shown) as f32 * line;
     ctx.app.hits.scrolls(Scroller::Prompt, extent);
     ctx.app.hits.typing(typed);
+}
+
+/// The commands `/` offers, standing over the prompt, the chosen one raised.
+pub(super) fn offers(ctx: &mut Ctx, offers: &[Offer], chosen: usize, pane: Rect) {
+    if offers.is_empty() {
+        return;
+    }
+    let shown = COMPLETION_ROWS.min(offers.len()) as f32;
+    ctx.layer();
+    let top = pane.y - shown * ctx.tokens.row - ctx.tokens.sm;
+    completions(ctx, (pane.x, top), offers, chosen.min(offers.len() - 1));
 }
 
 /// How far the rows scroll: as the wheel left them, or to keep the caret in sight.

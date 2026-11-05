@@ -17,6 +17,7 @@ pub(crate) fn line(text: &str) -> Option<Result<Heard, Value>> {
         "assistant" | "user" => within(&record, text).map(Ok),
         "rate_limit_event" => limited(&record).map(Ok),
         "stream_event" => writing(&record).map(Ok),
+        "system" => commands(&record).map(Ok),
         _ => None,
     }
 }
@@ -27,6 +28,23 @@ fn within(record: &Value, text: &str) -> Option<Heard> {
     let heard = groove_transcript::line(text);
     let heard = chat::Heard::Within { parent, heard };
     Some(Heard::Chat(heard))
+}
+
+/// The commands its prompt takes, each time they change.
+fn commands(record: &Value) -> Option<Heard> {
+    if record.get("subtype")?.as_str()? != "commands_changed" {
+        return None;
+    }
+    let text = |one: &Value, key: &str| one.get(key).and_then(Value::as_str).map(str::to_string);
+    let listed = record.get("commands")?.as_array()?.iter();
+    let slashes = listed.filter_map(|one| {
+        let about = text(one, "description").unwrap_or_default();
+        Some(chat::Slash {
+            name: text(one, "name")?,
+            about,
+        })
+    });
+    Some(Heard::Commands(slashes.collect()))
 }
 
 /// A piece of the main agent's words as it writes them.

@@ -8,6 +8,7 @@ fn state() -> State {
         terminal: None,
         stream: None,
         permissions: Vec::new(),
+        commands: Vec::new(),
         activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
         started_at: Timestamp::new(100),
         launch: 0,

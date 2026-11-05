@@ -130,3 +130,10 @@ pub struct Patch {
     pub removed: u32,
     pub line: u32,
 }
+
+/// A command the agent's prompt takes after `/`: a skill, a plugin's or its own.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Slash {
+    pub name: String,
+    pub about: String,
+}

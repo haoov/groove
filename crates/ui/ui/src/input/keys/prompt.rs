@@ -9,6 +9,7 @@ use super::worded::asked_of_note;
 use crate::Ui;
 use crate::hit::Hits;
 use crate::keymap::Keymap;
+use crate::views::session::agent_pane::offered::offered;
 
 pub(super) fn keyed(
     (key, mods): (Key, Modifiers),
@@ -20,6 +21,9 @@ pub(super) fn keyed(
     let answering = plain && ui.agent.prompt.is_empty();
     if let Some(button) = answering.then(|| answer::keyed(app, ui, key)).flatten() {
         return answer::answered(ui, app, button);
+    }
+    if let Some(took) = offering(key, plain, ui, app) {
+        return took;
     }
     let prompt = &mut ui.agent.prompt;
     prompt.scroll = hits.typed().scroll;
@@ -39,11 +43,39 @@ pub(super) fn keyed(
             let asked = asked_of_note(&prompt.buffer, keymap, key, mods);
             if let Some(edit) = asked.edit {
                 prompt.edit(&edit);
+                (ui.agent.offered, ui.agent.hushed) = (0, false);
             }
             return asked.copied.into_iter().collect();
         }
     }
     Vec::new()
+}
+
+/// A key on the commands `/` offers: Up and Down choose, Tab or Enter takes one, Escape puts them away.
+fn offering(key: Key, plain: bool, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    let offers = offered(app, ui);
+    if offers.is_empty() || !plain {
+        return None;
+    }
+    let chosen = ui.agent.offered.min(offers.len() - 1);
+    let name = offers[chosen].label.to_string();
+    let whole = ui.agent.prompt.text() == format!("/{name}");
+    match key {
+        Key::Up => ui.agent.offered = chosen.checked_sub(1).unwrap_or(offers.len() - 1),
+        Key::Down => ui.agent.offered = (chosen + 1) % offers.len(),
+        Key::Escape => ui.agent.hushed = true,
+        Key::Tab => taken(ui, &name),
+        Key::Enter if !whole => taken(ui, &name),
+        _ => return None,
+    }
+    Some(Vec::new())
+}
+
+/// The command `name` in the prompt, ready for its arguments.
+fn taken(ui: &mut Ui, name: &str) {
+    ui.agent.prompt = Default::default();
+    ui.agent.prompt.edit(&Edit::Insert(format!("/{name} ")));
+    ui.agent.offered = 0;
 }
 
 /// The user's message `back` from the newest into the prompt; 0 empties it, past the oldest changes nothing.

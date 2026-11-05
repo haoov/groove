@@ -128,3 +128,35 @@ fn the_agent_s_words_show_as_it_writes_them() {
         "{texts:?}"
     );
 }
+
+#[test]
+fn a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one() {
+    use crate::input::{Key, Modifiers};
+    use crate::tests::{press, typed};
+    let mut app = talking(Vec::new());
+    let slash = |name: &str| groove_types::chat::Slash {
+        name: name.into(),
+        about: format!("runs {name}"),
+    };
+    let listed = ["review", "groove:save-task", "groove:start-task"].map(slash);
+    app.agent.agents[0].1.commands = listed.to_vec();
+    let mut ui = chat_ui();
+    typed("/task", &mut ui, &app);
+    let names = |ui: &crate::Ui| {
+        let offers = crate::views::session::agent_pane::offered::offered(&app, ui);
+        offers
+            .iter()
+            .map(|one| one.label.to_string())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names(&ui), ["groove:save-task", "groove:start-task"]);
+    press(Key::Down, Modifiers::default(), &mut ui, &app);
+    press(Key::Tab, Modifiers::default(), &mut ui, &app);
+    assert_eq!(ui.agent.prompt.text(), "/groove:start-task ");
+    assert!(names(&ui).is_empty(), "past the word, nothing is offered");
+    let mut ui = chat_ui();
+    typed("/rev", &mut ui, &app);
+    press(Key::Escape, Modifiers::default(), &mut ui, &app);
+    assert!(names(&ui).is_empty(), "put away");
+    assert_eq!(ui.agent.prompt.text(), "/rev");
+}

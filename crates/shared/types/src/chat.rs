@@ -5,7 +5,7 @@ mod rows;
 mod subagents;
 
 pub use asked::{Permission, Question};
-pub use rows::{Edit, Entry, Glance, Outcome, Patch, Run, Sent, Subagent, Tool};
+pub use rows::{Edit, Entry, Glance, Outcome, Patch, Run, Sent, Slash, Subagent, Tool};
 
 use crate::Timestamp;
 
