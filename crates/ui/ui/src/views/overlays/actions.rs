@@ -19,7 +19,7 @@ pub const FILE: [Act; 1] = [Act::DiscardChanges];
 pub const TAB: [Act; 3] = [Act::Close, Act::CloseOthers, Act::CloseAll];
 
 /// What the lines under a click offer.
-pub const LINE: [Act; 1] = [Act::Note];
+pub const LINE: [Act; 2] = [Act::Note, Act::Ask];
 
 /// The actions of one path of the explorer.
 pub const PATH: [Act; 5] = [

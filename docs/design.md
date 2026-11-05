@@ -250,12 +250,16 @@ steps forward, and past the newest empties the prompt.
 A `/` as the prompt's first word offers the commands it takes over the prompt: a headless
 agent's own, else Groove's skills. Up and Down choose, Tab or Enter takes one, Escape puts
 them away.
+*Ask the agent*, in the menu of the diff's lines and on a note, puts where they stand in the
+prompt, `src/lib.rs:12-14`, a note with its first words, and moves the keys there.
 Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on`,
 `a_click_on_a_command_card_shows_every_command_whole_with_what_it_printed`,
 `while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
 `an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
 `up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
 `a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one`,
+`asking_the_agent_about_lines_puts_where_they_stand_in_its_prompt`,
+`asking_the_agent_about_a_note_puts_its_place_and_words_in_its_prompt`,
 `a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation`,
 `a_finished_agent_leaves_the_dock_once_the_user_speaks_again`,
 `what_went_wrong_shows_in_the_conversation`,

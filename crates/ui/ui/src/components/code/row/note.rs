@@ -1,6 +1,7 @@
 //! A note's own rows: what it says, and what it offers.
 
 use groove_gfx::{Edges, Rect};
+use groove_ui_kit::base::mark::Mark;
 
 use super::super::{Acting, Header, Line, Noted, Room, label_role};
 use crate::ctx::Ctx;
@@ -117,13 +118,14 @@ pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
     let gap = ctx.tokens.sm;
     if acting.thread {
         acted(ctx, acting, NoteButton::Resolve).right(ctx, &mut room, gap);
+        acted(ctx, acting, NoteButton::Ask).right(ctx, &mut room, gap);
         return reply_field(ctx, room, acting);
     }
     acted(ctx, acting, NoteButton::Delete).right(ctx, &mut room, gap);
     let first = acting.post.then_some(NoteButton::Post);
     for button in first
         .into_iter()
-        .chain([NoteButton::Edit, NoteButton::Resolve])
+        .chain([NoteButton::Edit, NoteButton::Resolve, NoteButton::Ask])
     {
         acted(ctx, acting, button).left(ctx, &mut room, gap);
     }
@@ -142,6 +144,12 @@ fn reply_field(ctx: &mut Ctx, room: Rect, acting: &Acting) {
 fn acted(ctx: &Ctx, acting: &Acting, button: NoteButton) -> Button<'static, Target> {
     let label = button.label(acting.resolved);
     let target = Target::Note(acting.origin.clone(), button);
+    if button == NoteButton::Ask {
+        let hover = ctx.styles.glass_hover();
+        return Button::icon(Mark::Agent, 0, target, Role::Muted)
+            .flat()
+            .hover(hover);
+    }
     let (role, hover) = match button {
         NoteButton::Delete => (Role::Bad, ctx.styles.tint(Role::Bad)),
         _ => (Role::Muted, ctx.styles.glass_hover()),

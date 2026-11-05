@@ -96,6 +96,8 @@ pub struct Picked {
     pub asking: Option<Losing>,
     pub naming: Option<Naming>,
     pub noting: Option<Noting>,
+    /// Words put in the agent's prompt.
+    pub prompting: Option<String>,
 }
 
 impl Picked {
@@ -133,6 +135,17 @@ pub fn picked(of: &Of, at: usize) -> Picked {
             start_line: lines.0,
             end_line: lines.1,
         }),
+        (Of::Line { path, lines }, Some(Act::Ask)) => {
+            let anchor = groove_types::Anchor {
+                path: path.clone(),
+                start_line: lines.0,
+                end_line: lines.1,
+            };
+            Picked {
+                prompting: Some(format!("{} ", crate::input::ask::place(&anchor))),
+                ..Picked::default()
+            }
+        }
         (Of::Path { path, dir }, Some(Act::NewFile)) => {
             Picked::names(named(Asked::File, path, *dir, ""))
         }

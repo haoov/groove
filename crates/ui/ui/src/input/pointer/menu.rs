@@ -132,6 +132,9 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
         ui.session.noting = picked.noting;
         ui.focus = Focus::Workspace;
     }
+    if let Some(about) = picked.prompting {
+        crate::input::ask::asked(ui, about);
+    }
     picked.commands
 }
 
