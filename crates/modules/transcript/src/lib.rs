@@ -2,6 +2,7 @@
 
 mod outcome;
 mod parse;
+mod sent;
 
 #[cfg(test)]
 mod tests;

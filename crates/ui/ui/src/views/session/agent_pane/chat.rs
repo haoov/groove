@@ -22,7 +22,7 @@ pub(super) fn draw(
     ctx: &mut Ctx,
     (open, chat, working): (&Open, Option<&Chat>, bool),
     ui: &Ui,
-    ends: f32,
+    (ends, wanted): (f32, &[&str]),
 ) {
     let pane = ctx.app.layout.agent;
     let above = Edges {
@@ -51,7 +51,7 @@ pub(super) fn draw(
             let shown = shown.chain(entries.iter().rev().map(Row::Entry));
             let live = working.then_some(queued.len() + sent.len());
             let seen = (open, live, &ui.agent.opened[..]);
-            extent = rows(ctx, (seen, shown), ui.agent.scroll, (body, room))
+            extent = rows(ctx, (seen, shown, wanted), ui.agent.scroll, (body, room))
         })
     });
     ctx.app.hits.scrolls(Scroller::Chat, extent);
@@ -67,12 +67,12 @@ pub(super) fn draw(
 /// The rows from the end up, as far as the room reaches; returns how far they scroll.
 fn rows<'a>(
     ctx: &mut Ctx,
-    ((open, live, opened), shown): (Seen, impl Iterator<Item = Row<'a>>),
+    ((open, live, opened), shown, wanted): (Seen, impl Iterator<Item = Row<'a>>, &[&str]),
     offset: f32,
     (body, room): (Rect, Rect),
 ) -> f32 {
     let gap = ctx.tokens.md;
-    let (mut foot, mut content) = (body.h + offset, 0.0);
+    let (mut foot, mut content, mut found) = (body.h + offset, 0.0, 0);
     for (at, one) in shown.enumerate() {
         let tall = entry::height(ctx, one, (body.w, opened));
         let top = foot - tall;
@@ -80,9 +80,14 @@ fn rows<'a>(
             let seen = (open, live == Some(at), opened);
             entry::draw(ctx, seen, one, (band(body, top, tall), room));
         }
+        if let Row::Entry(Entry::Subagent(sub)) = one {
+            let scroll = content + (tall - body.h).max(0.0);
+            ctx.app.hits.sent_at(&sub.id, scroll);
+            found += usize::from(wanted.contains(&sub.id.as_str()));
+        }
         content += tall + gap;
         foot = top - gap;
-        if foot < room.y - body.y {
+        if foot < room.y - body.y && found >= wanted.len() {
             return offset + body.h;
         }
     }

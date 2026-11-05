@@ -19,6 +19,7 @@ use crate::{Focus, Surface, Ui};
 
 mod asked;
 mod reading;
+mod sent;
 
 const WORKTREE: &str = "/code/worktrees/a/kiwi/explorer/alpha";
 

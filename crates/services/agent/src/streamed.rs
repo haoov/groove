@@ -1,4 +1,5 @@
-//! A headless agent: the tools it waits to be let run, and the turn its stream says ended.
+//! A headless agent: the tools it waits to be let run, the turn its stream says ended, and what
+//! the stream adds to its conversation.
 
 use groove_types::chat::Permission;
 use groove_types::{AgentStatus, SessionId, Timestamp};
@@ -14,10 +15,10 @@ pub enum Run {
 
 impl Run {
     pub fn terminate(&self) {
-        let _ = match self {
-            Run::Terminal(one) => one.terminate().map_err(drop),
-            Run::Stream(one) => one.terminate().map_err(drop),
-        };
+        match self {
+            Run::Terminal(one) => _ = one.terminate(),
+            Run::Stream(one) => _ = one.terminate(),
+        }
     }
 
     pub(crate) fn split(run: Option<Run>) -> (Option<Terminal>, Option<Stream>) {
@@ -85,6 +86,7 @@ pub(crate) fn heard(
             set(agent, AgentStatus::Asking, at);
         }
         StreamHeard::Withdrawn(id) => agent.permissions.retain(|one| one.id != id),
+        StreamHeard::Chat(one) => state.streamed(session, one),
         StreamHeard::Settled => {
             agent.permissions.clear();
             let busy = matches!(

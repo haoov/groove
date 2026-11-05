@@ -4,6 +4,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use groove_types::chat::Entry;
 use groove_types::{AgentStatus, SessionId};
 
 use crate::agent::Command;
@@ -19,7 +20,7 @@ printf '%s\n' '{"type":"control_request","request_id":"r1","request":{"subtype":
 read answer
 case "$answer" in *'"behavior":"allow"'*) printf '%s\n' '{"type":"result","subtype":"success"}';; esac
 read stop
-case "$stop" in *'"subtype":"interrupt"'*) exit 7;; esac
+case "$stop" in *'"subtype":"interrupt"'*) echo 'stopped here' >&2; exit 7;; esac
 exit 6
 "#;
 
@@ -59,7 +60,7 @@ fn status(state: &AppState, id: &SessionId) -> AgentStatus {
 }
 
 #[test]
-fn a_headless_agent_hears_a_message_asks_leave_settles_and_stops_on_an_interrupt() {
+fn a_headless_agent_hears_a_message_asks_leave_settles_and_its_end_shows_in_the_conversation() {
     let (home, spawner, services, mut state) = fixture::with_explorer();
     headless(home.path(), &mut state);
     let (id, services) = (SessionId::new("explorer-1"), &services);
@@ -109,4 +110,7 @@ fn a_headless_agent_hears_a_message_asks_leave_settles_and_stops_on_an_interrupt
     until(&spawner, services, &mut state, |s| {
         status(s, &id) == AgentStatus::Exited { code: 7 }
     });
+    let chat = state.agent.chat(&id).expect("a conversation");
+    let ended = Entry::Failed("The agent ended with code 7:\nstopped here".into());
+    assert_eq!(chat.entries().last(), Some(&ended));
 }

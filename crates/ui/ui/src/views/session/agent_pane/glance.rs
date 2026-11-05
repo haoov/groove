@@ -32,6 +32,20 @@ pub(super) fn draw(ctx: &mut Ctx, at: Rect, glance: &Glance, (live, opened): (bo
     if let Some(took) = took(ctx, glance, live) {
         Label::new(&took, ctx.styles.code(Role::Ghost)).right(ctx, &mut head, ctx.tokens.sm);
     }
+    summary(ctx, head, glance, live);
+    if glance.ran.is_empty() {
+        return;
+    }
+    commands::draw(
+        ctx,
+        room.pad(Edges::across(lead(ctx), 0.0)),
+        &glance.ran,
+        opened,
+    );
+}
+
+/// Each kind glanced with its mark and count, its last mark turning while `live`, then what it does.
+pub(super) fn summary(ctx: &mut Ctx, mut head: Rect, glance: &Glance, live: bool) {
     let parts = parts(glance);
     let last = parts.len().saturating_sub(1);
     for (at, (mark, role, said)) in parts.into_iter().enumerate() {
@@ -53,15 +67,6 @@ pub(super) fn draw(ctx: &mut Ctx, at: Rect, glance: &Glance, (live, opened): (bo
         (None, false) => String::new(),
     };
     Label::new(&summary, ctx.styles.small(Role::Faint)).draw(ctx, head);
-    if glance.ran.is_empty() {
-        return;
-    }
-    commands::draw(
-        ctx,
-        room.pad(Edges::across(lead(ctx), 0.0)),
-        &glance.ran,
-        opened,
-    );
 }
 
 /// Whether the commands' card is open: by its first command.

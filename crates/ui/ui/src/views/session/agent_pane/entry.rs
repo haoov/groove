@@ -34,6 +34,11 @@ pub(super) fn height(ctx: &mut Ctx, shown: Row, (width, opened): (f32, &[String]
             let opened = super::glance::opened(glance, opened);
             super::glance::height(ctx, glance, opened, width)
         }
+        Entry::Subagent(sub) => {
+            let opened = opened.contains(&sub.id);
+            super::subagent::height(ctx, sub, opened, width)
+        }
+        Entry::Failed(text) => failed_height(ctx, text, width),
         Entry::Edit(_) | Entry::Tool(_) | Entry::Interrupted => ctx.tokens.row,
     }
 }
@@ -68,6 +73,26 @@ pub(super) fn draw(
             lead(ctx, &mut room, Mark::Close, Role::Warn);
             Label::new("interrupted", ctx.styles.body(Role::Faint)).draw(ctx, room);
         }
+        Entry::Subagent(sub) => super::subagent::draw(ctx, at, sub, opened.contains(&sub.id)),
+        Entry::Failed(text) => failed(ctx, at, text),
+    }
+}
+
+fn failed_height(ctx: &mut Ctx, text: &str, width: f32) -> f32 {
+    let style = ctx.styles.body(Role::Bad);
+    let inner = width - ctx.tokens.icon - ctx.tokens.sm;
+    let lines = rows(ctx, text, &style, inner).max(1);
+    lines as f32 * ctx.tokens.line
+}
+
+/// What went wrong, in red after an error's mark, wrapped.
+fn failed(ctx: &mut Ctx, at: Rect, text: &str) {
+    let mut room = at;
+    lead(ctx, &mut room, Mark::Errors, Role::Bad);
+    let style = ctx.styles.body(Role::Bad);
+    let line = ctx.tokens.line;
+    for (n, one) in wrapped(ctx, text, &style, room.w).iter().enumerate() {
+        row(ctx, band(room, n as f32 * line, line), 0.0, one, style);
     }
 }
 

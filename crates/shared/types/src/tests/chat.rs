@@ -209,3 +209,66 @@ fn an_mcp_call_folds_into_the_glance_and_another_tool_stands_alone() {
     assert_eq!(alone.name, "WebFetch");
     assert_eq!(glance.doing.as_deref(), Some("git commit"));
 }
+
+fn sent(id: &str) -> Heard {
+    Heard::Subagent {
+        id: id.into(),
+        kind: "Explore".into(),
+        task: "Find the metrics".into(),
+    }
+}
+
+fn subagent(chat: &Chat, at: usize) -> &crate::chat::Subagent {
+    match &chat.entries()[at] {
+        Entry::Subagent(sub) => sub,
+        other => panic!("a subagent, not {other:?}"),
+    }
+}
+
+#[test]
+fn a_subagent_folds_its_own_steps_and_its_answer_ends_it() {
+    let within = Heard::Within {
+        parent: "a1".into(),
+        heard: vec![Heard::Thought, look("observability.py"), ran("rg Counter")],
+    };
+    let answer = Heard::Result {
+        id: "a1".into(),
+        outcome: Outcome {
+            output: Some("They register in observability.py".into()),
+            ..Outcome::default()
+        },
+    };
+    let chat = heard([sent("a1"), within.clone(), Heard::Said("meanwhile".into())]);
+    let sub = subagent(&chat, 0);
+    assert_eq!(
+        (
+            sub.steps.thoughts,
+            sub.steps.looked.len(),
+            sub.steps.ran.len()
+        ),
+        (1, 1, 1)
+    );
+    assert_eq!(sub.steps.doing.as_deref(), Some("rg Counter"));
+    assert_eq!(sub.state, crate::chat::Sent::Working);
+    let chat = heard([sent("a1"), within, answer]);
+    let sub = subagent(&chat, 0);
+    assert_eq!(sub.state, crate::chat::Sent::Done);
+    assert_eq!(
+        sub.answer.as_deref(),
+        Some("They register in observability.py")
+    );
+}
+
+#[test]
+fn an_interrupt_stops_a_working_subagent_and_a_failure_is_a_row() {
+    let chat = heard([
+        sent("a1"),
+        Heard::Interrupted,
+        Heard::Failed("API Error: overloaded".into()),
+    ]);
+    assert_eq!(subagent(&chat, 0).state, crate::chat::Sent::Stopped);
+    assert_eq!(
+        chat.entries()[2],
+        Entry::Failed("API Error: overloaded".into())
+    );
+}

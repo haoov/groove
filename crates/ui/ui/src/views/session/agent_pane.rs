@@ -3,11 +3,14 @@
 mod asked;
 mod chat;
 mod commands;
+mod dock;
 mod entry;
 mod glance;
 mod prompt;
+mod subagent;
 
 use groove_controllers::AppState;
+use groove_controllers::agent_service::Agent;
 use groove_controllers::session_service::Open;
 use groove_types::{AgentStatus, Worktree};
 
@@ -31,18 +34,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
     };
     match (&agent.terminal, &agent.activity.status) {
         _ if agent.stream.is_some() || app.config.conversation() && agent.terminal.is_some() => {
-            let chat = app.agent.chat(&open.session.id);
-            let laid = prompt::laid(ctx, ui);
-            let working = agent.activity.status == AgentStatus::Working;
-            let first = agent.permissions.first();
-            let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
-            let ends = asked::ends(ctx, asked, laid.pane);
-            chat::draw(ctx, (open, chat, working), ui, ends);
-            ctx.layer();
-            if let Some((one, picked)) = asked {
-                asked::draw(ctx, one, picked, laid.pane);
-            }
-            prompt::draw(ctx, ui, &laid, focused);
+            conversation(ctx, (app, ui), (open, agent), focused)
         }
         (Some(terminal), _) => {
             let origin = ctx.app.layout.agent_origin(&ctx.tokens);
@@ -52,6 +44,35 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
         (None, AgentStatus::Error { message }) => note(ctx, message),
         (None, _) => note(ctx, "starting the agent…"),
     }
+}
+
+/// The conversation, and over the prompt what the agent asks and the agents it sent that still work.
+fn conversation(
+    ctx: &mut Ctx,
+    (app, ui): (&AppState, &Ui),
+    (open, agent): (&Open, &Agent),
+    focused: bool,
+) {
+    let chat = app.agent.chat(&open.session.id);
+    let laid = prompt::laid(ctx, ui);
+    let working = agent.activity.status == AgentStatus::Working;
+    let first = agent.permissions.first();
+    let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
+    let over = asked::ends(ctx, asked, laid.pane);
+    let docked = subagent::docked(chat);
+    let dock = dock::laid(ctx, &docked, ui.agent.docked, over, laid.pane);
+    let ends = dock.map_or(over, |one| one.y);
+    let rows = docked.iter().filter(|_| !ui.agent.docked);
+    let wanted: Vec<&str> = rows.map(|one| one.id.as_str()).collect();
+    chat::draw(ctx, (open, chat, working), ui, (ends, &wanted));
+    ctx.layer();
+    if let Some((one, picked)) = asked {
+        asked::draw(ctx, one, picked, laid.pane);
+    }
+    if let Some(at) = dock {
+        dock::draw(ctx, at, &docked, ui.agent.docked);
+    }
+    prompt::draw(ctx, ui, &laid, focused);
 }
 
 /// Whether the selected session's agent shows its conversation: headless, or by the user's choice.

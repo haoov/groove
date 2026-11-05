@@ -1,4 +1,4 @@
-//! Each agent's conversation, heard from the transcript it writes.
+//! Each agent's conversation, heard from the transcript it writes and from its stream.
 
 use std::path::{Path, PathBuf};
 
@@ -8,18 +8,18 @@ use groove_types::chat::{Chat, Heard};
 
 use crate::State;
 
-/// One session's transcript, its follower and what it said.
+/// One session's transcript, its follower and what it said; no transcript while only the stream has spoken.
 #[derive(Debug)]
 pub(crate) struct Followed {
-    path: PathBuf,
-    _stop: Stop,
+    path: Option<PathBuf>,
+    _stop: Option<Stop>,
     chat: Chat,
 }
 
 impl State {
     /// The transcript the session's conversation is read from.
     pub fn transcript(&self, session: &SessionId) -> Option<&Path> {
-        self.followed(session).map(|one| one.path.as_path())
+        self.followed(session)?.path.as_deref()
     }
 
     pub fn chat(&self, session: &SessionId) -> Option<&Chat> {
@@ -32,8 +32,8 @@ impl State {
         self.unfollow(session);
         let (stop, heeded) = groove_transcript::stop();
         let followed = Followed {
-            path,
-            _stop: stop,
+            path: Some(path),
+            _stop: Some(stop),
             chat: Chat::default(),
         };
         self.chats.push((session.clone(), followed));
@@ -47,7 +47,8 @@ impl State {
     /// What one read of `path` heard; a transcript no longer followed is not heard.
     pub(crate) fn heard(&mut self, session: &SessionId, path: &Path, heard: Vec<Heard>) {
         let followed = self.chats.iter_mut().find(|(id, _)| id == session);
-        let Some((_, followed)) = followed.filter(|(_, one)| one.path == path) else {
+        let Some((_, followed)) = followed.filter(|(_, one)| one.path.as_deref() == Some(path))
+        else {
             return;
         };
         heard.into_iter().for_each(|one| followed.chat.hear(one));
@@ -58,6 +59,22 @@ impl State {
         let followed = self.chats.iter_mut().find(|(id, _)| id == session);
         if let Some((_, followed)) = followed {
             followed.chat.hear(Heard::Sent(text));
+        }
+    }
+
+    /// What the stream says beside the transcript, heard by the session's conversation, begun if none is.
+    pub(crate) fn streamed(&mut self, session: &SessionId, heard: Heard) {
+        if self.followed(session).is_none() {
+            let followed = Followed {
+                path: None,
+                _stop: None,
+                chat: Chat::default(),
+            };
+            self.chats.push((session.clone(), followed));
+        }
+        let followed = self.chats.iter_mut().find(|(id, _)| id == session);
+        if let Some((_, followed)) = followed {
+            followed.chat.hear(heard);
         }
     }
 

@@ -12,7 +12,11 @@ pub enum Entry {
     Glance(Glance),
     Edit(Edit),
     Tool(Tool),
+    /// An agent the agent sent, its steps and its answer.
+    Subagent(Subagent),
     Interrupted,
+    /// What went wrong: an API error, a reached limit, or the agent ending by itself.
+    Failed(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +55,33 @@ pub struct Run {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Subagent {
+    pub id: String,
+    /// Its type, as `Explore`.
+    pub kind: String,
+    /// The task it was given, in a few words.
+    pub task: String,
+    /// Its own steps, as the stream tells them.
+    pub steps: Glance,
+    pub answer: Option<String>,
+    pub state: Sent,
+    /// Its own id, when it works in the background.
+    pub agent: Option<String>,
+    pub since: Option<Timestamp>,
+    pub until: Option<Timestamp>,
+}
+
+/// Where a subagent stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sent {
+    Working,
+    Done,
+    Failed,
+    /// Its turn was interrupted before it answered.
+    Stopped,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tool {
     pub id: String,
     pub name: String,
@@ -66,7 +97,8 @@ impl Entry {
             Entry::Glance(glance) => glance.ran.iter().any(|one| one.id == id),
             Entry::Edit(one) => one.id == id,
             Entry::Tool(one) => one.id == id,
-            Entry::You(_) | Entry::Said(_) | Entry::Interrupted => false,
+            Entry::Subagent(one) => one.id == id,
+            Entry::You(_) | Entry::Said(_) | Entry::Interrupted | Entry::Failed(_) => false,
         }
     }
 }

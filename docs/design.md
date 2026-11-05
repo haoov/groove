@@ -227,7 +227,12 @@ prompt, or typed while the agent works, waits faint after the rows until the tra
 Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a count for each,
 a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls,
 each one line cut with `…`; a click opens it to every one whole and wrapped, with what it gave back.
-An interrupt is a row of its own, and no group turns after it. While the agent works, the last group's mark
+An interrupt is a row of its own, and no group turns after it. What goes wrong is a red row: an
+API error, a reached limit, or the agent ending by itself with its code and last stderr lines.
+An agent the agent sends is a card: its type, its task, how it stands and its time, its own steps
+folded in one line, and its answer cut to two lines; a click shows the answer whole. Over the
+prompt, a dock holds one row for each agent still working, and for each one done since the user
+last spoke; a click on a row opens its card and scrolls to it, and the dock folds to its head. While the agent works, the last group's mark
 spins and its time runs, and a group of its own stands past the last record until one comes. A
 write is one row: its file links to the hunk in the Diff tab, with its `+N -N`. A table is laid in
 columns. A drag selects text and copies it on release; a double click takes a word, a triple click
@@ -243,10 +248,13 @@ Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn
 `while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
 `an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
 `up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
+`a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation`,
+`a_finished_agent_leaves_the_dock_once_the_user_speaks_again`,
+`what_went_wrong_shows_in_the_conversation`,
 `a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
 `a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
 `escape_on_an_empty_prompt_interrupts_the_agent_when_nothing_is_asked`,
-`a_headless_agent_hears_a_message_asks_leave_settles_and_stops_on_an_interrupt`,
+`a_headless_agent_hears_a_message_asks_leave_settles_and_its_end_shows_in_the_conversation`,
 `a_table_keeps_its_rows_and_each_span_its_cell`,
 `a_drag_over_the_conversation_copies_what_it_holds`,
 `a_double_click_takes_a_word_and_a_triple_click_its_line`,

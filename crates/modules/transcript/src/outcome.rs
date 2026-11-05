@@ -10,6 +10,15 @@ const OUTPUT_LINES: usize = 40;
 pub(super) fn outcome(block: &Value, whole: Option<&Value>) -> Outcome {
     let failed = block.get("is_error").and_then(Value::as_bool) == Some(true)
         || whole.and_then(|one| one.get("interrupted")?.as_bool()) == Some(true);
+    if let Some(report) = whole.and_then(handed_back) {
+        let failed =
+            failed || whole.and_then(|one| one.get("status")?.as_str()) != Some("completed");
+        return Outcome {
+            failed,
+            output: Some(report),
+            patch: None,
+        };
+    }
     let output = whole
         .and_then(ran)
         .or_else(|| returned(block.get("content")?))
@@ -19,6 +28,12 @@ pub(super) fn outcome(block: &Value, whole: Option<&Value>) -> Outcome {
         output,
         patch: whole.and_then(patch),
     }
+}
+
+/// What a subagent reported, whole.
+fn handed_back(whole: &Value) -> Option<String> {
+    let report = whole.pointer("/handbackReport/text")?.as_str()?;
+    Some(report.trim().to_string())
 }
 
 /// A command's stdout, then its stderr.

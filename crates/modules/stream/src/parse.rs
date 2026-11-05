@@ -1,6 +1,7 @@
 //! One line of the agent's output read into what Groove hears; a kind the transcript already says is skipped.
 
-use groove_types::chat::{Permission, Question};
+use groove_types::Timestamp;
+use groove_types::chat::{self, Permission, Question};
 use serde_json::{Value, json};
 
 use crate::Heard;
@@ -13,8 +14,39 @@ pub(crate) fn line(text: &str) -> Option<Result<Heard, Value>> {
         "result" => Some(Ok(Heard::Settled)),
         "control_cancel_request" => Some(Ok(Heard::Withdrawn(id()?))),
         "control_request" => Some(asks(&record).ok_or_else(|| refused(&id().unwrap_or_default()))),
+        "assistant" | "user" => within(&record, text).map(Ok),
+        "rate_limit_event" => limited(&record).map(Ok),
         _ => None,
     }
+}
+
+/// A subagent's own record, by the call that sent it; the main agent's is the transcript's to say.
+fn within(record: &Value, text: &str) -> Option<Heard> {
+    let parent = record.get("parent_tool_use_id")?.as_str()?.to_string();
+    let heard = groove_transcript::line(text);
+    let heard = chat::Heard::Within { parent, heard };
+    Some(Heard::Chat(heard))
+}
+
+/// A limit that refuses the next request, and when it lifts.
+fn limited(record: &Value) -> Option<Heard> {
+    let info = record.get("rate_limit_info")?;
+    if info.get("status")?.as_str()? != "rejected" {
+        return None;
+    }
+    let kind = info.get("rateLimitType").and_then(Value::as_str);
+    let kind = kind.unwrap_or("usage").replace('_', "-");
+    let resets = info.get("resetsAt").and_then(Value::as_i64);
+    let wait = resets.map(|at| Timestamp::now().age_at(Timestamp::new(at)).as_secs() / 60);
+    let text = match wait {
+        Some(minutes) => format!(
+            "The {kind} limit is reached; it resets in {}h {:02}m.",
+            minutes / 60,
+            minutes % 60
+        ),
+        None => format!("The {kind} limit is reached."),
+    };
+    Some(Heard::Chat(chat::Heard::Failed(text)))
 }
 
 /// A `can_use_tool` request as the permission it waits on.

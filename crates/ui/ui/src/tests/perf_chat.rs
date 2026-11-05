@@ -147,3 +147,50 @@ fn time_the_draw_of_the_conversation() {
         );
     }
 }
+
+/// A subagent sent in turn `at`: its steps, then its answer unless it still works.
+fn sent(at: usize, working: bool) -> Vec<Heard> {
+    let id = format!("agent-{at}");
+    let steps = vec![Heard::Thought, Heard::Look(format!("file_{at}.py"))];
+    let mut out = vec![
+        Heard::Subagent {
+            id: id.clone(),
+            kind: "Explore".into(),
+            task: format!("Find where turn {at} caches"),
+        },
+        Heard::Within {
+            parent: id.clone(),
+            heard: steps,
+        },
+    ];
+    if !working {
+        let outcome = Outcome {
+            output: Some(SAID.into()),
+            ..Outcome::default()
+        };
+        out.push(Heard::Result { id, outcome });
+    }
+    out
+}
+
+#[test]
+#[ignore]
+fn time_a_frame_with_agents_sent() {
+    let mut fonts = Fonts::embedded();
+    for turns in [10, 100, 1000] {
+        let heard = (0..turns).flat_map(|at| {
+            let mut one = turn(at);
+            one.extend(sent(at, at < 3));
+            one
+        });
+        let app = talking(heard.collect());
+        let mut ui = chat_ui();
+        let docked = timed(&app, &ui, &mut fonts, 20);
+        ui.agent.docked = true;
+        let folded = timed(&app, &ui, &mut fonts, 20);
+        println!(
+            "{turns:>5} turns, a card each, 3 working far up: {docked:>10?} the dock open, \
+             {folded:>10?} folded"
+        );
+    }
+}

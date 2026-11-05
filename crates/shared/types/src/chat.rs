@@ -2,9 +2,10 @@
 
 mod asked;
 mod rows;
+mod subagents;
 
 pub use asked::{Permission, Question};
-pub use rows::{Edit, Entry, Glance, Run, Tool};
+pub use rows::{Edit, Entry, Glance, Run, Sent, Subagent, Tool};
 
 use crate::Timestamp;
 
@@ -47,6 +48,36 @@ pub enum Heard {
     Sent(String),
     /// The user stopped the agent's turn.
     Interrupted,
+    /// An agent sent with a task, by its type.
+    Subagent {
+        id: String,
+        kind: String,
+        task: String,
+    },
+    /// A subagent sent to work in the background, by its own id.
+    Background {
+        id: String,
+        agent: String,
+    },
+    /// A background subagent ended, named by its call or its own id, with what it said.
+    Ended {
+        call: Option<String>,
+        agent: String,
+        state: Sent,
+        summary: Option<String>,
+    },
+    /// A background subagent's report, by its own id.
+    Reported {
+        agent: String,
+        report: String,
+    },
+    /// What the subagent `parent` did, in its own records.
+    Within {
+        parent: String,
+        heard: Vec<Heard>,
+    },
+    /// An API error, a reached limit, or the agent ending by itself.
+    Failed(String),
     Tool {
         id: String,
         name: String,
@@ -115,7 +146,13 @@ impl Chat {
                 Entry::You(text)
             }
             Heard::Said(text) => Entry::Said(text),
-            Heard::Interrupted => Entry::Interrupted,
+            Heard::Interrupted => self.stopped(),
+            Heard::Failed(text) => return self.failed(text),
+            Heard::Subagent { id, kind, task } => self.sent_agent(id, kind, task),
+            sent @ (Heard::Within { .. }
+            | Heard::Background { .. }
+            | Heard::Ended { .. }
+            | Heard::Reported { .. }) => return self.followed_agent(sent),
             Heard::Thought => return self.glanced(|one| one.thoughts += 1),
             Heard::Look(at) => {
                 return self.glanced(|one| {
@@ -139,22 +176,19 @@ impl Chat {
             Heard::Sent(text) => return self.sent.push(text),
             Heard::Dequeued(text) => return self.dequeued(text),
             Heard::Recalled => return self.queued.clear(),
-            Heard::Edit { id, path, created } => Entry::Edit(Edit {
-                id,
-                path,
-                created,
-                patch: None,
-                failed: false,
-            }),
-            Heard::Tool { id, name, detail } => Entry::Tool(Tool {
-                id,
-                name,
-                detail,
-                failed: None,
-            }),
+            Heard::Edit { id, path, created } => edited(id, path, created),
+            Heard::Tool { id, name, detail } => called(id, name, detail),
             Heard::Result { id, outcome } => return self.answered(&id, outcome),
         };
         self.push(entry);
+    }
+
+    /// What went wrong, once while it repeats.
+    fn failed(&mut self, text: String) {
+        let said = Entry::Failed(text);
+        if self.entries.last() != Some(&said) {
+            self.push(said);
+        }
     }
 
     fn ran(&mut self, (id, tool, command): (String, Option<String>, String), doing: String) {
@@ -225,6 +259,7 @@ impl Chat {
                     (run.output, run.failed) = (outcome.output, outcome.failed);
                 }
             }
+            Entry::Subagent(one) => subagents::answered(one, outcome, self.now),
             _ => {}
         }
     }
@@ -235,6 +270,25 @@ impl Chat {
         }
         self.entries.push(entry);
     }
+}
+
+fn called(id: String, name: String, detail: Option<String>) -> Entry {
+    Entry::Tool(Tool {
+        id,
+        name,
+        detail,
+        failed: None,
+    })
+}
+
+fn edited(id: String, path: String, created: bool) -> Entry {
+    Entry::Edit(Edit {
+        id,
+        path,
+        created,
+        patch: None,
+        failed: false,
+    })
 }
 
 fn first_line(text: &str) -> String {

@@ -150,8 +150,8 @@ async fn a_turn_s_end_and_a_withdrawn_ask_are_heard_and_an_unknown_request_is_re
 }
 
 #[tokio::test]
-async fn a_spawned_agent_reads_its_input_and_its_exit_code_comes_back() {
-    let script = r#"read line; case "$line" in *quotes*) echo '{"type":"result"}';; esac; exit 3"#;
+async fn a_spawned_agent_reads_its_input_and_its_end_says_its_code_and_last_stderr() {
+    let script = r#"read line; case "$line" in *quotes*) echo '{"type":"result"}';; esac; echo 'not logged in' >&2; exit 3"#;
     let launch = Launch {
         program: "sh".into(),
         args: vec!["-c".into(), script.into()],
@@ -172,5 +172,32 @@ async fn a_spawned_agent_reads_its_input_and_its_exit_code_comes_back() {
     let code = tokio::time::timeout(WAIT, code).await.expect("in time");
     assert_eq!(code.expect("an exit"), 3);
     tokio::time::sleep(Duration::from_millis(50)).await;
-    assert_eq!(*heard.lock().expect("held"), [Heard::Settled]);
+    let ended = "The agent ended with code 3:\nnot logged in".to_string();
+    let ended = Heard::Chat(groove_types::chat::Heard::Failed(ended));
+    assert_eq!(*heard.lock().expect("held"), [Heard::Settled, ended]);
+}
+
+#[tokio::test]
+async fn a_subagent_s_own_records_and_a_refusing_limit_are_heard_for_the_conversation() {
+    let mut scene = scene();
+    let step = json!({"type": "assistant", "parent_tool_use_id": "a1",
+        "message": {"content": [{"type": "thinking", "thinking": ""}]}});
+    let main = json!({"type": "assistant", "parent_tool_use_id": null,
+        "message": {"content": [{"type": "text", "text": "the transcript says this"}]}});
+    let allowed = json!({"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}});
+    let refused = json!({"type": "rate_limit_event",
+        "rate_limit_info": {"status": "rejected", "rateLimitType": "five_hour"}});
+    for one in [step, main, allowed, refused] {
+        scene.says(one).await;
+    }
+    let within = groove_types::chat::Heard::Within {
+        parent: "a1".into(),
+        heard: vec![groove_types::chat::Heard::Thought],
+    };
+    assert_eq!(scene.hears().await, Heard::Chat(within));
+    let limit = "The five-hour limit is reached.".to_string();
+    assert_eq!(
+        scene.hears().await,
+        Heard::Chat(groove_types::chat::Heard::Failed(limit))
+    );
 }

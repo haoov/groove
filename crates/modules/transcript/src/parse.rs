@@ -2,6 +2,8 @@
 
 use groove_types::Timestamp;
 use groove_types::chat::Heard;
+
+use crate::sent::{LAUNCHED, launched, notified, reported};
 use serde_json::Value;
 
 const DETAIL_MAX: usize = 120;
@@ -31,6 +33,9 @@ const LOOKS: [&str; 4] = ["Read", "Grep", "Glob", "LS"];
 /// The tools that write a file.
 const EDITS: [&str; 3] = ["Edit", "MultiEdit", "NotebookEdit"];
 
+/// The tools that send an agent of their own.
+const SENDS: [&str; 2] = ["Agent", "Task"];
+
 /// The tools that say nothing worth a row.
 const SILENT: [&str; 1] = ["ToolSearch"];
 
@@ -40,8 +45,12 @@ pub fn line(text: &str) -> Vec<Heard> {
         return Vec::new();
     };
     let flag = |key: &str| record.get(key).and_then(Value::as_bool) == Some(true);
-    if flag("isSidechain") || flag("isMeta") {
+    if flag("isSidechain") {
         return Vec::new();
+    }
+    if flag("isMeta") {
+        let said = record.pointer("/message/content").and_then(Value::as_str);
+        return said.and_then(reported).into_iter().collect();
     }
     let heard = heard(&record);
     let at = record.get("timestamp").and_then(Value::as_str);
@@ -54,6 +63,9 @@ pub fn line(text: &str) -> Vec<Heard> {
 /// What a record says, by its kind.
 fn heard(record: &Value) -> Vec<Heard> {
     let content = record.pointer("/message/content");
+    if record.get("isApiErrorMessage").and_then(Value::as_bool) == Some(true) {
+        return failed(content).into_iter().collect();
+    }
     match (record.get("type").and_then(Value::as_str), content) {
         (Some("user"), Some(Value::String(text))) => prompt(text).into_iter().collect(),
         (Some("user"), Some(Value::Array(blocks))) => user(blocks, record),
@@ -64,11 +76,22 @@ fn heard(record: &Value) -> Vec<Heard> {
     }
 }
 
+/// An API error the agent's message stands for, by its text.
+fn failed(content: Option<&Value>) -> Option<Heard> {
+    let texts = content?.as_array()?.iter();
+    let texts: Vec<&str> = texts.filter_map(|one| one.get("text")?.as_str()).collect();
+    let text = texts.join("\n");
+    (!text.trim().is_empty()).then(|| Heard::Failed(text.trim().to_string()))
+}
+
 /// The user's words; a slash command by its name; an interrupt; Claude's own tags say nothing.
 fn prompt(text: &str) -> Option<Heard> {
     if let Some(name) = between(text, "<command-name>", "</command-name>") {
         let args = between(text, "<command-args>", "</command-args>").unwrap_or_default();
         return Some(Heard::You(format!("{name} {args}").trim().to_string()));
+    }
+    if let Some(notified) = notified(text) {
+        return Some(notified);
     }
     let text = unpasted(text);
     let text = text.trim();
@@ -90,6 +113,10 @@ fn queued(record: &Value) -> Option<Heard> {
 /// A message waiting for the agent's turn, or taken off the wait.
 fn waiting(record: &Value) -> Option<Heard> {
     let content = record.get("content").and_then(Value::as_str);
+    let typed = content.and_then(prompt);
+    if content.is_some() && !matches!(typed, Some(Heard::You(_))) {
+        return None;
+    }
     let said = || match prompt(content?)? {
         Heard::You(text) => Some(text),
         _ => None,
@@ -121,7 +148,7 @@ fn unpasted(text: &str) -> String {
     out
 }
 
-fn between<'a>(text: &'a str, open: &str, close: &str) -> Option<&'a str> {
+pub(crate) fn between<'a>(text: &'a str, open: &str, close: &str) -> Option<&'a str> {
     let (_, rest) = text.split_once(open)?;
     Some(rest.split_once(close)?.0.trim())
 }
@@ -133,6 +160,9 @@ fn user(blocks: &[Value], record: &Value) -> Vec<Heard> {
         .filter(|one| kind(one) == "tool_result")
         .count();
     let whole = record.get("toolUseResult").filter(|_| results == 1);
+    if whole.and_then(|one| one.get("status")?.as_str()) == Some(LAUNCHED) {
+        return launched(blocks, whole).into_iter().collect();
+    }
     blocks
         .iter()
         .filter_map(|block| match kind(block) {
@@ -175,6 +205,11 @@ fn used(block: &Value) -> Option<Heard> {
             id,
             path: text("file_path").or_else(|| text("notebook_path"))?,
             created: false,
+        },
+        _ if SENDS.contains(&name) => Heard::Subagent {
+            id,
+            kind: text("subagent_type").unwrap_or_else(|| "general-purpose".into()),
+            task: text("description").unwrap_or_default(),
         },
         "Bash" => Heard::Ran {
             id,
@@ -219,6 +254,6 @@ fn kind(block: &Value) -> &str {
         .unwrap_or_default()
 }
 
-fn field(block: &Value, key: &str) -> Option<String> {
+pub(crate) fn field(block: &Value, key: &str) -> Option<String> {
     Some(block.get(key)?.as_str()?.to_string())
 }

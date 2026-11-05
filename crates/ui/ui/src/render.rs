@@ -2,6 +2,7 @@
 
 use groove_controllers::{AppState, Command, agent};
 use groove_gfx::{Fonts, Frame};
+use groove_types::chat::Chat;
 
 use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
@@ -110,6 +111,14 @@ pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
 
 /// Whether the object's tab shown holds an Application syncing, whose mark turns.
 pub fn spins(app: &AppState, ui: &Ui) -> bool {
+    let chat = app
+        .session
+        .selected
+        .as_ref()
+        .and_then(|one| app.agent.chat(one));
+    if ui.showing(app) == Surface::Session && chat.is_some_and(Chat::sending) {
+        return true;
+    }
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
     let read = ui
         .session

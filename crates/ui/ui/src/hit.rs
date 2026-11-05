@@ -106,6 +106,8 @@ pub struct Hits {
     caret: Option<(f32, f32)>,
     read: Vec<read::Line>,
     typed: read::Typed,
+    /// Each subagent's card, by the conversation's scroll that shows it whole.
+    sent: Vec<(String, f32)>,
 }
 
 impl Hits {
@@ -165,6 +167,18 @@ impl Hits {
 
     pub fn read(&self) -> &[read::Line] {
         &self.read
+    }
+
+    pub fn sent_at(&mut self, id: &str, scroll: f32) {
+        self.sent.push((id.to_string(), scroll));
+    }
+
+    /// The scroll that shows the subagent `id`'s card, as the last frame laid it.
+    pub fn sent(&self, id: &str) -> Option<f32> {
+        self.sent
+            .iter()
+            .find(|(one, _)| one == id)
+            .map(|(_, at)| *at)
     }
 
     pub fn typing(&mut self, typed: read::Typed) {

@@ -1,4 +1,5 @@
-//! The agent run headless: its words, interrupts and answers written to it as stream-json, what it asks read back.
+//! The agent run headless: its words, interrupts and answers written to it as stream-json; its asks,
+//! turns, subagents' steps, limits and end read back.
 
 mod parse;
 
@@ -10,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use groove_agent_launch::Launch;
 use groove_exec::piped::{Piped, Pipes};
-use groove_types::chat::Permission;
+use groove_types::chat::{self, Permission};
 use groove_types::{Error, ErrorKind, Result};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
@@ -25,6 +26,8 @@ pub enum Heard {
     Withdrawn(String),
     /// A turn ended, finished or interrupted.
     Settled,
+    /// What the conversation hears beside the transcript: a subagent's steps, a limit, the agent's end.
+    Chat(chat::Heard),
 }
 
 /// What the owner hears from the reader.
@@ -39,7 +42,7 @@ pub struct Hooks {
 pub struct Stream {
     outgoing: mpsc::UnboundedSender<Value>,
     pid: Option<u32>,
-    requests: Arc<AtomicU64>,
+    requests: AtomicU64,
 }
 
 impl Stream {
@@ -61,14 +64,15 @@ impl Stream {
             return Err(agent("the agent's pipes were taken".into()));
         };
         let pid = process.pid();
-        let stream = Self::connect(stdout, stdin, hooks.on_heard);
-        tokio::spawn(async move {
-            let mut stderr = stderr;
-            tokio::io::copy(&mut stderr, &mut tokio::io::sink()).await
-        });
+        let on_heard: Arc<dyn Fn(Heard) + Send + Sync> = Arc::from(hooks.on_heard);
+        let heard = on_heard.clone();
+        let stream = Self::connect(stdout, stdin, Box::new(move |one| heard(one)));
+        let said = tokio::spawn(last_lines(stderr));
         let on_exit = hooks.on_exit;
         tokio::spawn(async move {
             let code = process.wait().await.ok().flatten().unwrap_or(-1);
+            let said = said.await.unwrap_or_default();
+            on_heard(Heard::Chat(chat::Heard::Failed(ended(code, &said))));
             on_exit(code as u32);
         });
         Ok(Self { pid, ..stream })
@@ -86,7 +90,7 @@ impl Stream {
         Self {
             outgoing,
             pid: None,
-            requests: Arc::default(),
+            requests: AtomicU64::default(),
         }
     }
 
@@ -162,11 +166,43 @@ async fn read<R: AsyncRead + Unpin>(
     while let Ok(Some(line)) = lines.next_line().await {
         match parse::line(&line) {
             Some(Ok(heard)) => on_heard(heard),
-            Some(Err(refused)) => drop(outgoing.send(refused)),
+            Some(Err(refused)) => {
+                let _ = outgoing.send(refused);
+            }
             None => {}
         }
     }
 }
+
+/// The last lines the child wrote to stderr.
+async fn last_lines<R: AsyncRead + Unpin>(reader: R) -> Vec<String> {
+    let mut lines = BufReader::new(reader).lines();
+    let mut kept = std::collections::VecDeque::new();
+    while let Ok(Some(line)) = lines.next_line().await {
+        if kept.len() == SAID {
+            kept.pop_front();
+        }
+        kept.push_back(line);
+    }
+    kept.into()
+}
+
+/// The agent ended by itself: its code and what it last said on stderr.
+fn ended(code: i32, said: &[String]) -> String {
+    let said: Vec<&str> = said
+        .iter()
+        .map(|one| one.trim())
+        .filter(|one| !one.is_empty())
+        .collect();
+    match (code, said.is_empty()) {
+        (0, true) => "The agent ended.".into(),
+        (code, true) => format!("The agent ended with code {code}."),
+        (code, false) => format!("The agent ended with code {code}:\n{}", said.join("\n")),
+    }
+}
+
+/// The lines of stderr an ended agent shows.
+const SAID: usize = 6;
 
 fn agent(message: String) -> Error {
     Error::new(ErrorKind::Agent, message)

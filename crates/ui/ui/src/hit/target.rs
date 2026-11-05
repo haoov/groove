@@ -240,6 +240,10 @@ pub enum Target {
     Commands(String),
     /// An answer to what the headless agent asks.
     Answer(Answering),
+    /// An agent's row in the dock: its card, opened and in sight.
+    Subagent(String),
+    /// The dock of agents at work, folded to its head or opened.
+    FoldAgents,
     /// One button of a note's own row.
     Note(groove_types::NoteOrigin, NoteButton),
     /// What the composer of the note being typed offers.

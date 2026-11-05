@@ -178,3 +178,71 @@ fn a_record_s_time_comes_before_what_it_says() {
     let at = groove_types::Timestamp::parse("2026-10-29T12:49:13Z").unwrap();
     assert_eq!(said(record), [Heard::Clock(at), Heard::You("go".into())]);
 }
+
+#[test]
+fn an_agent_sent_is_a_subagent_its_handback_its_answer_and_an_api_error_a_failure() {
+    let sent = assistant(json!([{"type": "tool_use", "id": "a1", "name": "Agent",
+        "input": {"subagent_type": "Explore", "description": "Find the metrics", "prompt": "..."}}]));
+    let sub = Heard::Subagent {
+        id: "a1".into(),
+        kind: "Explore".into(),
+        task: "Find the metrics".into(),
+    };
+    assert_eq!(said(sent), [sub]);
+    let back = json!({"type": "user", "toolUseResult": {"status": "completed",
+        "handbackReport": {"text": "They register in observability.py\n"}},
+        "message": {"content": [{"type": "tool_result", "tool_use_id": "a1",
+            "content": [{"type": "text", "text": "delivered as a message"}]}]}});
+    let outcome = Outcome {
+        output: Some("They register in observability.py".into()),
+        ..Outcome::default()
+    };
+    assert_eq!(
+        said(back),
+        [Heard::Result {
+            id: "a1".into(),
+            outcome
+        }]
+    );
+    let error = json!({"type": "assistant", "isApiErrorMessage": true,
+        "message": {"content": [{"type": "text", "text": "API Error: overloaded"}]}});
+    assert_eq!(said(error), [Heard::Failed("API Error: overloaded".into())]);
+}
+
+#[test]
+fn a_background_agent_s_launch_keeps_its_id_and_its_notification_ends_it() {
+    let launched = json!({"type": "user",
+        "toolUseResult": {"isAsync": true, "status": "async_launched", "agentId": "x"},
+        "message": {"content": [{"type": "tool_result", "tool_use_id": "a1",
+            "content": [{"type": "text", "text": "Async agent launched successfully."}]}]}});
+    let background = Heard::Background {
+        id: "a1".into(),
+        agent: "x".into(),
+    };
+    assert_eq!(said(launched), [background]);
+    let notice = "<task-notification>\n<task-id>x</task-id>\n<status>stopped</status>\n\
+        <summary>It did not finish</summary>\n</task-notification>";
+    let notified = json!({"type": "user", "message": {"content": notice}});
+    let ended = Heard::Ended {
+        call: None,
+        agent: "x".into(),
+        state: groove_types::chat::Sent::Stopped,
+        summary: Some("It did not finish".into()),
+    };
+    assert_eq!(said(notified), [ended]);
+}
+
+#[test]
+fn a_subagent_s_report_is_heard_from_its_message_and_its_queued_copy_is_not_a_prompt() {
+    let message = "Another Claude session sent a message:\n<agent-message from=\"x\">\n\
+        [Subagent hand-back] Framing. The report follows:\n  All green.\n  \n  1. fmt passes\n</agent-message>";
+    let meta = json!({"type": "user", "isMeta": true, "message": {"content": message}});
+    let reported = Heard::Reported {
+        agent: "x".into(),
+        report: "All green.\n\n1. fmt passes".into(),
+    };
+    assert_eq!(said(meta), [reported]);
+    let copy = message.split_once('\n').map_or(message, |(_, rest)| rest);
+    let queued = json!({"type": "queue-operation", "operation": "dequeue", "content": copy});
+    assert_eq!(said(queued), []);
+}

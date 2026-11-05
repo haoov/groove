@@ -97,6 +97,8 @@ pub struct AgentUi {
     pub reading: Option<((f32, f32), (f32, f32))>,
     /// The glances whose commands show whole, by their first command.
     pub opened: Vec<String>,
+    /// The dock of agents at work shows only its head.
+    pub docked: bool,
     /// The options picked so far for the ask that id names, one per question.
     pub picked: Option<(String, Vec<String>)>,
 }

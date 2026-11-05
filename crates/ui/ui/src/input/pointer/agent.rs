@@ -29,6 +29,19 @@ pub(super) fn acted(
             }
             Some(Vec::new())
         }
+        Target::Subagent(id) => {
+            if !ui.agent.opened.contains(id) {
+                ui.agent.opened.push(id.clone());
+            }
+            if let Some(scroll) = hits.sent(id) {
+                ui.agent.scroll = scroll;
+            }
+            Some(Vec::new())
+        }
+        Target::FoldAgents => {
+            ui.agent.docked = !ui.agent.docked;
+            Some(Vec::new())
+        }
         Target::Answer(button) => Some(crate::input::answer::answered(ui, app, button.clone())),
         Target::Edited { path, line } => Some(crate::input::reveal::opened(ui, app, path, *line)),
         _ => None,

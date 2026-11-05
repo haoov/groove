@@ -63,7 +63,7 @@ pub(super) fn say(state: &mut AppState, spawner: &dyn Spawner, session: &Session
 /// The turn stopped: a control message to a headless agent, Escape to one on a terminal.
 pub(super) fn interrupt(state: &mut AppState, session: &SessionId) {
     match state.agent.stream(session) {
-        Some(stream) => drop(stream.interrupt()),
+        Some(stream) => _ = stream.interrupt(),
         None => super::send(state, session, b"\x1b"),
     }
 }
