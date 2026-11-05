@@ -79,6 +79,8 @@ pub enum Mark {
     Looked,
     /// A file the agent changed.
     Edited,
+    /// A skill the agent ran.
+    Skill,
 }
 
 impl Mark {
@@ -124,11 +126,11 @@ impl Mark {
             Mark::Repo => Icon::Cube,
             Mark::Ahead => Icon::ArrowUp,
             Mark::Behind => Icon::ArrowDown,
-            Mark::Staged => Icon::Plus,
+            Mark::Staged | Mark::Add => Icon::Plus,
             Mark::Modified | Mark::Context | Mark::Warnings => Icon::Dot,
             Mark::Git => Icon::Branch,
             Mark::Cluster => Icon::Kubernetes,
-            Mark::Read | Mark::Copied => Icon::Check,
+            Mark::Read | Mark::Copied | Mark::Commit => Icon::Check,
             Mark::Copy => Icon::Copy,
             Mark::Search => Icon::Glass,
             Mark::Down => Icon::CaretDown,
@@ -145,9 +147,7 @@ impl Mark {
             Mark::FolderOpen => Icon::FolderOpen,
             Mark::Routine => Icon::Repeat,
             Mark::Overview | Mark::Looked => Icon::Eye,
-            Mark::Add => Icon::Plus,
             Mark::Reload => Icon::Notch,
-            Mark::Commit => Icon::Check,
             Mark::Terminal => Icon::Terminal,
             Mark::Agent => Icon::Robot,
             Mark::Theme => Icon::Palette,
@@ -161,6 +161,7 @@ impl Mark {
             Mark::Play => Icon::Play,
             Mark::Thought => Icon::Bulb,
             Mark::Edited => Icon::Pencil,
+            Mark::Skill => Icon::Sparkle,
         }
     }
 }

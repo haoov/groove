@@ -170,17 +170,21 @@ fn tail(path: &str) -> String {
     parts.into_iter().rev().collect::<Vec<_>>().join("/")
 }
 
-/// Another tool: its name, what it was given, and how it ended.
+/// Another tool: its name, what it was given, and how it ended; a skill by its own mark.
 fn called(ctx: &mut Ctx, at: Rect, tool: &Tool) {
     let mut room = at;
-    lead(ctx, &mut room, Mark::Outward, Role::Faint);
+    let (mark, tone, name) = match tool.name.as_str() {
+        "Skill" => (Mark::Skill, Role::Accent, "skill"),
+        name => (Mark::Outward, Role::Faint, name),
+    };
+    lead(ctx, &mut room, mark, tone);
     let (word, role) = match tool.failed {
         None => ("running", Role::Working),
         Some(true) => ("failed", Role::Bad),
         Some(false) => ("done", Role::Ghost),
     };
     Label::new(word, ctx.styles.small(role)).right(ctx, &mut room, ctx.tokens.sm);
-    Label::new(&tool.name, ctx.styles.body(Role::Muted)).left(ctx, &mut room, ctx.tokens.sm);
+    Label::new(name, ctx.styles.body(Role::Muted)).left(ctx, &mut room, ctx.tokens.sm);
     if let Some(detail) = &tool.detail {
         Label::new(detail, ctx.styles.code(Role::Text)).draw(ctx, room);
     }

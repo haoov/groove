@@ -92,3 +92,23 @@ fn what_went_wrong_shows_in_the_conversation() {
         "{texts:?}"
     );
 }
+
+#[test]
+fn a_long_line_of_code_the_agent_shows_wraps_instead_of_running_out_of_sight() {
+    let line = format!(
+        "kubectl get pods {}TAIL",
+        "--selector app=pricing ".repeat(12)
+    );
+    let app = talking(vec![Heard::Said(format!("Run this:\n\n```\n{line}\n```"))]);
+    let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
+    let texts = all_texts(&frame);
+    assert!(
+        texts.iter().any(|one| one.starts_with("kubectl get pods")),
+        "{texts:?}"
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|one| one.ends_with("TAIL") && !one.starts_with("kubectl"))
+    );
+}

@@ -223,9 +223,37 @@ fn used(block: &Value) -> Option<Heard> {
         _ => Heard::Tool {
             id,
             name: name.to_string(),
-            detail: detail(input),
+            detail: called(name, input).or_else(|| detail(input)),
         },
     })
+}
+
+/// What a call stands for when its input says it better than its first field: the skill run, the
+/// kubectl line read.
+fn called(name: &str, input: Option<&Value>) -> Option<String> {
+    let input = input?;
+    let text = |key: &str| input.get(key).and_then(Value::as_str).unwrap_or_default();
+    match name {
+        "Skill" => Some(
+            format!("{} {}", text("skill"), text("args"))
+                .trim()
+                .to_string(),
+        ),
+        _ if name.ends_with("__kube") => {
+            let args = input
+                .get("args")?
+                .as_array()?
+                .iter()
+                .filter_map(Value::as_str);
+            let args: Vec<&str> = args.collect();
+            Some(format!(
+                "kubectl --context {} {}",
+                text("context"),
+                args.join(" ")
+            ))
+        }
+        _ => None,
+    }
 }
 
 /// A look's subject: a file by its name, else its pattern.

@@ -60,7 +60,7 @@ pub fn laid<A: App>(ctx: &mut Ctx<'_, A>, blocks: &[Block], width: f32, role: Ro
                 let table = &blocks[at..at + rows];
                 super::table::laid(ctx, table, (laid.height, width), role)
             }
-            Kind::Code => code(ctx, block, laid.height),
+            Kind::Code => code(ctx, block, (laid.height, width)),
             Kind::Rule => vec![rule(ctx, laid.height)],
             _ => wrapped(ctx, block, (laid.height, width), role),
         };
@@ -179,19 +179,23 @@ fn put(line: &mut Line, (x, w): (f32, f32), word: &str, style: TextStyle, span: 
     });
 }
 
-fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, top: f32) -> Vec<Line> {
+/// A code block's lines, each wrapped at the character that reaches `width`.
+fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, (top, width): (f32, f32)) -> Vec<Line> {
     let style = ctx.styles.prose_code(Role::Text);
     let (indent, _) = indents(ctx, block);
     let pad = ctx.tokens.sm;
     let tall = (style.size * LEADING).round();
+    let advance = ctx.measure("0", &style).max(1.0);
+    let cols = ((width - indent - pad * 2.0) / advance).floor().max(1.0) as usize;
     let mut y = top;
     let mut out = Vec::new();
-    for span in &block.spans {
-        let w = ctx.measure(&span.text, &style);
+    let rows = block.spans.iter().flat_map(|span| folded(&span.text, cols));
+    for text in rows {
+        let w = ctx.measure(&text, &style);
         let piece = Piece {
             x: indent + pad,
             w,
-            text: span.text.clone(),
+            text,
             style,
             code: false,
             link: None,
@@ -204,6 +208,15 @@ fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, top: f32) -> Vec<Line> {
         y += tall;
     }
     out
+}
+
+/// `text` cut every `cols` characters; an empty line stays one row.
+fn folded(text: &str, cols: usize) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.is_empty() {
+        return vec![String::new()];
+    }
+    chars.chunks(cols).map(|one| one.iter().collect()).collect()
 }
 
 fn rule<A: App>(ctx: &Ctx<'_, A>, top: f32) -> Line {

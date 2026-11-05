@@ -246,3 +246,25 @@ fn a_subagent_s_report_is_heard_from_its_message_and_its_queued_copy_is_not_a_pr
     let queued = json!({"type": "queue-operation", "operation": "dequeue", "content": copy});
     assert_eq!(said(queued), []);
 }
+
+#[test]
+fn a_skill_says_the_skill_it_runs_and_a_kube_call_its_kubectl_line() {
+    let skill = assistant(json!([{"type": "tool_use", "id": "s1", "name": "Skill",
+        "input": {"skill": "groove:save-task", "args": "notion"}}]));
+    let ran = Heard::Tool {
+        id: "s1".into(),
+        name: "Skill".into(),
+        detail: Some("groove:save-task notion".into()),
+    };
+    assert_eq!(said(skill), [ran]);
+    let kube = assistant(
+        json!([{"type": "tool_use", "id": "k1", "name": "mcp__groove__kube",
+        "input": {"context": "hub", "args": ["get", "pods", "-n", "argo"]}}]),
+    );
+    let read = Heard::Tool {
+        id: "k1".into(),
+        name: "mcp__groove__kube".into(),
+        detail: Some("kubectl --context hub get pods -n argo".into()),
+    };
+    assert_eq!(said(kube), [read]);
+}
