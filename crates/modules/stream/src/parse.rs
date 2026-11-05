@@ -16,6 +16,7 @@ pub(crate) fn line(text: &str) -> Option<Result<Heard, Value>> {
         "control_request" => Some(asks(&record).ok_or_else(|| refused(&id().unwrap_or_default()))),
         "assistant" | "user" => within(&record, text).map(Ok),
         "rate_limit_event" => limited(&record).map(Ok),
+        "stream_event" => writing(&record).map(Ok),
         _ => None,
     }
 }
@@ -26,6 +27,19 @@ fn within(record: &Value, text: &str) -> Option<Heard> {
     let heard = groove_transcript::line(text);
     let heard = chat::Heard::Within { parent, heard };
     Some(Heard::Chat(heard))
+}
+
+/// A piece of the main agent's words as it writes them.
+fn writing(record: &Value) -> Option<Heard> {
+    if !record.get("parent_tool_use_id").is_some_and(Value::is_null) {
+        return None;
+    }
+    let delta = record.pointer("/event/delta")?;
+    if delta.get("type")?.as_str()? != "text_delta" {
+        return None;
+    }
+    let text = delta.get("text")?.as_str()?.to_string();
+    Some(Heard::Chat(chat::Heard::Writing(text)))
 }
 
 /// A limit that refuses the next request, and when it lifts.

@@ -228,7 +228,8 @@ Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a
 a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls,
 each one line cut with `…`; a click opens it to every one whole and wrapped, with what it gave back.
 A `kube` call shows its whole `kubectl` line, as a command does. A skill is a row with its own
-mark and the skill it runs. A code block in the agent's words wraps at the width.
+mark and the skill it runs. A code block in the agent's words wraps at the width. A headless agent's words show as it writes them, until the
+transcript holds them whole.
 An interrupt is a row of its own, and no group turns after it. What goes wrong is a red row: an
 API error, a reached limit, or the agent ending by itself with its code and last stderr lines.
 An agent the agent sends is a card: its type, its task, how it stands and its time, its own steps
@@ -253,6 +254,7 @@ Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn
 `a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation`,
 `a_finished_agent_leaves_the_dock_once_the_user_speaks_again`,
 `what_went_wrong_shows_in_the_conversation`,
+`the_agent_s_words_show_as_it_writes_them`,
 `a_long_line_of_code_the_agent_shows_wraps_instead_of_running_out_of_sight`,
 `a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
 `a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,

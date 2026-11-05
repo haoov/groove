@@ -79,6 +79,7 @@ impl Chat {
 
     /// The turn interrupted, and every subagent still working with it.
     pub(super) fn stopped(&mut self) -> Entry {
+        self.writing.clear();
         for one in &mut self.entries {
             if let Entry::Subagent(sub) = one
                 && sub.state == Sent::Working

@@ -1,6 +1,5 @@
 //! The rows a conversation draws, and the calls they stand for.
 
-use super::Patch;
 use crate::Timestamp;
 
 /// One row of the conversation.
@@ -113,4 +112,21 @@ impl Run {
 /// An MCP tool's name past its `mcp__<server>__` prefix.
 pub(super) fn short(name: &str) -> &str {
     name.rsplit("__").next().unwrap_or(name)
+}
+
+/// What a tool call gave back.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Outcome {
+    pub failed: bool,
+    /// The last lines a command printed.
+    pub output: Option<String>,
+    pub patch: Option<Patch>,
+}
+
+/// What a write changed: the lines gained and lost, and the first new-side line of its first hunk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Patch {
+    pub added: u32,
+    pub removed: u32,
+    pub line: u32,
 }

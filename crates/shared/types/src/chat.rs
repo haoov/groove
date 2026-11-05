@@ -5,7 +5,7 @@ mod rows;
 mod subagents;
 
 pub use asked::{Permission, Question};
-pub use rows::{Edit, Entry, Glance, Run, Sent, Subagent, Tool};
+pub use rows::{Edit, Entry, Glance, Outcome, Patch, Run, Sent, Subagent, Tool};
 
 use crate::Timestamp;
 
@@ -24,6 +24,8 @@ pub enum Heard {
     You(String),
     /// The agent's words.
     Said(String),
+    /// A piece of the agent's words as it writes them, before the transcript holds them whole.
+    Writing(String),
     Thought,
     /// A tool that only looks, and what it looked at.
     Look(String),
@@ -90,23 +92,6 @@ pub enum Heard {
     },
 }
 
-/// What a tool call gave back.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Outcome {
-    pub failed: bool,
-    /// The last lines a command printed.
-    pub output: Option<String>,
-    pub patch: Option<Patch>,
-}
-
-/// What a write changed: the lines gained and lost, and the first new-side line of its first hunk.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Patch {
-    pub added: u32,
-    pub removed: u32,
-    pub line: u32,
-}
-
 /// A session's conversation, row by row.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Chat {
@@ -117,6 +102,8 @@ pub struct Chat {
     sent: Vec<String>,
     /// When the last record was written.
     now: Option<Timestamp>,
+    /// The agent's words as it writes them, until the transcript says them.
+    writing: String,
 }
 
 impl Chat {
@@ -132,6 +119,10 @@ impl Chat {
         &self.sent
     }
 
+    pub fn writing(&self) -> &str {
+        &self.writing
+    }
+
     /// When the last record was written.
     pub fn now(&self) -> Option<Timestamp> {
         self.now
@@ -145,7 +136,8 @@ impl Chat {
                 self.said(&text);
                 Entry::You(text)
             }
-            Heard::Said(text) => Entry::Said(text),
+            Heard::Said(text) => self.written(text),
+            Heard::Writing(text) => return self.writing.push_str(&text),
             Heard::Interrupted => self.stopped(),
             Heard::Failed(text) => return self.failed(text),
             Heard::Subagent { id, kind, task } => self.sent_agent(id, kind, task),
@@ -181,6 +173,12 @@ impl Chat {
             Heard::Result { id, outcome } => return self.answered(&id, outcome),
         };
         self.push(entry);
+    }
+
+    /// The agent's words whole, in the place of what was written of them so far.
+    fn written(&mut self, text: String) -> Entry {
+        self.writing.clear();
+        Entry::Said(text)
     }
 
     /// What went wrong, once while it repeats.
