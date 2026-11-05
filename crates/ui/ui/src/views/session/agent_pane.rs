@@ -9,6 +9,7 @@ mod glance;
 pub(crate) mod offered;
 mod prompt;
 mod subagent;
+mod usage;
 
 use groove_controllers::AppState;
 use groove_controllers::agent_service::Agent;
@@ -75,6 +76,7 @@ fn conversation(
     }
     prompt::draw(ctx, ui, &laid, focused);
     prompt::offers(ctx, &offered::offered(app, ui), ui.agent.offered, laid.pane);
+    usage::draw(ctx, chat, agent, laid.pane);
 }
 
 /// Whether the selected session's agent shows its conversation: headless, or by the user's choice.

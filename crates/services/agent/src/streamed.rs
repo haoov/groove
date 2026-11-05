@@ -88,6 +88,12 @@ pub(crate) fn heard(
         StreamHeard::Withdrawn(id) => agent.permissions.retain(|one| one.id != id),
         StreamHeard::Chat(one) => state.streamed(session, one),
         StreamHeard::Commands(listed) => agent.commands = listed,
+        StreamHeard::Limits { limits, refused } => {
+            agent.limits = limits;
+            if let Some(text) = refused {
+                state.streamed(session, groove_types::chat::Heard::Failed(text));
+            }
+        }
         StreamHeard::Settled => {
             agent.permissions.clear();
             let busy = matches!(

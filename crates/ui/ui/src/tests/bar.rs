@@ -27,6 +27,7 @@ pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
             stream: None,
             permissions: Vec::new(),
             commands: Vec::new(),
+            limits: Default::default(),
             activity,
             started_at: Timestamp::new(0),
             launch: 0,

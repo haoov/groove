@@ -28,6 +28,11 @@ pub enum Heard {
     Settled,
     /// The commands its prompt takes after `/`.
     Commands(Vec<chat::Slash>),
+    /// How much of the plan is used, and the limit that refuses requests if one does.
+    Limits {
+        limits: chat::Limits,
+        refused: Option<String>,
+    },
     /// What the conversation hears beside the transcript: a subagent's steps, a limit, the agent's end.
     Chat(chat::Heard),
 }

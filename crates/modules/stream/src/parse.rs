@@ -15,7 +15,7 @@ pub(crate) fn line(text: &str) -> Option<Result<Heard, Value>> {
         "control_cancel_request" => Some(Ok(Heard::Withdrawn(id()?))),
         "control_request" => Some(asks(&record).ok_or_else(|| refused(&id().unwrap_or_default()))),
         "assistant" | "user" => within(&record, text).map(Ok),
-        "rate_limit_event" => limited(&record).map(Ok),
+        "rate_limit_event" => windows(&record).map(Ok),
         "stream_event" => writing(&record).map(Ok),
         "system" => commands(&record).map(Ok),
         _ => None,
@@ -61,8 +61,7 @@ fn writing(record: &Value) -> Option<Heard> {
 }
 
 /// A limit that refuses the next request, and when it lifts.
-fn limited(record: &Value) -> Option<Heard> {
-    let info = record.get("rate_limit_info")?;
+fn limited(info: &Value) -> Option<String> {
     if info.get("status")?.as_str()? != "rejected" {
         return None;
     }
@@ -78,7 +77,22 @@ fn limited(record: &Value) -> Option<Heard> {
         ),
         None => format!("The {kind} limit is reached."),
     };
-    Some(Heard::Chat(chat::Heard::Failed(text)))
+    Some(text)
+}
+
+/// How much of the plan's windows is used, and the limit that refuses the next request if one does.
+fn windows(record: &Value) -> Option<Heard> {
+    let info = record.get("rate_limit_info")?;
+    let used = |window: &str| {
+        let share = info.pointer(&format!("/unifiedWindows/{window}/utilization"));
+        share.and_then(Value::as_f64).map(|one| one as f32)
+    };
+    let limits = chat::Limits {
+        five_hour: used("five_hour"),
+        week: used("seven_day"),
+    };
+    let refused = limited(info);
+    Some(Heard::Limits { limits, refused })
 }
 
 /// A `can_use_tool` request as the permission it waits on.

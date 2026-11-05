@@ -3,6 +3,7 @@
 use groove_types::Timestamp;
 use groove_types::chat::Heard;
 
+use crate::answer::{failed, spent};
 use crate::sent::{LAUNCHED, launched, notified, reported};
 use serde_json::Value;
 
@@ -69,19 +70,14 @@ fn heard(record: &Value) -> Vec<Heard> {
     match (record.get("type").and_then(Value::as_str), content) {
         (Some("user"), Some(Value::String(text))) => prompt(text).into_iter().collect(),
         (Some("user"), Some(Value::Array(blocks))) => user(blocks, record),
-        (Some("assistant"), Some(Value::Array(blocks))) => blocks.iter().filter_map(said).collect(),
+        (Some("assistant"), Some(Value::Array(blocks))) => {
+            let said = blocks.iter().filter_map(said);
+            said.chain(spent(record)).collect()
+        }
         (Some("attachment"), _) => queued(record).into_iter().collect(),
         (Some("queue-operation"), _) => waiting(record).into_iter().collect(),
         _ => Vec::new(),
     }
-}
-
-/// An API error the agent's message stands for, by its text.
-fn failed(content: Option<&Value>) -> Option<Heard> {
-    let texts = content?.as_array()?.iter();
-    let texts: Vec<&str> = texts.filter_map(|one| one.get("text")?.as_str()).collect();
-    let text = texts.join("\n");
-    (!text.trim().is_empty()).then(|| Heard::Failed(text.trim().to_string()))
 }
 
 /// The user's words; a slash command by its name; an interrupt; Claude's own tags say nothing.

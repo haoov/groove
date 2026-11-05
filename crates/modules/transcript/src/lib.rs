@@ -1,5 +1,6 @@
 //! The transcript Claude Code writes for a session, followed from its start as it grows.
 
+mod answer;
 mod outcome;
 mod parse;
 mod sent;

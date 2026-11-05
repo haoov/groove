@@ -12,6 +12,7 @@ fn state() -> State {
         stream: None,
         permissions: Vec::new(),
         commands: Vec::new(),
+        limits: Default::default(),
         activity: crate::activity(AgentStatus::Working, Timestamp::new(100)),
         started_at: Timestamp::new(100),
         launch: 7,

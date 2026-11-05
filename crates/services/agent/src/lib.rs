@@ -42,6 +42,8 @@ pub struct Agent {
     pub permissions: Vec<groove_types::chat::Permission>,
     /// The commands a headless agent's prompt takes after `/`.
     pub commands: Vec<groove_types::chat::Slash>,
+    /// How much of the plan a headless agent's stream says is used.
+    pub limits: groove_types::chat::Limits,
     pub activity: SessionActivity,
     /// When this agent was launched, which says whether a skill is newer than it.
     pub started_at: Timestamp,
@@ -118,6 +120,7 @@ impl State {
             stream,
             permissions: Vec::new(),
             commands: Vec::new(),
+            limits: Default::default(),
             activity: activity(status, now),
             started_at: now,
             launch,

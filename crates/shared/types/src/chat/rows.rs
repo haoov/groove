@@ -137,3 +137,10 @@ pub struct Slash {
     pub name: String,
     pub about: String,
 }
+
+/// How much of the plan's windows is used, from 0 to 1.
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct Limits {
+    pub five_hour: Option<f32>,
+    pub week: Option<f32>,
+}

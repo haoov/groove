@@ -160,3 +160,20 @@ fn a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one() {
     assert!(names(&ui).is_empty(), "put away");
     assert_eq!(ui.agent.prompt.text(), "/rev");
 }
+
+#[test]
+fn the_bar_under_the_prompt_says_the_model_the_context_and_the_plan_used() {
+    let used = Heard::Used {
+        model: "claude-opus-5-5".into(),
+        context: 82_002,
+    };
+    let mut app = talking(vec![used]);
+    app.agent.agents[0].1.limits = groove_types::chat::Limits {
+        five_hour: Some(0.48),
+        week: Some(0.09),
+    };
+    let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
+    let texts = all_texts(&frame);
+    let line = "opus-5-5 · context 82k · 5h 48% · week 9%";
+    assert!(texts.iter().any(|one| one == line), "{texts:?}");
+}

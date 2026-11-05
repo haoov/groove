@@ -1,11 +1,16 @@
 //! The agent's conversation as Groove draws it: what each transcript record says, and the rows it makes.
 
 mod asked;
+mod heard;
 mod rows;
 mod subagents;
+mod usage;
+
+pub use usage::usage;
 
 pub use asked::{Permission, Question};
-pub use rows::{Edit, Entry, Glance, Outcome, Patch, Run, Sent, Slash, Subagent, Tool};
+pub use heard::Heard;
+pub use rows::{Edit, Entry, Glance, Limits, Outcome, Patch, Run, Sent, Slash, Subagent, Tool};
 
 use crate::Timestamp;
 
@@ -14,83 +19,6 @@ const MCP: &str = "mcp__";
 
 /// The rows a conversation keeps at most; past it, the oldest quarter goes at once.
 const MOST: usize = 2000;
-
-/// What one transcript record says, in the order it says it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Heard {
-    /// When the record was written; what follows it happened then.
-    Clock(Timestamp),
-    /// The user's prompt.
-    You(String),
-    /// The agent's words.
-    Said(String),
-    /// A piece of the agent's words as it writes them, before the transcript holds them whole.
-    Writing(String),
-    Thought,
-    /// A tool that only looks, and what it looked at.
-    Look(String),
-    Edit {
-        id: String,
-        path: String,
-        created: bool,
-    },
-    /// A shell command run, and what the agent said it does.
-    Ran {
-        id: String,
-        command: String,
-        about: Option<String>,
-    },
-    /// A message typed while the agent works, waiting for its turn.
-    Queued(String),
-    /// A waiting message taken: the one that says this, else the first.
-    Dequeued(Option<String>),
-    /// Every waiting message taken back to be edited.
-    Recalled,
-    /// Words sent from Groove's own prompt, before the transcript says them.
-    Sent(String),
-    /// The user stopped the agent's turn.
-    Interrupted,
-    /// An agent sent with a task, by its type.
-    Subagent {
-        id: String,
-        kind: String,
-        task: String,
-    },
-    /// A subagent sent to work in the background, by its own id.
-    Background {
-        id: String,
-        agent: String,
-    },
-    /// A background subagent ended, named by its call or its own id, with what it said.
-    Ended {
-        call: Option<String>,
-        agent: String,
-        state: Sent,
-        summary: Option<String>,
-    },
-    /// A background subagent's report, by its own id.
-    Reported {
-        agent: String,
-        report: String,
-    },
-    /// What the subagent `parent` did, in its own records.
-    Within {
-        parent: String,
-        heard: Vec<Heard>,
-    },
-    /// An API error, a reached limit, or the agent ending by itself.
-    Failed(String),
-    Tool {
-        id: String,
-        name: String,
-        detail: Option<String>,
-    },
-    /// What came back from the tool call `id`.
-    Result {
-        id: String,
-        outcome: Outcome,
-    },
-}
 
 /// A session's conversation, row by row.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -104,6 +32,8 @@ pub struct Chat {
     now: Option<Timestamp>,
     /// The agent's words as it writes them, until the transcript says them.
     writing: String,
+    model: Option<String>,
+    context: Option<u64>,
 }
 
 impl Chat {
@@ -117,10 +47,6 @@ impl Chat {
 
     pub fn sent(&self) -> &[String] {
         &self.sent
-    }
-
-    pub fn writing(&self) -> &str {
-        &self.writing
     }
 
     /// When the last record was written.
@@ -138,6 +64,7 @@ impl Chat {
             }
             Heard::Said(text) => self.written(text),
             Heard::Writing(text) => return self.writing.push_str(&text),
+            Heard::Used { model, context } => return self.used(model, context),
             Heard::Interrupted => self.stopped(),
             Heard::Failed(text) => return self.failed(text),
             Heard::Subagent { id, kind, task } => self.sent_agent(id, kind, task),

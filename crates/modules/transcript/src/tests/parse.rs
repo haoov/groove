@@ -268,3 +268,15 @@ fn a_skill_says_the_skill_it_runs_and_a_kube_call_its_kubectl_line() {
     };
     assert_eq!(said(kube), [read]);
 }
+
+#[test]
+fn an_answer_says_its_model_and_how_many_tokens_its_context_held() {
+    let answer = json!({"type": "assistant", "message": {"model": "claude-opus-5-5",
+        "usage": {"input_tokens": 2, "cache_creation_input_tokens": 1000, "cache_read_input_tokens": 81000},
+        "content": [{"type": "text", "text": "done"}]}});
+    let used = Heard::Used {
+        model: "claude-opus-5-5".into(),
+        context: 82002,
+    };
+    assert_eq!(said(answer), [Heard::Said("done".into()), used]);
+}

@@ -285,3 +285,15 @@ fn the_words_being_written_grow_until_the_transcript_says_them_whole() {
     let stopped = heard([Heard::Writing("half".into()), Heard::Interrupted]);
     assert_eq!(stopped.writing(), "");
 }
+
+#[test]
+fn the_usage_line_says_the_model_the_context_and_the_plan_s_windows_it_knows() {
+    let limits = crate::chat::Limits {
+        five_hour: Some(0.48),
+        week: Some(0.09),
+    };
+    let line = crate::chat::usage(Some("claude-opus-5-5"), Some(82_002), limits);
+    assert_eq!(line, "opus-5-5 · context 82k · 5h 48% · week 9%");
+    let known = crate::chat::usage(None, Some(1_500), crate::chat::Limits::default());
+    assert_eq!(known, "context 1k");
+}

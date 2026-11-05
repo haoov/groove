@@ -178,13 +178,14 @@ async fn a_spawned_agent_reads_its_input_and_its_end_says_its_code_and_last_stde
 }
 
 #[tokio::test]
-async fn a_subagent_s_own_records_and_a_refusing_limit_are_heard_for_the_conversation() {
+async fn a_subagent_s_own_records_the_plan_s_use_and_a_refusing_limit_are_heard() {
     let mut scene = scene();
     let step = json!({"type": "assistant", "parent_tool_use_id": "a1",
         "message": {"content": [{"type": "thinking", "thinking": ""}]}});
     let main = json!({"type": "assistant", "parent_tool_use_id": null,
         "message": {"content": [{"type": "text", "text": "the transcript says this"}]}});
-    let allowed = json!({"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}});
+    let allowed = json!({"type": "rate_limit_event", "rate_limit_info": {"status": "allowed",
+        "unifiedWindows": {"five_hour": {"utilization": 0.48}, "seven_day": {"utilization": 0.09}}}});
     let refused = json!({"type": "rate_limit_event",
         "rate_limit_info": {"status": "rejected", "rateLimitType": "five_hour"}});
     for one in [step, main, allowed, refused] {
@@ -195,11 +196,18 @@ async fn a_subagent_s_own_records_and_a_refusing_limit_are_heard_for_the_convers
         heard: vec![groove_types::chat::Heard::Thought],
     };
     assert_eq!(scene.hears().await, Heard::Chat(within));
-    let limit = "The five-hour limit is reached.".to_string();
-    assert_eq!(
-        scene.hears().await,
-        Heard::Chat(groove_types::chat::Heard::Failed(limit))
-    );
+    let limits = groove_types::chat::Limits {
+        five_hour: Some(0.48),
+        week: Some(0.09),
+    };
+    let used = Heard::Limits {
+        limits,
+        refused: None,
+    };
+    assert_eq!(scene.hears().await, used);
+    let refused = Some("The five-hour limit is reached.".to_string());
+    let limits = groove_types::chat::Limits::default();
+    assert_eq!(scene.hears().await, Heard::Limits { limits, refused });
 }
 
 #[tokio::test]
