@@ -24,8 +24,12 @@ pub enum Heard {
     Asks(Permission),
     /// A request the agent no longer waits on.
     Withdrawn(String),
-    /// A turn ended, finished or interrupted, with how many tokens each model it used can hold.
-    Settled { windows: Vec<(String, u64)> },
+    /// A turn ended, finished or interrupted, with how many tokens each model it used can hold, and
+    /// what a built-in command printed when the agent itself said nothing.
+    Settled {
+        windows: Vec<(String, u64)>,
+        printed: Option<String>,
+    },
     /// The commands its prompt takes after `/`.
     Commands(Vec<chat::Slash>),
     /// How much of the plan is used, and the limit that refuses requests if one does.
@@ -180,8 +184,14 @@ async fn read<R: AsyncRead + Unpin>(
     on_heard: Box<dyn Fn(Heard) + Send + Sync>,
 ) {
     let mut lines = BufReader::new(reader).lines();
+    let mut answered = false;
     while let Ok(Some(line)) = lines.next_line().await {
+        answered |= parse::answers(&line);
         match parse::line(&line) {
+            Some(Ok(Heard::Settled { windows, printed })) => {
+                let printed = printed.filter(|_| !std::mem::take(&mut answered));
+                on_heard(Heard::Settled { windows, printed })
+            }
             Some(Ok(heard)) => on_heard(heard),
             Some(Err(refused)) => {
                 let _ = outgoing.send(refused);

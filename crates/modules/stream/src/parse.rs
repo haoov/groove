@@ -93,9 +93,21 @@ fn settled(record: &Value) -> Heard {
         let window = one.get("contextWindow")?.as_u64()?;
         Some((model.clone(), window))
     });
+    let printed = record.get("result").and_then(Value::as_str);
+    let printed = printed.map(str::trim).filter(|one| !one.is_empty());
     Heard::Settled {
         windows: windows.collect(),
+        printed: printed.map(str::to_string),
     }
+}
+
+/// Whether the line is the main agent's own answer, which the transcript holds.
+pub(crate) fn answers(text: &str) -> bool {
+    let Ok(record) = serde_json::from_str::<Value>(text) else {
+        return false;
+    };
+    let main = record.get("parent_tool_use_id").is_none_or(Value::is_null);
+    main && record.get("type").and_then(Value::as_str) == Some("assistant")
 }
 
 /// A `can_use_tool` request as the permission it waits on.

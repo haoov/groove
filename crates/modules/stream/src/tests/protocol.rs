@@ -141,7 +141,8 @@ async fn a_turn_s_end_and_a_withdrawn_ask_are_heard_and_an_unknown_request_is_re
     assert_eq!(
         scene.hears().await,
         Heard::Settled {
-            windows: Vec::new()
+            windows: Vec::new(),
+            printed: None
         }
     );
     let refused = scene.reads().await;
@@ -183,7 +184,8 @@ async fn a_spawned_agent_reads_its_input_and_its_end_says_its_code_and_last_stde
         *heard.lock().expect("held"),
         [
             Heard::Settled {
-                windows: Vec::new()
+                windows: Vec::new(),
+                printed: None
             },
             ended
         ]
@@ -236,4 +238,27 @@ async fn a_model_switch_is_written_as_a_control_request() {
     let asked = scene.reads().await;
     assert_eq!(asked["request"]["subtype"], "set_model");
     assert_eq!(asked["request"]["model"], "claude-sonnet-5-5");
+}
+
+#[tokio::test]
+async fn a_built_in_command_s_output_is_heard_and_an_answer_s_end_repeats_nothing() {
+    let mut scene = scene();
+    let ended = |text: &str| json!({"type": "result", "subtype": "success", "result": text});
+    let answer = json!({"type": "assistant", "parent_tool_use_id": null,
+        "message": {"content": [{"type": "text", "text": "hi"}]}});
+    scene.says(ended("## Context Usage")).await;
+    scene.says(answer).await;
+    scene.says(ended("hi")).await;
+    let printed = Some("## Context Usage".to_string());
+    let windows = Vec::new();
+    assert_eq!(scene.hears().await, Heard::Settled { windows, printed });
+    let quiet = Heard::Settled {
+        windows: Vec::new(),
+        printed: None,
+    };
+    assert_eq!(
+        scene.hears().await,
+        quiet,
+        "the transcript holds the answer"
+    );
 }

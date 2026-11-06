@@ -88,6 +88,7 @@ fn a_withdrawn_ask_goes_and_a_turn_s_end_clears_the_rest_and_settles_the_agent()
         7,
         StreamHeard::Settled {
             windows: Vec::new(),
+            printed: None,
         },
     );
     assert!(state.permissions(&session).is_empty());
@@ -105,6 +106,7 @@ fn a_finished_turn_stays_done_and_an_earlier_launch_s_stream_is_not_heard() {
         7,
         StreamHeard::Settled {
             windows: Vec::new(),
+            printed: None,
         },
     );
     assert_eq!(status(&state), AgentStatus::Done { seen: false });

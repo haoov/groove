@@ -100,7 +100,13 @@ pub(crate) fn heard(
                 state.streamed(session, groove_types::chat::Heard::Failed(text));
             }
         }
-        StreamHeard::Settled { windows } => {
+        StreamHeard::Settled { windows, printed } => {
+            if let Some(text) = printed {
+                state.streamed(session, groove_types::chat::Heard::Said(text));
+            }
+            let Some(agent) = state.agent_mut(session) else {
+                return;
+            };
             for (model, window) in windows {
                 agent.windows.retain(|(one, _)| *one != model);
                 agent.windows.push((model, window));
