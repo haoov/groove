@@ -5,7 +5,12 @@ use crate::{Agent, Event, State, apply};
 fn state() -> State {
     let mut state = State::default();
     let agent = Agent {
-        terminal: None,
+        stream: None,
+        permissions: Vec::new(),
+        commands: Vec::new(),
+        limits: Default::default(),
+        windows: Vec::new(),
+        chosen: None,
         activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
         started_at: Timestamp::new(100),
         launch: 0,

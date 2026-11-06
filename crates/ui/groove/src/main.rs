@@ -9,11 +9,9 @@ mod tests;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use groove_controllers::agent_service::Event as AgentEvent;
 use groove_controllers::{Continuation, Deliver, Env, Event, Services, TokioSpawner};
 use groove_db::Store as _;
 use groove_hooks::{Post, Receiver};
-use groove_types::Timestamp;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 /// What crosses from the pool and the outside world into the loop.
@@ -141,19 +139,18 @@ fn tools(
     Ok(server)
 }
 
-/// The loopback every agent's hooks post to. Each post is one event in the loop.
+/// The loopback every agent's hooks post to. Each post is applied on the loop.
 fn hooks(
     handle: &tokio::runtime::Handle,
     proxy: EventLoopProxy<Message>,
 ) -> Result<Receiver, Box<dyn std::error::Error>> {
     let receiver = groove_hooks::serve(handle, move |post: Post| {
-        let event = Event::Agent(AgentEvent::Hook {
-            session: post.session,
-            kind: post.kind,
-            tool: post.tool,
-            at: Timestamp::now(),
-        });
-        let _ = proxy.send_event(Message::Event(event));
+        let heard = Box::new(
+            move |state: &mut _, _: &Services, spawner: &dyn groove_controllers::Spawner| {
+                groove_controllers::agent::hooked(state, spawner, post);
+            },
+        ) as Continuation;
+        let _ = proxy.send_event(Message::Continue(heard));
     })?;
     Ok(receiver)
 }

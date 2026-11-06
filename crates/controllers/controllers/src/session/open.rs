@@ -2,7 +2,6 @@
 
 use groove_types::{Session, SessionId, Timestamp};
 
-use super::FIRST_SIZE;
 use super::rail::{list, listed};
 use crate::spawn::record;
 use crate::{AppState, Continuation, Services, Spawner, agent};
@@ -26,7 +25,7 @@ pub fn restore(services: &Services, spawner: &dyn Spawner) {
                     let id = session.id.clone();
                     state.session.restore(session, session_state);
                     load_contents(services, spawner, &id);
-                    agent::start(state, spawner, id, FIRST_SIZE);
+                    agent::start(state, spawner, id);
                 }
                 state.session.selected = last_seen;
                 state.session.restored = true;
@@ -92,7 +91,7 @@ pub(crate) fn begun_with(
     if !start.beside {
         crate::workspace::follow(state, spawner);
     }
-    agent::asking(state, spawner, id, FIRST_SIZE, start.prompt);
+    agent::asking(state, spawner, id, start.prompt);
     auto
 }
 
@@ -130,7 +129,7 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id
     state.session.open(living.session, now);
     super::feed::read(state, services, spawner);
     load_contents(services, spawner, id);
-    agent::start(state, spawner, id.clone(), FIRST_SIZE);
+    agent::start(state, spawner, id.clone());
     select(state, services, spawner, id);
     let (service, at) = (services.session.clone(), id.clone());
     record(

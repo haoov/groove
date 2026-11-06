@@ -19,6 +19,8 @@ impl Ui {
             Scroller::Settings => self.settings.scroll,
             Scroller::Resources => self.session.resources.scroll(),
             Scroller::Kinds => self.session.resources.kinds,
+            Scroller::Chat => self.agent.scroll,
+            Scroller::Prompt => self.agent.prompt.scroll,
             Scroller::Column(at) => self.board.scroll(List::ALL[at as usize]),
         }
     }
@@ -34,6 +36,8 @@ impl Ui {
             Scroller::Settings => self.settings.scroll = to,
             Scroller::Resources => *self.session.resources.scroll_mut() = to,
             Scroller::Kinds => self.session.resources.kinds = to,
+            Scroller::Chat => self.agent.scroll = to,
+            Scroller::Prompt => self.agent.prompt.scrolled(to),
             Scroller::Column(at) => self.board.scrolled(List::ALL[at as usize], to),
         }
     }

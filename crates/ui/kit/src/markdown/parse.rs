@@ -9,6 +9,8 @@ pub struct Span {
     pub em: bool,
     pub code: bool,
     pub link: Option<String>,
+    /// The table cell it stands in, counted from the row's start.
+    pub cell: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +28,10 @@ pub enum Kind {
     /// One line of a fenced or indented block.
     Code,
     Rule,
+    /// One row of a table, its head or not.
+    Row {
+        head: bool,
+    },
 }
 
 /// One block, `depth` lists deep; a code block holds one span per line.
@@ -57,6 +63,7 @@ struct Reader {
     strong: usize,
     em: usize,
     link: Option<String>,
+    cell: usize,
 }
 
 impl Reader {
@@ -82,7 +89,12 @@ impl Reader {
     fn start(&mut self, tag: Tag<'_>) {
         match tag {
             Tag::Paragraph if self.item_is_empty() => {}
-            Tag::Paragraph | Tag::TableRow | Tag::TableHead => self.begin(Kind::Paragraph),
+            Tag::Paragraph => self.begin(Kind::Paragraph),
+            Tag::TableHead | Tag::TableRow => {
+                let head = matches!(tag, Tag::TableHead);
+                self.cell = 0;
+                self.begin(Kind::Row { head });
+            }
             Tag::Heading { level, .. } => self.begin(Kind::Heading(heading(level))),
             Tag::List(start) => {
                 self.finish();
@@ -109,7 +121,7 @@ impl Reader {
             | TagEnd::CodeBlock
             | TagEnd::TableRow
             | TagEnd::TableHead => self.finish(),
-            TagEnd::TableCell => self.said("  ·  ", false),
+            TagEnd::TableCell => self.cell += 1,
             TagEnd::List(_) => {
                 self.finish();
                 self.lists.pop();
@@ -152,6 +164,7 @@ impl Reader {
             em: self.em > 0,
             code,
             link: self.link.clone(),
+            cell: self.cell,
         };
         if let Some(block) = self.open.as_mut() {
             block.spans.push(span);
@@ -188,6 +201,34 @@ impl Reader {
     fn ticked(&mut self, done: bool) {
         if let Some(block) = self.open.as_mut() {
             block.kind = Kind::Item(Bullet::Box(done));
+        }
+    }
+}
+
+impl Block {
+    /// A table row as one paragraph, its cells apart by a dot; any other block as it is.
+    pub fn flattened(mut self) -> Block {
+        if !matches!(self.kind, Kind::Row { .. }) {
+            return self;
+        }
+        let mut spans: Vec<Span> = Vec::new();
+        for span in std::mem::take(&mut self.spans) {
+            if spans.last().is_some_and(|last| last.cell != span.cell) {
+                spans.push(Span {
+                    text: "  ·  ".to_string(),
+                    strong: false,
+                    em: false,
+                    code: false,
+                    link: None,
+                    cell: span.cell,
+                });
+            }
+            spans.push(span);
+        }
+        Block {
+            kind: Kind::Paragraph,
+            spans,
+            ..self
         }
     }
 }

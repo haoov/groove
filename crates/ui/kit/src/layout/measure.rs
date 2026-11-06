@@ -4,7 +4,6 @@ use groove_gfx::TextStyle;
 use taffy::AvailableSpace;
 
 use crate::base::ctx::{App, Ctx};
-use crate::text::wrapped;
 
 /// What a text leaf holds for the layout to measure, and what one solve already measured.
 #[derive(Debug, Clone)]
@@ -65,14 +64,7 @@ fn rows<A: App>(ctx: &mut Ctx<'_, A>, text: &mut Text, width: f32) -> usize {
     match text.rows {
         Some((wrapped_at, rows)) if wrapped_at == width => rows,
         _ => {
-            let rows = match ctx.kept_rows(&text.text, &text.style, width) {
-                Some(rows) => rows,
-                None => {
-                    let rows = wrapped(ctx, &text.text, &text.style, width).len();
-                    ctx.keep_rows(&text.text, &text.style, width, rows);
-                    rows
-                }
-            };
+            let rows = crate::text::rows(ctx, &text.text, &text.style, width);
             text.rows = Some((width, rows));
             rows
         }

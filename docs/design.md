@@ -23,7 +23,7 @@ the rail only as its attention count.
   action. The mouse is a shortcut.
 - **Selection is a background**: a rounded ground, one step above the hover's. A selected
   tab is held the same way. In the region that has the keys it takes the accent; elsewhere
-  it stays neutral. The agent and a terminal show the keys by a solid cursor.
+  it stays neutral. A terminal shows the keys by a solid cursor, the agent's prompt by its caret.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
   rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
   workspace and the sidebar unfold first, and a press while they hold the keys folds them
@@ -36,7 +36,7 @@ the rail only as its attention count.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
-  agent's and the terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
+  terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
   Enforced by `alt_shift_q_closes_the_session`.
 - **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
   palette's included, as the arrows do. Enforced by
@@ -210,15 +210,79 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | a top bar · the agent's pty · action bar: skills menu |
+| **Agent pane** | a top bar · the agent's conversation, what it asks, and its prompt |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
 
+**The agent pane draws the conversation.** Every agent runs headless: Claude Code's stream-json
+on its pipes, no pty. A message, a skill, an interrupt and a model switch go over that stream,
+and the transcript draws the rows. What a built-in command prints comes from the stream. A tool Claude asks leave for stands on glass over the prompt: its name, what it
+acts on, *allow* and *refuse*. A question shows its options one a row, one question at a time. In an empty
+prompt Enter allows, Escape refuses and a digit picks an option. With nothing asked, Escape
+interrupts the turn. The agent's rows stand at the left and the user's bubbles at the right,
+each side at most nine tenths of the width. One sent from the
+prompt, or typed while the agent works, waits faint after the rows until the transcript says it.
+Thinking, reads, commands and MCP calls fold into one row: a coloured mark and a count for each,
+a line of what its last step does, kept current, and the time the group took at its right. Its card holds the last five commands and calls,
+each one line cut with `…`; a click opens it to every one whole and wrapped, with what it gave back.
+A `kube` call shows its whole `kubectl` line, as a command does. A skill is a row with its own
+mark and the skill it runs. A code block in the agent's words wraps at the width. At the prompt's right, on its last row, stand two round glass buttons. The
+model's opens the models a headless agent switches to, the current one in the accent. The
+context's holds a ring of dots filled with how much of the context is used, and opens what the
+agent uses: the context, then the plan's five-hour and weekly windows with when each resets.
+An interrupt is a row of its own, and no group turns after it. What goes wrong is a red row: an
+API error, a reached limit, or the agent ending by itself with its code and last stderr lines.
+An agent the agent sends is a card: its type, its task, how it stands and its time, its own steps
+folded in one line, and its answer cut to two lines; a click shows the answer whole. Over the
+prompt, a dock holds one row for each agent still working, and for each one done since the user
+last spoke; a click on a row opens its card and scrolls to it, and the dock folds to its head. While the agent works, the last group's mark
+spins and its time runs, and a group of its own stands past the last record until one comes. A
+write is one row: its file links to the hunk in the Diff tab, with its `+N -N`. A table is laid in
+columns. A drag selects text and copies it on release; a double click takes a word, a triple click
+its line. Ctrl and a click follow a URL, or open a path in the Files tab at its line.
+The prompt is glass a bar's height above the pane's foot, as the workspace stands over the
+terminals, centred and no wider than the palette. The conversation scrolls on under it and the
+bar, and at the top under the top bar. The prompt edits as a note does, grows to eight
+rows and then scrolls. Enter sends it to the agent, shift+Enter breaks the line.
+Up in an empty prompt brings back the user's last message, and each Up the one before; Down
+steps forward, and past the newest empties the prompt.
+A `/` as the prompt's first word offers the commands it takes over the prompt: a headless
+agent's own, else Groove's skills. Up and Down choose, Tab or Enter takes one, Escape puts
+them away.
+*Ask the agent*, in the menu of the diff's lines, puts where they stand in the prompt,
+`src/lib.rs:12-14`, and moves the keys there.
+Enforced by `the_conversation_shows_in_the_agent_pane`,
+`a_click_on_a_command_card_shows_every_command_whole_with_what_it_printed`,
+`while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
+`an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
+`up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
+`a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one`,
+`asking_the_agent_about_lines_puts_where_they_stand_in_its_prompt`,
+`a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation`,
+`a_finished_agent_leaves_the_dock_once_the_user_speaks_again`,
+`what_went_wrong_shows_in_the_conversation`,
+`beside_the_prompt_the_model_s_button_and_the_usage_s_open_their_menus`,
+`picking_a_model_switches_the_agent_to_it`,
+`a_long_line_of_code_the_agent_shows_wraps_instead_of_running_out_of_sight`,
+`a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
+`a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
+`escape_on_an_empty_prompt_interrupts_the_agent_when_nothing_is_asked`,
+`a_headless_agent_hears_a_message_asks_leave_settles_and_its_end_shows_in_the_conversation`,
+`a_table_keeps_its_rows_and_each_span_its_cell`,
+`a_drag_over_the_conversation_copies_what_it_holds`,
+`a_double_click_takes_a_word_and_a_triple_click_its_line`,
+`ctrl_and_a_click_follow_a_link_or_open_a_file_at_its_line`,
+`the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does`,
+`a_double_click_in_the_prompt_takes_its_word`,
+`the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it`,
+`enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line` and
+`a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff`.
+
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
-ground's whole width. A click on any tab opens it again on that tab. The agent's terminal
-takes its new size at once. Folding the terminals leaves a folded strip folded. Enforced by
+ground's whole width. A click on any tab opens it again on that tab. Folding the terminals
+leaves a folded strip folded. Enforced by
 `a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent`,
 `any_tab_opens_the_folded_strip_on_itself`,
 `the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
@@ -346,13 +410,12 @@ does the same, its field a rounded field. Enforced by
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
-menu, the cluster scope panel, the board's filter offers, the language servers' popup and the agent
-bar's skills menu are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
+menu, the cluster scope panel, the board's filter offers, the language servers' popup, the agent's
+prompt are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_floats_as_a_pane_of_glass_inside_its_place`,
 `the_strip_stands_as_glass_on_the_agent_s_ground`,
-`the_bar_offers_the_skills_in_glass_on_the_screen_s_ground`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
 `the_panel_stands_on_glass`,

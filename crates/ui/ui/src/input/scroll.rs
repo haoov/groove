@@ -1,6 +1,6 @@
 //! Where the wheel leaves each column that scrolls.
 
-use groove_controllers::{AppState, Command, agent};
+use groove_controllers::{AppState, Command};
 
 use super::Delta;
 use crate::hit::{Hits, Scroller, Target};
@@ -40,7 +40,8 @@ pub(super) fn scroll(
         return shelled(ui, app, delta, point, hits, metrics);
     }
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
-        return agent(ui, app, delta, point, &layout, metrics);
+        agent(ui, delta, point, (hits, metrics));
+        return Vec::new();
     }
     if ui.showing(app) == Surface::Board {
         column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));
@@ -109,31 +110,15 @@ fn follow(ui: &mut Ui) {
     }
 }
 
-/// The wheel over the agent's screen. What is not yet worth a line is carried on.
-fn agent(
-    ui: &mut Ui,
-    app: &AppState,
-    delta: Delta,
-    point: (f32, f32),
-    layout: &Layout,
-    metrics: Metrics,
-) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
+/// The wheel over the agent's pane: the prompt's rows under the pointer, else the conversation.
+fn agent(ui: &mut Ui, delta: Delta, point: (f32, f32), (hits, metrics): (&Hits, Metrics)) {
     let tokens = metrics.tokens();
-    let lines = turned(ui, delta, tokens.line);
-    if lines == 0 {
-        return Vec::new();
+    if hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
+        ui.agent.prompt.scroll = hits.typed().scroll;
+        return ui.wheeled(Scroller::Prompt, delta.down(tokens.code_line), hits);
     }
-    let origin = layout.agent_origin(&tokens);
-    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
-    vec![Command::Agent(agent::Command::Scroll {
-        session,
-        lines,
-        col,
-        row,
-    })]
+    let far = hits.extent(Scroller::Chat);
+    ui.agent.scroll = (ui.agent.scroll + delta.down(tokens.row)).clamp(0.0, far);
 }
 
 /// The wheel over one terminal of the manual section, at the cell it stands on.

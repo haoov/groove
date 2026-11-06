@@ -48,12 +48,31 @@ pub fn changes<A: App>(
     styled: impl Fn(&Ctx<'_, A>, Role) -> TextStyle,
 ) {
     room.take_right(ctx.tokens.md);
-    for (count, role, sign) in [(deleted, Role::Bad, '-'), (added, Role::Ok, '+')] {
-        if count > 0 {
-            let text = format!("{sign}{count}");
-            Label::new(&text, styled(ctx, role)).right(ctx, room, ctx.tokens.sm);
-        }
+    for (text, role) in signed((added, deleted)) {
+        Label::new(&text, styled(ctx, role)).right(ctx, room, ctx.tokens.sm);
     }
+}
+
+/// The room `changes` needs.
+pub fn changes_room<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    counts: (u32, u32),
+    styled: impl Fn(&Ctx<'_, A>, Role) -> TextStyle,
+) -> f32 {
+    let mut room = ctx.tokens.md;
+    for (text, role) in signed(counts) {
+        let style = styled(ctx, role);
+        room += ctx.measure(&text, &style) + ctx.tokens.sm;
+    }
+    room
+}
+
+/// The counts `changes` writes, right to left; a zero writes nothing.
+fn signed((added, deleted): (u32, u32)) -> impl Iterator<Item = (String, Role)> {
+    [(deleted, Role::Bad, '-'), (added, Role::Ok, '+')]
+        .into_iter()
+        .filter(|(count, ..)| *count > 0)
+        .map(|(count, role, sign)| (format!("{sign}{count}"), role))
 }
 
 fn tallied((errors, warnings): (u32, u32)) -> [(Mark, u32, Role); 2] {

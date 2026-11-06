@@ -11,14 +11,45 @@ use crate::{
     workspace,
 };
 
-/// Prints its first flag; echoes one line, or its cwd when the line is `pwd`; exits 7.
-const FAKE_CLAUDE: &str = "#!/bin/sh
-printf 'ready %s\\n' \"$1\"
-read line
-if [ \"$line\" = pwd ]; then line=$(pwd); fi
-printf 'got %s\\n' \"$line\"
-exit 7
-";
+/// Speaks the stream: keeps where it ran and its flags, then every line it reads, beside its
+/// launch files in the test's own home; a message saying `exit` ends it with 7.
+const FAKE_CLAUDE: &str = r#"#!/bin/sh
+prompt=""
+last=""
+for one in "$@"; do
+  [ "$last" = "--append-system-prompt-file" ] && prompt="$one"
+  last="$one"
+done
+[ -n "$prompt" ] || exec cat > /dev/null
+run="$(dirname "$prompt")/fake-$$"
+{ pwd; printf '%s\n' "$@"; } > "$run.args"
+: > "$run.heard"
+while read line; do
+  printf '%s\n' "$line" >> "$run.heard"
+  case "$line" in *'"content":"exit"'*) exit 7;; esac
+done
+"#;
+
+/// The last run of the fake `claude` for `session`: where it ran, then the words of each message it heard.
+pub fn heard(home: &Path, session: &str) -> Option<(String, Vec<String>)> {
+    let runs = std::fs::read_dir(home.join("data/agent-launch")).ok()?;
+    let args = runs
+        .filter_map(Result::ok)
+        .filter(|one| one.path().extension().is_some_and(|ext| ext == "args"));
+    let mine = args.filter_map(|one| {
+        let text = std::fs::read_to_string(one.path()).ok()?;
+        let at = one.metadata().ok()?.modified().ok()?;
+        text.contains(&format!("/{session}."))
+            .then_some((at, one.path(), text))
+    });
+    let (_, path, text) = mine.max_by_key(|(at, _, _)| *at)?;
+    let lines = std::fs::read_to_string(path.with_extension("heard")).unwrap_or_default();
+    let words = lines.lines().filter_map(|line| {
+        let record: serde_json::Value = serde_json::from_str(line).ok()?;
+        Some(record.pointer("/message/content")?.as_str()?.to_string())
+    });
+    Some((text.lines().next()?.to_string(), words.collect()))
+}
 
 /// An `AppState` whose `<home>/.local/bin/claude` is the fake.
 pub fn state(home: &Path) -> AppState {
@@ -264,7 +295,7 @@ pub fn until(
             "timed out; it failed: {:?}",
             state.errors
         );
-        std::thread::sleep(Duration::from_millis(10));
+        spawner.settle(Duration::from_millis(10), state, services);
     }
 }
 

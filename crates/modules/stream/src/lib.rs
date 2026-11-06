@@ -1,0 +1,246 @@
+//! The agent run headless: its words, interrupts and answers written to it as stream-json; its asks,
+//! turns, subagents' steps, limits and end read back.
+
+mod parse;
+
+#[cfg(test)]
+mod tests;
+
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use groove_agent_launch::Launch;
+use groove_exec::piped::{Piped, Pipes};
+use groove_types::chat::{self, Permission};
+use groove_types::{Error, ErrorKind, Result};
+use serde_json::{Value, json};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::sync::mpsc;
+
+/// What the agent tells Groove beside its transcript.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Heard {
+    /// A tool waits on the user's leave.
+    Asks(Permission),
+    /// A request the agent no longer waits on.
+    Withdrawn(String),
+    /// A turn ended, finished or interrupted, with how many tokens each model it used can hold, and
+    /// what a built-in command printed when the agent itself said nothing.
+    Settled {
+        windows: Vec<(String, u64)>,
+        printed: Option<String>,
+    },
+    /// The commands its prompt takes after `/`.
+    Commands(Vec<chat::Slash>),
+    /// How much of the plan is used, and the limit that refuses requests if one does.
+    Limits {
+        limits: chat::Limits,
+        refused: Option<String>,
+    },
+    /// What the conversation hears beside the transcript: a subagent's steps, a limit, the agent's end.
+    Chat(chat::Heard),
+}
+
+/// What the owner hears from the reader.
+pub struct Hooks {
+    pub on_heard: Box<dyn Fn(Heard) + Send + Sync>,
+    /// The child exited with this code. Called once.
+    pub on_exit: Box<dyn FnOnce(u32) + Send>,
+}
+
+/// One running agent. Dropping it closes its input, which ends it.
+#[derive(Debug)]
+pub struct Stream {
+    outgoing: mpsc::UnboundedSender<Value>,
+    pid: Option<u32>,
+    requests: AtomicU64,
+}
+
+impl Stream {
+    /// Spawns `launch` headless, its pipes read and written on the tokio pool.
+    pub async fn spawn(launch: Launch, hooks: Hooks) -> Result<Self> {
+        let mut piped = Piped::new(&launch.program)
+            .args(launch.args.iter().cloned())
+            .cwd(&launch.cwd);
+        for (key, value) in &launch.env {
+            piped = piped.env(key, value);
+        }
+        let mut process = piped.start().map_err(|e| agent(e.to_string()))?;
+        let Some(Pipes {
+            stdin,
+            stdout,
+            stderr,
+        }) = process.pipes()
+        else {
+            return Err(agent("the agent's pipes were taken".into()));
+        };
+        let pid = process.pid();
+        let on_heard: Arc<dyn Fn(Heard) + Send + Sync> = Arc::from(hooks.on_heard);
+        let heard = on_heard.clone();
+        let stream = Self::connect(stdout, stdin, Box::new(move |one| heard(one)));
+        let said = tokio::spawn(last_lines(stderr));
+        let on_exit = hooks.on_exit;
+        tokio::spawn(async move {
+            let code = process.wait().await.ok().flatten().unwrap_or(-1);
+            let said = said.await.unwrap_or_default();
+            on_heard(Heard::Chat(chat::Heard::Failed(ended(code, &said))));
+            on_exit(code as u32);
+        });
+        Ok(Self { pid, ..stream })
+    }
+
+    /// Speaks the protocol on `reader` and `writer`.
+    pub fn connect<R, W>(reader: R, writer: W, on_heard: Box<dyn Fn(Heard) + Send + Sync>) -> Self
+    where
+        R: AsyncRead + Unpin + Send + 'static,
+        W: AsyncWrite + Unpin + Send + 'static,
+    {
+        let (outgoing, queued) = mpsc::unbounded_channel::<Value>();
+        tokio::spawn(written(writer, queued));
+        tokio::spawn(read(reader, outgoing.clone(), on_heard));
+        Self {
+            outgoing,
+            pid: None,
+            requests: AtomicU64::default(),
+        }
+    }
+
+    /// A stream with no agent behind it: what is sent to it goes nowhere.
+    pub fn idle() -> Self {
+        let (outgoing, _) = mpsc::unbounded_channel::<Value>();
+        Self {
+            outgoing,
+            pid: None,
+            requests: AtomicU64::default(),
+        }
+    }
+
+    /// The user's words, as one message.
+    pub fn say(&self, text: &str) -> Result<()> {
+        let message = json!({ "role": "user", "content": text });
+        self.send(json!({
+            "type": "user",
+            "message": message,
+            "parent_tool_use_id": null,
+            "session_id": "",
+        }))
+    }
+
+    /// The turn stopped where it stands.
+    pub fn interrupt(&self) -> Result<()> {
+        let id = self.requests.fetch_add(1, Ordering::Relaxed);
+        self.send(json!({
+            "type": "control_request",
+            "request_id": format!("groove-{id}"),
+            "request": { "subtype": "interrupt" },
+        }))
+    }
+
+    /// The next answers come from `model`.
+    pub fn set_model(&self, model: &str) -> Result<()> {
+        let id = self.requests.fetch_add(1, Ordering::Relaxed);
+        self.send(json!({
+            "type": "control_request",
+            "request_id": format!("groove-{id}"),
+            "request": { "subtype": "set_model", "model": model },
+        }))
+    }
+
+    /// The tool `id` asked for runs, on `input`.
+    pub fn allow(&self, id: &str, input: Value) -> Result<()> {
+        self.answer(id, json!({ "behavior": "allow", "updatedInput": input }))
+    }
+
+    /// The tool `id` asked for does not run, and the agent hears `why`.
+    pub fn deny(&self, id: &str, why: &str) -> Result<()> {
+        self.answer(id, json!({ "behavior": "deny", "message": why }))
+    }
+
+    /// Asks the child to end with SIGTERM. Never blocks.
+    pub fn terminate(&self) -> Result<()> {
+        match self.pid {
+            Some(pid) => groove_exec::pty::terminate(pid).map_err(|e| agent(e.to_string())),
+            None => Ok(()),
+        }
+    }
+
+    fn answer(&self, id: &str, response: Value) -> Result<()> {
+        self.send(parse::success(id, response))
+    }
+
+    fn send(&self, message: Value) -> Result<()> {
+        self.outgoing
+            .send(message)
+            .map_err(|_| agent("the agent has ended".into()))
+    }
+}
+
+/// Each queued message, one line each, until the queue or the pipe closes.
+async fn written<W: AsyncWrite + Unpin>(mut writer: W, mut queued: mpsc::UnboundedReceiver<Value>) {
+    while let Some(message) = queued.recv().await {
+        let mut line = message.to_string();
+        line.push('\n');
+        let sent = writer.write_all(line.as_bytes()).await;
+        if sent.is_err() || writer.flush().await.is_err() {
+            return;
+        }
+    }
+}
+
+/// Each line read until the pipe closes; a request Groove does not serve is refused.
+async fn read<R: AsyncRead + Unpin>(
+    reader: R,
+    outgoing: mpsc::UnboundedSender<Value>,
+    on_heard: Box<dyn Fn(Heard) + Send + Sync>,
+) {
+    let mut lines = BufReader::new(reader).lines();
+    let mut answered = false;
+    while let Ok(Some(line)) = lines.next_line().await {
+        answered |= parse::answers(&line);
+        match parse::line(&line) {
+            Some(Ok(Heard::Settled { windows, printed })) => {
+                let printed = printed.filter(|_| !std::mem::take(&mut answered));
+                on_heard(Heard::Settled { windows, printed })
+            }
+            Some(Ok(heard)) => on_heard(heard),
+            Some(Err(refused)) => {
+                let _ = outgoing.send(refused);
+            }
+            None => {}
+        }
+    }
+}
+
+/// The last lines the child wrote to stderr.
+async fn last_lines<R: AsyncRead + Unpin>(reader: R) -> Vec<String> {
+    let mut lines = BufReader::new(reader).lines();
+    let mut kept = std::collections::VecDeque::new();
+    while let Ok(Some(line)) = lines.next_line().await {
+        if kept.len() == SAID {
+            kept.pop_front();
+        }
+        kept.push_back(line);
+    }
+    kept.into()
+}
+
+/// The agent ended by itself: its code and what it last said on stderr.
+fn ended(code: i32, said: &[String]) -> String {
+    let said: Vec<&str> = said
+        .iter()
+        .map(|one| one.trim())
+        .filter(|one| !one.is_empty())
+        .collect();
+    match (code, said.is_empty()) {
+        (0, true) => "The agent ended.".into(),
+        (code, true) => format!("The agent ended with code {code}."),
+        (code, false) => format!("The agent ended with code {code}:\n{}", said.join("\n")),
+    }
+}
+
+/// The lines of stderr an ended agent shows.
+const SAID: usize = 6;
+
+fn agent(message: String) -> Error {
+    Error::new(ErrorKind::Agent, message)
+}

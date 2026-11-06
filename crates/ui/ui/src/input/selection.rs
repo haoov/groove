@@ -1,10 +1,10 @@
-//! A selection of our own on a terminal's grid, the agent's or a shell's: press, drag, let go.
+//! A selection of our own on a shell's grid: press, drag, let go.
 
 use groove_controllers::agent_service::Select;
-use groove_controllers::{AppState, Command, agent, shell};
+use groove_controllers::{AppState, Command, shell};
 
 use crate::hit::{Hits, Target};
-use crate::layout::{Layout, cell_at};
+use crate::layout::cell_at;
 use crate::{Grid, Held, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -41,7 +41,7 @@ pub(super) fn carried(
         Some(Held::Clicking(grid)) => (grid, true),
         _ => return Vec::new(),
     };
-    match (cell(grid, point, ui, hits, metrics), sending) {
+    match (cell(grid, point, hits, metrics), sending) {
         (Some(cell), true) => sent(app, grid, cell, None),
         (Some(cell), false) => said(app, grid, cell, Select::Cells, false),
         (None, _) => Vec::new(),
@@ -56,7 +56,7 @@ pub(super) fn let_go(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
-    match cell(grid, ui.at, ui, hits, metrics) {
+    match cell(grid, ui.at, hits, metrics) {
         Some(cell) => sent(app, grid, cell, Some(false)),
         None => Vec::new(),
     }
@@ -68,10 +68,6 @@ fn reads_mouse(app: &AppState, grid: Grid) -> bool {
         return false;
     };
     let terminal = match grid {
-        Grid::Agent => app
-            .agent
-            .agent(session)
-            .and_then(|one| one.terminal.as_ref()),
         Grid::Shell(id) => app.shell.terminal(session, id),
     };
     terminal.is_some_and(|one| one.reads_mouse())
@@ -88,13 +84,6 @@ fn sent(
         return Vec::new();
     };
     let command = match (grid, down) {
-        (Grid::Agent, Some(down)) => Command::Agent(agent::Command::Click {
-            session,
-            col,
-            row,
-            down,
-        }),
-        (Grid::Agent, None) => Command::Agent(agent::Command::Drag { session, col, row }),
         (Grid::Shell(id), Some(down)) => Command::Shell(shell::Command::Click {
             session,
             id,
@@ -118,31 +107,16 @@ pub(super) fn copied(app: &AppState, grid: Grid) -> Vec<Command> {
         return Vec::new();
     };
     let command = match grid {
-        Grid::Agent => Command::Agent(agent::Command::Copy { session }),
         Grid::Shell(id) => Command::Shell(shell::Command::Copy { session, id }),
     };
     vec![command]
 }
 
 /// The cell of the grid the point stands on.
-fn cell(
-    grid: Grid,
-    point: (f32, f32),
-    ui: &Ui,
-    hits: &Hits,
-    metrics: Metrics,
-) -> Option<(usize, usize)> {
+fn cell(grid: Grid, point: (f32, f32), hits: &Hits, metrics: Metrics) -> Option<(usize, usize)> {
     match grid {
-        Grid::Agent => Some(agent_cell(point, ui, metrics)),
         Grid::Shell(id) => shell_cell(id, point, hits, metrics),
     }
-}
-
-/// The cell of the agent's own grid the point stands on.
-pub(super) fn agent_cell(point: (f32, f32), ui: &Ui, metrics: Metrics) -> (usize, usize) {
-    let tokens = metrics.tokens();
-    let origin = Layout::of(metrics, ui).agent_origin(&tokens);
-    cell_at(origin, metrics.cell, point)
 }
 
 /// The cell of one shell's grid the point stands on, while that grid is drawn.
@@ -172,13 +146,6 @@ fn said(
         return Vec::new();
     };
     let command = match grid {
-        Grid::Agent => Command::Agent(agent::Command::Select {
-            session,
-            col,
-            row,
-            kind,
-            from,
-        }),
         Grid::Shell(id) => Command::Shell(shell::Command::Select {
             session,
             id,

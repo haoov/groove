@@ -255,3 +255,27 @@ async fn the_agent_is_refused_the_cluster_tools_and_told_to_read_through_groove(
     );
     assert!(core_prompt(&explorer(), None).contains("`kube` tool"));
 }
+
+#[tokio::test]
+async fn a_headless_launch_keeps_its_session_and_speaks_stream_json_with_permissions_on_the_stream()
+{
+    let root = tempfile::tempdir().unwrap();
+    let plan = Launch::plan(&explorer(), &paths(root.path()), &[], None)
+        .await
+        .unwrap();
+    let headless = plan.clone().streamed();
+    assert_eq!(&headless.args[..plan.args.len()], &plan.args[..]);
+    assert!(headless.args.contains(&"-p".to_string()));
+    assert_eq!(
+        flag_value(&headless.args, "--input-format"),
+        Some("stream-json")
+    );
+    assert_eq!(
+        flag_value(&headless.args, "--output-format"),
+        Some("stream-json")
+    );
+    assert_eq!(
+        flag_value(&headless.args, "--permission-prompt-tool"),
+        Some("stdio")
+    );
+}

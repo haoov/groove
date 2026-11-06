@@ -1,17 +1,12 @@
 //! The workspace's strip: a click on the open tab folds it, any tab opens it again.
 
-use groove_gfx::{CellSize, Fonts};
+use groove_gfx::Fonts;
 
 use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tests::{click, full_app, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
-
-const CELL: CellSize = CellSize {
-    width: 8.0,
-    height: 17.0,
-};
 
 fn tab_click(tab: Tab, ui: &mut Ui, app: &groove_controllers::AppState) {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
@@ -37,10 +32,6 @@ fn a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent() {
     assert!(folded.workspace.is_empty() && folded.sidebar.is_empty());
     assert_eq!(folded.agent.w, folded.board.w, "the agent takes the ground");
     assert_eq!(folded.agent.y, open.agent.y, "under the top bar still");
-    let tokens = window().tokens();
-    let (wide, _) = folded.agent_grid(&tokens, CELL);
-    let (narrow, _) = open.agent_grid(&tokens, CELL);
-    assert!(wide > narrow, "the grid is sized for the wide pane at once");
 }
 
 #[test]
@@ -189,7 +180,7 @@ fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
         let lit = frame.layers()[0]
             .quads
             .iter()
-            .any(|quad| quad.rect == at && quad.shape.radius == tokens.sm);
+            .any(|quad| quad.rect == at && quad.shape.radius == tokens.glass_round);
         assert!(lit, "{target:?} on a rounded ground");
     }
     let new = hits.rect_of(&Target::ShellNew).expect("the + button");

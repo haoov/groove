@@ -3,8 +3,8 @@
 use groove_sync::{Ended, Turn};
 use groove_types::SessionId;
 
-/// A start asked while a session's launch files were being written: its size and first words.
-pub type Held = ((u16, u16), Option<String>);
+/// A start asked while a session's launch files were being written: its first words, if any.
+pub type Held = Option<String>;
 
 /// The writes out for one session, and the end the next one waits for.
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl crate::State {
             return Some(start);
         };
         match &mut line.held {
-            Some(kept) if start.1.is_none() => kept.0 = start.0,
+            Some(_) if start.is_none() => {}
             held => *held = Some(start),
         }
         None

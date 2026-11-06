@@ -1,34 +1,35 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
-mod pointer;
+mod chat;
 pub mod skills;
 mod start;
 
-use groove_agent_service::Select;
 use groove_types::{ApprovalId, SessionId};
 
 use crate::{AppState, Services, Spawner};
 
+pub use chat::hooked;
 pub use start::start;
 pub(crate) use start::{asking, launch_dir, rewrite};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
-    /// `agent.start`: launch the session's agent at the worktree root on a grid of `cols` by `rows`.
-    Start {
-        session: SessionId,
-        cols: u16,
-        rows: u16,
-    },
+    /// `agent.start`: launch the session's agent at the worktree root, headless.
+    Start { session: SessionId },
     /// `agent.end`: end the agent and forget it.
     End { session: SessionId },
-    /// `agent.send`: bytes to the PTY, as typed.
-    Send { session: SessionId, bytes: Vec<u8> },
-    /// `agent.resize`: the pane's grid to the PTY.
-    Resize {
+    /// `agent.say`: words from Groove's own prompt, sent to the agent as a prompt.
+    Say { session: SessionId, text: String },
+    /// `agent.model`: the agent's next answers come from `model`.
+    Model { session: SessionId, model: String },
+    /// `agent.interrupt`: the agent's turn stopped where it stands.
+    Interrupt { session: SessionId },
+    /// `agent.answer`: the tool the agent asked for runs, on the picked answers, or does not.
+    Answer {
         session: SessionId,
-        cols: u16,
-        rows: u16,
+        id: String,
+        allow: bool,
+        picked: Vec<String>,
     },
     /// `agent.approve`: the write the agent asked for runs.
     Approve { id: ApprovalId },
@@ -36,47 +37,11 @@ pub enum Command {
     Refuse { id: ApprovalId },
     /// `agent.auto_approve`: every write of this session runs without asking.
     AutoApprove { session: SessionId, on: bool },
-    /// `agent.select`: a selection of the agent's screen, begun or carried on.
-    Select {
-        session: SessionId,
-        col: usize,
-        row: usize,
-        kind: Select,
-        from: bool,
-    },
-    /// `agent.click`: the left button on the screen, for the program that reads it.
-    Click {
-        session: SessionId,
-        col: usize,
-        row: usize,
-        down: bool,
-    },
-    /// `agent.drag`: the pointer moved with the button down, for that same program.
-    Drag {
-        session: SessionId,
-        col: usize,
-        row: usize,
-    },
-    /// `agent.paste`: the clipboard typed at the agent, bracketed when it asked.
-    Paste { session: SessionId, text: String },
-    /// `agent.copy`: what is selected on the agent's screen, to the clipboard.
-    Copy { session: SessionId },
-    /// `agent.scroll`: the wheel over the agent's own screen, at the cell it stands on.
-    Scroll {
-        session: SessionId,
-        lines: i32,
-        col: usize,
-        row: usize,
-    },
     /// `agent.reload`: the agent ended and started again, resuming its own thread.
-    Reload {
-        session: SessionId,
-        cols: u16,
-        rows: u16,
-    },
+    Reload { session: SessionId },
     /// `agent.list_skills`: both plugins written, then what they offer.
     ListSkills,
-    /// `agent.send_skill`: one skill typed into the agent's own prompt.
+    /// `agent.send_skill`: one skill sent to the agent as its prompt.
     SendSkill {
         session: SessionId,
         id: String,
@@ -95,17 +60,13 @@ impl Command {
         match self {
             Command::Start { .. } => "agent.start",
             Command::End { .. } => "agent.end",
-            Command::Send { .. } => "agent.send",
-            Command::Resize { .. } => "agent.resize",
+            Command::Say { .. } => "agent.say",
+            Command::Model { .. } => "agent.model",
+            Command::Interrupt { .. } => "agent.interrupt",
+            Command::Answer { .. } => "agent.answer",
             Command::Approve { .. } => "agent.approve",
             Command::Refuse { .. } => "agent.refuse",
             Command::AutoApprove { .. } => "agent.auto_approve",
-            Command::Select { .. } => "agent.select",
-            Command::Click { .. } => "agent.click",
-            Command::Drag { .. } => "agent.drag",
-            Command::Paste { .. } => "agent.paste",
-            Command::Copy { .. } => "agent.copy",
-            Command::Scroll { .. } => "agent.scroll",
             Command::Reload { .. } => "agent.reload",
             Command::ListSkills => "agent.list_skills",
             Command::SendSkill { .. } => "agent.send_skill",
@@ -123,43 +84,37 @@ pub fn dispatch(
     spawner: &dyn Spawner,
 ) {
     match command {
-        Command::Start {
-            session,
-            cols,
-            rows,
-        } => start(state, spawner, session, (cols, rows)),
+        Command::Start { session } => start(state, spawner, session),
         Command::End { session } => end(state, &session),
-        Command::Send { session, bytes } => send(state, &session, &bytes),
-        Command::Resize {
+        Command::Say { session, text } => chat::say(state, &session, &text),
+        Command::Model { session, model } => chat::model(state, &session, model),
+        Command::Interrupt { session } => chat::interrupt(state, &session),
+        Command::Answer {
             session,
-            cols,
-            rows,
-        } => resize(state, &session, cols, rows),
+            id,
+            allow,
+            picked,
+        } => chat::answer(state, &session, &id, (allow, &picked)),
         Command::Approve { id } => crate::tools::allow(state, services, spawner, &id),
         Command::Refuse { id } => crate::tools::refuse(state, &id),
         Command::AutoApprove { session, on } => {
             auto_approve(state, services, spawner, &session, on)
         }
-        Command::Reload {
-            session,
-            cols,
-            rows,
-        } => reload(state, spawner, session, (cols, rows)),
+        Command::Reload { session } => reload(state, spawner, session),
         Command::ListSkills => skills::list(state, spawner),
         Command::SendSkill { session, id, args } => {
-            skills::send(state, spawner, &session, &id, args.as_deref())
+            skills::send(state, &session, &id, args.as_deref())
         }
         Command::DeleteSkill { id } => skills::delete(state, spawner, &id),
         Command::SwitchSkill { id, on } => skills::switch(state, services, spawner, (id, on)),
         Command::RunRoutine { id } => crate::routine::button(state, services, spawner, &id),
-        pointing => pointer::acted(state, services, spawner, pointing),
     }
 }
 
 /// The agent ended and started again. The launch resumes its own thread by itself.
-fn reload(state: &mut AppState, spawner: &dyn Spawner, session: SessionId, size: (u16, u16)) {
+fn reload(state: &mut AppState, spawner: &dyn Spawner, session: SessionId) {
     end(state, &session);
-    start(state, spawner, session, size);
+    start(state, spawner, session);
 }
 
 /// Every write of this session runs without asking, or waits again.
@@ -187,8 +142,8 @@ pub(crate) fn forget(state: &mut AppState, spawner: &dyn Spawner, session: &Sess
         session.clone(),
         write,
         move |state, spawner, held| {
-            if let Some((size, prompt)) = held {
-                asking(state, spawner, id, size, prompt);
+            if let Some(prompt) = held {
+                asking(state, spawner, id, prompt);
             }
         },
     );
@@ -196,19 +151,7 @@ pub(crate) fn forget(state: &mut AppState, spawner: &dyn Spawner, session: &Sess
 
 pub fn end(state: &mut AppState, session: &SessionId) {
     crate::tools::drop_asks(state, session);
-    if let Some(terminal) = state.agent.end(session).and_then(|a| a.terminal) {
-        let _ = terminal.terminate();
-    }
-}
-
-pub fn send(state: &mut AppState, session: &SessionId, bytes: &[u8]) {
-    if let Some(terminal) = state.agent.terminal(session) {
-        let _ = terminal.write(bytes);
-    }
-}
-
-pub fn resize(state: &mut AppState, session: &SessionId, cols: u16, rows: u16) {
-    if let Some(terminal) = state.agent.terminal(session) {
-        let _ = terminal.resize(cols, rows);
+    if let Some(stream) = state.agent.end(session).and_then(|one| one.stream) {
+        let _ = stream.terminate();
     }
 }

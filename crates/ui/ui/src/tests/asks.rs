@@ -137,11 +137,10 @@ fn escape_puts_the_sheet_away_without_deciding() {
 }
 
 #[test]
-fn the_bar_keeps_its_skills_and_no_switch() {
+fn the_bar_keeps_no_switch() {
     let app = committing();
     let ui = session_ui();
     let drawn = texts(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "skills"), "{drawn:?}");
     assert!(
         !drawn.iter().any(|one| one.starts_with("auto-approve")),
         "{drawn:?}"

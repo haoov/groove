@@ -146,12 +146,12 @@ fn the_kind_listed_stands_on_a_rounded_held_ground() {
     let (app, ui) = listing();
     let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let held = Styles::new(app.config.theme(), window().tokens()).glass_chosen();
-    let sm = window().tokens().sm;
+    let round = window().tokens().glass_round;
     let quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
     assert!(
         quads
             .into_iter()
-            .any(|one| one.color == held && one.shape.radius == sm),
+            .any(|one| one.color == held && one.shape.radius == round),
         "a quad on the rounded held ground"
     );
 }

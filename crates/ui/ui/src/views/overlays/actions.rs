@@ -19,7 +19,7 @@ pub const FILE: [Act; 1] = [Act::DiscardChanges];
 pub const TAB: [Act; 3] = [Act::Close, Act::CloseOthers, Act::CloseAll];
 
 /// What the lines under a click offer.
-pub const LINE: [Act; 1] = [Act::Note];
+pub const LINE: [Act; 2] = [Act::Note, Act::Ask];
 
 /// The actions of one path of the explorer.
 pub const PATH: [Act; 5] = [
@@ -37,7 +37,7 @@ fn acts(of: &Of) -> &'static [Act] {
         Of::Tab { .. } => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
-        Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
+        Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges | Of::Models { .. } => &[],
     }
 }
 
@@ -51,6 +51,7 @@ pub fn rows(of: &Of) -> Vec<&str> {
             .map(|one| one.name())
             .collect(),
         Of::LogRanges => crate::views::session::resources::RANGES.to_vec(),
+        Of::Models { rows, .. } => rows.iter().map(|one| one.label.as_str()).collect(),
         _ => acts(of).iter().map(|one| one.label()).collect(),
     }
 }
@@ -61,6 +62,7 @@ pub fn draw(ctx: &mut Ctx, open: &Menu) {
     let (wide, tall) = glass_size(ctx, &rows);
     let at = match open.corner {
         Corner::TopLeft => open.at,
+        Corner::TopRight => (open.at.0 - wide, open.at.1),
         Corner::BottomLeft => (open.at.0, open.at.1 - tall),
         Corner::BottomRight => (open.at.0 - wide, open.at.1 - tall),
     };
@@ -69,8 +71,18 @@ pub fn draw(ctx: &mut Ctx, open: &Menu) {
             .iter()
             .map(|one| Role::Hue(*one))
             .collect(),
+        Of::Models { rows, .. } => rows.iter().map(told_role).collect(),
         _ => Vec::new(),
     };
     ctx.layer();
     glass_menu(ctx, at, within, (&rows, &roles), Target::MenuRow);
+}
+
+/// A current model in the accent, another in the text's colour, what is used faint.
+fn told_role(one: &crate::menu::Told) -> Role {
+    match (&one.model, one.current) {
+        (None, _) => Role::Faint,
+        (Some(_), true) => Role::Accent,
+        (Some(_), false) => Role::Text,
+    }
 }

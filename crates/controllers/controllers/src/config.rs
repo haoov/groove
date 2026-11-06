@@ -253,7 +253,6 @@ fn set_preference(
     }
     if let Preference::Theme(theme) = one {
         let palette = groove_agent_service::palette(theme);
-        state.agent.recolor(palette);
         state.shell.recolor(palette);
         if let Some(login) = &state.config.login {
             login.recolor(palette);

@@ -21,7 +21,7 @@ pub fn question<A: App>(
     answers: [(&str, A::Target); 2],
 ) {
     let card = line.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
-    ctx.rounded(card, ctx.styles.glass_card(), ctx.tokens.sm);
+    ctx.rounded(card, ctx.styles.glass_card(), ctx.tokens.glass_round);
     let mut room = card.pad(Edges::across(0.0, ctx.tokens.xs));
     for (label, target) in answers.into_iter().rev() {
         offer(ctx, &mut room, label, target);

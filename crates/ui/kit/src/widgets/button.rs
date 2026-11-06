@@ -242,7 +242,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             None if self.ground.is_none() => {
                 let box_ = slot_at(ctx, line, x, content, None);
                 if let Some(ground) = ground {
-                    ctx.rounded(box_, ground, ctx.tokens.sm);
+                    ctx.rounded(box_, ground, ctx.tokens.glass_round);
                 }
                 box_
             }

@@ -62,6 +62,7 @@ fn markdown(path: &str, text: &str) -> Vec<Said> {
     let mut out = Vec::new();
     let mut code: Vec<String> = Vec::new();
     for block in blocks(text) {
+        let block = block.flattened();
         if block.kind == Kind::Code {
             code.extend(block.spans.iter().map(|span| span.text.clone()));
             continue;

@@ -24,6 +24,8 @@ pub enum Ground {
     Plain,
     Code,
     Rule,
+    /// A table's head row, ruled under.
+    Head,
 }
 
 /// One line, `y` from the prose's top; its mark at its own `x` from the left edge.
@@ -46,16 +48,26 @@ pub struct Laid {
 pub fn laid<A: App>(ctx: &mut Ctx<'_, A>, blocks: &[Block], width: f32, role: Role) -> Laid {
     let mut laid = Laid::default();
     let mut before: Option<Kind> = None;
-    for block in blocks {
+    let mut at = 0;
+    while let Some(block) = blocks.get(at) {
         laid.height += gap(ctx, before, block.kind);
+        let rows = blocks[at..]
+            .iter()
+            .take_while(|one| matches!(one.kind, Kind::Row { .. }))
+            .count();
         let lines = match block.kind {
-            Kind::Code => code(ctx, block, laid.height),
+            Kind::Row { .. } => {
+                let table = &blocks[at..at + rows];
+                super::table::laid(ctx, table, (laid.height, width), role)
+            }
+            Kind::Code => code(ctx, block, (laid.height, width)),
             Kind::Rule => vec![rule(ctx, laid.height)],
             _ => wrapped(ctx, block, (laid.height, width), role),
         };
         laid.height = lines.last().map_or(laid.height, |one| one.y + one.h);
         laid.lines.extend(lines);
-        before = Some(block.kind);
+        at += rows.max(1);
+        before = blocks.get(at - 1).map(|one| one.kind);
     }
     laid
 }
@@ -135,7 +147,7 @@ fn wrapped<A: App>(
     lines
 }
 
-fn blank(y: f32, h: f32, mark: Option<(f32, Bullet)>, quoted: bool) -> Line {
+pub(super) fn blank(y: f32, h: f32, mark: Option<(f32, Bullet)>, quoted: bool) -> Line {
     Line {
         y,
         h,
@@ -167,19 +179,23 @@ fn put(line: &mut Line, (x, w): (f32, f32), word: &str, style: TextStyle, span: 
     });
 }
 
-fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, top: f32) -> Vec<Line> {
+/// A code block's lines, each wrapped at the character that reaches `width`.
+fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, (top, width): (f32, f32)) -> Vec<Line> {
     let style = ctx.styles.prose_code(Role::Text);
     let (indent, _) = indents(ctx, block);
     let pad = ctx.tokens.sm;
     let tall = (style.size * LEADING).round();
+    let advance = ctx.measure("0", &style).max(1.0);
+    let cols = ((width - indent - pad * 2.0) / advance).floor().max(1.0) as usize;
     let mut y = top;
     let mut out = Vec::new();
-    for span in &block.spans {
-        let w = ctx.measure(&span.text, &style);
+    let rows = block.spans.iter().flat_map(|span| folded(&span.text, cols));
+    for text in rows {
+        let w = ctx.measure(&text, &style);
         let piece = Piece {
             x: indent + pad,
             w,
-            text: span.text.clone(),
+            text,
             style,
             code: false,
             link: None,
@@ -192,6 +208,15 @@ fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, top: f32) -> Vec<Line> {
         y += tall;
     }
     out
+}
+
+/// `text` cut every `cols` characters; an empty line stays one row.
+fn folded(text: &str, cols: usize) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.is_empty() {
+        return vec![String::new()];
+    }
+    chars.chunks(cols).map(|one| one.iter().collect()).collect()
 }
 
 fn rule<A: App>(ctx: &Ctx<'_, A>, top: f32) -> Line {

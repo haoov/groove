@@ -8,22 +8,19 @@ use crate::State;
 fn a_start_asked_while_a_launch_file_write_is_out_waits_for_it() {
     let (mut state, session) = (State::default(), SessionId::new("s"));
     let _turn = state.writing(&session);
-    assert_eq!(state.hold(&session, ((80, 24), None)), None, "held");
-    assert_eq!(state.written(&session), Some(((80, 24), None)));
-    let free = state.hold(&session, ((80, 24), None));
-    assert_eq!(free, Some(((80, 24), None)), "nothing out, it runs");
+    assert_eq!(state.hold(&session, None), None, "held");
+    assert_eq!(state.written(&session), Some(None));
+    let free = state.hold(&session, None);
+    assert_eq!(free, Some(None), "nothing out, it runs");
 }
 
 #[test]
 fn a_held_start_keeps_the_words_a_later_plain_start_lacks() {
     let (mut state, session) = (State::default(), SessionId::new("s"));
     let _turn = state.writing(&session);
-    state.hold(&session, ((80, 24), Some("go".into())));
-    state.hold(&session, ((100, 30), None));
-    assert_eq!(
-        state.written(&session),
-        Some(((100, 30), Some("go".into())))
-    );
+    state.hold(&session, Some("go".into()));
+    state.hold(&session, None);
+    assert_eq!(state.written(&session), Some(Some("go".into())));
 }
 
 #[tokio::test]

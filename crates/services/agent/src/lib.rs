@@ -1,8 +1,11 @@
-//! The agent capability: each session's agent and its asks.
+//! The agent capability: each session's agent, its conversation and its asks.
 
+mod chat;
 mod files;
+mod hooked;
 pub(crate) mod launch;
 mod listed;
+mod streamed;
 
 #[cfg(test)]
 mod tests;
@@ -22,14 +25,27 @@ pub use groove_types::Screen;
 
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
+pub use chat::follower;
 pub use files::Held;
+pub use groove_agent_stream::{Heard as StreamHeard, Hooks as StreamHooks, Stream};
 pub use groove_sync::Turn;
+pub use groove_transcript::Heeded;
 pub use launch::{LaunchPaths, launch, palette};
 
-/// One session's agent. `terminal` is `None` when the launch failed.
+/// One session's agent, headless on its stream; none when the launch failed.
 #[derive(Debug)]
 pub struct Agent {
-    pub terminal: Option<Terminal>,
+    pub stream: Option<Stream>,
+    /// The tools the agent waits to be let run.
+    pub permissions: Vec<groove_types::chat::Permission>,
+    /// The commands the agent's prompt takes after `/`.
+    pub commands: Vec<groove_types::chat::Slash>,
+    /// How much of the plan the agent's stream says is used.
+    pub limits: groove_types::chat::Limits,
+    /// How many tokens each model the agent used can hold.
+    pub windows: Vec<(String, u64)>,
+    /// The model the user switched the agent to.
+    pub chosen: Option<String>,
     pub activity: SessionActivity,
     /// When this agent was launched, which says whether a skill is newer than it.
     pub started_at: Timestamp,
@@ -48,6 +64,7 @@ pub struct State {
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     writes: Vec<files::Line>,
+    chats: Vec<(SessionId, chat::Followed)>,
 }
 
 impl State {
@@ -56,16 +73,6 @@ impl State {
             .iter()
             .find(|(id, _)| id == session)
             .map(|(_, a)| a)
-    }
-
-    pub fn terminal(&self, session: &SessionId) -> Option<&Terminal> {
-        self.agent(session)?.terminal.as_ref()
-    }
-
-    /// Every running agent in these colours.
-    pub fn recolor(&self, palette: groove_types::AnsiPalette) {
-        let running = self.agents.iter().filter_map(|(_, a)| a.terminal.as_ref());
-        running.for_each(|one| one.recolor(palette));
     }
 
     pub fn activity(&self, session: &SessionId) -> Option<&SessionActivity> {
@@ -80,13 +87,13 @@ impl State {
         self.launches
     }
 
-    /// The launch's result, on the row; a terminal no row takes, or one it displaces, comes back to end.
+    /// The launch's result, on the row; a stream no row takes, or one it displaces, comes back to end.
     pub fn started(
         &mut self,
         (session, launch): (SessionId, u64),
-        result: Result<Terminal, Error>,
+        result: Result<Stream, Error>,
         now: Timestamp,
-    ) -> Option<Terminal> {
+    ) -> Option<Stream> {
         let awaited = self
             .pending
             .iter()
@@ -95,24 +102,30 @@ impl State {
             return result.ok();
         }
         self.pending.retain(|(id, _)| id != &session);
-        let (terminal, status) = match result {
-            Ok(terminal) => (Some(terminal), AgentStatus::Idle),
+        let (stream, status) = match result {
+            Ok(stream) => (Some(stream), AgentStatus::Idle),
             Err(e) => (None, AgentStatus::Error { message: e.message }),
         };
         let agent = Agent {
-            terminal,
+            stream,
+            permissions: Vec::new(),
+            commands: Vec::new(),
+            limits: Default::default(),
+            windows: Vec::new(),
+            chosen: None,
             activity: activity(status, now),
             started_at: now,
             launch,
         };
-        let displaced = self.end(&session).and_then(|one| one.terminal);
+        let displaced = self.end(&session).and_then(|one| one.stream);
         self.agents.push((session, agent));
         displaced
     }
 
-    /// Removes the agent and any launch it waits on; the caller ends its terminal.
+    /// Removes the agent and any launch it waits on; the caller ends its stream.
     pub fn end(&mut self, session: &SessionId) -> Option<Agent> {
         self.pending.retain(|(id, _)| id != session);
+        self.unfollow(session);
         let at = self.agents.iter().position(|(id, _)| id == session)?;
         Some(self.agents.remove(at).1)
     }
@@ -177,11 +190,9 @@ pub(crate) fn activity(status: AgentStatus, now: Timestamp) -> SessionActivity {
     }
 }
 
-/// The reader thread, the hook receiver and the agent's PTY speak here.
+/// The agent's stream, the hook receiver and the transcript's follower speak here.
 #[derive(Debug)]
 pub enum Event {
-    /// The terminal's grid changed; the pane redraws.
-    Damaged { session: SessionId },
     /// The process of one launch ended; a launch since then is not its to mark.
     Exited {
         session: SessionId,
@@ -195,11 +206,25 @@ pub enum Event {
         tool: Option<ToolCall>,
         at: Timestamp,
     },
+    /// One read of the session's transcript.
+    Heard {
+        session: SessionId,
+        transcript: std::path::PathBuf,
+        heard: Vec<groove_types::chat::Heard>,
+    },
+    /// Words sent from Groove's own prompt.
+    Said { session: SessionId, text: String },
+    /// What one launch's stream told beside its transcript.
+    Streamed {
+        session: SessionId,
+        launch: u64,
+        heard: StreamHeard,
+        at: Timestamp,
+    },
 }
 
 pub fn apply(state: &mut State, event: Event) {
     match event {
-        Event::Damaged { .. } => {}
         Event::Exited {
             session,
             launch,
@@ -221,32 +246,22 @@ pub fn apply(state: &mut State, event: Event) {
             at,
         } => {
             if let Some(activity) = state.activity_mut(&session) {
-                hook(activity, kind, tool, at);
+                hooked::hook(activity, kind, tool, at);
             }
         }
+        Event::Heard {
+            session,
+            transcript,
+            heard,
+        } => state.heard(&session, &transcript, heard),
+        Event::Said { session, text } => state.echoed(&session, text),
+        Event::Streamed {
+            session,
+            launch,
+            heard,
+            at,
+        } => streamed::heard(state, (&session, launch), heard, at),
     }
-}
-
-/// What a hook says the agent is doing; a question or a prompt waits on the user.
-fn hook(activity: &mut SessionActivity, kind: HookKind, tool: Option<ToolCall>, at: Timestamp) {
-    let asks = tool.as_ref().is_some_and(|one| one.name == ASKS_THE_USER);
-    let status = match kind {
-        HookKind::SessionStart => AgentStatus::Idle,
-        HookKind::PreToolUse if asks => AgentStatus::Asking,
-        HookKind::UserPromptSubmit | HookKind::PreToolUse | HookKind::PostToolUse => {
-            AgentStatus::Working
-        }
-        HookKind::Stop => AgentStatus::Done { seen: false },
-        HookKind::Notification => AgentStatus::Asking,
-    };
-    activity.tool = match kind {
-        HookKind::PreToolUse => tool,
-        _ => None,
-    };
-    if activity.status != status {
-        activity.changed_at = at;
-    }
-    activity.status = status;
 }
 
 /// A queued write as the rail and the review sheet say it.

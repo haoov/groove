@@ -45,6 +45,17 @@ runs the binary as an argument list, never through a shell. A read names a conte
 session holds and a namespace it holds, takes only read verbs and flags, and never prints
 a secret's data. Attaching or letting go of a cluster is a write, through the queue.
 
+## Conversation
+
+**Read from the transcript, never stored.** A hook names the session's transcript; Groove follows
+it from its start as it grows, and a new transcript starts the conversation again. The agent still
+runs in its pty, and a message sent from Groove's prompt is typed there. A pasted message shows as
+the user's; one typed while the agent works waits until its turn takes it. A record kind Groove does not know is skipped.
+Enforced by `a_new_transcript_starts_the_conversation_again_and_the_old_one_is_not_heard`,
+`a_pasted_prompt_and_one_typed_while_the_agent_works_are_heard`,
+`a_message_typed_while_the_agent_works_waits_until_its_turn_takes_it` and
+`a_record_kind_groove_does_not_know_is_skipped`.
+
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the

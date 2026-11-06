@@ -60,6 +60,15 @@ pub struct Ctx<'a, A: App> {
     fonts: &'a mut Fonts,
     hover: Option<A::Target>,
     clip: Option<Rect>,
+    reading: Option<Vec<Run>>,
+}
+
+/// One run of text as it was drawn.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Run {
+    pub text: String,
+    pub rect: Rect,
+    pub style: TextStyle,
 }
 
 impl<'a, A: App> Ctx<'a, A> {
@@ -87,6 +96,7 @@ impl<'a, A: App> Ctx<'a, A> {
             fonts,
             hover,
             clip: None,
+            reading: None,
         }
     }
 
@@ -170,7 +180,29 @@ impl<'a, A: App> Ctx<'a, A> {
     }
 
     pub(crate) fn text(&mut self, text: &str, x: f32, y: f32, height: f32, style: TextStyle) {
+        if self.reading.is_some() {
+            let rect = Rect::new(x, y, self.measure(text, &style), height);
+            let run = Run {
+                text: text.to_string(),
+                rect,
+                style,
+            };
+            self.reading
+                .iter_mut()
+                .for_each(|runs| runs.push(run.clone()));
+        }
         self.frame.text(text, x, y, height, style);
+    }
+
+    /// Runs `draw`, and returns the text it drew, in the order it drew it.
+    pub fn read(&mut self, draw: impl FnOnce(&mut Self)) -> Vec<Run> {
+        let outer = self.reading.replace(Vec::new());
+        draw(self);
+        let runs = std::mem::replace(&mut self.reading, outer).unwrap_or_default();
+        if let Some(outer) = self.reading.as_mut() {
+            outer.extend(runs.iter().cloned());
+        }
+        runs
     }
 
     /// A mark in `rect`, turned by eighths of a turn.

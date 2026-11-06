@@ -228,7 +228,7 @@ fn the_copy_chord_on_a_terminal_copies_that_terminal() {
 fn a_program_that_reads_the_mouse_hears_it_and_shift_selects_instead() {
     let mut app = full_app();
     let id = app.shell.reserve(&session(&app), false);
-    let reader = super::agent::mouse_reader();
+    let reader = mouse_reader();
     app.shell.started(&session(&app), id, Ok(reader));
     let mut ui = Ui::default();
     ui.session.manual = true;
@@ -258,4 +258,40 @@ fn a_program_that_reads_the_mouse_hears_it_and_shift_selects_instead() {
         "shift drags a selection"
     );
     assert_eq!(act(Input::Release, &mut ui), ["shell.copy"]);
+}
+
+/// A terminal whose program has asked for the mouse.
+fn mouse_reader() -> groove_controllers::agent_service::Terminal {
+    use groove_controllers::agent_service::{Hooks, PtySpec, Terminal};
+    let spec = PtySpec {
+        program: "sh".into(),
+        args: vec![
+            "-c".into(),
+            "printf '\\033[?1000h\\033[?1006h'; sleep 30".into(),
+        ],
+        cwd: "/".into(),
+        env: Vec::new(),
+        rows: 24,
+        cols: 80,
+    };
+    let hooks = Hooks {
+        on_damage: Box::new(|| {}),
+        on_exit: Box::new(|_| {}),
+    };
+    let runtime = groove_controllers::SyncSpawner::new().expect("a runtime");
+    let terminal = runtime
+        .block_on(Terminal::spawn(
+            spec,
+            groove_types::AnsiPalette::MOCHA,
+            hooks,
+        ))
+        .expect("a terminal");
+    for _ in 0..100 {
+        if terminal.reads_mouse() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(terminal.reads_mouse(), "the program asked for the mouse");
+    terminal
 }
