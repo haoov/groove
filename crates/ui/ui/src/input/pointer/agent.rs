@@ -4,8 +4,7 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, Edit, Selection};
 
 use crate::hit::{Hits, Target, read};
-use crate::input::selection::{agent_cell, pressed as pressed_on};
-use crate::{Grid, Held, Ui};
+use crate::{Held, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
 /// The agent's own targets; anything else is not its to answer.
@@ -18,7 +17,7 @@ pub(super) fn acted(
     metrics: Metrics,
 ) -> Option<Vec<Command>> {
     match target {
-        Target::Agent => Some(pressed(ui, app, point, metrics)),
+        Target::Agent => Some(Vec::new()),
         Target::Chat => Some(reading(ui, hits, point)),
         Target::Prompt => Some(typing(ui, hits, point, metrics)),
         Target::Commands(id) => {
@@ -128,12 +127,6 @@ fn caret_at(hits: &Hits, (x, y): (f32, f32), metrics: Metrics) -> Option<Caret> 
     let (rect, (line, start, end)) = rows[below.unwrap_or(rows.len().checked_sub(1)?)];
     let across = ((x - rect.x) / metrics.advance).round().max(0.0) as usize;
     Some(Caret::new(line, (start + across).min(end)))
-}
-
-/// A press on the screen, through the grid's own rule.
-fn pressed(ui: &mut Ui, app: &AppState, point: (f32, f32), metrics: Metrics) -> Vec<Command> {
-    let cell = agent_cell(point, ui, metrics);
-    pressed_on(ui, app, Grid::Agent, cell)
 }
 
 /// The menu of the model's button or of the usage's, over the right end of the button.

@@ -76,14 +76,13 @@ pub enum Held {
     Prompt,
 }
 
-/// A terminal's grid: the agent's, or one of the session's shells.
+/// A terminal's grid: one of the session's shells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Grid {
-    Agent,
     Shell(u64),
 }
 
-/// The agent pane: its conversation or its terminal, the prompt, and what the pointer does to the screen.
+/// The agent pane: its conversation, the prompt, and what the pointer does to them.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct AgentUi {
     /// Wheel pixels not yet worth a line.

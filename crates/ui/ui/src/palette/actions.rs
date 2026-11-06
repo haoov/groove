@@ -161,11 +161,8 @@ fn agent(app: &AppState, open: &Open) -> Vec<Entry> {
             Act::Examine(ask.id.clone()),
         ));
     }
-    let (cols, rows) = groove_controllers::session::FIRST_SIZE;
     let reload = agent::Command::Reload {
         session: session.clone(),
-        cols,
-        rows,
     };
     out.push(command("Agent", "Reload the agent", Command::Agent(reload)));
     let on = !open.state.auto_approve;

@@ -30,21 +30,19 @@ pub use files::Held;
 pub use groove_agent_stream::{Heard as StreamHeard, Hooks as StreamHooks, Stream};
 pub use groove_sync::Turn;
 pub use groove_transcript::Heeded;
-pub use launch::{LaunchPaths, launch, launch_headless, palette};
-pub use streamed::Run;
+pub use launch::{LaunchPaths, launch, palette};
 
-/// One session's agent, on a terminal or headless on its stream; neither when the launch failed.
+/// One session's agent, headless on its stream; none when the launch failed.
 #[derive(Debug)]
 pub struct Agent {
-    pub terminal: Option<Terminal>,
     pub stream: Option<Stream>,
-    /// The tools a headless agent waits to be let run.
+    /// The tools the agent waits to be let run.
     pub permissions: Vec<groove_types::chat::Permission>,
-    /// The commands a headless agent's prompt takes after `/`.
+    /// The commands the agent's prompt takes after `/`.
     pub commands: Vec<groove_types::chat::Slash>,
-    /// How much of the plan a headless agent's stream says is used.
+    /// How much of the plan the agent's stream says is used.
     pub limits: groove_types::chat::Limits,
-    /// How many tokens each model a headless agent used can hold.
+    /// How many tokens each model the agent used can hold.
     pub windows: Vec<(String, u64)>,
     /// The model the user switched the agent to.
     pub chosen: Option<String>,
@@ -77,16 +75,6 @@ impl State {
             .map(|(_, a)| a)
     }
 
-    pub fn terminal(&self, session: &SessionId) -> Option<&Terminal> {
-        self.agent(session)?.terminal.as_ref()
-    }
-
-    /// Every running agent in these colours.
-    pub fn recolor(&self, palette: groove_types::AnsiPalette) {
-        let running = self.agents.iter().filter_map(|(_, a)| a.terminal.as_ref());
-        running.for_each(|one| one.recolor(palette));
-    }
-
     pub fn activity(&self, session: &SessionId) -> Option<&SessionActivity> {
         self.agent(session).map(|a| &a.activity)
     }
@@ -99,13 +87,13 @@ impl State {
         self.launches
     }
 
-    /// The launch's result, on the row; a terminal no row takes, or one it displaces, comes back to end.
+    /// The launch's result, on the row; a stream no row takes, or one it displaces, comes back to end.
     pub fn started(
         &mut self,
         (session, launch): (SessionId, u64),
-        result: Result<Run, Error>,
+        result: Result<Stream, Error>,
         now: Timestamp,
-    ) -> Option<Run> {
+    ) -> Option<Stream> {
         let awaited = self
             .pending
             .iter()
@@ -114,13 +102,11 @@ impl State {
             return result.ok();
         }
         self.pending.retain(|(id, _)| id != &session);
-        let (run, status) = match result {
-            Ok(run) => (Some(run), AgentStatus::Idle),
+        let (stream, status) = match result {
+            Ok(stream) => (Some(stream), AgentStatus::Idle),
             Err(e) => (None, AgentStatus::Error { message: e.message }),
         };
-        let (terminal, stream) = Run::split(run);
         let agent = Agent {
-            terminal,
             stream,
             permissions: Vec::new(),
             commands: Vec::new(),
@@ -131,12 +117,12 @@ impl State {
             started_at: now,
             launch,
         };
-        let displaced = self.end(&session).and_then(Run::of);
+        let displaced = self.end(&session).and_then(|one| one.stream);
         self.agents.push((session, agent));
         displaced
     }
 
-    /// Removes the agent and any launch it waits on; the caller ends its terminal.
+    /// Removes the agent and any launch it waits on; the caller ends its stream.
     pub fn end(&mut self, session: &SessionId) -> Option<Agent> {
         self.pending.retain(|(id, _)| id != session);
         self.unfollow(session);
@@ -204,11 +190,9 @@ pub(crate) fn activity(status: AgentStatus, now: Timestamp) -> SessionActivity {
     }
 }
 
-/// The reader thread, the hook receiver and the agent's PTY speak here.
+/// The agent's stream, the hook receiver and the transcript's follower speak here.
 #[derive(Debug)]
 pub enum Event {
-    /// The terminal's grid changed; the pane redraws.
-    Damaged { session: SessionId },
     /// The process of one launch ended; a launch since then is not its to mark.
     Exited {
         session: SessionId,
@@ -241,7 +225,6 @@ pub enum Event {
 
 pub fn apply(state: &mut State, event: Event) {
     match event {
-        Event::Damaged { .. } => {}
         Event::Exited {
             session,
             launch,

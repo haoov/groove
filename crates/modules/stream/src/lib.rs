@@ -105,6 +105,16 @@ impl Stream {
         }
     }
 
+    /// A stream with no agent behind it: what is sent to it goes nowhere.
+    pub fn idle() -> Self {
+        let (outgoing, _) = mpsc::unbounded_channel::<Value>();
+        Self {
+            outgoing,
+            pid: None,
+            requests: AtomicU64::default(),
+        }
+    }
+
     /// The user's words, as one message.
     pub fn say(&self, text: &str) -> Result<()> {
         let message = json!({ "role": "user", "content": text });

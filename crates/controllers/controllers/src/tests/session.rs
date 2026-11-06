@@ -27,17 +27,7 @@ fn opening_an_explorer_adds_a_row_selects_it_and_starts_its_agent() {
         s.agent.agent(&id).is_some()
     });
     assert_eq!(state.agent.activity(&id).unwrap().status, AgentStatus::Idle);
-    assert_eq!(
-        state
-            .agent
-            .agent(&id)
-            .unwrap()
-            .terminal
-            .as_ref()
-            .unwrap()
-            .size(),
-        (80, 24)
-    );
+    assert!(state.agent.stream(&id).is_some(), "headless, on its stream");
 }
 
 #[test]
@@ -156,38 +146,12 @@ fn the_agent_runs_at_the_worktree_root_never_in_a_session_directory() {
     );
     let id = state.session.selected.clone().unwrap();
     until(&spawner, &services, &mut state, |s| {
-        s.agent
-            .agent(&id)
-            .and_then(|a| a.terminal.as_ref())
-            .is_some_and(|t| t.screen().line(0).starts_with("ready"))
+        s.agent.stream(&id).is_some()
     });
-    dispatch(
-        Cmd::Agent(crate::agent::Command::Send {
-            session: id.clone(),
-            bytes: b"pwd\n".to_vec(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    until(&spawner, &services, &mut state, |s| {
-        matches!(
-            s.agent.activity(&id).unwrap().status,
-            AgentStatus::Exited { .. }
-        )
-    });
-    let screen = state
-        .agent
-        .agent(&id)
-        .unwrap()
-        .terminal
-        .as_ref()
-        .unwrap()
-        .screen();
-    assert_eq!(
-        screen.line(2),
-        format!("got {}", home.path().join("wt").display())
-    );
+    let ran = || fixture::heard(home.path(), id.as_str()).map(|(at, _)| at);
+    let wt = home.path().join("wt").display().to_string();
+    until(&spawner, &services, &mut state, |_| ran().is_some());
+    assert_eq!(ran(), Some(wt));
 }
 
 #[test]

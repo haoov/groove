@@ -26,8 +26,8 @@ const WORKTREE: &str = "/code/worktrees/a/kiwi/explorer/alpha";
 /// Session `a` with a running agent whose transcript said `heard`.
 pub(super) fn talking(heard: Vec<Heard>) -> AppState {
     let mut app = with_repo(super::bar::asking(Vec::new()));
-    app.agent.agents[0].1.terminal = Some(super::agent::mouse_reader());
-    conversing(&mut app, true);
+    app.agent.agents[0].1.stream = Some(groove_controllers::agent_service::Stream::idle());
+    configured(&mut app);
     let (session, transcript) = (SessionId::new("a"), PathBuf::from("/t/a.jsonl"));
     app.agent.follow(&session, transcript.clone());
     let event = Event::Heard {
@@ -39,11 +39,10 @@ pub(super) fn talking(heard: Vec<Heard>) -> AppState {
     app
 }
 
-/// Settings turn the conversation view on, or off for the terminal.
-pub(super) fn conversing(app: &mut AppState, on: bool) {
+/// A config, as a session's app has once it runs.
+pub(super) fn configured(app: &mut AppState) {
     let file = serde_json::json!({ "git": { "worktree_root": "~" } });
-    let mut config: groove_types::Config = serde_json::from_value(file).expect("a config");
-    config.preferences.conversation = on;
+    let config: groove_types::Config = serde_json::from_value(file).expect("a config");
     app.config.config = Some(config);
 }
 
@@ -86,8 +85,8 @@ fn edit(path: &str, line: u32) -> Vec<Heard> {
 }
 
 #[test]
-fn the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on() {
-    let mut app = talking(vec![
+fn the_conversation_shows_in_the_agent_pane() {
+    let app = talking(vec![
         Heard::You("cache the quotes".into()),
         Heard::Clock(groove_types::Timestamp::new(100)),
         Heard::Thought,
@@ -110,13 +109,6 @@ fn the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on() {
     for said in shown {
         assert!(texts.iter().any(|one| one == said), "{said}: {texts:?}");
     }
-    conversing(&mut app, false);
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let texts = all_texts(&frame);
-    assert!(
-        !texts.iter().any(|one| one == "cache the quotes"),
-        "the terminal shows"
-    );
 }
 
 #[test]

@@ -8,7 +8,6 @@ use crate::{Agent, Event, State, StreamHeard, apply};
 fn state() -> State {
     let mut state = State::default();
     let agent = Agent {
-        terminal: None,
         stream: None,
         permissions: Vec::new(),
         commands: Vec::new(),

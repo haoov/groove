@@ -75,12 +75,6 @@ impl Launch {
         })
     }
 
-    /// The same, with `prompt` submitted as the agent's first message, ahead of every option.
-    pub fn asking(mut self, prompt: &str) -> Self {
-        self.args.insert(0, prompt.to_string());
-        self
-    }
-
     /// The same, headless: messages in and records out as stream-json, tool permissions asked on that stream.
     pub fn streamed(mut self) -> Self {
         let flags = [
@@ -95,17 +89,6 @@ impl Launch {
             .chain(["--verbose", "--permission-prompt-tool", "stdio"]);
         self.args.extend(flags.map(str::to_string));
         self
-    }
-
-    pub fn spec(self, cols: u16, rows: u16) -> PtySpec {
-        PtySpec {
-            program: self.program,
-            args: self.args,
-            cwd: self.cwd,
-            env: self.env,
-            rows,
-            cols,
-        }
     }
 }
 

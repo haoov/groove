@@ -103,13 +103,11 @@ fn the_agent_takes_what_is_pasted_when_it_has_the_keyboard() {
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     let asked = paste("one\ntwo", &mut ui, &app);
+    assert!(asked.is_empty(), "nothing is sent yet");
     assert_eq!(
-        asked,
-        vec![Command::Agent(groove_controllers::agent::Command::Paste {
-            session: groove_types::SessionId::new("a"),
-            text: "one\ntwo".into(),
-        })],
-        "the program types it, not the buffer"
+        ui.agent.prompt.text(),
+        "one\ntwo",
+        "the prompt takes it, not the buffer"
     );
 }
 

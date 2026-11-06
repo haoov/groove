@@ -1,4 +1,4 @@
-//! The agent pane: its conversation over Groove's own prompt, or its terminal in their place.
+//! The agent pane: its conversation over Groove's own prompt.
 
 mod asked;
 mod chat;
@@ -21,9 +21,8 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::screen;
 
-/// The agent's conversation or its terminal, or why there is neither.
+/// The agent's conversation, or why there is none.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
     let Some(open) = app.session.selected() else {
         return;
@@ -34,15 +33,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
     let Some(agent) = app.agent.agent(&open.session.id) else {
         return note(ctx, "starting the agent…");
     };
-    match (&agent.terminal, &agent.activity.status) {
-        _ if agent.stream.is_some() || app.config.conversation() && agent.terminal.is_some() => {
-            conversation(ctx, (app, ui), (open, agent), focused)
-        }
-        (Some(terminal), _) => {
-            let origin = ctx.app.layout.agent_origin(&ctx.tokens);
-            let grid = terminal.screen();
-            screen(ctx, pane, origin, (&grid, focused));
-        }
+    match (&agent.stream, &agent.activity.status) {
+        (Some(_), _) => conversation(ctx, (app, ui), (open, agent), focused),
         (None, AgentStatus::Error { message }) => note(ctx, message),
         (None, _) => note(ctx, "starting the agent…"),
     }
@@ -77,13 +69,6 @@ fn conversation(
     prompt::draw(ctx, ui, &laid, focused);
     prompt::offers(ctx, &offered::offered(app, ui), ui.agent.offered, laid.pane);
     model::draw(ctx, chat, agent, laid.pane);
-}
-
-/// Whether the selected session's agent shows its conversation: headless, or by the user's choice.
-pub(crate) fn conversing(app: &AppState) -> bool {
-    let session = app.session.selected.as_ref();
-    let headless = session.and_then(|one| app.agent.stream(one)).is_some();
-    headless || app.config.conversation()
 }
 
 fn note(ctx: &mut Ctx, text: &str) {

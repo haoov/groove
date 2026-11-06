@@ -156,20 +156,6 @@ impl Layout {
         self
     }
 
-    /// Where the agent's grid starts inside its pane, under the bar.
-    pub fn agent_origin(&self, tokens: &Tokens) -> (f32, f32) {
-        (self.agent.x + tokens.sm, self.agent.y + tokens.sm)
-    }
-
-    /// The columns and rows the agent pane holds at this cell size.
-    pub fn agent_grid(&self, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
-        let screen = Rect {
-            h: self.agent.h - self.agent_bar.h,
-            ..self.agent
-        };
-        grid_in(screen, tokens, cell)
-    }
-
     /// The manual section's grids under its bar: `count` side by side, a hairline between.
     pub fn shell_panes(&self, tokens: &Tokens, count: usize) -> Vec<Rect> {
         let mut body = self.manual;

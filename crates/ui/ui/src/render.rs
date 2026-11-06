@@ -1,6 +1,6 @@
 //! The one owner of a `Frame`, and what a new window size asks of the agents.
 
-use groove_controllers::{AppState, Command, agent};
+use groove_controllers::{AppState, Command};
 use groove_gfx::{Fonts, Frame};
 use groove_types::chat::Chat;
 
@@ -59,7 +59,6 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     let mut out = walks(app, ui);
     out.extend(notes(app));
     out.extend(log(app, ui));
-    out.extend(fitted(app, ui, metrics));
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
@@ -182,30 +181,6 @@ fn walks(app: &AppState, ui: &Ui) -> Vec<Command> {
         )],
         false => Vec::new(),
     }
-}
-
-/// Every agent's grid to the pane it stands in.
-fn fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
-    let tokens = metrics.tokens();
-    let layout = Layout::of(metrics, ui);
-    let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);
-    app.agent
-        .agents
-        .iter()
-        .filter(|(_, agent)| {
-            agent
-                .terminal
-                .as_ref()
-                .is_some_and(|t| t.size() != (cols, rows))
-        })
-        .map(|(session, _)| {
-            Command::Agent(agent::Command::Resize {
-                session: session.clone(),
-                cols,
-                rows,
-            })
-        })
-        .collect()
 }
 
 /// The open section's terminals, each to the grid its pane now holds.

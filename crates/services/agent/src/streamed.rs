@@ -4,37 +4,7 @@
 use groove_types::chat::Permission;
 use groove_types::{AgentStatus, SessionId, Timestamp};
 
-use crate::{Agent, State, Stream, StreamHeard, Terminal};
-
-/// What one launch started: a terminal or a stream.
-#[derive(Debug)]
-pub enum Run {
-    Terminal(Terminal),
-    Stream(Stream),
-}
-
-impl Run {
-    pub fn terminate(&self) {
-        match self {
-            Run::Terminal(one) => _ = one.terminate(),
-            Run::Stream(one) => _ = one.terminate(),
-        }
-    }
-
-    pub(crate) fn split(run: Option<Run>) -> (Option<Terminal>, Option<Stream>) {
-        match run {
-            Some(Run::Terminal(one)) => (Some(one), None),
-            Some(Run::Stream(one)) => (None, Some(one)),
-            None => (None, None),
-        }
-    }
-
-    /// What an agent ran on, to end.
-    pub fn of(agent: Agent) -> Option<Run> {
-        let stream = agent.stream.map(Run::Stream);
-        stream.or(agent.terminal.map(Run::Terminal))
-    }
-}
+use crate::{Agent, State, Stream, StreamHeard};
 
 impl State {
     pub fn stream(&self, session: &SessionId) -> Option<&Stream> {

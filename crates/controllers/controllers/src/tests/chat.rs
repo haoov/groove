@@ -10,26 +10,15 @@ use crate::agent::{Command, hooked};
 use crate::tests::fixture::{self, until};
 use crate::{AppState, Services, SyncSpawner, dispatch};
 
-/// The explorer's agent, started and showing its first line.
+/// The explorer's agent, started on its stream.
 fn started(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> SessionId {
     let id = SessionId::new("explorer-1");
     let start = Command::Start {
         session: id.clone(),
-        cols: 40,
-        rows: 6,
     };
     dispatch(crate::Command::Agent(start), state, services, spawner);
-    until(spawner, services, state, |s| {
-        line(s, &id, 0).starts_with("ready")
-    });
+    until(spawner, services, state, |s| s.agent.stream(&id).is_some());
     id
-}
-
-fn line(state: &AppState, id: &SessionId, row: usize) -> String {
-    let terminal = state.agent.terminal(id);
-    terminal
-        .map(|one| one.screen().line(row))
-        .unwrap_or_default()
 }
 
 #[test]
@@ -62,8 +51,9 @@ fn a_message_sent_from_groove_s_prompt_reaches_the_agent_and_waits_in_the_conver
         text: "  hello  ".into(),
     };
     dispatch(crate::Command::Agent(say), &mut state, &services, &spawner);
-    until(&spawner, &services, &mut state, |s| {
-        line(s, &id, 2) == "got hello"
+    let heard = || fixture::heard(home.path(), "explorer-1").map(|(_, said)| said);
+    until(&spawner, &services, &mut state, |_| {
+        heard() == Some(vec!["hello".into()])
     });
     let chat = state.agent.chat(&id).unwrap();
     assert_eq!(

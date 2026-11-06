@@ -23,7 +23,6 @@ pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
     app.agent.agents.push((
         SessionId::new("a"),
         Agent {
-            terminal: None,
             stream: None,
             permissions: Vec::new(),
             commands: Vec::new(),
@@ -135,35 +134,6 @@ fn the_row_stands_under_the_screen_and_the_grid_gives_way() {
         tokens.bar + tokens.sm,
         "a bar and its gap"
     );
-    assert_eq!(
-        layout.agent_origin(&tokens).1,
-        layout.agent.y + tokens.sm,
-        "the screen starts at the top as it did"
-    );
-}
-
-#[test]
-fn the_wheel_over_the_agent_reaches_its_own_screen() {
-    let app = offering(Vec::new());
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let pane = crate::layout::Layout::of(window(), &ui).agent;
-    let acted = crate::input::handle(
-        crate::input::Input::Scroll {
-            x: pane.x + pane.w / 2.0,
-            y: pane.y + pane.h / 2.0,
-            delta: crate::input::Delta::Lines {
-                across: 0.0,
-                down: 3.0,
-            },
-        },
-        &mut ui,
-        &app,
-        &hits,
-        window(),
-    );
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.scroll"], "the wheel is the agent's own");
 }
 
 /// The config of a machine whose task sources are set up.
@@ -199,90 +169,4 @@ pub(super) fn sourced(
     });
     app.config.config = Some(config);
     app
-}
-
-/// Where the pointer lands in the middle of the agent's own screen.
-fn on_screen(ui: &Ui) -> (f32, f32) {
-    let pane = crate::layout::Layout::of(window(), ui).agent;
-    (pane.x + pane.w / 2.0, pane.y + pane.h / 3.0)
-}
-
-#[test]
-fn a_press_on_the_screen_begins_a_selection() {
-    let app = offering(Vec::new());
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let (x, y) = on_screen(&ui);
-    let acted = crate::input::handle(
-        crate::input::Input::Press {
-            x,
-            y,
-            mods: Default::default(),
-        },
-        &mut ui,
-        &app,
-        &hits,
-        window(),
-    );
-    assert!(
-        matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
-        "the pointer is choosing what to hold"
-    );
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.select"]);
-
-    let moved = crate::input::handle(
-        crate::input::Input::Move { x: x + 40.0, y },
-        &mut ui,
-        &app,
-        &hits,
-        window(),
-    );
-    let said: Vec<&str> = moved.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.select"], "and it carries while it is down");
-
-    crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
-    assert!(
-        !matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
-        "the release ends it"
-    );
-}
-
-#[test]
-fn the_chord_copies_what_the_screen_holds() {
-    let app = offering(Vec::new());
-    let mut ui = session_ui();
-    let chord = crate::tests::CTRL_SHIFT;
-    let acted = crate::tests::press(crate::input::Key::Char('c'), chord, &mut ui, &app);
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.copy"]);
-}
-
-#[test]
-fn a_trackpad_that_moves_a_little_still_moves_the_screen() {
-    let app = offering(Vec::new());
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let (x, y) = on_screen(&ui);
-    let nudge = |ui: &mut Ui| {
-        crate::input::handle(
-            crate::input::Input::Scroll {
-                x,
-                y,
-                delta: crate::input::Delta::Pixels {
-                    across: 0.0,
-                    down: 7.0,
-                },
-            },
-            ui,
-            &app,
-            &hits,
-            window(),
-        )
-    };
-    let mut asked = 0;
-    for _ in 0..3 {
-        asked += nudge(&mut ui).len();
-    }
-    assert!(asked > 0, "what is under a line is carried, not lost");
 }

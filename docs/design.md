@@ -23,7 +23,7 @@ the rail only as its attention count.
   action. The mouse is a shortcut.
 - **Selection is a background**: a rounded ground, one step above the hover's. A selected
   tab is held the same way. In the region that has the keys it takes the accent; elsewhere
-  it stays neutral. The agent and a terminal show the keys by a solid cursor.
+  it stays neutral. A terminal shows the keys by a solid cursor, the agent's prompt by its caret.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
   rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
   workspace and the sidebar unfold first, and a press while they hold the keys folds them
@@ -36,7 +36,7 @@ the rail only as its attention count.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
-  agent's and the terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
+  terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
   Enforced by `alt_shift_q_closes_the_session`.
 - **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
   palette's included, as the arrows do. Enforced by
@@ -210,15 +210,14 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | a top bar · the agent's pty, or its conversation, what it asks, and its prompt |
+| **Agent pane** | a top bar · the agent's conversation, what it asks, and its prompt |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
 
-**The agent pane draws the conversation** when *conversation view* is on (Settings › Agent);
-off, it shows the pty. With it on, an agent starts headless: Claude Code's stream-json on its
-pipes, no pty. A message, a skill and an interrupt go over that stream, and the transcript still
-draws the rows. A tool Claude asks leave for stands on glass over the prompt: its name, what it
+**The agent pane draws the conversation.** Every agent runs headless: Claude Code's stream-json
+on its pipes, no pty. A message, a skill, an interrupt and a model switch go over that stream,
+and the transcript draws the rows. What a built-in command prints comes from the stream. A tool Claude asks leave for stands on glass over the prompt: its name, what it
 acts on, *allow* and *refuse*. A question shows its options one a row, one question at a time. In an empty
 prompt Enter allows, Escape refuses and a digit picks an option. With nothing asked, Escape
 interrupts the turn. The agent's rows stand at the left and the user's bubbles at the right,
@@ -253,7 +252,7 @@ agent's own, else Groove's skills. Up and Down choose, Tab or Enter takes one, E
 them away.
 *Ask the agent*, in the menu of the diff's lines, puts where they stand in the prompt,
 `src/lib.rs:12-14`, and moves the keys there.
-Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn_it_on`,
+Enforced by `the_conversation_shows_in_the_agent_pane`,
 `a_click_on_a_command_card_shows_every_command_whole_with_what_it_printed`,
 `while_the_agent_works_past_its_last_record_a_turning_glance_says_so`,
 `an_interrupt_ends_the_turn_and_no_glance_turns_after_it`,
@@ -282,8 +281,8 @@ Enforced by `the_conversation_shows_in_place_of_the_terminal_while_settings_turn
 
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
-ground's whole width. A click on any tab opens it again on that tab. The agent's terminal
-takes its new size at once. Folding the terminals leaves a folded strip folded. Enforced by
+ground's whole width. A click on any tab opens it again on that tab. Folding the terminals
+leaves a folded strip folded. Enforced by
 `a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent`,
 `any_tab_opens_the_folded_strip_on_itself`,
 `the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
@@ -574,7 +573,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
-| Agent | auto-approve default · conversation view · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
+| Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |

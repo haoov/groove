@@ -27,7 +27,7 @@ use crate::views::settings::Draft;
 use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
-use agent::{to_agent, to_shell};
+use agent::to_shell;
 use bar::{finding, in_bar, opened, typing};
 pub(in crate::input) use bar::{refound, searches};
 use filter::on_board;
@@ -117,7 +117,7 @@ fn in_pane(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    let raw = raw(ui, app);
+    let raw = ui.focus == Focus::Terminal;
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return app::copied(ui.focus, app);
     }
@@ -151,20 +151,11 @@ fn in_pane(
         return commands;
     }
     match ui.focus {
-        Focus::Agent if !raw => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
-        Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
+        Focus::Agent => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),
         Focus::Rail => in_rail(key, ui, app),
-    }
-}
-
-/// Whether the pane with the keys is a terminal, which takes every key as typed.
-fn raw(ui: &Ui, app: &AppState) -> bool {
-    match ui.focus {
-        Focus::Agent => !crate::views::session::agent_pane::conversing(app),
-        focus => focus == Focus::Terminal,
     }
 }
 

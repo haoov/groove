@@ -1,11 +1,10 @@
-//! Starting an agent for a session, on a terminal or headless.
+//! Starting an agent for a session, headless on its stream.
 
 use std::path::{Path, PathBuf};
 
 use groove_agent_launch::{Launch, Loopback, Paths, Tools};
 use groove_hooks::Receiver;
 use groove_mcp::Server;
-use groove_terminal::{Hooks, Terminal};
 use groove_types::{AnsiPalette, Error, Session, ThemeName};
 
 /// Where a launch reads and writes, from the app's environment.
@@ -23,38 +22,17 @@ pub struct LaunchPaths {
 }
 
 impl crate::State {
-    /// Whether `session`'s agent runs on a terminal or a stream it has not exited.
+    /// Whether `session`'s agent runs on a stream it has not exited.
     pub fn alive(&self, session: &groove_types::SessionId) -> bool {
         let exited = |one: &groove_types::SessionActivity| {
             matches!(one.status, groove_types::AgentStatus::Exited { .. })
         };
-        let runs = self.terminal(session).is_some() || self.stream(session).is_some();
-        runs && !self.activity(session).is_some_and(exited)
+        self.stream(session).is_some() && !self.activity(session).is_some_and(exited)
     }
 }
 
-/// Plans the command line and spawns it on a terminal of `cols` by `rows`, `prompt` its first message.
-pub async fn launch(
-    session: &Session,
-    paths: &LaunchPaths,
-    cwd: &Path,
-    (cols, rows): (u16, u16),
-    palette: AnsiPalette,
-    hooks: Hooks,
-    prompt: Option<&str>,
-) -> Result<Terminal, Error> {
-    let launch = planned(session, paths, cwd).await?;
-    let launch = match prompt {
-        Some(prompt) => launch.asking(prompt),
-        None => launch,
-    };
-    Terminal::spawn(launch.spec(cols, rows), palette, hooks)
-        .await
-        .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
-}
-
 /// Plans the command line and spawns it headless, `prompt` its first message.
-pub async fn launch_headless(
+pub async fn launch(
     session: &Session,
     paths: &LaunchPaths,
     cwd: &Path,

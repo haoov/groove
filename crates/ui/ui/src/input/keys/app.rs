@@ -247,7 +247,7 @@ pub(super) fn copied(focus: Focus, app: &AppState) -> Vec<Command> {
             .as_ref()
             .and_then(|session| app.shell.shells(session)?.focused())
             .map(Grid::Shell),
-        _ => Some(Grid::Agent),
+        _ => None,
     };
     grid.map_or_else(Vec::new, |grid| crate::input::selection::copied(app, grid))
 }

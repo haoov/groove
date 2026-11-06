@@ -46,13 +46,15 @@ fn follow(state: &mut AppState, spawner: &dyn Spawner, session: SessionId, path:
     spawner.detach(Box::pin(groove_agent_service::follower(path, heeded, send)));
 }
 
-/// Words typed in Groove's own prompt, sent to the agent as if typed in its terminal, and shown waiting.
-pub(super) fn say(state: &mut AppState, spawner: &dyn Spawner, session: &SessionId, text: &str) {
+/// Words typed in Groove's own prompt, sent to the agent and shown waiting.
+pub(super) fn say(state: &mut AppState, session: &SessionId, text: &str) {
     let text = text.trim();
     if text.is_empty() {
         return;
     }
-    super::skills::typed(state, spawner, session, text);
+    if let Some(stream) = state.agent.stream(session) {
+        let _ = stream.say(text);
+    }
     let said = AgentEvent::Said {
         session: session.clone(),
         text: text.to_string(),
@@ -60,7 +62,7 @@ pub(super) fn say(state: &mut AppState, spawner: &dyn Spawner, session: &Session
     apply(Event::Agent(said), state);
 }
 
-/// A headless agent switched to `model`, kept as the one it answers with.
+/// The agent switched to `model`, kept as the one it answers with.
 pub(super) fn model(state: &mut AppState, session: &SessionId, model: String) {
     let Some(stream) = state.agent.stream(session) else {
         return;
@@ -70,11 +72,10 @@ pub(super) fn model(state: &mut AppState, session: &SessionId, model: String) {
     }
 }
 
-/// The turn stopped: a control message to a headless agent, Escape to one on a terminal.
+/// The turn stopped where it stands.
 pub(super) fn interrupt(state: &mut AppState, session: &SessionId) {
-    match state.agent.stream(session) {
-        Some(stream) => _ = stream.interrupt(),
-        None => super::send(state, session, b"\x1b"),
+    if let Some(stream) = state.agent.stream(session) {
+        let _ = stream.interrupt();
     }
 }
 

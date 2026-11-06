@@ -9,59 +9,33 @@ fn agent_cmd(command: Command) -> crate::Command {
 }
 
 #[test]
-fn start_send_and_exit_travel_through_the_loop() {
+fn start_say_and_exit_travel_through_the_loop() {
     let (home, spawner, services, mut state) = fixture::with_explorer();
     let id = SessionId::new("explorer-1");
-
-    dispatch(
-        agent_cmd(Command::Start {
-            session: id.clone(),
-            cols: 40,
-            rows: 6,
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
+    let start = Command::Start {
+        session: id.clone(),
+    };
+    dispatch(agent_cmd(start), &mut state, &services, &spawner);
     until(&spawner, &services, &mut state, |s| {
-        s.agent.agent(&id).is_some()
+        s.agent.stream(&id).is_some()
     });
-    let agent = state.agent.agent(&id).unwrap();
-    assert_eq!(agent.activity.status, AgentStatus::Idle);
-    assert_eq!(agent.terminal.as_ref().unwrap().size(), (40, 6));
-
-    until(&spawner, &services, &mut state, |s| {
-        s.agent
-            .agent(&id)
-            .unwrap()
-            .terminal
-            .as_ref()
-            .unwrap()
-            .screen()
-            .line(0)
-            .starts_with("ready")
-    });
-    dispatch(
-        agent_cmd(Command::Send {
-            session: id.clone(),
-            bytes: b"hi\n".to_vec(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
+    assert_eq!(state.agent.activity(&id).unwrap().status, AgentStatus::Idle);
+    let say = |text: &str| Command::Say {
+        session: id.clone(),
+        text: text.into(),
+    };
+    dispatch(agent_cmd(say("hi")), &mut state, &services, &spawner);
+    dispatch(agent_cmd(say("exit")), &mut state, &services, &spawner);
     until(&spawner, &services, &mut state, |s| {
         matches!(
             s.agent.activity(&id).unwrap().status,
             AgentStatus::Exited { .. }
         )
     });
-
     let agent = state.agent.agent(&id).unwrap();
     assert_eq!(agent.activity.status, AgentStatus::Exited { code: 7 });
-    let screen = agent.terminal.as_ref().unwrap().screen();
-    assert_eq!(screen.line(0), "ready --session-id");
-    assert_eq!(screen.line(2), "got hi");
+    let (_, said) = fixture::heard(home.path(), "explorer-1").expect("a run");
+    assert_eq!(said, ["hi", "exit"]);
     assert!(
         home.path()
             .join("data/agent-launch/explorer-1.prompt.md")
@@ -70,51 +44,20 @@ fn start_send_and_exit_travel_through_the_loop() {
 }
 
 #[test]
-fn resize_reaches_the_terminal_and_end_forgets_it() {
+fn end_forgets_the_agent() {
     let (_home, spawner, services, mut state) = fixture::with_explorer();
     let id = SessionId::new("explorer-1");
-    dispatch(
-        agent_cmd(Command::Start {
-            session: id.clone(),
-            cols: 40,
-            rows: 6,
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
+    let start = Command::Start {
+        session: id.clone(),
+    };
+    dispatch(agent_cmd(start), &mut state, &services, &spawner);
     until(&spawner, &services, &mut state, |s| {
         s.agent.agent(&id).is_some()
     });
-    dispatch(
-        agent_cmd(Command::Resize {
-            session: id.clone(),
-            cols: 30,
-            rows: 8,
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    assert_eq!(
-        state
-            .agent
-            .agent(&id)
-            .unwrap()
-            .terminal
-            .as_ref()
-            .unwrap()
-            .size(),
-        (30, 8)
-    );
-    dispatch(
-        agent_cmd(Command::End {
-            session: id.clone(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
+    let end = Command::End {
+        session: id.clone(),
+    };
+    dispatch(agent_cmd(end), &mut state, &services, &spawner);
     assert!(state.agent.agent(&id).is_none());
 }
 
@@ -125,8 +68,6 @@ fn a_start_for_an_unknown_session_does_nothing() {
     dispatch(
         agent_cmd(Command::Start {
             session: id.clone(),
-            cols: 40,
-            rows: 6,
         }),
         &mut state,
         &services,

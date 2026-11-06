@@ -1,18 +1,14 @@
-//! An agent launched for its session: the command line, its paths, and what its terminal or stream reports.
+//! An agent launched for its session: the command line, its paths, and what its stream reports.
 
-use groove_agent_service::{
-    Event as AgentEvent, Held, Hooks, LaunchPaths, Run, StreamHooks, launch, launch_headless,
-    palette,
-};
+use groove_agent_service::{Event as AgentEvent, Held, LaunchPaths, Stream, StreamHooks, launch};
 use groove_types::{Error, Session, SessionId, Timestamp};
 
 use super::skills;
-use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
 /// The agent launched in a job at the worktree root; the continuation stores it or the error.
-pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (u16, u16)) {
-    asking(state, spawner, id, size, None);
+pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId) {
+    asking(state, spawner, id, None);
 }
 
 /// The session's agent launched with `prompt` as its first message, on the session's write line.
@@ -20,10 +16,9 @@ pub(crate) fn asking(
     state: &mut AppState,
     spawner: &dyn Spawner,
     id: SessionId,
-    size: (u16, u16),
     prompt: Option<String>,
 ) {
-    let Some((size, prompt)) = state.agent.hold(&id, (size, prompt)) else {
+    let Some(prompt) = state.agent.hold(&id, prompt) else {
         return;
     };
     let Some(session) = state.session.get(&id).map(|o| o.session.clone()) else {
@@ -36,12 +31,9 @@ pub(crate) fn asking(
         dirs: skills::dirs(state),
         shared: shared_copy(state),
         cwd: state.config.worktree_root(&state.env.home),
-        palette: palette(state.config.theme()),
-        headless: state.config.conversation(),
         sink,
         launched,
         session,
-        size,
         prompt,
     };
     let mut turn = state.agent.writing(&id);
@@ -63,17 +55,13 @@ struct Launch {
     dirs: groove_skill_service::skills::Dirs,
     shared: Option<std::path::PathBuf>,
     cwd: std::path::PathBuf,
-    size: (u16, u16),
-    palette: groove_types::AnsiPalette,
-    /// On a stream rather than a terminal.
-    headless: bool,
     sink: std::sync::Arc<dyn crate::Deliver>,
     launched: u64,
     prompt: Option<String>,
 }
 
-/// The launch files written and the agent spawned, headless or on its terminal.
-async fn launched_in(one: Launch) -> Result<Run, Error> {
+/// The launch files written and the agent spawned on its stream.
+async fn launched_in(one: Launch) -> Result<Stream, Error> {
     let paths = LaunchPaths {
         plugin_dirs: groove_skill_service::skills::plugin_dirs(&one.dirs).await?,
         knowledge: groove_skill_service::listing::knowledge(one.shared.as_deref()).await,
@@ -81,21 +69,13 @@ async fn launched_in(one: Launch) -> Result<Run, Error> {
     };
     let (session, prompt) = (&one.session, one.prompt.as_deref());
     let on_exit = on_exit(&one.sink, session, one.launched);
-    if one.headless {
-        let on_heard = on_heard(&one.sink, session, one.launched);
-        let hooks = StreamHooks { on_heard, on_exit };
-        let stream = launch_headless(session, &paths, &one.cwd, hooks, prompt).await;
-        return stream.map(Run::Stream);
-    }
-    let on_damage = on_damage(&one.sink, session);
-    let hooks = Hooks { on_damage, on_exit };
-    let (cwd, size, palette) = (&one.cwd, one.size, one.palette);
-    let terminal = launch(session, &paths, cwd, size, palette, hooks, prompt).await;
-    terminal.map(Run::Terminal)
+    let on_heard = on_heard(&one.sink, session, one.launched);
+    let hooks = StreamHooks { on_heard, on_exit };
+    launch(session, &paths, &one.cwd, hooks, prompt).await
 }
 
 /// The launch kept on its session, or ended when the session went; a start held meanwhile runs.
-fn stored((id, launched): (SessionId, u64), result: Result<Run, Error>) -> Continuation {
+fn stored((id, launched): (SessionId, u64), result: Result<Stream, Error>) -> Continuation {
     Box::new(
         move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
             let held = state.agent.written(&id);
@@ -105,10 +85,10 @@ fn stored((id, launched): (SessionId, u64), result: Result<Run, Error>) -> Conti
                 None => result.ok(),
             };
             if let Some(orphan) = orphan {
-                orphan.terminate();
+                let _ = orphan.terminate();
             }
-            if let Some((size, prompt)) = held {
-                asking(state, spawner, id, size, prompt);
+            if let Some(prompt) = held {
+                asking(state, spawner, id, prompt);
             }
         },
     )
@@ -159,20 +139,6 @@ fn shared_copy(state: &AppState) -> Option<std::path::PathBuf> {
 
 pub(crate) fn launch_dir(state: &AppState) -> std::path::PathBuf {
     state.env.data_dir.join("agent-launch")
-}
-
-/// One `Damaged` in flight at most, however fast the child writes.
-fn on_damage(
-    sink: &std::sync::Arc<dyn crate::Deliver>,
-    session: &Session,
-) -> Box<dyn Fn() + Send + Sync> {
-    let id = session.id.clone();
-    Box::new(coalesced(sink.clone(), move || {
-        let id = id.clone();
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            apply(Event::Agent(AgentEvent::Damaged { session: id }), state)
-        })
-    }))
 }
 
 /// What the stream says beside the transcript, applied to the launch it came from.

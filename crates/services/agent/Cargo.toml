@@ -1,6 +1,6 @@
 [package]
 name = "groove-agent-service"
-description = "The agent capability: each session's agent, its terminal or its stream, its conversation and its asks"
+description = "The agent capability: each session's agent on its stream, its conversation and its asks"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

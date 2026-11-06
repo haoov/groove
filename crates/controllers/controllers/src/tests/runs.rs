@@ -38,9 +38,7 @@ fn explorer(
     };
     dispatch(Command::Session(open), state, services, spawner);
     let id = state.session.selected.clone().expect("a session");
-    until(spawner, services, state, |s| {
-        s.agent.terminal(&id).is_some()
-    });
+    until(spawner, services, state, |s| s.agent.stream(&id).is_some());
     id
 }
 
@@ -53,9 +51,16 @@ fn status(state: &mut AppState, id: &SessionId, to: AgentStatus) {
     agent.expect("its agent").1.activity.status = to;
 }
 
-fn screen(state: &AppState, id: &SessionId, row: usize) -> String {
-    let terminal = state.agent.terminal(id).expect("a terminal");
-    terminal.screen().line(row).to_string()
+/// What the last run of `id`'s agent was told, once it runs.
+fn heard(state: &AppState, id: &SessionId) -> Option<Vec<String>> {
+    let heard = crate::tests::fixture::heard(&state.env.home, id.as_str());
+    heard.map(|(_, said)| said)
+}
+
+/// Whether the last run of `id`'s agent was first told `words`.
+fn told(state: &AppState, id: &SessionId, words: &str) -> bool {
+    let first = heard(state, id).and_then(|said| said.first().cloned());
+    first.is_some_and(|one| one.starts_with(words))
 }
 
 fn task(short_id: &str, status: &str) -> groove_types::Task {
@@ -85,7 +90,7 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     let away = explorer("away", &mut state, &services, &spawner);
     let here = explorer("here", &mut state, &services, &spawner);
     until(&spawner, &services, &mut state, |s| {
-        screen(s, &away, 0).starts_with("ready")
+        heard(s, &away).is_some()
     });
     for id in [&away, &here] {
         auto(&mut state, id, true);
@@ -109,7 +114,7 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     );
     assert_eq!(state.routine.runs.running.len(), 1);
     until(&spawner, &services, &mut state, |s| {
-        screen(s, &away, 2) == "got /groove:fix-notes"
+        heard(s, &away).is_some_and(|said| said.iter().any(|one| one == "/groove:fix-notes"))
     });
 
     let run = &mut state.routine.runs.running[0];
@@ -161,7 +166,7 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
         "switched on, it is not selected"
     );
     until(&spawner, &services, &mut state, |s| {
-        s.agent.terminal(&id).is_some()
+        s.agent.stream(&id).is_some()
     });
     auto(&mut state, &id, true);
 
@@ -179,12 +184,8 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
     state.task.tasks[0].status = "Done".into();
     routine::watch(&mut state, &services, &spawner);
 
-    let first = "ready Routine `digest`, started by task-moved.";
-    until(&spawner, &services, &mut state, |s| {
-        s.agent
-            .terminal(&id)
-            .is_some_and(|t| t.screen().line(0) == first)
-    });
+    let first = "Routine `digest`, started by task-moved.";
+    until(&spawner, &services, &mut state, |s| told(s, &id, first));
     let now = std::fs::read_to_string(&thread).unwrap_or_default();
     assert!(
         !now.is_empty() && now != "the-last-run",
@@ -203,16 +204,12 @@ fn a_standalone_routine_s_button_runs_it_whatever_the_rules_but_a_bound_one_has_
         .routine_session("user:digest")
         .expect("its session");
     until(&spawner, &services, &mut state, |s| {
-        s.agent.terminal(&id).is_some()
+        s.agent.stream(&id).is_some()
     });
     let run = |id: &str| Command::Agent(agent::Command::RunRoutine { id: id.into() });
     dispatch(run("user:digest"), &mut state, &services, &spawner);
-    let first = "ready Routine `digest`, started by its button.";
-    until(&spawner, &services, &mut state, |s| {
-        s.agent
-            .terminal(&id)
-            .is_some_and(|t| t.screen().line(0) == first)
-    });
+    let first = "Routine `digest`, started by its button.";
+    until(&spawner, &services, &mut state, |s| told(s, &id, first));
 
     explorer("here", &mut state, &services, &spawner);
     dispatch(run("user:notes"), &mut state, &services, &spawner);
@@ -254,7 +251,7 @@ fn the_daily_routine_runs_on_the_day_s_first_look_and_not_again_that_day() {
         .routine_session("user:daily")
         .expect("its session");
     until(&spawner, &services, &mut state, |s| {
-        s.agent.terminal(&id).is_some()
+        s.agent.stream(&id).is_some()
     });
     auto(&mut state, &id, true);
     routine::watch(&mut state, &services, &spawner);
@@ -266,12 +263,8 @@ fn the_daily_routine_runs_on_the_day_s_first_look_and_not_again_that_day() {
 
     (state.session.restored, state.skill.listed) = (true, true);
     routine::watch(&mut state, &services, &spawner);
-    let first = "ready Routine `daily`, started by daily.";
-    until(&spawner, &services, &mut state, |s| {
-        s.agent
-            .terminal(&id)
-            .is_some_and(|t| t.screen().line(0) == first)
-    });
+    let first = "Routine `daily`, started by daily.";
+    until(&spawner, &services, &mut state, |s| told(s, &id, first));
     let day = std::fs::read_to_string(home.path().join("data/routines/day"));
     assert!(day.is_ok_and(|one| !one.is_empty()), "the day written down");
 

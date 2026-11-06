@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use groove_controllers::AppState;
 use groove_gfx::{Fonts, Renderer, Size};
 
-use super::chat::{chat_ui, conversing};
+use super::chat::chat_ui;
 use super::perf_chat::chatty;
 use crate::input::Key;
 use crate::tests::{ALT_SHIFT, WINDOW, metrics, press};
@@ -39,9 +39,8 @@ fn renderer() -> Renderer {
 #[test]
 #[ignore]
 fn time_the_frames_after_a_move() {
-    for conversation in [false, true] {
-        let mut app = chatty(200);
-        conversing(&mut app, conversation);
+    {
+        let app = chatty(200);
         let mut renderer = renderer();
         let cold = frame(&app, &chat_ui(), &mut renderer, WINDOW.0);
         let mut ui = chat_ui();
@@ -61,7 +60,7 @@ fn time_the_frames_after_a_move() {
             .sum::<Duration>()
             / runs;
         println!(
-            "conversation {conversation:>5}: {cold:>10?} cold, {still:>10?} still, \
+            "conversation: {cold:>10?} cold, {still:>10?} still, \
              {opened:>10?} palette opened, {open:>10?} palette open, {typed:>10?} typed, \
              {resized:>10?} a resize"
         );

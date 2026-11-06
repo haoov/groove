@@ -223,14 +223,8 @@ impl App {
     }
 
     fn apply(&mut self, event: Event) {
-        let damage = matches!(
-            event,
-            Event::Agent(groove_controllers::agent_service::Event::Damaged { .. })
-        );
         apply(event, &mut self.state);
-        if !damage {
-            self.watch();
-        }
+        self.watch();
         self.redraw();
     }
 

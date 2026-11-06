@@ -207,11 +207,8 @@ fn beside_the_prompt_the_model_s_button_and_the_usage_s_open_their_menus() {
     assert_eq!(labels(&ui), used);
     let mut ui = chat_ui();
     click(model, &mut ui, &app, &hits);
-    assert_eq!(
-        labels(&ui),
-        ["opus 5.5"],
-        "an agent on a terminal cannot switch"
-    );
+    let models = ["opus 5.5", "sonnet 5.5", "haiku 5.5", "fable 5.1"];
+    assert_eq!(labels(&ui), models);
 }
 
 #[test]

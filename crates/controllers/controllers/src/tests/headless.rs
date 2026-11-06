@@ -24,12 +24,10 @@ case "$stop" in *'"subtype":"interrupt"'*) echo 'stopped here' >&2; exit 7;; esa
 exit 6
 "#;
 
-fn headless(home: &Path, state: &mut AppState) {
+fn headless(home: &Path) {
     let claude = home.join(".local/bin/claude");
     std::fs::write(&claude, FAKE_STREAM).unwrap();
     std::fs::set_permissions(&claude, std::fs::Permissions::from_mode(0o755)).unwrap();
-    let config = state.config.config.as_mut().expect("a config");
-    config.preferences.conversation = true;
 }
 
 fn run(command: Command, state: &mut AppState, services: &Services, spawner: &SyncSpawner) {
@@ -62,18 +60,15 @@ fn status(state: &AppState, id: &SessionId) -> AgentStatus {
 #[test]
 fn a_headless_agent_hears_a_message_asks_leave_settles_and_its_end_shows_in_the_conversation() {
     let (home, spawner, services, mut state) = fixture::with_explorer();
-    headless(home.path(), &mut state);
+    headless(home.path());
     let (id, services) = (SessionId::new("explorer-1"), &services);
     let start = Command::Start {
         session: id.clone(),
-        cols: 40,
-        rows: 6,
     };
     run(start, &mut state, services, &spawner);
     until(&spawner, services, &mut state, |s| {
         s.agent.stream(&id).is_some()
     });
-    assert!(state.agent.terminal(&id).is_none());
     let say = Command::Say {
         session: id.clone(),
         text: "hello".into(),
