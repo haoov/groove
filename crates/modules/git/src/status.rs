@@ -19,6 +19,13 @@ impl Git {
         self.count(&format!("{point}..refs/heads/{branch}")).await
     }
 
+    /// Commits on origin's `branch` that `sha` lacks, the branch fetched first.
+    pub async fn branch_past(&self, sha: &str, branch: &str) -> Result<u32> {
+        self.fetch(&[branch]).await?;
+        self.count(&format!("{sha}..refs/remotes/origin/{branch}"))
+            .await
+    }
+
     async fn count(&self, range: &str) -> Result<u32> {
         let args = ["rev-list", "--count", range];
         let out = self.line(&args).await?;

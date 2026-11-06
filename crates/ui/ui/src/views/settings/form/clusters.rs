@@ -98,6 +98,7 @@ fn known(ctx: &mut Ctx, rect: Rect, app: &AppState, added: &[ClusterConfig]) {
         Column::plain("", Width::Fit("")),
         Column::plain("context", Width::FitCell(&sample)),
         Column::plain("read-only", Width::Fit("read-only")),
+        Column::plain("argo hub", Width::Fit("argo hub")),
         Column::plain(
             "login",
             Width::Fit("sign-in refused · log in from a terminal"),
@@ -136,6 +137,7 @@ fn context<'a>(app: &AppState, one: &'a ClusterConfig) -> Shown<'a, Target> {
         )),
         Cell::label(one.context.as_str(), hue).into(),
         switch(one.read_only, ClusterChange::ReadOnly(!one.read_only)).into(),
+        switch(one.argo_hub, ClusterChange::ArgoHub(!one.argo_hub)).into(),
         Cell::small(said, role).into(),
         Act::Button("remove", Target::ClusterRemove(name.clone())).into(),
     ])

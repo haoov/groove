@@ -18,6 +18,9 @@ pub use open::Open;
 pub use service::{Added, ClusterWrite, Service, unsourced};
 
 /// The pool's name for a repo given as a git URL, or the name itself.
+/// A repo's address, the branch it follows, and the revision synced from it.
+pub type Ahead = (String, String, String);
+
 pub fn slug(name: &str) -> String {
     groove_git::RemoteUrl::parse(name).map_or_else(|_| name.to_string(), |remote| remote.slug())
 }
@@ -33,6 +36,9 @@ pub struct State {
     pub pool: Vec<groove_types::PoolEntry>,
     /// Origin's heads per repo as last listed, for the pickers.
     pub branches: Vec<(RepoId, Vec<String>)>,
+    /// How far each branch an Argo CD source follows stands past the revision it synced.
+    pub ahead: std::collections::BTreeMap<Ahead, (Option<u32>, Timestamp)>,
+    pub asking_ahead: std::collections::BTreeSet<Ahead>,
     /// What the opened sessions have done, newest first.
     pub feed: Vec<groove_types::TimelineEvent>,
     /// The rail is back as the last run left it.

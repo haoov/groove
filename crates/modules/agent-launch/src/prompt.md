@@ -47,10 +47,11 @@ the user creates fails on it instead.
 
 ## Clusters go through Groove
 
-Never run `kubectl`, `helm` or `k9s` yourself: they are refused. Read a cluster the
+Never run `kubectl`, `helm`, `k9s` or `argocd` yourself: they are refused. Read a cluster the
 session holds with the `kube` tool. Name its context, and pass the kubectl
 arguments as a list. Reads only, and a secret's data never comes back. To read a
-cluster the session does not hold, attach it first with `attach_cluster`.
+cluster the session does not hold, attach it first with `attach_cluster`. Read an
+Argo CD Application with `kube`, and its resources' health with `argo_health`.
 
 ## The user already sees your work
 

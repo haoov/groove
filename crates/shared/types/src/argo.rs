@@ -131,15 +131,28 @@ pub struct AppResource {
 }
 
 impl AppPart {
+    /// The first git source on a branch, with the commit it synced to: repo, branch, commit.
+    pub fn tracked(&self) -> Option<(String, String, String)> {
+        let on_branch = |one: &&AppSource| one.chart.is_none() && !crate::is_sha(&one.target);
+        let one = self
+            .sources
+            .iter()
+            .filter(on_branch)
+            .find(|one| one.synced.as_deref().is_some_and(crate::is_sha))?;
+        let sha = one.synced.clone().unwrap_or_default();
+        Some((one.repo.clone(), one.target.clone(), sha))
+    }
+
     /// The last sync's result for `one`, hooks aside.
     pub fn result(&self, one: &AppResource) -> Option<&SyncedResource> {
         let applied = &self.operation.as_ref()?.applied;
         applied.iter().find(|done| !done.hook && one.is(done))
     }
 
-    /// Out of sync, waiting to be pruned, or failed in the last sync.
-    pub fn attention(&self, one: &AppResource) -> bool {
-        one.out_of_sync() || one.prune || self.result(one).is_some_and(SyncedResource::broke)
+    /// Out of sync, to prune, failed in the last sync, or degraded: anything to see.
+    pub fn notable(&self, one: &AppResource, health: &[ResourceHealth]) -> bool {
+        let broke = self.result(one).is_some_and(SyncedResource::broke);
+        one.out_of_sync() || one.prune || broke || health_of(health, one) == "Degraded"
     }
 }
 
@@ -154,6 +167,34 @@ impl AppResource {
             && self.name == result.name
             && self.group == result.group
             && self.namespace.as_deref().unwrap_or_default() == namespace
+    }
+}
+
+/// A resource's health as Argo CD's resource tree holds it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceHealth {
+    pub group: String,
+    pub kind: String,
+    pub namespace: Option<String>,
+    pub name: String,
+    /// `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Missing` or `Unknown`; empty for none.
+    pub status: String,
+    pub reason: String,
+}
+
+/// What Argo CD says of `one`'s health; empty where it says nothing.
+pub fn health_of<'a>(health: &'a [ResourceHealth], one: &AppResource) -> &'a str {
+    let found = health.iter().find(|held| held.of(one));
+    found.map_or("", |held| held.status.as_str())
+}
+
+impl ResourceHealth {
+    pub fn of(&self, one: &AppResource) -> bool {
+        self.kind == one.kind
+            && self.name == one.name
+            && self.group == one.group
+            && self.namespace.as_deref().unwrap_or_default()
+                == one.namespace.as_deref().unwrap_or_default()
     }
 }
 

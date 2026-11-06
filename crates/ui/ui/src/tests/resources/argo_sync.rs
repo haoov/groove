@@ -68,7 +68,7 @@ fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
 }
 
 #[test]
-fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
+fn resources_open_on_what_is_out_of_sync_and_all_folds_the_quiet_kinds() {
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     let operation = part.operation.as_mut().expect("its sync");
@@ -87,22 +87,21 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     let shown = texts(&app, &ui);
     for one in [
         "resources",
-        "needs attention · 2",
+        "degraded · 0",
         "out of sync · 1",
         "syncing · 0",
         "Deployment",
         "billing-api",
         "1 out of sync",
-        "1 failed",
-        "field is immutable",
-        "billing-migrate",
     ] {
         assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
     }
     assert!(!shown.iter().any(|text| text == "ConfigMap"), "{shown:?}");
     hit(&app, &mut ui, Target::ArgoFilter(Filter::All));
     let shown = texts(&app, &ui);
-    assert!(shown.iter().any(|text| text == "ConfigMap"), "{shown:?}");
+    for one in ["ConfigMap", "1 failed", "field is immutable"] {
+        assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
+    }
     assert!(
         !shown.iter().any(|text| text == "billing-config"),
         "a kind with nothing to see stands folded"

@@ -29,12 +29,13 @@ pub struct Paths<'a> {
 }
 
 /// The cluster tools the agent never runs itself: it reads through Groove's `kube` tool.
-const DENIED: [&str; 5] = [
+const DENIED: [&str; 6] = [
     "Bash(kubectl:*)",
     "Bash(helm:*)",
     "Bash(k9s:*)",
     "Bash(kubectx:*)",
     "Bash(kubens:*)",
+    "Bash(argocd:*)",
 ];
 
 /// The command line, ready to spawn.

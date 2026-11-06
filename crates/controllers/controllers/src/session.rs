@@ -108,6 +108,10 @@ pub enum Command {
     ListRepos,
     /// `session.list_branches`: refresh origin's heads of a repo for the pickers.
     ListBranches { repo: RepoId },
+    /// `session.ahead_of`: how many commits a branch stands past a revision, in the repo's clone.
+    AheadOf {
+        ahead: groove_session_service::Ahead,
+    },
     /// `session.attach_cluster`: a context Groove knows, on a namespace or the whole cluster.
     AttachCluster {
         session: SessionId,
@@ -140,6 +144,7 @@ impl Command {
             Command::SelectWorktree { .. } => "session.select_worktree",
             Command::CloseWorktree { .. } => "session.close_worktree",
             Command::ListRepos => "session.list_repos",
+            Command::AheadOf { .. } => "session.ahead_of",
             Command::ListBranches { .. } => "session.list_branches",
             Command::AttachCluster { .. } => "session.attach_cluster",
             Command::DetachCluster { .. } => "session.detach_cluster",
@@ -201,6 +206,7 @@ fn worktrees(command: Command, state: &mut AppState, services: &Services, spawne
         } => close_worktree(state, services, spawner, &session, &worktree, force),
         Command::ListRepos => list_repos(services, spawner),
         Command::ListBranches { repo } => list_branches(services, spawner, &repo),
+        Command::AheadOf { ahead } => repos::ahead_of(state, services, spawner, ahead),
         cluster => clusters::dispatch(cluster, state, services, spawner),
     }
 }

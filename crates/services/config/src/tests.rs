@@ -143,6 +143,16 @@ fn a_context_is_added_once_changed_on_its_own_and_removed() {
             .change_cluster("prod", ClusterChange::ReadOnly(true))
             .is_none()
     );
+    state.change_cluster("staging", ClusterChange::ArgoHub(true));
+    let written = state.change_cluster("hub", ClusterChange::ArgoHub(true));
+    let hubs: Vec<bool> = written
+        .map(|config| config.clusters.iter().map(|one| one.argo_hub).collect())
+        .unwrap_or_default();
+    assert_eq!(
+        hubs,
+        [true, false],
+        "one context is the Argo CD hub at most"
+    );
     state.remove_cluster("hub");
     let left: Vec<_> = state
         .clusters()

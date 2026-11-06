@@ -1,6 +1,7 @@
 //! A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched.
 
 mod argo;
+mod argo_tree;
 mod describe;
 mod discovery;
 mod follow;
@@ -13,6 +14,7 @@ mod yaml;
 #[cfg(test)]
 mod tests;
 
+pub use argo_tree::{ArgoApp, Treed, argo_tree, argo_tree_once};
 pub use describe::describe;
 pub use discovery::{FRESH, kinds, namespaces};
 pub use follow::{Change, Followed, follow};
