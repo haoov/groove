@@ -280,3 +280,10 @@ fn an_answer_says_its_model_and_how_many_tokens_its_context_held() {
     };
     assert_eq!(said(answer), [Heard::Said("done".into()), used]);
 }
+
+#[test]
+fn claude_code_s_own_synthetic_answer_says_no_model() {
+    let answer = json!({"type": "assistant", "message": {"model": "<synthetic>",
+        "usage": {"input_tokens": 0}, "content": [{"type": "text", "text": "No response requested."}]}});
+    assert_eq!(said(answer), [Heard::Said("No response requested.".into())]);
+}

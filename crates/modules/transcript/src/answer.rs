@@ -11,7 +11,7 @@ pub(crate) fn failed(content: Option<&Value>) -> Option<Heard> {
     (!text.trim().is_empty()).then(|| Heard::Failed(text.trim().to_string()))
 }
 
-/// The model that wrote an answer, and the tokens its context held for it.
+/// The model that wrote an answer, and the tokens its context held for it; none for Claude Code's own `<synthetic>` ones.
 pub(crate) fn spent(record: &Value) -> Option<Heard> {
     let message = record.get("message")?;
     let usage = message.get("usage")?;
@@ -19,6 +19,10 @@ pub(crate) fn spent(record: &Value) -> Option<Heard> {
     let context = tokens("input_tokens")
         + tokens("cache_creation_input_tokens")
         + tokens("cache_read_input_tokens");
-    let model = message.get("model")?.as_str()?.to_string();
+    let model = message.get("model")?.as_str()?;
+    if model.starts_with('<') {
+        return None;
+    }
+    let model = model.to_string();
     Some(Heard::Used { model, context })
 }
