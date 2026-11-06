@@ -60,6 +60,16 @@ pub(super) fn say(state: &mut AppState, spawner: &dyn Spawner, session: &Session
     apply(Event::Agent(said), state);
 }
 
+/// A headless agent switched to `model`, kept as the one it answers with.
+pub(super) fn model(state: &mut AppState, session: &SessionId, model: String) {
+    let Some(stream) = state.agent.stream(session) else {
+        return;
+    };
+    if stream.set_model(&model).is_ok() {
+        state.agent.chose(session, model);
+    }
+}
+
 /// The turn stopped: a control message to a headless agent, Escape to one on a terminal.
 pub(super) fn interrupt(state: &mut AppState, session: &SessionId) {
     match state.agent.stream(session) {

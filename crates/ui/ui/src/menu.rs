@@ -39,6 +39,19 @@ pub enum Of {
     Hues(String),
     /// Where a pod's logs start, from the logs view's range picker.
     LogRanges,
+    /// The models the agent switches to and what it uses, from its button in the top bar.
+    Models {
+        session: groove_types::SessionId,
+        rows: Vec<Told>,
+    },
+}
+
+/// One row of the models' menu: a model to switch to, ticked while current, or what is used.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Told {
+    pub label: String,
+    pub model: Option<String>,
+    pub current: bool,
 }
 
 /// One skill a menu row stands for, with what it is sent.

@@ -11,7 +11,7 @@ pub(crate) fn line(text: &str) -> Option<Result<Heard, Value>> {
     let record = serde_json::from_str::<Value>(text).ok()?;
     let id = || Some(record.get("request_id")?.as_str()?.to_string());
     match record.get("type")?.as_str()? {
-        "result" => Some(Ok(Heard::Settled)),
+        "result" => Some(Ok(settled(&record))),
         "control_cancel_request" => Some(Ok(Heard::Withdrawn(id()?))),
         "control_request" => Some(asks(&record).ok_or_else(|| refused(&id().unwrap_or_default()))),
         "assistant" | "user" => within(&record, text).map(Ok),
@@ -70,8 +70,13 @@ fn limited(info: &Value) -> Option<String> {
 fn windows(record: &Value) -> Option<Heard> {
     let info = record.get("rate_limit_info")?;
     let used = |window: &str| {
-        let share = info.pointer(&format!("/unifiedWindows/{window}/utilization"));
-        share.and_then(Value::as_f64).map(|one| one as f32)
+        let held = info.pointer(&format!("/unifiedWindows/{window}"))?;
+        let used = held.get("utilization")?.as_f64()? as f32;
+        let resets = held
+            .get("resetsAt")
+            .and_then(Value::as_i64)
+            .map(Timestamp::new);
+        Some(chat::Window { used, resets })
     };
     let limits = chat::Limits {
         five_hour: used("five_hour"),
@@ -79,6 +84,18 @@ fn windows(record: &Value) -> Option<Heard> {
     };
     let refused = limited(info);
     Some(Heard::Limits { limits, refused })
+}
+
+/// A turn's end, with how many tokens each model it used can hold.
+fn settled(record: &Value) -> Heard {
+    let used = record.get("modelUsage").and_then(Value::as_object);
+    let windows = used.into_iter().flatten().filter_map(|(model, one)| {
+        let window = one.get("contextWindow")?.as_u64()?;
+        Some((model.clone(), window))
+    });
+    Heard::Settled {
+        windows: windows.collect(),
+    }
 }
 
 /// A `can_use_tool` request as the permission it waits on.

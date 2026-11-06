@@ -28,6 +28,8 @@ pub enum Command {
     Send { session: SessionId, bytes: Vec<u8> },
     /// `agent.say`: words from Groove's own prompt, sent to the agent as a prompt.
     Say { session: SessionId, text: String },
+    /// `agent.model`: a headless agent's next answers come from `model`.
+    Model { session: SessionId, model: String },
     /// `agent.interrupt`: the agent's turn stopped where it stands.
     Interrupt { session: SessionId },
     /// `agent.answer`: the tool a headless agent asked for runs, on the picked answers, or does not.
@@ -110,6 +112,7 @@ impl Command {
             Command::End { .. } => "agent.end",
             Command::Send { .. } => "agent.send",
             Command::Say { .. } => "agent.say",
+            Command::Model { .. } => "agent.model",
             Command::Interrupt { .. } => "agent.interrupt",
             Command::Answer { .. } => "agent.answer",
             Command::Resize { .. } => "agent.resize",
@@ -147,6 +150,7 @@ pub fn dispatch(
         Command::End { session } => end(state, &session),
         Command::Send { session, bytes } => send(state, &session, &bytes),
         Command::Say { session, text } => chat::say(state, spawner, &session, &text),
+        Command::Model { session, model } => chat::model(state, &session, model),
         Command::Interrupt { session } => chat::interrupt(state, &session),
         Command::Answer {
             session,

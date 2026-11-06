@@ -45,6 +45,10 @@ pub(super) fn acted(
             }
             Some(Vec::new())
         }
+        Target::ModelButton | Target::UsageButton => {
+            menu_over(ui, app, (hits, metrics), target);
+            Some(Vec::new())
+        }
         Target::FoldAgents => {
             ui.agent.docked = !ui.agent.docked;
             Some(Vec::new())
@@ -130,4 +134,26 @@ fn caret_at(hits: &Hits, (x, y): (f32, f32), metrics: Metrics) -> Option<Caret> 
 fn pressed(ui: &mut Ui, app: &AppState, point: (f32, f32), metrics: Metrics) -> Vec<Command> {
     let cell = agent_cell(point, ui, metrics);
     pressed_on(ui, app, Grid::Agent, cell)
+}
+
+/// The menu of the model's button or of the usage's, over the right end of the button.
+fn menu_over(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics), button: &Target) {
+    let Some(session) = app.session.selected.as_ref() else {
+        return;
+    };
+    let of = match button {
+        Target::ModelButton => crate::views::session::agent_pane::model::models(app, session),
+        _ => {
+            let now = groove_types::Timestamp::now();
+            crate::views::session::agent_pane::model::usage(app, session, now)
+        }
+    };
+    if let Some((of, rect)) = of.zip(hits.rect_of(button)) {
+        let menu = crate::Menu {
+            at: (rect.right(), rect.y - metrics.tokens().sm),
+            corner: groove_ui_kit::widgets::Corner::BottomRight,
+            of,
+        };
+        ui.overlay = Some(crate::Overlay::Menu(menu));
+    }
 }

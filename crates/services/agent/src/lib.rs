@@ -44,6 +44,10 @@ pub struct Agent {
     pub commands: Vec<groove_types::chat::Slash>,
     /// How much of the plan a headless agent's stream says is used.
     pub limits: groove_types::chat::Limits,
+    /// How many tokens each model a headless agent used can hold.
+    pub windows: Vec<(String, u64)>,
+    /// The model the user switched the agent to.
+    pub chosen: Option<String>,
     pub activity: SessionActivity,
     /// When this agent was launched, which says whether a skill is newer than it.
     pub started_at: Timestamp,
@@ -121,6 +125,8 @@ impl State {
             permissions: Vec::new(),
             commands: Vec::new(),
             limits: Default::default(),
+            windows: Vec::new(),
+            chosen: None,
             activity: activity(status, now),
             started_at: now,
             launch,

@@ -23,6 +23,7 @@ pub fn panel_at<A: App>(
     let (width, height) = size;
     let (x, y) = match corner {
         Corner::TopLeft => at,
+        Corner::TopRight => (at.0 - width, at.1),
         Corner::BottomLeft => (at.0, at.1 - height),
         Corner::BottomRight => (at.0 - width, at.1 - height),
     };
@@ -84,6 +85,27 @@ pub fn glass_button<A: App>(
     (mark, role): (Mark, Role),
     target: A::Target,
 ) -> bool {
+    let (at, on) = round_glass(ctx, rect, target);
+    let color = ctx.styles.color(role);
+    ctx.icon(at, mark, 0, color);
+    on
+}
+
+/// A round button made of glass, a ring of `share` in its middle, the whole glass lit under the pointer.
+pub fn glass_gauge<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    share: f32,
+    target: A::Target,
+) -> bool {
+    let (at, on) = round_glass(ctx, rect, target);
+    let colors = (ctx.styles.color(Role::Accent), ctx.styles.line());
+    crate::widgets::gauge_ring(ctx, at, share, colors);
+    on
+}
+
+/// The round glass of a button, lit under the pointer; where its middle mark goes, and whether lit.
+fn round_glass<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target) -> (Rect, bool) {
     let size = rect.w.min(rect.h);
     let round = rect.align((size, size), Align::Center, Align::Center);
     let radius = size / 2.0;
@@ -97,10 +119,7 @@ pub fn glass_button<A: App>(
         ctx.rounded(round, ctx.styles.glass_hover(), radius);
     }
     let icon = ctx.tokens.icon;
-    let at = round.align((icon, icon), Align::Center, Align::Center);
-    let color = ctx.styles.color(role);
-    ctx.icon(at, mark, 0, color);
-    on
+    (round.align((icon, icon), Align::Center, Align::Center), on)
 }
 
 /// `rect` on `ground`, which glass drawn over it shows blurred.
@@ -128,6 +147,7 @@ fn lifted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
     TopLeft,
+    TopRight,
     BottomLeft,
     BottomRight,
 }

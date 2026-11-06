@@ -10,6 +10,8 @@ fn state() -> State {
         permissions: Vec::new(),
         commands: Vec::new(),
         limits: Default::default(),
+        windows: Vec::new(),
+        chosen: None,
         activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
         started_at: Timestamp::new(100),
         launch: 0,

@@ -48,6 +48,8 @@ fn stands(app: &mut AppState, id: &str, status: AgentStatus, changed_at: i64) {
         permissions: Vec::new(),
         commands: Vec::new(),
         limits: Default::default(),
+        windows: Vec::new(),
+        chosen: None,
         activity,
         started_at: Timestamp::new(0),
         launch: 0,

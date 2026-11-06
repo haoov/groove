@@ -46,6 +46,8 @@ fn printing(state: &mut AppState, said: &str) {
             permissions: Vec::new(),
             commands: Vec::new(),
             limits: Default::default(),
+            windows: Vec::new(),
+            chosen: None,
             activity: groove_types::SessionActivity {
                 status: groove_types::AgentStatus::Idle,
                 tool: None,

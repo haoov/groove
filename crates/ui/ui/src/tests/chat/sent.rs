@@ -5,6 +5,7 @@ use groove_types::chat::{Heard, Outcome};
 
 use super::{chat_ui, talking};
 use crate::hit::Target;
+use crate::tests::window as window_size;
 use crate::tests::{all_texts, click, window};
 
 fn sent(id: &str) -> Heard {
@@ -146,23 +147,6 @@ fn a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one() {
 }
 
 #[test]
-fn the_bar_under_the_prompt_says_the_model_the_context_and_the_plan_used() {
-    let used = Heard::Used {
-        model: "claude-opus-5-5".into(),
-        context: 82_002,
-    };
-    let mut app = talking(vec![used]);
-    app.agent.agents[0].1.limits = groove_types::chat::Limits {
-        five_hour: Some(0.48),
-        week: Some(0.09),
-    };
-    let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
-    let texts = all_texts(&frame);
-    let line = "opus-5-5 · context 82k · 5h 48% · week 9%";
-    assert!(texts.iter().any(|one| one == line), "{texts:?}");
-}
-
-#[test]
 fn a_click_on_an_offered_command_takes_it() {
     use crate::tests::typed;
     let mut app = talking(Vec::new());
@@ -179,4 +163,74 @@ fn a_click_on_an_offered_command_takes_it() {
         .expect("the offered command");
     click(row, &mut ui, &app, &hits);
     assert_eq!(ui.agent.prompt.text(), "/review ");
+}
+
+#[test]
+fn beside_the_prompt_the_model_s_button_and_the_usage_s_open_their_menus() {
+    let used = Heard::Used {
+        model: "claude-opus-5-5".into(),
+        context: 82_002,
+    };
+    let mut app = talking(vec![used]);
+    let agent = &mut app.agent.agents[0].1;
+    agent.windows = vec![("claude-opus-5-5".into(), 1_000_000)];
+    let window = |used| groove_types::chat::Window { used, resets: None };
+    agent.limits = groove_types::chat::Limits {
+        five_hour: Some(window(0.48)),
+        week: Some(window(0.09)),
+    };
+    let mut ui = chat_ui();
+    let (_, hits) = crate::view(&app, &ui, window_size(), &mut Fonts::embedded());
+    let prompt = hits.rect_of(&Target::Prompt).expect("the prompt");
+    let usage = hits
+        .rect_of(&Target::UsageButton)
+        .expect("the usage's button");
+    let model = hits
+        .rect_of(&Target::ModelButton)
+        .expect("the model's button");
+    assert!(
+        model.x > prompt.right() && usage.x > model.right(),
+        "at its right, the model first"
+    );
+    assert!(
+        usage.y > prompt.y && usage.bottom() < prompt.bottom(),
+        "on its row"
+    );
+    let labels = |ui: &crate::Ui| match ui.menu().map(|one| &one.of) {
+        Some(crate::Of::Models { rows, .. }) => {
+            rows.iter().map(|one| one.label.clone()).collect::<Vec<_>>()
+        }
+        _ => Vec::new(),
+    };
+    click(usage, &mut ui, &app, &hits);
+    let used = ["context  82k of 1M · 8%", "5 hours  48%", "week  9%"];
+    assert_eq!(labels(&ui), used);
+    let mut ui = chat_ui();
+    click(model, &mut ui, &app, &hits);
+    assert_eq!(
+        labels(&ui),
+        ["opus 5.5"],
+        "an agent on a terminal cannot switch"
+    );
+}
+
+#[test]
+fn picking_a_model_switches_the_agent_to_it() {
+    let session = groove_types::SessionId::new("a");
+    let sonnet = crate::menu::Told {
+        label: "sonnet 5.5".into(),
+        model: Some("claude-sonnet-5-5".into()),
+        current: false,
+    };
+    let of = crate::Of::Models {
+        session: session.clone(),
+        rows: vec![sonnet],
+    };
+    let picked = crate::views::overlays::actions::picked(&of, 0);
+    let model = "claude-sonnet-5-5".to_string();
+    let switch = groove_controllers::agent::Command::Model { session, model };
+    assert_eq!(
+        picked.commands,
+        [groove_controllers::Command::Agent(switch)]
+    );
 }

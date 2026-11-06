@@ -6,11 +6,13 @@ mod rows;
 mod subagents;
 mod usage;
 
-pub use usage::usage;
+pub use usage::{MODELS, model_name, percent, resets, tokens};
 
 pub use asked::{Permission, Question};
 pub use heard::Heard;
-pub use rows::{Edit, Entry, Glance, Limits, Outcome, Patch, Run, Sent, Slash, Subagent, Tool};
+pub use rows::{
+    Edit, Entry, Glance, Limits, Outcome, Patch, Run, Sent, Slash, Subagent, Tool, Window,
+};
 
 use crate::Timestamp;
 

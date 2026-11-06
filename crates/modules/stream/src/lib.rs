@@ -24,8 +24,8 @@ pub enum Heard {
     Asks(Permission),
     /// A request the agent no longer waits on.
     Withdrawn(String),
-    /// A turn ended, finished or interrupted.
-    Settled,
+    /// A turn ended, finished or interrupted, with how many tokens each model it used can hold.
+    Settled { windows: Vec<(String, u64)> },
     /// The commands its prompt takes after `/`.
     Commands(Vec<chat::Slash>),
     /// How much of the plan is used, and the limit that refuses requests if one does.
@@ -119,6 +119,16 @@ impl Stream {
             "type": "control_request",
             "request_id": format!("groove-{id}"),
             "request": { "subtype": "interrupt" },
+        }))
+    }
+
+    /// The next answers come from `model`.
+    pub fn set_model(&self, model: &str) -> Result<()> {
+        let id = self.requests.fetch_add(1, Ordering::Relaxed);
+        self.send(json!({
+            "type": "control_request",
+            "request_id": format!("groove-{id}"),
+            "request": { "subtype": "set_model", "model": model },
         }))
     }
 

@@ -13,6 +13,8 @@ fn state() -> State {
         permissions: Vec::new(),
         commands: Vec::new(),
         limits: Default::default(),
+        windows: Vec::new(),
+        chosen: None,
         activity: crate::activity(AgentStatus::Working, Timestamp::new(100)),
         started_at: Timestamp::new(100),
         launch: 7,
@@ -81,7 +83,13 @@ fn a_withdrawn_ask_goes_and_a_turn_s_end_clears_the_rest_and_settles_the_agent()
         .map(|one| one.id.clone())
         .collect();
     assert_eq!(left, ["r2"]);
-    hear(&mut state, 7, StreamHeard::Settled);
+    hear(
+        &mut state,
+        7,
+        StreamHeard::Settled {
+            windows: Vec::new(),
+        },
+    );
     assert!(state.permissions(&session).is_empty());
     assert_eq!(status(&state), AgentStatus::Idle);
 }
@@ -92,6 +100,12 @@ fn a_finished_turn_stays_done_and_an_earlier_launch_s_stream_is_not_heard() {
     hear(&mut state, 6, asks("r1"));
     assert!(state.permissions(&SessionId::new("s")).is_empty());
     state.agents[0].1.activity.status = AgentStatus::Done { seen: false };
-    hear(&mut state, 7, StreamHeard::Settled);
+    hear(
+        &mut state,
+        7,
+        StreamHeard::Settled {
+            windows: Vec::new(),
+        },
+    );
     assert_eq!(status(&state), AgentStatus::Done { seen: false });
 }

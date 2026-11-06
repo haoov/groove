@@ -141,6 +141,13 @@ pub struct Slash {
 /// How much of the plan's windows is used, from 0 to 1.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Limits {
-    pub five_hour: Option<f32>,
-    pub week: Option<f32>,
+    pub five_hour: Option<Window>,
+    pub week: Option<Window>,
+}
+
+/// One window of the plan: how much of it is used, from 0 to 1, and when it starts again.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Window {
+    pub used: f32,
+    pub resets: Option<Timestamp>,
 }

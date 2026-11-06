@@ -138,7 +138,12 @@ async fn a_turn_s_end_and_a_withdrawn_ask_are_heard_and_an_unknown_request_is_re
         .says(json!({"type": "result", "subtype": "success"}))
         .await;
     assert_eq!(scene.hears().await, Heard::Withdrawn("r1".into()));
-    assert_eq!(scene.hears().await, Heard::Settled);
+    assert_eq!(
+        scene.hears().await,
+        Heard::Settled {
+            windows: Vec::new()
+        }
+    );
     let refused = scene.reads().await;
     assert_eq!(
         (
@@ -174,7 +179,15 @@ async fn a_spawned_agent_reads_its_input_and_its_end_says_its_code_and_last_stde
     tokio::time::sleep(Duration::from_millis(50)).await;
     let ended = "The agent ended with code 3:\nnot logged in".to_string();
     let ended = Heard::Chat(groove_types::chat::Heard::Failed(ended));
-    assert_eq!(*heard.lock().expect("held"), [Heard::Settled, ended]);
+    assert_eq!(
+        *heard.lock().expect("held"),
+        [
+            Heard::Settled {
+                windows: Vec::new()
+            },
+            ended
+        ]
+    );
 }
 
 #[tokio::test]
@@ -197,8 +210,14 @@ async fn a_subagent_s_own_records_the_plan_s_use_and_a_refusing_limit_are_heard(
     };
     assert_eq!(scene.hears().await, Heard::Chat(within));
     let limits = groove_types::chat::Limits {
-        five_hour: Some(0.48),
-        week: Some(0.09),
+        five_hour: Some(groove_types::chat::Window {
+            used: 0.48,
+            resets: None,
+        }),
+        week: Some(groove_types::chat::Window {
+            used: 0.09,
+            resets: None,
+        }),
     };
     let used = Heard::Limits {
         limits,
@@ -208,4 +227,13 @@ async fn a_subagent_s_own_records_the_plan_s_use_and_a_refusing_limit_are_heard(
     let refused = Some("The five-hour limit is reached.".to_string());
     let limits = groove_types::chat::Limits::default();
     assert_eq!(scene.hears().await, Heard::Limits { limits, refused });
+}
+
+#[tokio::test]
+async fn a_model_switch_is_written_as_a_control_request() {
+    let mut scene = scene();
+    scene.stream.set_model("claude-sonnet-5-5").expect("sent");
+    let asked = scene.reads().await;
+    assert_eq!(asked["request"]["subtype"], "set_model");
+    assert_eq!(asked["request"]["model"], "claude-sonnet-5-5");
 }

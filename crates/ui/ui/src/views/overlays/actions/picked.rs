@@ -33,6 +33,17 @@ fn offered(of: &Of, at: usize) -> Option<Picked> {
             })
         }
         Of::Tab { path, owes, others } => Some(closed(path, *owes, others, at)),
+        Of::Models { session, rows } => {
+            let model = rows.get(at).and_then(|one| one.model.clone());
+            let switch = model.map(|model| groove_controllers::agent::Command::Model {
+                session: session.clone(),
+                model,
+            });
+            Some(Picked {
+                commands: switch.map(Command::Agent).into_iter().collect(),
+                ..Picked::default()
+            })
+        }
         _ => None,
     }
 }

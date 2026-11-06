@@ -26,7 +26,8 @@ pub(super) struct Laid {
     shown: usize,
 }
 
-/// The prompt over the agent's bar, a gap between, as the workspace stands over the terminals.
+/// The prompt over the agent's bar, a gap between, as the workspace stands over the terminals;
+/// room kept at its right for the model's and the usage's buttons.
 pub(super) fn laid(ctx: &mut Ctx, ui: &Ui) -> Laid {
     let (sm, xs, md, line) = (
         ctx.tokens.sm,
@@ -36,7 +37,8 @@ pub(super) fn laid(ctx: &mut Ctx, ui: &Ui) -> Laid {
     );
     let mut room = ctx.app.layout.agent;
     from_bottom(&mut room, ctx.tokens.bar + sm * 2.0, 0.0);
-    let room = room.pad(Edges::across(sm + xs, sm + xs));
+    let beside = (ctx.tokens.bar + sm) * 2.0;
+    let room = room.pad(Edges::across(sm + xs, sm + xs + beside));
     let wide = room.w.min(ctx.tokens.palette);
     let room = room.align((wide, room.h), Align::Center, Align::Start);
     let cols = ((room.w - md * 2.0) / ctx.advance).floor().max(1.0) as usize;

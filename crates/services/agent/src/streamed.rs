@@ -64,6 +64,12 @@ impl State {
         Some(taken)
     }
 
+    pub fn chose(&mut self, session: &SessionId, model: String) {
+        if let Some(agent) = self.agent_mut(session) {
+            agent.chosen = Some(model);
+        }
+    }
+
     fn agent_mut(&mut self, session: &SessionId) -> Option<&mut Agent> {
         let found = self.agents.iter_mut().find(|(id, _)| id == session);
         found.map(|(_, one)| one)
@@ -94,7 +100,11 @@ pub(crate) fn heard(
                 state.streamed(session, groove_types::chat::Heard::Failed(text));
             }
         }
-        StreamHeard::Settled => {
+        StreamHeard::Settled { windows } => {
+            for (model, window) in windows {
+                agent.windows.retain(|(one, _)| *one != model);
+                agent.windows.push((model, window));
+            }
             agent.permissions.clear();
             let busy = matches!(
                 agent.activity.status,

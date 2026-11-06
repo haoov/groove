@@ -274,13 +274,19 @@ fn an_interrupt_stops_a_working_subagent_and_a_failure_is_a_row() {
 }
 
 #[test]
-fn the_usage_line_says_the_model_the_context_and_the_plan_s_windows_it_knows() {
-    let limits = crate::chat::Limits {
-        five_hour: Some(0.48),
-        week: Some(0.09),
-    };
-    let line = crate::chat::usage(Some("claude-opus-5-5"), Some(82_002), limits);
-    assert_eq!(line, "opus-5-5 · context 82k · 5h 48% · week 9%");
-    let known = crate::chat::usage(None, Some(1_500), crate::chat::Limits::default());
-    assert_eq!(known, "context 1k");
+fn a_model_reads_by_its_name_and_tokens_and_resets_read_short() {
+    assert_eq!(crate::chat::model_name("claude-opus-5-5"), "opus 5.5");
+    assert_eq!(crate::chat::model_name("claude-fable-5-1"), "fable 5.1");
+    assert_eq!(crate::chat::tokens(82_002), "82k");
+    assert_eq!(crate::chat::tokens(1_000_000), "1M");
+    assert_eq!(crate::chat::tokens(1_500_000), "1.5M");
+    let now = crate::Timestamp::new(0);
+    assert_eq!(
+        crate::chat::resets(crate::Timestamp::new(6_120), now),
+        "resets in 1h 42m"
+    );
+    assert_eq!(
+        crate::chat::resets(crate::Timestamp::new(270_000), now),
+        "resets in 3d 3h"
+    );
 }
