@@ -4,6 +4,8 @@ use crate::Timestamp;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppPart {
+    /// When Argo CD last compared it with its sources, and to what: it moves when the drift may.
+    pub compared: String,
     pub project: String,
     pub sync: String,
     pub health: String,

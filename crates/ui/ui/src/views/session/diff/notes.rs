@@ -84,7 +84,7 @@ impl Inline {
     pub(crate) fn of(app: &AppState, ui: &Ui, view: Face, cols: usize) -> Self {
         let unfiled =
             view == Face::File && super::row::edited(app, ui).is_some_and(|one| one.file.is_none());
-        if app.workspace.commit.is_some() || unfiled {
+        if app.workspace.readonly() || unfiled {
             return Self::default();
         }
         let wrapped = super::wrapping::wrap_of(app, ui).map(|(starts, _)| starts);
@@ -228,7 +228,7 @@ pub(crate) fn noting_drawn(app: &AppState, ui: &Ui) -> bool {
         return false;
     };
     let wrapped = super::wrapping::wrap_of(app, ui).map(|(starts, _)| starts);
-    app.workspace.commit.is_none()
+    !app.workspace.readonly()
         && anchored(
             app,
             (ui.session.face(), wrapped.as_deref().map(Vec::as_slice)),

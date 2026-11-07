@@ -1,5 +1,6 @@
 //! An Application's resource health from Argo CD's API, through the hub's API server: read once, then streamed.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use futures_util::StreamExt;
@@ -80,7 +81,7 @@ pub async fn argo_tree_once((paths, home): (Vec<PathBuf>, PathBuf), app: ArgoApp
 }
 
 /// The hub's client, argocd-server behind its API server, and the CLI's login.
-struct Opened {
+pub(crate) struct Opened {
     client: Client,
     to: Proxied,
     server: String,
@@ -88,7 +89,10 @@ struct Opened {
 }
 
 impl Opened {
-    async fn of((paths, home): (&[PathBuf], &PathBuf), app: &ArgoApp) -> Result<Self, String> {
+    pub(crate) async fn of(
+        (paths, home): (&[PathBuf], &PathBuf),
+        app: &ArgoApp,
+    ) -> Result<Self, String> {
         let (server, token) = token(home).await?;
         let client = Client::shared(paths, &app.hub).await;
         let client = client.map_err(|e| e.to_string())?;
@@ -100,6 +104,17 @@ impl Opened {
             server,
             cookie,
         })
+    }
+
+    /// The body `path` answers on argocd-server; `Err` says how to sign in again when refused.
+    pub(crate) async fn get(&self, path: &str) -> Result<String, String> {
+        let headers = [("Cookie", self.cookie.as_str())];
+        let body = self.client.proxy_get(&self.to, path, &headers).await;
+        body.map_err(|e| refused(&self.server, &e.to_string()))
+    }
+
+    pub(crate) fn refused(&self, why: &str) -> String {
+        refused(&self.server, why)
     }
 
     async fn read(&self, app: &ArgoApp) -> Treed {
@@ -132,8 +147,28 @@ fn refused(server: &str, why: &str) -> String {
     }
 }
 
-/// argocd-server's Service on the hub, on plain HTTP when Argo CD serves no TLS itself.
+/// argocd-server on each hub, found once per run.
+static REACHED: std::sync::Mutex<BTreeMap<String, Proxied>> =
+    std::sync::Mutex::new(BTreeMap::new());
+
+/// argocd-server on the hub, from what was found before or found now.
 async fn reach(client: &Client) -> Result<Proxied, String> {
+    let held = REACHED
+        .lock()
+        .ok()
+        .and_then(|all| all.get(client.context()).cloned());
+    if let Some(to) = held {
+        return Ok(to);
+    }
+    let to = found(client).await?;
+    if let Ok(mut all) = REACHED.lock() {
+        all.insert(client.context().to_string(), to.clone());
+    }
+    Ok(to)
+}
+
+/// argocd-server's Service on the hub, on plain HTTP when Argo CD serves no TLS itself.
+async fn found(client: &Client) -> Result<Proxied, String> {
     let found = client.service(groove_argocd::SERVER_LABEL).await;
     let found = found.map_err(|e| e.to_string())?;
     let found = found.ok_or("no argocd-server Service on the hub")?;

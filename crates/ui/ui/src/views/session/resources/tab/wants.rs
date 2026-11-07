@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use groove_controllers::cluster_service::Named;
-use groove_controllers::{AppState, Command, cluster, session};
+use groove_controllers::{AppState, Command, cluster, session, workspace};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
 use super::super::around::{helm_release, lineage};
@@ -32,7 +32,28 @@ pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Ve
         None => (Vec::new(), (None, None)),
     };
     out.extend(leases(app, keys, streams));
+    out.extend(drift(app, tab));
     out
+}
+
+/// The drift read while an Application's diff shows, at its version; the worktree's change once it does not.
+fn drift(app: &AppState, tab: Option<&Opened>) -> Option<Command> {
+    let read = &app.workspace.drift_read;
+    if let Some(tab) = tab.filter(|one| one.view == View::Diff) {
+        let (key, at) = (
+            tab.link.pod(),
+            tab.link.read(app)?.app.as_ref()?.compared.clone(),
+        );
+        let shown = app.workspace.drift.as_ref();
+        let shown = shown.is_some_and(|one| one.app == key && one.at == at);
+        let failed = read.failed.as_ref();
+        let failed = failed.is_some_and(|(one, version, _)| *one == key && *version == at);
+        let asking = read.asking.as_ref().is_some_and(|(one, _)| *one == key);
+        let show = workspace::Command::ShowDrift { app: key, at };
+        return (!shown && !failed && !asking).then_some(Command::Workspace(show));
+    }
+    let held = app.workspace.drift.is_some() || read.asking.is_some();
+    held.then_some(Command::Workspace(workspace::Command::LeaveDrift))
 }
 
 /// The Application whose resource health the tab reads while its resources show.

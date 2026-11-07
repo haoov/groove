@@ -518,7 +518,13 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
   the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
-  a commit of the list does, fetched first when the clone lacks it. Its `resources` view
+  a commit of the list does, fetched first when the clone lacks it. Its `diff` view is the
+  diff itself, read-only, over what differs between the desired state and the live one as
+  Argo CD computes it (hooks left out, a resource to prune all removed, one missing live
+  all added), each resource a file of YAML: the stream, its heads and folds, gaps, split,
+  colours and find, no seen mark. It reads again when Argo CD compares the Application
+  again or its synced revision moves, one read at a time, the stream and its colours made
+  off the main thread; the worktree's change comes back once the view is left. Its `resources` view
   filters by degraded (Argo CD's health, out of sync or not), out of sync, syncing or all,
   each in its colour with its count; it opens on the sync while one runs, else on the
   first of degraded and out of sync to hold any, else on all. Its filters are glass tabs. Both it and syncing

@@ -10,7 +10,9 @@ use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usag
 
 pub use groove_contexts::paths;
 pub use groove_kubectl::{Answer, Checked, check as checked};
-pub use groove_objects::{ArgoApp, Batch, Change, Delta, FRESH, Followed, Logged, Stop, Treed};
+pub use groove_objects::{
+    ArgoApp, Batch, Change, Delta, DriftFile, FRESH, Followed, Logged, Stop, Treed,
+};
 pub use store::{
     CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Trees, Up, Watched, Yamls,
 };
@@ -222,4 +224,12 @@ pub fn argo_tree(
 /// An Application's resource health from Argo CD, read once.
 pub async fn argo_tree_once(paths: (Vec<PathBuf>, PathBuf), app: ArgoApp) -> Treed {
     groove_objects::argo_tree_once(paths, app).await
+}
+
+/// What differs between an Application's desired and live state, read once.
+pub async fn argo_drift_once(
+    paths: (Vec<PathBuf>, PathBuf),
+    app: ArgoApp,
+) -> std::result::Result<Vec<DriftFile>, String> {
+    groove_objects::argo_drift_once(paths, app).await
 }

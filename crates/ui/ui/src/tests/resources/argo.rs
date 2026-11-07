@@ -101,6 +101,7 @@ pub(super) fn failing() -> Described {
         applied: Vec::new(),
     };
     let part = AppPart {
+        compared: "1".into(),
         project: "analytics".into(),
         sync: "OutOfSync".into(),
         health: "Degraded".into(),

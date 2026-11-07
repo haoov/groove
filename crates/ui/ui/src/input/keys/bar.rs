@@ -116,6 +116,9 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
     };
     let end = Caret::new(at.line, hit.range.end);
     *ui.session.across_mut() = across_at(ui, app, (&hit.path, end), (hits, metrics));
+    if app.workspace.readonly() && !holds {
+        return Vec::new();
+    }
     if !holds {
         let open = workspace::Command::OpenFile {
             path: hit.path,

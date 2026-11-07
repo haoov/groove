@@ -43,6 +43,57 @@ pub(super) fn health(state: &AppState, services: &Services, spawner: &dyn Spawne
     }));
 }
 
+/// What differs between one Application's desired and live state, answered from a job.
+pub(super) fn diff(state: &AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
+    let session = super::session(&call);
+    let Some(open) = state.session.get(&session) else {
+        return call.reply.failed(super::NO_SESSION);
+    };
+    let Some(named) = call.text("app").map(str::to_string) else {
+        return call
+            .reply
+            .failed("argo_diff needs app: the Application as <namespace>/<name>");
+    };
+    let hub = state.config.clusters().iter().find(|one| one.argo_hub);
+    let app = match scoped(&named, hub.map(|one| one.context.as_str()), &open.clusters) {
+        Ok(app) => app,
+        Err(why) => return call.reply.failed(why),
+    };
+    let subject = format!("{} · argo diff {named}", app.hub);
+    crate::timeline::said(
+        services,
+        spawner,
+        &session,
+        TimelineKind::ClusterRead,
+        subject,
+    );
+    let paths = (state.env.kubeconfig.clone(), state.env.home.clone());
+    spawner.spawn(Box::pin(async move {
+        match groove_cluster_service::argo_drift_once(paths, app).await {
+            Ok(files) => call.reply.said(drifted(&files)),
+            Err(why) => call.reply.failed(why),
+        }
+        Box::new(|_: &mut AppState, _: &Services, _: &dyn Spawner| {}) as Continuation
+    }));
+}
+
+/// Each differing resource's change as text, cut at the agent's limit.
+fn drifted(files: &[groove_cluster_service::DriftFile]) -> String {
+    let mut out = String::new();
+    for (path, old, new) in files {
+        let one = groove_workspace_service::unified(path, old, new);
+        if out.len() + one.len() > LIMIT {
+            out.push_str("… cut at 32 KiB");
+            break;
+        }
+        out.push_str(&one);
+    }
+    match out.is_empty() {
+        true => "in sync: nothing differs".to_string(),
+        false => out,
+    }
+}
+
 /// `namespace/name` on the hub, when the session holds the hub and that namespace.
 fn scoped(named: &str, hub: Option<&str>, attached: &[Attached]) -> Result<ArgoApp, String> {
     let Some((namespace, name)) = named.split_once('/') else {

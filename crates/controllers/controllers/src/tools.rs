@@ -39,6 +39,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "read_file" => files::read(state, spawner, call),
         "kube" => kube::read(state, services, spawner, call),
         "argo_health" => argo::health(state, services, spawner, call),
+        "argo_diff" => argo::diff(state, services, spawner, call),
         tool => match groove_agent_service::tools::named(tool) {
             Some(one) if one.writes => write::asked(state, services, spawner, call),
             _ => call.reply.failed(format!("groove answers no {tool} yet")),

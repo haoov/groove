@@ -46,7 +46,7 @@ impl Editing {
             return match tab.view {
                 View::Yaml => Some(Editing::Object(tab.link.key())),
                 View::Logs => log_key(app, tab).map(Editing::Log),
-                View::Describe | View::Resources => None,
+                View::Describe | View::Resources | View::Diff => None,
             };
         }
         app.workspace.active().map(|_| Editing::File)

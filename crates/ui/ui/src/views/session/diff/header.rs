@@ -21,7 +21,7 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
         let mut room = band.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         totals(ctx, &mut room, app);
         switch(ctx, &mut room, ui.session.view);
-        if app.workspace.commit.is_none() {
+        if !app.workspace.readonly() {
             from_left(&mut room, ctx.tokens.sm, 0.0);
             modes(ctx, &mut room, app.workspace.mode);
         }

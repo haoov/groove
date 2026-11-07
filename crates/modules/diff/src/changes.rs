@@ -13,7 +13,7 @@ mod build;
 
 pub use aligned::Aligned;
 pub(crate) use build::text_of;
-pub use build::{aligned, from_sides};
+pub use build::{aligned, from_pairs, from_sides, unified};
 
 use build::merge;
 
