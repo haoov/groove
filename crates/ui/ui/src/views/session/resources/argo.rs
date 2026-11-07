@@ -43,9 +43,20 @@ impl Filter {
 pub struct ArgoUi {
     /// None opens on the sync running, else the first of degraded and out of sync to hold any.
     pub filter: Option<Filter>,
+    /// The resources' find bar: its words narrow the rows by name.
+    pub search: groove_ui_kit::widgets::Field,
+    pub finding: bool,
+    pub typing: bool,
 }
 
 impl ArgoUi {
+    /// Whether `one` stands under what the find bar holds: its name holds every word.
+    pub fn found(&self, one: &AppResource) -> bool {
+        let name = one.name.to_lowercase();
+        let words = self.search.text().to_lowercase();
+        words.split_whitespace().all(|word| name.contains(word))
+    }
+
     pub fn filter(&self, app: &AppPart, health: &[ResourceHealth]) -> Filter {
         let running = app.operation.as_ref().is_some_and(|one| one.running());
         let any = |filter: Filter| app.resources.iter().any(|one| filter.holds(health, one));

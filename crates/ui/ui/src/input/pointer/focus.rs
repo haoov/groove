@@ -47,6 +47,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
+            | Target::ArgoSearch
             | Target::ResourceKind(_)
             | Target::ResourceGroup(_)
             | Target::ResourceSort(_)
@@ -58,6 +59,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ContainerUsage(..)
             | Target::ResourceSection(_)
             | Target::ResourceOpen(_)
+            | Target::ResourceDrift(..)
             | Target::ResourceCopy(..)
             | Target::LogSource(_)
             | Target::LogPrevious(_)

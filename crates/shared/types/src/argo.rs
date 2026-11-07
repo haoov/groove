@@ -208,6 +208,12 @@ pub struct AppCondition {
     pub at: Option<Timestamp>,
 }
 
+/// Where a resource's drift stands in the diff: `argo/Deployment/shop/web.yaml`.
+pub fn drift_path(kind: &str, namespace: Option<&str>, name: &str) -> String {
+    let namespace = namespace.unwrap_or("cluster");
+    format!("argo/{kind}/{namespace}/{name}.yaml")
+}
+
 /// `auto · prune · heal` for an automated sync policy, `manual` without one.
 pub fn sync_policy(automated: Option<(bool, bool)>) -> String {
     let Some((prune, heal)) = automated else {

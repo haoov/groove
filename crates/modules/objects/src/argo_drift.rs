@@ -23,8 +23,7 @@ pub async fn argo_drift_once(
 }
 
 fn file(one: groove_argocd::Drifted) -> DriftFile {
-    let namespace = one.namespace.as_deref().unwrap_or("cluster");
-    let path = format!("argo/{}/{namespace}/{}.yaml", one.kind, one.name);
+    let path = groove_types::drift_path(&one.kind, one.namespace.as_deref(), &one.name);
     let side = |state: Option<Value>| {
         state
             .map(|one| crate::yaml::yaml(&shown(one)))

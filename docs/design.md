@@ -515,7 +515,10 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
-  resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
+  resource's row opens its tab there; under out of sync it opens the diff view on its file
+  instead. A row's right-click offers the skills of its kind, as a list row's does. The
+  find key opens a find bar under its filters, as over the list: its words narrow the rows
+  by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
   the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
   a commit of the list does, fetched first when the clone lacks it. Its `diff` view is the

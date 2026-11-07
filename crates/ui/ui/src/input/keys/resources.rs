@@ -6,7 +6,7 @@ use super::super::{Key, Modifiers};
 use crate::hit::{Hits, Scroller};
 use crate::keymap::{Action, Keymap};
 use crate::views::session::Tab;
-use crate::views::session::resources::Line;
+use crate::views::session::resources::{Line, View};
 use crate::{Focus, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -23,11 +23,37 @@ pub(super) fn chord(
     };
     let up = ui.session.tab == Tab::Resources && open.holds_clusters();
     let held = &mut ui.session.resources;
-    if !up || held.showing.is_some() || !keymap.is(Action::Find, key, mods) {
+    if !up || !keymap.is(Action::Find, key, mods) {
         return None;
     }
-    (held.finding, held.typing) = (true, true);
+    if held.showing.is_none() {
+        (held.finding, held.typing) = (true, true);
+        return Some(Vec::new());
+    }
+    let tab = held.tab_mut().filter(|one| one.view == View::Resources)?;
+    tab.link.read(app)?.app.as_ref()?;
+    (tab.argo.finding, tab.argo.typing) = (true, true);
     Some(Vec::new())
+}
+
+/// An Application's find bar has the keys: Enter gives them back; Esc too, and shuts an empty bar.
+pub(super) fn in_argo((key, mods): (Key, Modifiers), ui: &mut Ui) -> Vec<Command> {
+    let Some(tab) = ui.session.resources.tab_mut() else {
+        return Vec::new();
+    };
+    let argo = &mut tab.argo;
+    match key {
+        Key::Enter => argo.typing = false,
+        Key::Escape => {
+            argo.finding &= !argo.search.is_empty();
+            argo.typing = false;
+        }
+        key => {
+            super::bar::typing(key, mods, &mut argo.search);
+            tab.scroll = 0.0;
+        }
+    }
+    Vec::new()
 }
 
 /// A Resources search has the keys: Enter gives them back; Esc too, and shuts an empty find bar.

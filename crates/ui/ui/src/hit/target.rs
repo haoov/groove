@@ -84,6 +84,8 @@ pub enum Target {
     ResourceList,
     ResourceKind(groove_types::KubeKind),
     ResourceSearch,
+    /// An Application's find bar, which a click types in.
+    ArgoSearch,
     ResourceGroup(groove_types::KindHeading),
     ResourceRow(String),
     /// A column of the list, by its label: its header sorts by it, its edge drags its width.
@@ -107,6 +109,8 @@ pub enum Target {
     /// A section of the described view folded, and another object to open.
     ResourceSection(crate::views::session::resources::Section),
     ResourceOpen(Box<crate::views::session::resources::Link>),
+    /// A resource out of sync: its file in the Application's diff, and its object when it has one.
+    ResourceDrift(String, Option<Box<crate::views::session::resources::Link>>),
     /// A value of an object's tab, which a click copies; a ctrl+click opens its object.
     ResourceCopy(String, Option<Box<crate::views::session::resources::Opens>>),
     /// A context's line, which only lights under the pointer.

@@ -12,9 +12,9 @@ use groove_ui_kit::widgets::{Cell, Shown, Tab, Text};
 
 use groove_controllers::cluster_service::Treed;
 
-use super::super::Filter;
 use super::super::health::status_colour;
-use super::super::opened::Opened;
+use super::super::opened::{Link, Opened};
+use super::super::{ArgoUi, Filter};
 use super::grouped::{self, Columned};
 use super::{destined, stages, syncing};
 use crate::ctx::Ctx;
@@ -58,7 +58,8 @@ pub(super) fn draw(
     if filter == Filter::Syncing {
         return syncing::draw(ctx, rest, (tab, part), dragged);
     }
-    let mut groups = groups((part, health), filter);
+    let rest = super::found::bar(ctx, rest, tab);
+    let mut groups = groups((part, health), (filter, &tab.argo));
     for group in &mut groups {
         grouped::order(&mut group.rows, tab, |one, column| {
             key((part, health), one, column)
@@ -74,8 +75,7 @@ pub(super) fn draw(
         (tab, dragged),
         (&COLUMNS, count),
         |at| match &lines[at] {
-            Line::Row(one) => resource((part, health), one)
-                .target(link(one).map(|link| Target::ResourceOpen(Box::new(link)))),
+            Line::Row(one) => resource((part, health), one).target(opens(filter, one, link(one))),
             line => shown((part, health), line),
         },
     );
@@ -86,6 +86,16 @@ pub(super) fn draw(
         let said = format!("no resource {}", filter.label());
         Label::new(&said, ctx.styles.small(Role::Faint)).draw(ctx, line);
     }
+}
+
+/// Out of sync, a row opens its drift in the diff; else its object, when its context is known.
+fn opens(filter: Filter, one: &AppResource, link: Option<Link>) -> Option<Target> {
+    let link = link.map(Box::new);
+    if filter != Filter::OutOfSync {
+        return link.map(Target::ResourceOpen);
+    }
+    let path = groove_types::drift_path(&one.kind, one.namespace.as_deref(), &one.name);
+    Some(Target::ResourceDrift(path, link))
 }
 
 /// A tab a filter, each in its colour and with its count; at the right, a refused health read.
@@ -127,13 +137,10 @@ fn health_read(read: Option<&Treed>) -> Option<(String, Role)> {
     Some((format!("no health: {first}"), Role::Warn))
 }
 
-fn groups<'a>((part, health): Held<'a>, filter: Filter) -> Vec<Group<'a>> {
+fn groups<'a>((part, health): Held<'a>, (filter, argo): (Filter, &ArgoUi)) -> Vec<Group<'a>> {
     let mut by: BTreeMap<&str, Vec<&AppResource>> = BTreeMap::new();
-    for one in part
-        .resources
-        .iter()
-        .filter(|one| filter.holds(health, one))
-    {
+    let kept = |one: &&AppResource| filter.holds(health, one) && argo.found(one);
+    for one in part.resources.iter().filter(kept) {
         by.entry(&one.kind).or_default().push(one);
     }
     let first = |one: &&AppResource| (!part.notable(one, health), one.name.clone());
