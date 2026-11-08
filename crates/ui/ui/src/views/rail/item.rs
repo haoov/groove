@@ -101,10 +101,13 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
     let mut under =
         band(line, line.h, ctx.tokens.row).pad(Edges::across(inset_of(line, room.x), 0.0));
-    for (label, target) in [
-        ("Approve", Target::Approve(ask.id.clone())),
-        ("Review", Target::Examine(ask.id.clone())),
-    ] {
+    let approve = ("Approve", Target::Approve(ask.id.clone()));
+    let review = ("Review", Target::Examine(ask.id.clone()));
+    let answers = match ask.reviewed {
+        true => vec![review],
+        false => vec![approve, review],
+    };
+    for (label, target) in answers {
         let button = Button::new(label, target, Role::Text, ground).hover(hover);
         button.left(ctx, &mut under, ctx.tokens.xs);
     }

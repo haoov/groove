@@ -75,6 +75,9 @@ pub struct Ask {
     /// The worktree it writes in, when it writes in one.
     #[serde(default)]
     pub worktree: Option<crate::WorktreeId>,
+    /// Approved only from the review sheet's button, once its change was seen.
+    #[serde(default)]
+    pub reviewed: bool,
 }
 
 /// The `agent` service's slice for one open session.

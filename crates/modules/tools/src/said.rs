@@ -20,6 +20,7 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "log_task_hours" => joined("the hours the clock measured", &said("task")),
         "adopt_task" => said("task"),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
+        "kube_patch" => joined(&said("target"), &said("diff")),
         _ => shown(arguments),
     }
 }

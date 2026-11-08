@@ -60,6 +60,9 @@ pub enum Scroller {
     Resources,
     /// The Resources tab's kinds sidebar.
     Kinds,
+    /// The change the review sheet shows, down and sideways.
+    Sheet,
+    SheetAcross,
     /// One of the board's columns.
     Column(u8),
 }
@@ -77,13 +80,15 @@ impl Scroller {
             Scroller::Across => 6,
             Scroller::Resources => 7,
             Scroller::Kinds => 8,
+            Scroller::Sheet => 9,
+            Scroller::SheetAcross => 10,
             Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
 
 /// The scrollers ahead of the board's columns.
-const OWN: usize = 9;
+const OWN: usize = 11;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]

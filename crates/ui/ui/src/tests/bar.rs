@@ -40,6 +40,7 @@ pub(super) fn ask(id: &str, op: &str, subject: &str) -> Ask {
         subject: subject.to_string(),
         text: subject.to_string(),
         worktree: None,
+        reviewed: false,
     }
 }
 

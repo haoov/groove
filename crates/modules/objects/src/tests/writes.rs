@@ -1,10 +1,10 @@
 use groove_types::{ErrorKind, KubeKind, Target};
 use serde_json::json;
-use wiremock::matchers::{method, path, query_param};
+use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::watch::kubeconfig;
-use crate::patch;
+use crate::{patch, preview};
 
 fn scale() -> Target {
     Target {
@@ -67,4 +67,41 @@ async fn a_patch_on_an_object_that_moved_is_a_conflict_naming_it() {
         "{}",
         refused.message
     );
+}
+
+#[tokio::test]
+async fn a_preview_tries_the_patch_on_the_version_read_and_diffs_what_it_changes() {
+    let server = MockServer::start().await;
+    let at = "/apis/apps/v1/namespaces/paxone/deployments/api/scale";
+    let object = |replicas: u32, version: &str| {
+        json!({ "metadata": { "name": "api", "resourceVersion": version, "generation": 4,
+            "managedFields": [{ "manager": "kubectl" }] }, "spec": { "replicas": replicas } })
+    };
+    Mock::given(method("GET"))
+        .and(path(at))
+        .respond_with(ResponseTemplate::new(200).set_body_json(object(1, "7")))
+        .mount(&server)
+        .await;
+    let sent = json!({ "spec": { "replicas": 3 }, "metadata": { "resourceVersion": "7" } });
+    Mock::given(method("PATCH"))
+        .and(path(at))
+        .and(query_param("dryRun", "All"))
+        .and(body_json(sent))
+        .respond_with(ResponseTemplate::new(200).set_body_json(object(3, "8")))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let dir = tempfile::tempdir().expect("a temp dir");
+    let paths = [kubeconfig(dir.path(), &server.uri())];
+    let body = json!({ "spec": { "replicas": 3 } });
+    let tried = preview(&paths, &scale(), &body).await.expect("a preview");
+    assert_eq!(tried.version, "7");
+    assert!(
+        tried.diff.contains("-  replicas: 1\n+  replicas: 3"),
+        "{}",
+        tried.diff
+    );
+    assert!(!tried.diff.contains("resourceVersion"), "{}", tried.diff);
+    assert!(!tried.before.contains("managedFields"), "{}", tried.before);
+    assert!(tried.after.contains("replicas: 3") && !tried.after.contains("generation"));
 }

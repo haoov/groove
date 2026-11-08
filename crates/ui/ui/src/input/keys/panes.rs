@@ -165,12 +165,16 @@ pub(super) fn in_rail(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             ui.focus = crate::Focus::Workspace;
             return Vec::new();
         }
+        (Key::Char('a'), Some(ask)) if ask.reviewed => {
+            ui.examine(ask.id.clone());
+            return Vec::new();
+        }
         (Key::Char('a'), Some(ask)) => {
             let approve = groove_controllers::agent::Command::Approve { id: ask.id.clone() };
             return vec![Command::Agent(approve)];
         }
         (Key::Char('v'), Some(ask)) => {
-            ui.overlay = Some(crate::Overlay::Examining(ask.id.clone()));
+            ui.examine(ask.id.clone());
             return Vec::new();
         }
         _ => {}

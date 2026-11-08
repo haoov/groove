@@ -106,10 +106,8 @@ fn review_shows_the_whole_write_and_its_two_answers() {
 fn refusing_from_the_sheet_drops_the_write_and_puts_the_sheet_away() {
     let app = committing();
     let id = ApprovalId::new("ap-1");
-    let mut ui = Ui {
-        overlay: Some(crate::Overlay::Examining(id.clone())),
-        ..session_ui()
-    };
+    let mut ui = session_ui();
+    ui.examine(id.clone());
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let rect = hits.rect_of(&Target::Refuse(id.clone())).expect("refuse");
     let acted = click(rect, &mut ui, &app, &hits);
@@ -120,10 +118,8 @@ fn refusing_from_the_sheet_drops_the_write_and_puts_the_sheet_away() {
 #[test]
 fn escape_puts_the_sheet_away_without_deciding() {
     let app = committing();
-    let mut ui = Ui {
-        overlay: Some(crate::Overlay::Examining(ApprovalId::new("ap-1"))),
-        ..session_ui()
-    };
+    let mut ui = session_ui();
+    ui.examine(ApprovalId::new("ap-1"));
     let acted = press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(acted.is_empty(), "nothing decided: {acted:?}");
     assert_eq!(ui.examining(), None);

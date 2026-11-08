@@ -28,7 +28,7 @@ pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &
 }
 
 /// The old side's rect and the new side's, a hairline between them.
-fn halves(ctx: &Ctx, body: Rect) -> (Rect, Rect) {
+pub(super) fn halves(ctx: &Ctx, body: Rect) -> (Rect, Rect) {
     groove_ui_kit::shape::halves(body, ctx.tokens.hairline)
 }
 
@@ -125,7 +125,7 @@ fn across_of(
 }
 
 /// What every row of the view says in its number columns.
-fn gutters_of(rows: &[Drawn]) -> Vec<Vec<&str>> {
+pub(super) fn gutters_of(rows: &[Drawn]) -> Vec<Vec<&str>> {
     rows.iter()
         .map(|row| row.gutters.iter().map(String::as_str).collect())
         .collect()
@@ -231,7 +231,7 @@ fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
 }
 
 /// One row as the code widget takes it: a head, a gap, or a line of text.
-fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> {
+pub(super) fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> {
     if row.head {
         return Line::head(&row.text)
             .folded(row.folded)

@@ -1,6 +1,8 @@
 use groove_types::{Attached, KubeKind, Target};
 
+use crate::Asked;
 use crate::writable;
+use crate::writes::target;
 
 fn api(namespace: Option<&str>) -> Target {
     Target {
@@ -53,4 +55,53 @@ fn a_session_on_the_whole_cluster_writes_in_any_namespace_and_outside_them() {
     let on = [held("prod", None)];
     assert!(writable(&api(Some("cayzn")), false, &on).is_ok());
     assert!(writable(&api(None), false, &on).is_ok());
+}
+
+fn kind(group: &str, plural: &str, name: &str, namespaced: bool) -> KubeKind {
+    KubeKind {
+        group: group.into(),
+        version: "v1".into(),
+        kind: name.into(),
+        plural: plural.into(),
+        namespaced,
+        watchable: true,
+    }
+}
+
+fn asked(kind: &str, namespace: Option<&str>) -> Asked {
+    Asked {
+        context: "prod".into(),
+        kind: kind.into(),
+        namespace: namespace.map(str::to_string),
+        name: "api".into(),
+        subresource: None,
+    }
+}
+
+#[test]
+fn a_kind_is_named_by_its_plural_its_name_or_its_plural_and_group() {
+    let kinds = [
+        kind("apps", "deployments", "Deployment", true),
+        kind("", "nodes", "Node", false),
+    ];
+    for named in ["deployments", "Deployment", "deployments.apps"] {
+        let found = target(&kinds, asked(named, Some("paxone"))).expect(named);
+        assert_eq!(found.kind.group, "apps", "{named}");
+    }
+    let node = target(&kinds, asked("nodes", Some("paxone"))).expect("a node");
+    assert_eq!(node.namespace, None, "a node stands in no namespace");
+    let unnamed = target(&kinds, asked("deployments", None));
+    assert!(unnamed.is_err_and(|e| e.message.contains("name it")));
+}
+
+#[test]
+fn a_kind_two_groups_serve_must_name_its_group() {
+    let kinds = [
+        kind("networking.k8s.io", "ingresses", "Ingress", true),
+        kind("extensions", "ingresses", "Ingress", true),
+    ];
+    let both = target(&kinds, asked("ingresses", Some("paxone")));
+    assert!(both.is_err_and(|e| e.message.contains("ingresses.extensions")));
+    let one = target(&kinds, asked("ingresses.extensions", Some("paxone")));
+    assert!(one.is_ok());
 }

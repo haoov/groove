@@ -29,7 +29,13 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         Target::Refuse(id) => Some(answered(ui, agent::Command::Refuse { id: id.clone() })),
         Target::Sheet => Some(Vec::new()),
         Target::Examine(id) => {
-            ui.overlay = Some(crate::Overlay::Examining(id.clone()));
+            ui.examine(id.clone());
+            Some(Vec::new())
+        }
+        Target::SheetView(view) => {
+            if let Some(sheet) = ui.sheet_mut() {
+                (sheet.view, sheet.scroll, sheet.across) = (*view, 0.0, 0.0);
+            }
             Some(Vec::new())
         }
         _ => None,

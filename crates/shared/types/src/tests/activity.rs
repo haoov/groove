@@ -38,6 +38,7 @@ fn the_attention_class_follows_asks_then_status() {
         subject: "feat: x".into(),
         text: String::new(),
         worktree: None,
+        reviewed: false,
     });
     assert_eq!(asked.class(), AttentionClass::NeedsYou);
 }

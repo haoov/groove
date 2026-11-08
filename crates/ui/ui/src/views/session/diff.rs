@@ -13,6 +13,7 @@ mod offers;
 pub(crate) mod painted;
 mod pinned;
 pub(crate) mod popup;
+pub(crate) mod review;
 mod row;
 mod scroll;
 mod surface;

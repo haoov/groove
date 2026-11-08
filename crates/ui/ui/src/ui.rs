@@ -48,9 +48,18 @@ pub enum Overlay {
     /// A change about to be thrown away, asking first.
     Losing(Losing),
     /// The write the review sheet shows.
-    Examining(groove_types::ApprovalId),
+    Examining(Examining),
     /// A scope picker's panel: what the session holds, then what it could attach.
     Scope(views::session::resources::Scoping),
+}
+
+/// The write under review, and how the change it carries is laid out and scrolled.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Examining {
+    pub id: groove_types::ApprovalId,
+    pub view: groove_types::DiffView,
+    pub scroll: f32,
+    pub across: f32,
 }
 
 /// What the pointer's button holds while it is down.
@@ -150,10 +159,33 @@ impl Ui {
     }
 
     pub fn examining(&self) -> Option<&groove_types::ApprovalId> {
+        self.sheet().map(|one| &one.id)
+    }
+
+    pub fn sheet(&self) -> Option<&Examining> {
         match &self.overlay {
             Some(Overlay::Examining(one)) => Some(one),
             _ => None,
         }
+    }
+
+    pub(crate) fn sheet_mut(&mut self) -> Option<&mut Examining> {
+        match &mut self.overlay {
+            Some(Overlay::Examining(one)) => Some(one),
+            _ => None,
+        }
+    }
+
+    /// The review sheet opened on one write, its change laid out as the diff is.
+    pub(crate) fn examine(&mut self, id: groove_types::ApprovalId) {
+        let view = self.session.view;
+        let sheet = Examining {
+            id,
+            view,
+            scroll: 0.0,
+            across: 0.0,
+        };
+        self.overlay = Some(Overlay::Examining(sheet));
     }
 
     /// What a palette key did, applied: the palette down, Settings up; its commands returned.

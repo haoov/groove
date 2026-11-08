@@ -4,6 +4,7 @@ mod adopt;
 mod clusters;
 mod forge;
 mod owned;
+mod patches;
 mod reads;
 mod writes;
 

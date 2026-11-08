@@ -257,5 +257,6 @@ fn ask_of(one: &groove_types::Approval) -> groove_types::Ask {
         subject: groove_tools::subject(&one.op, &one.payload),
         text: groove_tools::said(&one.op, &one.payload),
         worktree: groove_tools::acts_in(&one.payload).map(groove_types::WorktreeId::new),
+        reviewed: groove_tools::reviewed(&one.op),
     }
 }

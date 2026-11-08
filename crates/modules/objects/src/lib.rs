@@ -1,6 +1,7 @@
 //! A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched, and patched.
 
 mod argo;
+mod changed;
 mod describe;
 mod discovery;
 mod follow;
@@ -20,7 +21,7 @@ pub use follow::{Change, Followed, follow};
 pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};
 pub use watch::{Batch, Delta, Stop, watch};
-pub use writes::patch;
+pub use writes::{Preview, patch, preview};
 
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp};
 

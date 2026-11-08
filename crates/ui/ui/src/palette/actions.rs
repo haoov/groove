@@ -151,12 +151,14 @@ fn agent(app: &AppState, open: &Open) -> Vec<Entry> {
         .and_then(|one| one.asks.first());
     if let Some(ask) = ask {
         let asks = crate::views::rail::asks_to(&ask.op);
-        let approve = agent::Command::Approve { id: ask.id.clone() };
-        out.push(command(
-            "Agent",
-            format!("Approve: {asks}"),
-            Command::Agent(approve),
-        ));
+        if !ask.reviewed {
+            let approve = agent::Command::Approve { id: ask.id.clone() };
+            out.push(command(
+                "Agent",
+                format!("Approve: {asks}"),
+                Command::Agent(approve),
+            ));
+        }
         out.push(act(
             "Agent",
             format!("Review: {asks}"),

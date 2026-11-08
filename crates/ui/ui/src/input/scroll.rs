@@ -30,6 +30,7 @@ pub(super) fn scroll(
         return Vec::new();
     }
     if ui.overlay.is_some() {
+        sheeted(ui, hits, (pixels(tokens.line), delta.across(tokens.line)));
         return Vec::new();
     }
     if x <= layout.rail.right() {
@@ -67,6 +68,14 @@ fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
             hits,
             (pixels(tokens.code_line), delta.across(tokens.code_line)),
         ),
+    }
+}
+
+/// The wheel over the review sheet scrolls its change; another overlay keeps it.
+fn sheeted(ui: &mut Ui, hits: &Hits, (down, across): (f32, f32)) {
+    if ui.sheet().is_some() {
+        ui.wheeled(Scroller::Sheet, down, hits);
+        ui.wheeled(Scroller::SheetAcross, across, hits);
     }
 }
 

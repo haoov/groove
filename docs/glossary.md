@@ -46,7 +46,7 @@ A region the user sees: the board, the rail, the session, the review sheet, sett
 A write from the agent that waits for the user to approve, review or refuse it.
 
 ### Auto-approve
-A per-session switch: when it is on, an ask is approved as it arrives.
+A per-session switch: when it is on, an ask is approved as it arrives. A cluster write still waits.
 
 ### Feed
 The rail's log of what the open sessions did, newest first.

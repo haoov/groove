@@ -37,6 +37,7 @@ mod perf_servers;
 mod rail;
 mod regions;
 mod resources;
+mod reviews;
 mod routine_session;
 mod routines;
 mod scoping;

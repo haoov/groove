@@ -52,6 +52,10 @@ session holds with the `kube` tool. Name its context, and pass the kubectl
 arguments as a list. Reads only, and a secret's data never comes back. To read a
 cluster the session does not hold, attach it first with `attach_cluster`.
 
+Change an object with `kube_patch`, a JSON merge patch. The user sees its diff and
+approves it first, even with auto-approve on. A refusal because the object changed
+means: read it again, then ask again.
+
 ## The user already sees your work
 
 Groove renders the diff, your annotations in the file, and the MR. Do not paste

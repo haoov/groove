@@ -84,7 +84,7 @@ fn painted(app: &AppState, path: &str) -> (u64, u64) {
 }
 
 /// The range grown to hold one more line.
-fn stretch(range: &mut Range<usize>, line: Option<u32>) {
+pub(in crate::views::session::diff) fn stretch(range: &mut Range<usize>, line: Option<u32>) {
     let Some(at) = line.map(|at| at as usize) else {
         return;
     };
@@ -121,43 +121,63 @@ fn one(
     side: Side,
     colours: Option<&(Rc<Colours>, Rc<Colours>)>,
 ) -> Drawn {
-    let Some(row) = &file.row(at) else {
+    let here = open(app).filter(|open| open.path == file.path);
+    let read = |side, line| live(here, side, line);
+    let (Some(row), Some((mut drawn, text))) =
+        (file.row(at), plain(file, at, (view, side), colours, read))
+    else {
         return Drawn::default();
     };
+    drawn.found = matched(ui, on, &text, file.indent);
+    drawn.standing = standing(ui, on, &text, file.indent);
+    drawn.caret = here.and_then(|open| on_row(caret(ui, &open.new), &row, open, file.indent));
+    drawn.held = here.and_then(|open| row.new.and_then(|line| held(&open.new, ui, line as usize)));
     let line = match side {
         Side::Old => row.old,
         Side::New => row.new,
     };
-    let here = open(app).filter(|open| open.path == file.path);
-    let empty = blank(row, view, side);
-    let text = match empty {
-        true => String::new(),
-        false => live(here, side, line).unwrap_or_else(|| file.text(at)),
-    };
-    let spans = spans_of(colours, side, line);
-    let (drawn, spans) = shown(&text, &spans, file.indent);
-    let faults = match (side, line) {
-        (Side::New, Some(line)) if !empty => {
+    drawn.faults = match (side, line) {
+        (Side::New, Some(line)) if !drawn.empty => {
             let found = super::super::faults::of(app, &file.path, line as usize);
             super::super::faults::on(found, line as usize, &text, file.indent)
         }
         _ => Vec::new(),
     };
-    Drawn {
-        faults,
-        outline: super::worded(ui, &text, file.indent),
+    drawn.outline = super::worded(ui, &text, file.indent);
+    drawn
+}
+
+/// One row of an aligned file, from `side`: its text, colours, words, numbers and ground.
+/// `read` gives the line as it stands now, where the file is being edited; the text read is returned too.
+pub(in crate::views::session::diff) fn plain(
+    file: &Aligned,
+    at: usize,
+    (view, side): (DiffView, Side),
+    colours: Option<&(Rc<Colours>, Rc<Colours>)>,
+    read: impl FnOnce(Side, Option<u32>) -> Option<String>,
+) -> Option<(Drawn, String)> {
+    let row = file.row(at)?;
+    let line = match side {
+        Side::Old => row.old,
+        Side::New => row.new,
+    };
+    let empty = blank(&row, view, side);
+    let text = match empty {
+        true => String::new(),
+        false => read(side, line).unwrap_or_else(|| file.text(at)),
+    };
+    let spans = spans_of(colours, side, line);
+    let (drawn, spans) = shown(&text, &spans, file.indent);
+    let drawn = Drawn {
         words: columns_in(file.words(at), &text, file.indent),
-        found: matched(ui, on, &text, file.indent),
-        standing: standing(ui, on, &text, file.indent),
         text: drawn,
         spans,
-        gutters: gutters(row, view, side),
-        kind: kind(row, view, side),
-        caret: here.and_then(|open| on_row(caret(ui, &open.new), row, open, file.indent)),
-        held: here.and_then(|open| row.new.and_then(|line| held(&open.new, ui, line as usize))),
+        gutters: gutters(&row, view, side),
+        kind: kind(&row, view, side),
         empty,
         ..Drawn::default()
-    }
+    };
+    Some((drawn, text))
 }
 
 /// The row's line as the buffer holds it now, for the file being edited.
@@ -203,7 +223,7 @@ fn on_row(caret: Option<Caret>, row: &Row, file: &Opened, width: usize) -> Optio
 }
 
 /// The file a row's line is read from: a pane's own side in split, else the row's side.
-fn source(row: &Row, view: DiffView, side: Side) -> Side {
+pub(in crate::views::session::diff) fn source(row: &Row, view: DiffView, side: Side) -> Side {
     match (view, row.kind) {
         (DiffView::Split, _) => side,
         (_, RowKind::Removed) => Side::Old,
