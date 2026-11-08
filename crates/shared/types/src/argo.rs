@@ -133,16 +133,15 @@ pub struct AppResource {
 }
 
 impl AppPart {
-    /// The first git source on a branch, with the commit it synced to: repo, branch, commit.
-    pub fn tracked(&self) -> Option<(String, String, String)> {
+    /// The commit the first git source on a branch synced to.
+    pub fn synced_commit(&self) -> Option<&str> {
         let on_branch = |one: &&AppSource| one.chart.is_none() && !crate::is_sha(&one.target);
-        let one = self
+        let synced = self
             .sources
             .iter()
             .filter(on_branch)
-            .find(|one| one.synced.as_deref().is_some_and(crate::is_sha))?;
-        let sha = one.synced.clone().unwrap_or_default();
-        Some((one.repo.clone(), one.target.clone(), sha))
+            .filter_map(|one| one.synced.as_deref());
+        synced.into_iter().find(|one| crate::is_sha(one))
     }
 
     /// The last sync's result for `one`, hooks aside.

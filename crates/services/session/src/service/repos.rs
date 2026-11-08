@@ -7,7 +7,6 @@ use groove_types::{
 use groove_worktree::{Keep, Pool};
 
 use super::{Added, Service};
-use crate::Ahead;
 
 impl Service {
     /// A pool clone, or a new clone of a URL, attached to the session with its first worktree.
@@ -151,18 +150,6 @@ impl Service {
 
     pub async fn list_pool(&self) -> Result<Vec<PoolEntry>, Error> {
         Ok(self.pool.list().await?)
-    }
-
-    /// Commits on `target` at origin past `sha`, in the pool's clone of `repo`; none without one.
-    pub async fn ahead_of(&self, (repo, target, sha): &Ahead) -> Result<Option<u32>, Error> {
-        let slug = crate::slug(repo);
-        let pool = self.pool.list().await?;
-        let Some(clone) = pool.into_iter().find(|one| one.slug == slug) else {
-            return Ok(None);
-        };
-        let git = groove_git::Git::at(&clone.path);
-        let ahead = git.branch_past(sha, target).await;
-        Ok(Some(ahead.map_err(groove_worktree::Error::from)?))
     }
 
     /// Origin's heads for the pickers.

@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use groove_controllers::cluster_service::Named;
-use groove_controllers::{AppState, Command, cluster, session, workspace};
+use groove_controllers::{AppState, Command, cluster, workspace};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
 use super::super::around::{helm_release, lineage};
@@ -15,9 +15,6 @@ pub const READER: &str = "resource";
 
 /// How often a pod's usage is read again while its tab shows.
 pub const USAGE_EVERY: i64 = 15;
-
-/// How often the commits past an Application's synced revision are counted again.
-pub const AHEAD_EVERY: i64 = 60;
 
 /// The watchers the tab shown wants, and the reads it lacks; `up` while the tab is on screen.
 pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Vec<Command> {
@@ -106,7 +103,6 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     }
     if let Some(part) = &object.app {
         out.extend(super::destined::asks(app, &link.context, part));
-        out.extend(ahead(app, part, now));
     }
     let owners = lineage(app, link, object);
     if let Some((namespace, name)) = helm_release(object, &owners) {
@@ -153,31 +149,14 @@ fn leases(
     super::super::leases(READER, same, reads)
 }
 
-/// The count of commits past the synced revision, when due.
-fn ahead(app: &AppState, part: &groove_types::AppPart, now: Timestamp) -> Option<Command> {
-    let ahead = part.tracked()?;
-    let session = &app.session;
-    let held = session.ahead.get(&ahead);
-    let stale = held.is_none_or(|(_, at)| due_at(*at, AHEAD_EVERY, now));
-    let asking = session.asking_ahead.contains(&ahead);
-    (stale && !asking).then(|| Command::Session(session::Command::AheadOf { ahead }))
-}
-
 fn due_at(at: Timestamp, every: i64, now: Timestamp) -> bool {
     now.seconds() - at.seconds() >= every
 }
 
-/// When the tab shown next wants a pod's usage read, or an Application's commits ahead counted.
+/// When the tab shown next wants a pod's usage read.
 pub fn due(app: &AppState, held: &ResourcesUi) -> Option<Timestamp> {
-    let tab = held.tab()?;
-    let object = tab.link.read(app)?;
-    if let Some(part) = object.app.as_deref() {
-        let (_, at) = app.session.ahead.get(&part.tracked()?)?;
-        return Some(Timestamp::new(at.seconds() + AHEAD_EVERY));
-    }
-    if tab.view != View::Describe || object.pod.is_none() {
-        return None;
-    }
+    let tab = held.tab().filter(|tab| tab.view == View::Describe)?;
+    tab.link.read(app)?.pod.as_ref()?;
     let (_, at) = app.cluster.store.follows.usage(&tab.link.pod())?;
     Some(Timestamp::new(at.seconds() + USAGE_EVERY))
 }

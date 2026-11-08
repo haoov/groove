@@ -1,7 +1,7 @@
 //! An Application's resource health from Argo CD's API, through the hub's API server: read once, then streamed.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use futures_util::StreamExt;
 use groove_kube::{Client, Proxied};
@@ -48,7 +48,7 @@ pub fn argo_tree(
 
 /// One read of the tree, then its stream until it ends.
 async fn cycle(
-    (paths, home): (&[PathBuf], &PathBuf),
+    (paths, home): (&[PathBuf], &Path),
     app: &ArgoApp,
     send: &impl Fn(Treed),
     backoff: &mut Backoff,
@@ -62,7 +62,7 @@ async fn cycle(
         .client
         .proxy_lines(&opened.to, &streamed, &headers)
         .await;
-    let mut lines = std::pin::pin!(lines.map_err(|e| e.to_string())?);
+    let mut lines = std::pin::pin!(lines.map_err(|e| opened.failed(e))?);
     while let Some(line) = lines.next().await {
         let line = line.map_err(|e| e.to_string())?;
         match groove_argocd::streamed(&line) {
@@ -90,7 +90,7 @@ pub(crate) struct Opened {
 
 impl Opened {
     pub(crate) async fn of(
-        (paths, home): (&[PathBuf], &PathBuf),
+        (paths, home): (&[PathBuf], &Path),
         app: &ArgoApp,
     ) -> Result<Self, String> {
         let (server, token) = token(home).await?;
@@ -110,7 +110,23 @@ impl Opened {
     pub(crate) async fn get(&self, path: &str) -> Result<String, String> {
         let headers = [("Cookie", self.cookie.as_str())];
         let body = self.client.proxy_get(&self.to, path, &headers).await;
-        body.map_err(|e| refused(&self.server, &e.to_string()))
+        body.map_err(|e| self.failed(e))
+    }
+
+    /// What a request through the proxy came to; argocd-server unreached is found again next time.
+    fn failed(&self, error: groove_kube::Error) -> String {
+        let unreached = matches!(
+            error,
+            groove_kube::Error::Unreachable { .. }
+                | groove_kube::Error::Api {
+                    status: 502..=504,
+                    ..
+                }
+        );
+        if unreached && let Ok(mut all) = REACHED.lock() {
+            all.remove(self.client.context());
+        }
+        refused(&self.server, &error.to_string())
     }
 
     pub(crate) fn refused(&self, why: &str) -> String {
@@ -118,16 +134,14 @@ impl Opened {
     }
 
     async fn read(&self, app: &ArgoApp) -> Treed {
-        let once = groove_argocd::tree_path(&app.namespace, &app.name, false);
-        let headers = [("Cookie", self.cookie.as_str())];
-        let body = self.client.proxy_get(&self.to, &once, &headers).await;
-        let body = body.map_err(|e| refused(&self.server, &e.to_string()))?;
+        let path = groove_argocd::tree_path(&app.namespace, &app.name, false);
+        let body = self.get(&path).await?;
         groove_argocd::health(&body).map_err(|why| refused(&self.server, &why))
     }
 }
 
 /// The CLI's server and token, read again each time so a new login is picked up.
-async fn token(home: &PathBuf) -> Result<(String, groove_argocd::Token), String> {
+async fn token(home: &Path) -> Result<(String, groove_argocd::Token), String> {
     let path = groove_argocd::config_path(home);
     let config = tokio::fs::read_to_string(&path).await.unwrap_or_default();
     groove_argocd::token_of(&config)

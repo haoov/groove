@@ -52,6 +52,11 @@ pub fn prepare(pairs: Vec<(String, String, String)>) -> Prepared {
     }
 }
 
+/// `prepare` run on a thread of its own.
+pub async fn prepared(pairs: Vec<(String, String, String)>) -> groove_types::Result<Prepared> {
+    groove_sync::blocking(move || Ok(prepare(pairs))).await
+}
+
 impl State {
     /// The drift shown in place of the worktree's change, its folds and scroll kept for the same Application.
     pub fn drifted(&mut self, (app, at): (DriftKey, String), prepared: Prepared) {

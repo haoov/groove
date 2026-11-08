@@ -35,7 +35,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
     let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm * 2.0);
     let [top, rest] = column_in(body, [tall, Spec::fill()]);
     let object = tab.link.read(app);
-    heading(ctx, top, (app, tab), object.map(|one| &**one));
+    heading(ctx, top, tab, object.map(|one| &**one));
     let Some(object) = object else {
         return standing(ctx, rest, app, tab);
     };
@@ -55,12 +55,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
 }
 
 /// The status in its colour, then the views.
-fn heading(
-    ctx: &mut Ctx,
-    line: Rect,
-    (app, tab): (&AppState, &Opened),
-    object: Option<&Described>,
-) {
+fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) {
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
     let gap = ctx.tokens.sm;
     let views: &[View] = match object {
@@ -77,11 +72,7 @@ fn heading(
     }
     let mut at = room.x;
     let mut said = object.map(stands).unwrap_or_default();
-    said.extend(
-        object
-            .and_then(|one| one.app.as_deref())
-            .map_or_else(Vec::new, |part| revision(app, part)),
-    );
+    said.extend(object.and_then(|one| one.app.as_deref()).and_then(revision));
     for (said, role) in said {
         let badge = Badge::new(&said, role);
         if at + badge.width(ctx) > room.right() {
@@ -110,27 +101,10 @@ fn stands(object: &Described) -> Vec<(String, Role)> {
     vec![(format!("{ready}/{desired} ready"), role)]
 }
 
-/// The commit an Application synced to, short, and how many commits its branch stands past it.
-fn revision(app: &AppState, part: &groove_types::AppPart) -> Vec<(String, Role)> {
-    let Some(tracked) = part.tracked() else {
-        return Vec::new();
-    };
-    let mut out = vec![(groove_types::short_sha(&tracked.2), Role::Muted)];
-    let ahead = app
-        .session
-        .ahead
-        .get(&tracked)
-        .and_then(|(count, _)| *count);
-    match ahead {
-        Some(0) => {}
-        Some(1) => out.push((format!("{} is 1 commit ahead", tracked.1), Role::Warn)),
-        Some(count) => out.push((
-            format!("{} is {count} commits ahead", tracked.1),
-            Role::Warn,
-        )),
-        None => {}
-    }
-    out
+/// The commit an Application's first git source on a branch synced to, short.
+fn revision(part: &groove_types::AppPart) -> Option<(String, Role)> {
+    let sha = part.synced_commit()?;
+    Some((groove_types::short_sha(sha), Role::Muted))
 }
 
 /// The Application's drift as the diff draws a change, once read for this Application.

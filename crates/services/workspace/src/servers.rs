@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 mod found;
 mod offered;
+mod queue;
 mod spot;
 
 use found::Found;
@@ -112,7 +113,7 @@ impl Servers {
                 Telling::Told
             }
             Some(Running::Starting(queued)) => {
-                queued.push(told);
+                queue::queue(queued, told);
                 Telling::Told
             }
             Some(Running::Down) if !matches!(told, Tell::Opened { .. }) => Telling::Down,
@@ -226,6 +227,14 @@ impl Servers {
             .filter(|(key, _)| &key.worktree == worktree);
         mine.map(|(key, running)| (key.name.clone(), running.up()))
             .collect()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn queued(&self, key: &ServerKey) -> usize {
+        match self.running.get(key) {
+            Some(Running::Starting(queued)) => queued.len(),
+            _ => 0,
+        }
     }
 
     pub fn is_down(&self, key: &ServerKey) -> bool {

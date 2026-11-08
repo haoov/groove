@@ -97,7 +97,7 @@ impl Stream {
     {
         let (outgoing, queued) = mpsc::unbounded_channel::<Value>();
         tokio::spawn(written(writer, queued));
-        tokio::spawn(read(reader, outgoing.clone(), on_heard));
+        tokio::spawn(read(reader, outgoing.downgrade(), on_heard));
         Self {
             outgoing,
             pid: None,
@@ -187,10 +187,10 @@ async fn written<W: AsyncWrite + Unpin>(mut writer: W, mut queued: mpsc::Unbound
     }
 }
 
-/// Each line read until the pipe closes; a request Groove does not serve is refused.
+/// Each line read until the pipe closes; a request Groove does not serve is refused while the stream lives.
 async fn read<R: AsyncRead + Unpin>(
     reader: R,
-    outgoing: mpsc::UnboundedSender<Value>,
+    outgoing: mpsc::WeakUnboundedSender<Value>,
     on_heard: Box<dyn Fn(Heard) + Send + Sync>,
 ) {
     let mut lines = BufReader::new(reader).lines();
@@ -204,7 +204,9 @@ async fn read<R: AsyncRead + Unpin>(
             }
             Some(Ok(heard)) => on_heard(heard),
             Some(Err(refused)) => {
-                let _ = outgoing.send(refused);
+                if let Some(outgoing) = outgoing.upgrade() {
+                    let _ = outgoing.send(refused);
+                }
             }
             None => {}
         }

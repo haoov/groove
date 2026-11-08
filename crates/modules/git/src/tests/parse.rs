@@ -135,3 +135,10 @@ fn a_batch_cut_short_keeps_what_came_and_does_not_panic() {
     let huge = b"aa blob 18446744073709551615\nx" as &[u8];
     assert_eq!(crate::parse::batch(huge, &["one.txt"]).len(), 1);
 }
+
+#[test]
+fn a_url_that_reads_as_an_option_is_refused() {
+    assert!(RemoteUrl::parse("--upload-pack=touch x://host/group/project").is_err());
+    assert!(RemoteUrl::parse("-c x=y git@host:group/project.git").is_err());
+    assert!(RemoteUrl::parse("https://host/group/project.git").is_ok());
+}

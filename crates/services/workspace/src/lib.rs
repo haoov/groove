@@ -35,7 +35,7 @@ mod tests;
 
 pub use blame::{Blames, Read, blame};
 pub use buffers::Buffers;
-pub use drift::{Drift, DriftKey, DriftRead, Prepared, in_sync, prepare};
+pub use drift::{Drift, DriftKey, DriftRead, Prepared, in_sync, prepare, prepared};
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{

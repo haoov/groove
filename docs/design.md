@@ -509,8 +509,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   stands over or under them.
 - **Argo CD.** Argo CD's Applications list their project, sync, health, auto-sync and
   revision. An Application's heading adds the commit its first git source on a branch
-  synced to, short, and how many commits that branch stands past it, counted in the repo's
-  clone once the branch is fetched, again every minute. An Application's describe holds its last sync, red when it failed and blue
+  synced to, short. An Application's describe holds its last sync, red when it failed and blue
   while it runs, its heading included; its conditions; where it syncs to and how; and its
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one

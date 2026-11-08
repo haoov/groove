@@ -174,27 +174,6 @@ pub fn list_repos(services: &Services, spawner: &dyn Spawner) {
     }));
 }
 
-/// One count at a time; a failed one holds none, to be asked again when due.
-pub(super) fn ahead_of(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    ahead: groove_session_service::Ahead,
-) {
-    if !state.session.asking_ahead.insert(ahead.clone()) {
-        return;
-    }
-    let service = services.session.clone();
-    spawner.spawn(Box::pin(async move {
-        let count = service.ahead_of(&ahead).await.ok().flatten();
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.session.asking_ahead.remove(&ahead);
-            let at = groove_types::Timestamp::now();
-            state.session.ahead.insert(ahead, (count, at));
-        }) as Continuation
-    }));
-}
-
 pub fn list_branches(services: &Services, spawner: &dyn Spawner, repo: &RepoId) {
     let (service, repo) = (services.session.clone(), repo.clone());
     spawner.spawn(Box::pin(async move {

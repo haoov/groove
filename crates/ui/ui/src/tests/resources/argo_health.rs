@@ -1,8 +1,8 @@
-//! An Application's tab: its heading's revision and commits ahead, each resource's health from Argo CD.
+//! An Application's tab: its heading's revision, each resource's health from Argo CD.
 
 use groove_controllers::Command;
 use groove_controllers::cluster::Command as Cluster;
-use groove_types::{ResourceHealth, Timestamp};
+use groove_types::ResourceHealth;
 
 const READER: &str = "resource";
 
@@ -111,31 +111,15 @@ fn a_refused_read_says_what_argocd_answered() {
 }
 
 #[test]
-fn the_heading_shows_the_synced_commit_and_the_commits_its_branch_stands_ahead() {
+fn the_heading_shows_the_commit_its_first_git_source_synced_to() {
     let sha = "e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0";
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     part.sources[0].synced = Some(sha.into());
-    let (mut app_state, ui) = opened_application(object);
-    let tracked = (
-        "https://gitlab.example.com/billing-eu-deploy.git".to_string(),
-        "main".to_string(),
-        sha.to_string(),
-    );
-    let asked = crate::frame_commands(&app_state, &ui, window());
-    let count = Command::Session(groove_controllers::session::Command::AheadOf {
-        ahead: tracked.clone(),
-    });
-    assert!(asked.contains(&count), "{asked:?}");
-    app_state
-        .session
-        .ahead
-        .insert(tracked, (Some(3), Timestamp::now()));
+    let (app_state, ui) = opened_application(object);
     let texts: Vec<String> = runs(&app_state, &ui)
         .into_iter()
         .map(|one| one.text)
         .collect();
-    for shown in ["e9f8a7b", "main is 3 commits ahead"] {
-        assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
-    }
+    assert!(texts.iter().any(|one| one == "e9f8a7b"), "{texts:?}");
 }

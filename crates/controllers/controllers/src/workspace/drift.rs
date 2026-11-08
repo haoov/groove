@@ -30,30 +30,40 @@ pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, (app, at): (Drif
     }
     workspace.drift_read.asking = Some(asked.clone());
     let paths = (state.env.kubeconfig.clone(), state.env.home.clone());
-    let (hub, namespace, name) = app.clone();
+    spawner.spawn(Box::pin(read(paths, asked)));
+}
+
+/// The drift read from Argo CD and made ready off the main thread, then landed if still asked.
+async fn read(
+    paths: (Vec<std::path::PathBuf>, std::path::PathBuf),
+    asked: (DriftKey, String),
+) -> Continuation {
+    let (hub, namespace, name) = asked.0.clone();
     let argo = ArgoApp {
         hub,
         namespace,
         name,
     };
-    spawner.spawn(Box::pin(async move {
-        let read = groove_cluster_service::argo_drift_once(paths, argo).await;
-        let read = read.map(groove_workspace_service::prepare);
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            let workspace = &mut state.workspace;
-            if workspace.drift_read.asking.as_ref() != Some(&asked) {
-                return;
+    let read = match groove_cluster_service::argo_drift_once(paths, argo).await {
+        Ok(pairs) => groove_workspace_service::prepared(pairs)
+            .await
+            .map_err(|e| e.message),
+        Err(why) => Err(why),
+    };
+    Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+        let workspace = &mut state.workspace;
+        if workspace.drift_read.asking.as_ref() != Some(&asked) {
+            return;
+        }
+        workspace.drift_read.asking = None;
+        match read {
+            Ok(prepared) => {
+                workspace.drift_read.failed = None;
+                workspace.drifted(asked, prepared);
             }
-            workspace.drift_read.asking = None;
-            match read {
-                Ok(prepared) => {
-                    workspace.drift_read.failed = None;
-                    workspace.drifted(asked, prepared);
-                }
-                Err(why) => workspace.drift_read.failed = Some((asked.0, asked.1, why)),
-            }
-        }) as Continuation
-    }));
+            Err(why) => workspace.drift_read.failed = Some((asked.0, asked.1, why)),
+        }
+    })
 }
 
 /// The worktree's change read again in place of the drift.
