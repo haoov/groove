@@ -12,6 +12,7 @@ use groove_types::{Caret, Highlight, LineMark, RowKind};
 
 use self::file::whole;
 use self::stream::streamed;
+pub(super) use self::stream::{plain, source, stretch};
 use crate::editor::{Editing, Editor};
 use crate::views::session::Face;
 use crate::{Focus, Ui};

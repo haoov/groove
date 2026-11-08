@@ -3,7 +3,7 @@
 mod follows;
 mod logs;
 mod objects;
-mod writes;
+pub(crate) mod writes;
 
 use groove_cluster_service::Event as ClusterEvent;
 use groove_cluster_service::Named;
@@ -118,7 +118,10 @@ pub fn dispatch(
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
         Command::Age { now } => state.cluster.store.age(now),
-        Command::Patch { session, patched } => writes::patch(state, spawner, session, *patched),
+        Command::Patch { session, patched } => {
+            let asker = crate::asker::Asker::Ui;
+            writes::patch(state, spawner, session, *patched, asker)
+        }
     }
 }
 
