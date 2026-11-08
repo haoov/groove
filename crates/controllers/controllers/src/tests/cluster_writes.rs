@@ -44,6 +44,7 @@ fn scaled(session: &SessionId) -> Cmd {
             plural: "deployments".into(),
             namespaced: true,
             watchable: true,
+            short_names: Vec::new(),
         },
         namespace: Some("paxone".into()),
         name: "api".into(),

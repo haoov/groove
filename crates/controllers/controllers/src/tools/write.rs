@@ -13,6 +13,7 @@ mod clusters;
 mod forge;
 mod git;
 mod notes;
+mod patches;
 mod repos;
 mod skills;
 mod task;
@@ -57,8 +58,11 @@ impl Write {
     }
 }
 
-/// A write waits for a human, unless the session approves its own.
+/// A write waits for a human, unless the session approves its own; a cluster write always waits.
 pub(super) fn asked(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
+    if groove_agent_service::tools::reviewed(&call.tool) {
+        return patches::asked(state, spawner, Write::of(call));
+    }
     let session = super::session(&call);
     let auto = state
         .session
@@ -86,7 +90,7 @@ fn pinned(state: &AppState, write: &mut Write) {
     }
 }
 
-fn queued(state: &mut AppState, write: Write) {
+fn queued(state: &mut AppState, write: Write) -> ApprovalId {
     let new = NewAsk {
         session: write.session,
         op: write.tool,
@@ -94,7 +98,7 @@ fn queued(state: &mut AppState, write: Write) {
         origin: Origin::Mcp,
         at: Timestamp::now(),
     };
-    state.agent.asked(new, write.reply);
+    state.agent.asked(new, write.reply).id
 }
 
 /// The write the user allowed, run at last.
@@ -102,6 +106,7 @@ pub fn allow(state: &mut AppState, services: &Services, spawner: &dyn Spawner, i
     let Some((approval, reply)) = state.agent.resolved(id) else {
         return;
     };
+    state.workspace.reviews.remove(id);
     run(state, services, spawner, Write::approved(approval, reply));
 }
 
@@ -110,12 +115,14 @@ pub fn refuse(state: &mut AppState, id: &ApprovalId) {
     let Some((approval, reply)) = state.agent.resolved(id) else {
         return;
     };
+    state.workspace.reviews.remove(id);
     reply.failed(format!("the user refused {}", approval.op));
 }
 
 /// Every write of a session that ends, refused.
 pub fn drop_asks(state: &mut AppState, session: &SessionId) {
     for (approval, reply) in state.agent.forget_asks(session) {
+        state.workspace.reviews.remove(&approval.id);
         reply.failed(format!("the session closed before {} ran", approval.op));
     }
 }
@@ -155,6 +162,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "save_user_skill" => skills::save(state, spawner, write),
         "attach_cluster" => clusters::attach(state, services, spawner, write),
         "detach_cluster" => clusters::detach(state, services, spawner, write),
+        "kube_patch" => patches::patch(state, spawner, write),
         _ => write
             .reply
             .failed(format!("groove runs no {} yet", write.tool)),

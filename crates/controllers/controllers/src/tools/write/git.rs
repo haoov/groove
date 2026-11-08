@@ -29,7 +29,9 @@ pub(super) fn push_asked(state: &mut AppState, spawner: &dyn Spawner, mut write:
         write.arguments["commits"] = lines.into();
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             match state.agent.agent(&write.session) {
-                Some(_) => super::queued(state, write),
+                Some(_) => {
+                    super::queued(state, write);
+                }
                 None => write.reply.failed("the session closed before git_push ran"),
             }
         }) as crate::Continuation

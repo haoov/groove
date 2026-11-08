@@ -30,7 +30,7 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
             let opened = super::opened_session(ui, session.clone());
             let ask = app.agent.activity(session).and_then(|one| one.asks.first());
             if let Some(ask) = ask {
-                ui.overlay = Some(crate::Overlay::Examining(ask.id.clone()));
+                ui.examine(ask.id.clone());
             }
             Some(opened)
         }
@@ -38,6 +38,12 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         Target::Approve(id) => Some(answered(ui, agent::Command::Approve { id: id.clone() })),
         Target::Refuse(id) => Some(answered(ui, agent::Command::Refuse { id: id.clone() })),
         Target::Sheet => Some(Vec::new()),
+        Target::SheetView(view) => {
+            if let Some(sheet) = ui.sheet_mut() {
+                (sheet.view, sheet.scroll, sheet.across) = (*view, 0.0, 0.0);
+            }
+            Some(Vec::new())
+        }
         _ => None,
     }
 }

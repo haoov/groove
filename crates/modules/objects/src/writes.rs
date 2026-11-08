@@ -8,6 +8,17 @@ use serde_json::Value;
 
 use crate::discovery::failed;
 
+/// A patch tried on the server: the version it was tried on, and what it changes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Preview {
+    pub version: String,
+    /// The object's YAML as it stands, and as the patch leaves it.
+    pub before: String,
+    pub after: String,
+    /// A unified diff of the two; empty when nothing changes.
+    pub diff: String,
+}
+
 /// The object as `body` leaves it; a version the object moved past is a `Conflict`.
 pub async fn patch(
     paths: &[PathBuf],
@@ -26,13 +37,42 @@ pub async fn patch(
         version,
         dry_run,
     };
-    client.patch_object(patch).await.map_err(|e| match e {
+    client
+        .patch_object(patch)
+        .await
+        .map_err(|e| moved(target, e))
+}
+
+/// The object read now, then `body` tried on that version and nothing stored.
+pub async fn preview(paths: &[PathBuf], target: &Target, body: &Value) -> Result<Preview> {
+    let client = Client::shared(paths, &target.context)
+        .await
+        .map_err(failed)?;
+    let live = client.get_object(&path(target)).await.map_err(failed)?;
+    let version = live
+        .pointer("/metadata/resourceVersion")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let tried = patch(paths, target, body, Some(&version), true).await?;
+    let (before, after) = crate::changed::sides(&live, &tried);
+    let diff = crate::changed::unified(&before, &after);
+    Ok(Preview {
+        version,
+        before,
+        after,
+        diff,
+    })
+}
+
+fn moved(target: &Target, error: groove_kube::Error) -> Error {
+    match error {
         groove_kube::Error::Conflict { .. } => Error::new(
             ErrorKind::Conflict,
             format!("{} changed since it was read", target.label()),
         ),
         other => failed(other),
-    })
+    }
 }
 
 fn path(target: &Target) -> String {

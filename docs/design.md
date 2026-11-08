@@ -211,7 +211,7 @@ rows' padding. A row that asks shows it in its icon and its peach state line. En
 A row carries no button. An ask's text is peach, and a click on its row opens the session
 with the review sheet on the first ask. Enforced by
 `a_click_on_a_row_that_asks_opens_the_session_on_its_review`. With auto-approve on for the
-session, nothing asks. A working status is blue and its glyph moves.
+session, nothing asks but a cluster write. A working status is blue and its glyph moves.
 
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
@@ -579,7 +579,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
 
 An ask opens a sheet over the work half — workspace and sidebar. The agent
 pane stays visible. One frame for every op: the repo and the branch, then the text of the
-write. No diff and no file list. A push goes to the worktree's own branch and nowhere else.
+write. No file list. A push goes to the worktree's own branch and nowhere else.
 
 | Op | Text shown |
 |---|---|
@@ -590,8 +590,14 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 | task body | the task's title and the body |
 | task finish | the task's title and the worktrees torn down |
 | discard | the files |
+| cluster patch | the object, then its YAML before → after as the diff draws it: colours, words, inline or split; the sheet keeps its own scroll and view |
 
 **Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
+
+**A cluster write is approved from the sheet's Approve alone**, once its change was seen.
+The `a` key and the palette open the sheet instead; Enter decides nothing.
+Enforced by `only_the_sheet_s_approve_button_lets_a_cluster_write_through` and
+`a_on_the_rail_opens_the_sheet_of_a_cluster_write_instead_of_approving_it`.
 
 ## Settings
 
