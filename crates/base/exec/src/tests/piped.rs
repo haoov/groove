@@ -104,3 +104,20 @@ async fn dropping_the_process_kills_the_child() {
     }
     panic!("the child outlived its process");
 }
+
+#[tokio::test]
+async fn a_grouped_child_takes_what_it_started_with_it_when_dropped() {
+    let mut process = sh("sleep 30 & echo $!; wait").grouped().start().unwrap();
+    let stdout = process.pipes().expect("its pipes").stdout;
+    let mut lines = tokio::io::BufReader::new(stdout).lines();
+    let line = lines.next_line().await.unwrap().expect("the helper's pid");
+    let helper = nix::unistd::Pid::from_raw(line.trim().parse().expect("a pid"));
+    drop(process);
+    let gone = async {
+        while nix::sys::signal::kill(helper, None).is_ok() {
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+    };
+    let waited = tokio::time::timeout(std::time::Duration::from_secs(5), gone).await;
+    assert!(waited.is_ok(), "the helper outlived its leader");
+}

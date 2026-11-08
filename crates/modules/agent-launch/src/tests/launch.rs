@@ -248,6 +248,7 @@ async fn the_agent_is_refused_the_cluster_tools_and_told_to_read_through_groove(
         .position(|one| one == "--disallowedTools");
     let denied = &launch.args[at.expect("the deny flag") + 1..];
     assert!(denied.starts_with(&["Bash(kubectl:*)".to_string(), "Bash(helm:*)".to_string()]));
+    assert!(denied.contains(&"Bash(argocd:*)".to_string()));
     let ends = denied.iter().position(|one| one.starts_with("--"));
     assert!(
         ends.is_some(),

@@ -508,22 +508,37 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   second. Its containers, runs and range are glass tabs over the lines, and no rule
   stands over or under them.
 - **Argo CD.** Argo CD's Applications list their project, sync, health, auto-sync and
-  revision. An Application's describe holds its last sync, red when it failed and blue
+  revision. An Application's heading adds the commit its first git source on a branch
+  synced to, short. An Application's describe holds its last sync, red when it failed and blue
   while it runs, its heading included; its conditions; where it syncs to and how; and its
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
-  resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
+  resource's row opens its tab there; under out of sync it opens the diff view on its file
+  instead. A row's right-click offers the skills of its kind, as a list row's does. The
+  find key opens a find bar under its filters, as over the list: its words narrow the rows
+  by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
   the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
-  a commit of the list does, fetched first when the clone lacks it. Its `resources` view
-  filters by what needs attention (out of sync, to prune, or failed in the last sync), out
-  of sync, syncing or all, each in its colour with its count; it opens on what needs
-  attention, or on the sync while one runs. Its filters are glass tabs. Both it and syncing
+  a commit of the list does, fetched first when the clone lacks it. Its `diff` view is the
+  diff itself, read-only, over what differs between the desired state and the live one as
+  Argo CD computes it (hooks left out, a resource to prune all removed, one missing live
+  all added), each resource a file of YAML: the stream, its heads and folds, gaps, split,
+  colours and find, no seen mark. It reads again when Argo CD compares the Application
+  again or its synced revision moves, one read at a time, the stream and its colours made
+  off the main thread; the worktree's change comes back once the view is left. Its `resources` view
+  filters by degraded (Argo CD's health, out of sync or not), out of sync, syncing or all,
+  each in its colour with its count; it opens on the sync while one runs, else on the
+  first of degraded and out of sync to hold any, else on all. Its filters are glass tabs. Both it and syncing
   are the list's table, its headers sorting each group's rows and its edges dragging widths
   kept for both; no rule stands between a group's heading and its rows. Resources stand by
-  kind, the kinds needing attention first; under all, a kind with nothing to see stands
-  folded. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
+  kind, the kinds with something to see first (degraded, out of sync, to prune or failed); under all, a kind with nothing to see stands
+  folded. Each resource stands with its health from Argo CD's resource tree, when the
+  Application stands on the hub context: Argo CD's API, reached through the hub's API
+  server on the token `argocd login --sso` left, read once when the view opens, then
+  followed on Argo CD's stream while it shows; a kind's heading counts the degraded and
+  the progressing. When Argo CD refuses the read, a line over the filters' right end says
+  what it answered, and how to sign in again. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
@@ -572,7 +587,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 |---|---|
 | Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
-| Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
+| Clusters | a table, not rows: each added context with its hue and name, its read-only and Argo hub toggles, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |

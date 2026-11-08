@@ -13,13 +13,15 @@ pub struct Piped {
     cwd: Option<PathBuf>,
     env: Vec<(String, String)>,
     unset: Vec<String>,
+    grouped: bool,
 }
 
-/// A running child. Dropping it kills the child.
+/// A running child. Dropping it kills the child, and its whole group when it leads one.
 pub struct Process {
     child: tokio::process::Child,
     pid: Option<u32>,
     pipes: Option<Pipes>,
+    grouped: bool,
 }
 
 /// The three pipes of a child, taken once from its `Process`.
@@ -37,7 +39,14 @@ impl Piped {
             cwd: None,
             env: Vec::new(),
             unset: Vec::new(),
+            grouped: false,
         }
+    }
+
+    /// The child leads a process group of its own, which dies with it.
+    pub fn grouped(mut self) -> Self {
+        self.grouped = true;
+        self
     }
 
     crate::described!();
@@ -59,6 +68,9 @@ impl Piped {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        if self.grouped {
+            command.process_group(0);
+        }
         let mut child = command.spawn().map_err(|source| Error::Spawn {
             program: self.describe(),
             source,
@@ -70,6 +82,7 @@ impl Piped {
         };
         Ok(Process {
             pid: child.id(),
+            grouped: self.grouped,
             child,
             pipes: Some(Pipes {
                 stdin,
@@ -103,5 +116,14 @@ impl Process {
         let pid = nix::unistd::Pid::from_raw(pid as i32);
         nix::sys::signal::kill(pid, nix::sys::signal::Signal::SIGTERM)
             .map_err(|e| Error::Io(e.into()))
+    }
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        if let (true, Some(pid)) = (self.grouped, self.pid) {
+            let group = nix::unistd::Pid::from_raw(pid as i32);
+            let _ = nix::sys::signal::killpg(group, nix::sys::signal::Signal::SIGKILL);
+        }
     }
 }

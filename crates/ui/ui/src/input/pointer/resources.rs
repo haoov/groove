@@ -47,6 +47,12 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
             return Some(vec![Command::Cluster(copy)]);
         }
         Target::ResourceList => held.showing = None,
+        Target::ResourceDrift(path, _) => {
+            if let Some(tab) = held.tab_mut() {
+                (tab.view, tab.scroll) = (resources::View::Diff, 0.0);
+            }
+            ui.session.revealing = Some((path.clone(), 0));
+        }
         Target::ResourceRow(uid) => {
             let open = app.session.selected()?;
             let link = resources::row_link(app, open, &ui.session.resources, uid)?;
@@ -120,6 +126,7 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 Target::LogSource(source) => tab.logs.source = Some(source.clone()),
                 Target::LogPrevious(previous) => tab.logs.previous = *previous,
                 Target::LogFollow => tab.logs.following = true,
+                Target::ArgoSearch => tab.argo.typing = true,
                 Target::ArgoFilter(filter) => {
                     (tab.argo.filter, tab.scroll) = (Some(*filter), 0.0);
                     tab.toggled.clear();

@@ -262,3 +262,20 @@ async fn a_built_in_command_s_output_is_heard_and_an_answer_s_end_repeats_nothin
         "the transcript holds the answer"
     );
 }
+
+#[tokio::test]
+async fn dropping_the_stream_closes_the_agent_s_input_while_its_output_stays_open() {
+    let Scene {
+        stream,
+        agent_out,
+        mut agent_in,
+        ..
+    } = scene();
+    drop(stream);
+    let ended = tokio::time::timeout(WAIT, agent_in.next_line()).await;
+    assert!(
+        matches!(ended, Ok(Ok(None))),
+        "the agent reads the end of its input: {ended:?}"
+    );
+    drop(agent_out);
+}

@@ -14,6 +14,9 @@ impl RemoteUrl {
     /// An ssh, scp-like or https remote, without its userinfo and `.git`.
     pub fn parse(url: &str) -> Result<Self> {
         let url = url.trim().trim_end_matches('/').trim_end_matches(".git");
+        if url.starts_with('-') {
+            return Err(Error::BadUrl(url.to_string()));
+        }
         let parsed = match url.split_once("://") {
             Some((_, rest)) => Self::from_host_path(strip_userinfo(rest), '/'),
             None => url

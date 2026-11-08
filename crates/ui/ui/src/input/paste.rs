@@ -131,6 +131,12 @@ fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui) -> Vec<Command> {
             session.resources.search.paste(text);
             keys::search_changed(ui);
         }
+        Typed::ArgoSearch => {
+            if let Some(tab) = session.resources.tab_mut() {
+                tab.argo.search.paste(text);
+                tab.scroll = 0.0;
+            }
+        }
     }
     Vec::new()
 }

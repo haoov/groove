@@ -3,6 +3,7 @@ mod changes;
 mod hunked;
 mod moved;
 mod opened;
+mod pairs;
 mod perf;
 mod reference;
 mod sides;

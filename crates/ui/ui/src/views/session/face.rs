@@ -1,6 +1,7 @@
 //! What the surface shows, and how far it is scrolled each way.
 
 use super::{Face, SessionUi, Tab};
+use crate::views::session::resources::View;
 
 impl SessionUi {
     /// What the surface shows: a buffer whole, in Files or an object's YAML, or the change.
@@ -18,7 +19,10 @@ impl SessionUi {
     pub fn finds(&self) -> bool {
         match self.tab {
             Tab::Diff | Tab::Files => true,
-            Tab::Resources => self.resources.tab().is_some_and(|one| one.view.edits()),
+            Tab::Resources => self
+                .resources
+                .tab()
+                .is_some_and(|one| one.view.edits() || one.view == View::Diff),
             Tab::Overview => false,
         }
     }

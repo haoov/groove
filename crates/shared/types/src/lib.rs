@@ -51,8 +51,8 @@ pub use aging::{Aging, agings, human_age, tells_time};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
-    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
-    server_of, sync_policy,
+    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, ResourceHealth,
+    SyncedResource, drift_path, health_of, server_of, sync_policy,
 };
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use cells::{cell_value, compare_cells};

@@ -101,6 +101,7 @@ fn in_session(
         Some(Typed::Search) => {
             return resources::in_resources((key, mods), ui, app);
         }
+        Some(Typed::ArgoSearch) => return resources::in_argo((key, mods), ui),
         None => {}
     }
     if let Some(commands) = finding((key, mods), ui, app, keymap, seen) {

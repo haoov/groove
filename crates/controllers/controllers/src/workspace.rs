@@ -6,6 +6,7 @@ mod commits;
 mod complete;
 mod definition;
 pub(crate) mod diff;
+mod drift;
 mod editor;
 pub(crate) mod git;
 mod paths;
@@ -91,6 +92,13 @@ pub enum Command {
     OpenCommit { sha: String },
     /// `workspace.leave_commit`: the working tree shown again.
     LeaveCommit,
+    /// `workspace.show_drift`: an Argo CD Application's drift, read at its resourceVersion, shown as the change.
+    ShowDrift {
+        app: groove_workspace_service::DriftKey,
+        at: String,
+    },
+    /// `workspace.leave_drift`: the working tree shown again.
+    LeaveDrift,
     /// `workspace.show_repo`: the repo a git URL names, added from `target` when missing, and one of its commits.
     ShowRepo {
         repo: String,
@@ -146,6 +154,8 @@ impl Command {
             Command::GetCommits => "workspace.get_commits",
             Command::OpenCommit { .. } => "workspace.open_commit",
             Command::LeaveCommit => "workspace.leave_commit",
+            Command::ShowDrift { .. } => "workspace.show_drift",
+            Command::LeaveDrift => "workspace.leave_drift",
             Command::ShowRepo { .. } => "workspace.show_repo",
             Command::Blame { .. } => "workspace.blame",
             Command::RestartServers => "workspace.restart_servers",
@@ -213,6 +223,8 @@ pub fn dispatch(
         Command::GetCommits => commits::list(state, spawner),
         Command::OpenCommit { sha } => commits::open(state, spawner, sha),
         Command::LeaveCommit => commits::leave(state, spawner),
+        Command::ShowDrift { app, at } => drift::show(state, spawner, (app, at)),
+        Command::LeaveDrift => drift::leave(state, spawner),
         Command::ShowRepo { repo, target, sha } => {
             commits::revision(state, services, spawner, (repo, target), sha)
         }

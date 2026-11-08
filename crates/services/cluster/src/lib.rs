@@ -10,8 +10,12 @@ use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usag
 
 pub use groove_contexts::paths;
 pub use groove_kubectl::{Answer, Checked, check as checked};
-pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
-pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls};
+pub use groove_objects::{
+    ArgoApp, Batch, Change, Delta, DriftFile, FRESH, Followed, Logged, Stop, Treed,
+};
+pub use store::{
+    CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Trees, Up, Watched, Yamls,
+};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -104,6 +108,10 @@ pub enum Event {
         key: Box<LogKey>,
         batch: Logged,
     },
+    Treed {
+        app: Box<Named>,
+        read: Treed,
+    },
 }
 
 pub fn apply(state: &mut State, event: Event) {
@@ -129,6 +137,7 @@ pub fn apply(state: &mut State, event: Event) {
         Event::Watched { key, batch } => state.store.apply(&key, batch),
         Event::Followed { key, batch } => state.store.follows.apply(&key, batch),
         Event::Logged { key, batch } => state.store.logs.apply(&key, batch),
+        Event::Treed { app, read } => state.store.trees.apply(&app, read),
     }
 }
 
@@ -200,4 +209,27 @@ pub async fn check(paths: Vec<PathBuf>, context: String) -> Login {
 /// A checked kubectl read run, its JSON through `filter` when one is given.
 pub async fn kubectl(checked: &Checked, filter: Option<&str>) -> Result<Answer> {
     groove_kubectl::run("kubectl", checked, filter).await
+}
+
+/// An Application's resource health from Argo CD, followed until `stop`; each read goes through `send`.
+pub fn argo_tree(
+    paths: (Vec<PathBuf>, PathBuf),
+    app: ArgoApp,
+    stop: &Stop,
+    send: impl Fn(Treed) + Send + Sync + 'static,
+) -> impl std::future::Future<Output = ()> + Send + 'static {
+    groove_objects::argo_tree(paths, app, stop, send)
+}
+
+/// An Application's resource health from Argo CD, read once.
+pub async fn argo_tree_once(paths: (Vec<PathBuf>, PathBuf), app: ArgoApp) -> Treed {
+    groove_objects::argo_tree_once(paths, app).await
+}
+
+/// What differs between an Application's desired and live state, read once.
+pub async fn argo_drift_once(
+    paths: (Vec<PathBuf>, PathBuf),
+    app: ArgoApp,
+) -> std::result::Result<Vec<DriftFile>, String> {
+    groove_objects::argo_drift_once(paths, app).await
 }

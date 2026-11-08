@@ -5,6 +5,7 @@ mod containers;
 mod copy;
 mod describe;
 mod destined;
+mod found;
 mod grouped;
 mod logs;
 mod managed;
@@ -49,6 +50,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
             }
             None => describe::draw(ctx, rest, app, (tab, object)),
         },
+        View::Diff => drifted(ctx, rest, (app, ui), tab),
     }
 }
 
@@ -58,7 +60,9 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
     let gap = ctx.tokens.sm;
     let views: &[View] = match object {
         Some(one) if one.pod.is_some() => &[View::Logs, View::Yaml, View::Describe],
-        Some(one) if one.app.is_some() => &[View::Yaml, View::Resources, View::Describe],
+        Some(one) if one.app.is_some() => {
+            &[View::Yaml, View::Resources, View::Diff, View::Describe]
+        }
         _ => &[View::Yaml, View::Describe],
     };
     for view in views {
@@ -67,7 +71,9 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
         shown.right(ctx, &mut room, ctx.tokens.xs);
     }
     let mut at = room.x;
-    for (said, role) in object.map(stands).unwrap_or_default() {
+    let mut said = object.map(stands).unwrap_or_default();
+    said.extend(object.and_then(|one| one.app.as_deref()).and_then(revision));
+    for (said, role) in said {
         let badge = Badge::new(&said, role);
         if at + badge.width(ctx) > room.right() {
             break;
@@ -93,6 +99,32 @@ fn stands(object: &Described) -> Vec<(String, Role)> {
     };
     let role = colour(groove_types::count_health(ready, desired));
     vec![(format!("{ready}/{desired} ready"), role)]
+}
+
+/// The commit an Application's first git source on a branch synced to, short.
+fn revision(part: &groove_types::AppPart) -> Option<(String, Role)> {
+    let sha = part.synced_commit()?;
+    Some((groove_types::short_sha(sha), Role::Muted))
+}
+
+/// The Application's drift as the diff draws a change, once read for this Application.
+fn drifted(ctx: &mut Ctx, body: Rect, (app, ui): (&AppState, &crate::Ui), tab: &Opened) {
+    let workspace = &app.workspace;
+    let key = tab.link.pod();
+    let failed = workspace.drift_read.failed.as_ref();
+    let (said, role) = match workspace.drift.as_ref().filter(|one| one.app == key) {
+        Some(drift) if !groove_controllers::workspace_service::in_sync(drift) => {
+            return crate::views::session::diff::draw(ctx, app, ui, body);
+        }
+        Some(_) => ("in sync: nothing differs".to_string(), Role::Ok),
+        None => match failed.filter(|(one, _, _)| *one == key) {
+            Some((_, _, why)) => (why.clone(), Role::Bad),
+            None => ("reading the drift from Argo CD…".to_string(), Role::Working),
+        },
+    };
+    let line = body.pad(Edges::all(ctx.tokens.md));
+    let [line, _] = column_in(line, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
+    Label::new(&said, ctx.styles.body(role)).draw(ctx, line);
 }
 
 /// Why the tab holds nothing yet: the object being read, or gone, or the read refused.

@@ -5,7 +5,7 @@ use super::*;
 use crate::Of;
 use crate::input::Input;
 
-fn skill(name: &str, resources: &[&str]) -> groove_types::Skill {
+pub(super) fn skill(name: &str, resources: &[&str]) -> groove_types::Skill {
     groove_types::Skill {
         id: format!("groove:{name}"),
         plugin: "groove".into(),

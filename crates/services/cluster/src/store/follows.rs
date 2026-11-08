@@ -14,7 +14,7 @@ pub struct Follow {
     pub failed: Option<String>,
 }
 
-/// Context, namespace and name: one pod, or one Helm release.
+/// Context, namespace and name: one pod, one Helm release, or one Application.
 pub type Named = (String, String, String);
 
 #[derive(Debug, Default)]

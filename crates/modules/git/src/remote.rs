@@ -53,11 +53,13 @@ impl Git {
             .map(drop)
     }
 
-    /// `git clone <url> <dest>`, run in the destination's parent.
+    /// `git clone -- <url> <dest>`, run in the destination's parent.
     pub async fn clone(url: &str, dest: &Path) -> Result<Git> {
         let parent = dest.parent().unwrap_or(Path::new("."));
         let dest_str = dest.to_string_lossy();
-        Git::at(parent).text(&["clone", url, &dest_str]).await?;
+        Git::at(parent)
+            .text(&["clone", "--", url, &dest_str])
+            .await?;
         Ok(Git::at(dest))
     }
 
@@ -72,6 +74,7 @@ impl Git {
             "--single-branch",
             "--branch",
             branch,
+            "--",
             url,
             &dest_str,
         ];

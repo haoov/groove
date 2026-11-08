@@ -4,6 +4,7 @@ use groove_controllers::{AppState, Command, session};
 
 use crate::Ui;
 use crate::views::session::Tab;
+use crate::views::session::resources::View;
 use groove_ui_kit::base::ctx::Metrics;
 
 /// The rows kept above the hunk's first line.
@@ -31,12 +32,17 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, path: &str, line: u32) -> Vec<
     vec![Command::Session(select)]
 }
 
-/// The stream scrolled to the hunk waited for, once the diff holds its file; another tab lets it go.
+/// The stream scrolled to the hunk waited for, once the diff or a drift holds its file; another tab lets it go.
 pub fn reveal(ui: &mut Ui, app: &AppState, metrics: Metrics) {
     let Some((path, line)) = ui.session.revealing.as_ref() else {
         return;
     };
-    if ui.session.tab != Tab::Diff {
+    let drift = ui
+        .session
+        .resources
+        .tab()
+        .is_some_and(|one| one.view == View::Diff);
+    if ui.session.tab != Tab::Diff && !(ui.session.tab == Tab::Resources && drift) {
         ui.session.revealing = None;
         return;
     }

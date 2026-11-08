@@ -11,6 +11,9 @@ use crate::hit::Target;
 use crate::views::session::Tab;
 
 mod argo;
+mod argo_drift;
+mod argo_find;
+mod argo_health;
 mod argo_links;
 mod argo_sync;
 mod copy;
