@@ -39,7 +39,7 @@ fn the_scope_tabs_pick_the_session_in_hand_or_every_session() {
 }
 
 #[test]
-fn an_open_run_and_its_lines_stand_on_one_held_ground() {
+fn an_open_run_s_line_is_held_and_its_lines_hang_bare_under_it() {
     let app = runs();
     let mut ui = Ui::default();
     let held = |ui: &Ui| grounds(&app, ui, Styles::glass_chosen);
@@ -48,7 +48,11 @@ fn an_open_run_and_its_lines_stand_on_one_held_ground() {
         fold: crate::views::rail::Fold::Event(TimelineKind::Commit),
         newest: Timestamp::new(70),
     });
-    assert_eq!(held(&ui), shut + 4, "the run's row, then its three lines");
+    assert_eq!(
+        held(&ui),
+        shut + 1,
+        "the run's own line, its three lines bare"
+    );
 }
 
 #[test]
@@ -59,4 +63,47 @@ fn an_error_lies_on_its_colour_s_tint() {
     let failed = groove_types::Error::new(groove_types::ErrorKind::Internal, "the walk failed");
     app.errors.push(groove_controllers::Told::now(failed));
     assert_eq!(grounds(&app, &Ui::default(), tint), 1);
+}
+
+#[test]
+fn the_scope_tabs_stand_whatever_number_of_sessions_is_open() {
+    for open in [0, 1, 2] {
+        let mut app = fed();
+        app.session.open.truncate(open);
+        let (_, hits) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
+        for mine in [true, false] {
+            let tab = hits.rect_of(&Target::FeedScope(mine));
+            assert!(tab.is_some(), "{open} open: the {mine} tab");
+        }
+    }
+}
+
+#[test]
+fn both_rail_headers_light_edge_to_edge_under_the_pointer() {
+    let app = fed();
+    let ui = Ui::default();
+    let layout = crate::layout::Layout::of(window(), &ui);
+    let hover = Styles::new(app.config.theme(), Tokens::new(1.0)).glass_hover();
+    for (target, window_) in [
+        (Target::SessionsFold, layout.sessions),
+        (Target::Feed, layout.feed),
+    ] {
+        let lit = Ui {
+            hover: Some(target.clone()),
+            ..Ui::default()
+        };
+        let (frame, hits) = view(&app, &lit, window(), &mut Fonts::embedded());
+        let head = hits.rect_of(&target).expect("the header");
+        assert_eq!(
+            (head.x, head.w),
+            (window_.x, window_.w),
+            "{target:?} edge to edge"
+        );
+        let ground = frame.layers()[0]
+            .quads
+            .iter()
+            .find(|quad| quad.rect == head && quad.color == hover);
+        let ground = ground.expect("lit under the pointer");
+        assert_eq!(ground.shape.radius, 0.0, "{target:?} square");
+    }
 }

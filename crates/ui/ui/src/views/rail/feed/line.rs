@@ -1,27 +1,24 @@
-//! One line of the feed: the kind's mark, what was done and when, over what it was done to.
+//! One line of the feed's log: how long ago, a short code for its kind, then what happened.
 
 use groove_controllers::AppState;
-use groove_gfx::{Align, Edges, Rect};
+use groove_gfx::{Edges, Rect};
 use groove_types::{SessionId, TimelineKind, Timestamp};
-use groove_ui_kit::shape::{from_bottom, from_left};
+use groove_ui_kit::shape::from_left;
 
 use super::super::RunKey;
 use super::Line;
-use super::runs::Item;
+use super::runs::{Item, Run};
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::circle;
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{Badge, card_inset, glass_hoverable, glass_tinted, rounded_slice};
+use groove_ui_kit::widgets::{flat_ground, flat_row};
 
-/// What a line says: when it was, its mark, what was done, and what it was done to.
-struct Said<'a> {
-    at: Timestamp,
-    mark: Mark,
-    act: &'a str,
-    subject: String,
+/// What a line writes in its three columns, and the colour of its code and its text.
+struct Logged {
+    age: String,
+    code: &'static str,
+    text: String,
     role: Role,
 }
 
@@ -33,102 +30,134 @@ pub(super) fn draw(
     (app, every, open): (&AppState, bool, Option<RunKey>),
 ) {
     match one {
-        Line::Job(label) => running(ctx, line, label),
-        Line::Run(run) => {
-            let newest = run.items[0];
-            let count = run.items.len();
-            if let Item::Bad(_) = newest {
-                glass_tinted(ctx, line, ctx.styles.row_tint(Role::Bad));
-            }
-            match count {
-                1 => reachable(ctx, line, newest),
-                _ => {
-                    let key = run.key();
-                    if open == Some(key) {
-                        held(ctx, line, (true, false));
-                    }
-                    glass_hoverable(ctx, line, Target::FeedRun(key));
-                }
-            }
-            let mut said = said(app, newest, every);
-            if count > 1 {
-                said.subject.clear();
-            }
-            over(ctx, line, said, count);
+        Line::Job(label) => {
+            let job = Logged {
+                age: "··".into(),
+                code: "job",
+                text: label.to_string(),
+                role: Role::Working,
+            };
+            logged(ctx, line, &job);
         }
+        Line::Run(run) => folded(ctx, line, run, (app, every, open)),
         Line::Under(item, last) => {
-            held(ctx, line, (false, *last));
-            let lead = ctx.tokens.md + lead(ctx);
-            reachable(ctx, line.pad(Edges::across(lead, 0.0)), *item);
-            under(ctx, line, item.at(), &said(app, *item, false).subject);
+            reachable(ctx, line, *item);
+            let mut said = said(app, *item, (false, ctx.now));
+            said.code = if *last { "└" } else { "│" };
+            logged(ctx, line, &said);
         }
     }
 }
 
-/// An open run's slice of its held ground, rounded where the run opens or closes.
-fn held(ctx: &mut Ctx, line: Rect, (top, bottom): (bool, bool)) {
-    let (sm, half) = (ctx.tokens.sm, ctx.tokens.xs / 2.0);
-    let slice = line.pad(Edges {
-        top: if top { half } else { 0.0 },
-        bottom: if bottom { half } else { 0.0 },
-        left: sm,
-        right: sm,
-    });
-    let ground = ctx.styles.glass_chosen();
-    rounded_slice(ctx, slice, (top, bottom), (ground, None));
+/// A run's line: one event as it is, or several as one with their count, open or shut.
+fn folded(
+    ctx: &mut Ctx,
+    line: Rect,
+    run: &Run<'_>,
+    (app, every, open): (&AppState, bool, Option<RunKey>),
+) {
+    let newest = run.items[0];
+    if let Item::Bad(_) = newest {
+        flat_ground(ctx, line, ctx.styles.row_tint(Role::Bad));
+    }
+    let mut said = said(app, newest, (every, ctx.now));
+    let count = run.items.len();
+    if count > 1 {
+        let key = run.key();
+        let shown = open == Some(key);
+        flat_row(ctx, line, Target::FeedRun(key), shown);
+        let turn = if shown { '▾' } else { '▸' };
+        said.text = format!("{} ×{count} {turn}", act(newest));
+    } else {
+        reachable(ctx, line, newest);
+    }
+    logged(ctx, line, &said);
 }
 
-/// The room the mark's round takes, before the act and under it.
-fn lead(ctx: &Ctx) -> f32 {
-    ctx.tokens.icon + ctx.tokens.sm
-}
-
-/// The kind's mark in a round in `role`'s tint, or see-through, at the left of `top`.
-fn marked(ctx: &mut Ctx, top: &mut Rect, role: Option<Role>) -> Rect {
-    let slot = from_left(top, lead(ctx), ctx.tokens.sm);
-    let ground = match role {
-        Some(role) => ctx.styles.tint(role),
-        None => ctx.styles.glass_hover(),
+/// The three columns: the age and the code each as wide as their longest, the text in the rest.
+fn logged(ctx: &mut Ctx, line: Rect, said: &Logged) {
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
+    let mut room = line.pad(Edges::across(md, md));
+    let ghost = ctx.styles.log(Role::Ghost);
+    let age_wide = ctx.measure("00m", &ghost);
+    let age = from_left(&mut room, age_wide, sm);
+    Label::new(&said.age, ghost).draw(ctx, age);
+    let code_role = match said.role {
+        Role::Text => Role::Faint,
+        other => other,
     };
-    circle(ctx, slot, ground);
-    let size = ctx.tokens.small;
-    slot.align((size, size), Align::Center, Align::Center)
+    let code_style = ctx.styles.log(code_role);
+    let code_wide = ctx.measure("note", &code_style);
+    let code = from_left(&mut room, code_wide, sm);
+    Label::new(said.code, code_style).draw(ctx, code);
+    Label::new(&said.text, ctx.styles.log(said.role)).draw(ctx, room);
 }
 
-/// What one item says, its session named when `every`.
-fn said<'a>(app: &AppState, item: Item<'a>, every: bool) -> Said<'a> {
+/// What one item writes, its session named when `every`, its age at `now`.
+fn said(app: &AppState, item: Item<'_>, (every, now): (bool, Timestamp)) -> Logged {
+    let age = ago(item.at().age_at(now));
     match item {
-        Item::Bad(bad) => Said {
-            at: bad.at,
-            mark: Mark::Close,
-            act: "error",
-            subject: bad.what.message.clone(),
+        Item::Bad(bad) => Logged {
+            age,
+            code: "err",
+            text: bad.what.message.clone(),
             role: Role::Bad,
         },
-        Item::Said(said) => Said {
-            at: said.at,
-            mark: Mark::Note,
-            act: "note",
-            subject: said.what.clone(),
+        Item::Said(said) => Logged {
+            age,
+            code: "note",
+            text: said.what.clone(),
             role: Role::Text,
         },
         Item::Event(event) => {
             let title = every.then(|| titled(app, &event.session)).flatten();
-            Said {
-                at: event.at,
-                mark: mark_of(event.kind),
-                act: match event.kind {
-                    TimelineKind::TurnStart | TimelineKind::TurnEnd => "turn",
-                    kind => kind.label(),
-                },
-                subject: match title {
-                    Some(title) if event.subject.is_empty() => title.to_string(),
-                    Some(title) => format!("{title} \u{b7} {}", event.subject),
-                    None => event.subject.clone(),
+            let what = match event.subject.is_empty() {
+                true => act(item).to_string(),
+                false => format!("{} {}", act(item), event.subject),
+            };
+            Logged {
+                age,
+                code: code_of(event.kind),
+                text: match title {
+                    Some(title) => format!("{title} \u{b7} {what}"),
+                    None => what,
                 },
                 role: Role::Text,
             }
         }
+    }
+}
+
+/// What an item did, as a word or two.
+fn act(item: Item<'_>) -> &'static str {
+    match item {
+        Item::Bad(_) => "error",
+        Item::Said(_) => "note",
+        Item::Event(event) => match event.kind {
+            TimelineKind::TurnStart | TimelineKind::TurnEnd => "turn",
+            kind => kind.label(),
+        },
+    }
+}
+
+/// The short code of a kind of event, four letters at most.
+fn code_of(kind: TimelineKind) -> &'static str {
+    match kind {
+        TimelineKind::TurnStart | TimelineKind::TurnEnd => "agt",
+        TimelineKind::Commit
+        | TimelineKind::Push
+        | TimelineKind::Pull
+        | TimelineKind::Rebase
+        | TimelineKind::RepoAdded
+        | TimelineKind::WorktreeAdded
+        | TimelineKind::WorktreeRemoved => "git",
+        TimelineKind::MrOpened
+        | TimelineKind::MrUpdated
+        | TimelineKind::MrMerged
+        | TimelineKind::MrClosed => "mr",
+        TimelineKind::Review | TimelineKind::Note => "note",
+        TimelineKind::RoutineRan | TimelineKind::RoutineEnded => "rtn",
+        TimelineKind::ClusterRead => "kube",
     }
 }
 
@@ -140,75 +169,9 @@ fn titled<'a>(app: &'a AppState, session: &SessionId) -> Option<&'a str> {
     Some(found.title.as_str())
 }
 
-fn mark_of(kind: TimelineKind) -> Mark {
-    match kind {
-        TimelineKind::TurnStart | TimelineKind::TurnEnd => Mark::Agent,
-        TimelineKind::Commit => Mark::Commit,
-        TimelineKind::Push => Mark::Ahead,
-        TimelineKind::Pull | TimelineKind::Rebase => Mark::Behind,
-        TimelineKind::MrOpened
-        | TimelineKind::MrUpdated
-        | TimelineKind::MrMerged
-        | TimelineKind::MrClosed => Mark::Review,
-        TimelineKind::Review | TimelineKind::Note => Mark::Note,
-        TimelineKind::RepoAdded => Mark::Repo,
-        TimelineKind::WorktreeAdded => Mark::Git,
-        TimelineKind::WorktreeRemoved => Mark::Close,
-        TimelineKind::RoutineRan | TimelineKind::RoutineEnded => Mark::Routine,
-        TimelineKind::ClusterRead => Mark::Cluster,
-    }
-}
-
 /// The line takes the pointer to the session it belongs to, when it has one.
 fn reachable(ctx: &mut Ctx, line: Rect, item: Item<'_>) {
     if let Some(session) = item.session() {
-        glass_hoverable(ctx, line, Target::FeedLine(session.clone()));
+        flat_row(ctx, line, Target::FeedLine(session.clone()), false);
     }
-}
-
-/// A job the user waits on, with the mark that keeps turning in the mark's place.
-fn running(ctx: &mut Ctx, line: Rect, label: &str) {
-    let (mut top, _) = halves(ctx, line);
-    let box_ = marked(ctx, &mut top, Some(Role::Working));
-    groove_ui_kit::widgets::busy(ctx, box_, Role::Working);
-    Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
-}
-
-/// The mark, the act with its count and its age on the right, then the subject under the act.
-fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>, count: usize) {
-    let (mut top, mut under) = halves(ctx, line);
-    let (mark_role, round) = match said.role {
-        Role::Bad => (Role::Bad, Some(Role::Bad)),
-        _ => (Role::Faint, None),
-    };
-    let box_ = marked(ctx, &mut top, round);
-    from_left(&mut under, lead(ctx), ctx.tokens.sm);
-    groove_ui_kit::widgets::icon(ctx, box_, said.mark, mark_role);
-    let when = ago(said.at.age_at(ctx.now));
-    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut top, ctx.tokens.sm);
-    Label::new(said.act, ctx.styles.strong(said.role)).left(ctx, &mut top, ctx.tokens.xs);
-    if count > 1 {
-        Badge::new(&count.to_string(), Role::Muted).left(ctx, &mut top, 0.0);
-    }
-    if !said.subject.is_empty() {
-        Label::new(&said.subject, ctx.styles.small(Role::Muted)).draw(ctx, under);
-    }
-}
-
-/// One event of an open run: its subject under the act's column, its age on the right.
-fn under(ctx: &mut Ctx, line: Rect, at: Timestamp, subject: &str) {
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    from_left(&mut room, lead(ctx), ctx.tokens.sm);
-    let when = ago(at.age_at(ctx.now));
-    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, ctx.tokens.sm);
-    Label::new(subject, ctx.styles.small(Role::Muted)).draw(ctx, room);
-}
-
-/// The line's two halves, inside its margins.
-fn halves(ctx: &Ctx, line: Rect) -> (Rect, Rect) {
-    let (md, inset) = (ctx.tokens.md, card_inset(&ctx.tokens));
-    let mut top = line.pad(Edges::xy(md, inset));
-    let half = top.h / 2.0;
-    let under = from_bottom(&mut top, half, 0.0);
-    (top, under)
 }

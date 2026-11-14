@@ -47,6 +47,11 @@ pub fn flat_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target, cho
     rect
 }
 
+/// `rect` whole on `color`, square: a flat row's tint.
+pub fn flat_ground<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    ctx.quad(rect, color);
+}
+
 /// A list row's rounded ground on glass, inset as the rail's rows are.
 fn glass_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let inset = rect.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));

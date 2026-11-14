@@ -147,6 +147,16 @@ impl Styles {
         }
     }
 
+    /// A line of the feed's log: mono, as small as a caption.
+    pub fn log(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::Regular,
+            size: self.tokens.small,
+            color: self.color(role),
+        }
+    }
+
     /// Code: the agent, the terminal, the diff and the editor, and nowhere else.
     pub fn code(&self, role: Role) -> TextStyle {
         TextStyle {

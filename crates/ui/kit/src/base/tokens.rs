@@ -16,7 +16,9 @@ pub const SCRIM_ALPHA: u8 = 120;
 pub const GLASS_ALPHA: (u8, u8) = (140, 95);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
-pub const ROW_TINT_ALPHA: (u8, u8) = (28, 64);
+/// A row's tint in a state's colour, dark then light; the dark one set for what it reads as in
+/// linear blending, about a tenth, as the glass grounds below are.
+pub const ROW_TINT_ALPHA: (u8, u8) = (6, 64);
 /// Grounds laid on glass, dark then light. The frame blends in linear light, where a pale
 /// ground on a dark theme reads three to four times its alpha: the dark ones are set for what
 /// they read as, hover 7 %, a card under it, chosen 13 %, active 16 %.
@@ -195,7 +197,7 @@ const LOGICAL: Tokens = Tokens {
     sidebar: 260.0,
     line: 18.0,
     code_line: 21.0,
-    feed_row: 50.0,
+    feed_row: 20.0,
     feed_age: 30.0,
     bar: 36.0,
     hairline: 1.0,

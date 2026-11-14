@@ -1,4 +1,4 @@
-//! What the opened sessions have done, under their rows: newest first, quiet.
+//! What the opened sessions have done, as a log in its own window: newest first, quiet.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -12,12 +12,11 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::{band, from_right};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::marked_glass_tabs;
+use groove_ui_kit::widgets::{flat_row, marked_glass_tabs};
 
 /// Its own window: the header that folds it, a bar tall and alone while folded, then the lines.
 pub fn draw(ctx: &mut Ctx, window: Rect, app: &AppState, ui: &Ui) {
@@ -25,34 +24,36 @@ pub fn draw(ctx: &mut Ctx, window: Rect, app: &AppState, ui: &Ui) {
         window,
         [Spec::default().height(ctx.tokens.bar), Spec::fill()],
     );
-    let tall = ctx.tokens.row;
-    heading(ctx, band(head, (head.h - tall) / 2.0, tall), app, ui);
+    heading(ctx, head, ui);
     if !ui.rail.folded {
         lines(ctx, body.pad(Edges::xy(0.0, ctx.tokens.xs)), app, ui);
     }
 }
 
-/// The word that folds the feed, and the tabs that narrow it to the session in hand.
-fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
-    let row = groove_ui_kit::widgets::inset_row(ctx, line, Target::Feed, (false, None));
-    let mut room = row.pad(Edges::across(ctx.tokens.sm, 0.0));
-    narrowed(ctx, &mut room, app, ui);
+/// The word that folds the feed, and the tabs that narrow it to the session in hand: lit edge to
+/// edge under the pointer, as the sessions' header is.
+fn heading(ctx: &mut Ctx, line: Rect, ui: &Ui) {
+    let row = flat_row(ctx, line, Target::Feed, false);
+    let tall = ctx.tokens.row;
+    let mut room = band(row, (row.h - tall) / 2.0, tall);
+    room = room.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
+    narrowed(ctx, &mut room, ui);
     groove_ui_kit::widgets::Heading::new("feed")
         .fold(!ui.rail.folded)
         .within(ctx, row, room);
 }
 
 /// Which sessions it shows, as two tabs at the header's own end.
-fn narrowed(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) {
-    if app.session.open.len() < 2 {
-        return;
-    }
-    let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
-    let tab = ctx.tokens.icon + ctx.tokens.md * 2.0;
-    let place = from_right(room, tab * 2.0 + xs + sm * 2.0, 0.0);
+fn narrowed(ctx: &mut Ctx, room: &mut Rect, ui: &Ui) {
+    let (sm, xs, md) = (ctx.tokens.sm, ctx.tokens.xs, ctx.tokens.md);
+    let style = ctx.styles.small(Role::Text);
+    let words = ctx.measure("this", &style) + ctx.measure("all", &style);
+    // Each tab padded `md` on both sides, a gap between them, a margin at each end.
+    let pads = (md + md) * 2.0 + xs + sm * 2.0;
+    let place = from_right(room, words + pads, 0.0);
     let tabs = [
-        (Some(Mark::Person), "", Target::FeedScope(true)),
-        (Some(Mark::People), "", Target::FeedScope(false)),
+        (None, "this", Target::FeedScope(true)),
+        (None, "all", Target::FeedScope(false)),
     ];
     marked_glass_tabs(ctx, place, &tabs, usize::from(!ui.rail.mine));
 }
@@ -70,7 +71,7 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         Label::new("nothing yet", style).draw(ctx, line);
         return;
     }
-    let (tall, short) = (ctx.tokens.feed_row, ctx.tokens.row);
+    let tall = ctx.tokens.feed_row;
     let open = ui.rail.open;
     let at = (Scroller::Feed, ui.offset(Scroller::Feed));
     listed(
@@ -78,10 +79,7 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         body,
         at,
         &shown,
-        |one| match one {
-            Line::Under(..) => short,
-            _ => tall,
-        },
+        |_| tall,
         |ctx, line, one| line::draw(ctx, line, one, (app, !ui.rail.mine, open)),
     );
 }

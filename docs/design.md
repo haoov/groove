@@ -207,18 +207,28 @@ runs the routine now, while no run is on it. Selected, it shows its agent pane a
 appears on the board.
 
 **Feed.** In its own window under the sessions', the event log of the opened sessions, newest first, filterable to
-the selected session: agent turns, commits, pushes, MR events, CI results, notes.
-Monochrome, no motion, collapsible. Asks are never in the feed; they live on the row.
-Back-to-back events of one kind from one session fold into one row with a count; a click
-opens the run to one line per event.
+the selected session: commits, pushes, MR events, notes, routines, cluster reads and Groove's own
+errors and notes. Asks are never in the feed; they live on the row.
+It reads as a log: one mono line an event, in three columns — how long ago, a short code for its
+kind (`git`, `mr`, `note`, `rtn`, `kube`, `err`, `job`), then what happened, cut with `…` when
+the window is narrow; across every session the text leads with the session's title. Colour marks
+state only: a running job is blue and stands first, its age `··`; an error is red on its colour's
+tint; every other code is faint. Back-to-back events of one kind from one session fold into one
+line, `commit ×3 ▸`; a click opens it, held, its events hanging under it by `│` and `└`. A line
+takes the user to its session.
 Its top is the line the user drags; folded, it is its header alone, a bar tall, and the
 sessions' window reaches down to a gap above it. Enforced by
-`a_folded_feed_is_its_heading_alone_and_the_sessions_reach_down_to_it`. Two icon tabs at its
-heading's end pick the session in hand or every session. Each line has its mark in a round. An
-open run and its lines stand on one held ground. An error lies on its colour's tint.
-Enforced by `back_to_back_events_of_one_kind_fold_into_one_row`,
+`a_folded_feed_is_its_heading_alone_and_the_sessions_reach_down_to_it`. Two tabs at its
+heading's end, `this` and `all`, pick the session in hand or every session; they stand however
+many sessions are open. Enforced by `the_scope_tabs_stand_whatever_number_of_sessions_is_open`.
+Its header lights under the pointer as the sessions' does, square and edge to edge. Enforced by
+`both_rail_headers_light_edge_to_edge_under_the_pointer`.
+Enforced by `a_line_is_its_age_its_code_and_its_text_in_three_mono_columns`,
+`back_to_back_events_of_one_kind_fold_into_one_row`,
+`a_folded_run_opens_on_a_click_and_its_lines_lead_to_the_session`,
 `the_scope_tabs_pick_the_session_in_hand_or_every_session`,
-`an_open_run_and_its_lines_stand_on_one_held_ground` and
+`an_open_run_s_line_is_held_and_its_lines_hang_bare_under_it`,
+`the_feed_is_monochrome_but_for_its_errors` and
 `an_error_lies_on_its_colour_s_tint`.
 
 ## Session — small scope
