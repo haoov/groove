@@ -97,14 +97,36 @@ fn a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground() {
 }
 
 #[test]
-fn the_rail_floats_as_a_pane_of_glass_inside_its_place() {
+fn the_rail_floats_as_two_windows_of_glass_inside_its_place() {
     let app = app();
     let ui = Ui::default();
     let (frame, _) = view(&app, &ui, metrics(1600, 1000, 1.0), &mut Fonts::embedded());
-    let place = crate::layout::Layout::of(metrics(1600, 1000, 1.0), &ui).rail;
-    let pane = frame.layers()[0].glass.first().expect("the rail's pane");
+    let layout = crate::layout::Layout::of(metrics(1600, 1000, 1.0), &ui);
+    let place = layout.rail;
+    let panes: Vec<_> = frame.layers()[0]
+        .glass
+        .iter()
+        .take(2)
+        .map(|one| one.rect)
+        .collect();
+    assert_eq!(
+        panes,
+        [layout.sessions, layout.feed],
+        "the sessions', then the feed's"
+    );
     let inset = Tokens::new(1.0).sm;
-    assert_eq!(pane.rect, place.pad(groove_gfx::Edges::all(inset)));
+    let column = place.pad(groove_gfx::Edges::all(inset));
+    assert_eq!(
+        (layout.sessions.x, layout.sessions.y, layout.sessions.w),
+        (column.x, column.y, column.w),
+        "a gap from the place's edges"
+    );
+    assert_eq!(layout.feed.bottom(), column.bottom());
+    assert_eq!(
+        layout.sessions.bottom() + inset,
+        layout.feed.y,
+        "and from each other"
+    );
     let deep = Styles::new(app.config.theme(), Tokens::new(1.0)).deep();
     let under = &frame.layers()[0].under;
     assert_eq!(

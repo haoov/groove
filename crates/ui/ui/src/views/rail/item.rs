@@ -6,24 +6,23 @@ use groove_types::{AgentStatus, Ask, AttentionClass, SessionId};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::{Surface, Ui};
-use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, from_left, from_right, from_top, square};
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{dot, glass_button, inset_row, lead};
+use groove_ui_kit::widgets::{flat_row, glass_button, lead};
 
 /// The row's two lines: head and state.
 pub fn height(ctx: &Ctx) -> f32 {
     (ctx.tokens.sm + ctx.tokens.line) * 2.0 + ctx.tokens.xs
 }
 
-/// State dot, type icon, title and how long it has waited, then the agent's state under them.
+/// The type icon in the state's colour, the title and how long it has waited, then the agent's
+/// state under them; the row edge to edge on the window's glass.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
     let up = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
-    let tint = tinted(app, id).map(Ground::RowTint);
-    let row = inset_row(ctx, rect, Target::Session(id.clone()), (up, tint));
+    let row = flat_row(ctx, rect, Target::Session(id.clone()), up);
     let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = row;
     from_top(&mut body, 0.0, sm);
@@ -32,14 +31,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
 
     let mut room = head.pad(Edges::across(md, md));
     waited(ctx, app, &mut room, id);
-    let (role, hollow) = dot_of(app, id);
-    let spot = from_left(&mut room, sm, sm);
-    dot(ctx, spot, role, hollow);
     lead(
         ctx,
         &mut room,
         Mark::of_kind(&open.session.kind),
-        Role::Faint,
+        role_of(app, id),
     );
     Label::new(&open.session.title, ctx.styles.label(Role::Text)).draw(ctx, room);
 
@@ -58,18 +54,6 @@ fn asked(app: &AppState, id: &SessionId) -> Option<(Ask, usize)> {
     Some((asks.first()?.clone(), asks.len()))
 }
 
-fn tinted(app: &AppState, id: &SessionId) -> Option<Role> {
-    let activity = app.agent.activity(id)?;
-    if !activity.asks.is_empty() {
-        return Some(Role::Attention);
-    }
-    match activity.status {
-        AgentStatus::Asking => Some(Role::Attention),
-        AgentStatus::Done { seen: false } => Some(Role::Ok),
-        _ => None,
-    }
-}
-
 /// `asks to commit`: what a write does, as the rail and the sheet say it.
 pub(crate) fn asks_to(op: &str) -> String {
     format!(
@@ -78,9 +62,9 @@ pub(crate) fn asks_to(op: &str) -> String {
     )
 }
 
-/// Where the state line starts: under the title, past the dot and the type icon.
+/// Where the state line starts: under the title, past the type icon.
 fn indent(ctx: &Ctx) -> f32 {
-    after_mark(ctx, ctx.tokens.md + ctx.tokens.sm * 2.0)
+    after_mark(ctx, ctx.tokens.md)
 }
 
 /// The write in peach where the state stands.
@@ -93,21 +77,22 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
 }
 
-/// The dot's colour, and whether only its edge is drawn.
-fn dot_of(app: &AppState, id: &SessionId) -> (Role, bool) {
+/// The type icon's colour: the session's state.
+fn role_of(app: &AppState, id: &SessionId) -> Role {
     let Some(activity) = app.agent.activity(id) else {
-        return (Role::Ghost, false);
+        return Role::Faint;
     };
     if !activity.asks.is_empty() {
-        return (Role::Attention, false);
+        return Role::Attention;
     }
     match activity.status {
-        AgentStatus::Asking => (Role::Attention, false),
-        AgentStatus::Working => (Role::Working, false),
-        AgentStatus::Done { seen: false } => (Role::Ok, false),
-        AgentStatus::Error { .. } => (Role::Bad, false),
-        AgentStatus::Exited { .. } => (Role::Ghost, true),
-        AgentStatus::Idle | AgentStatus::Done { seen: true } => (Role::Ghost, false),
+        AgentStatus::Asking => Role::Attention,
+        AgentStatus::Working => Role::Working,
+        AgentStatus::Done { seen: false } => Role::Ok,
+        AgentStatus::Error { .. } => Role::Bad,
+        AgentStatus::Exited { .. } | AgentStatus::Idle | AgentStatus::Done { seen: true } => {
+            Role::Faint
+        }
     }
 }
 

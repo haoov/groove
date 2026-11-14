@@ -34,7 +34,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
                 Surface::Session => session::draw(&mut ctx, app, ui),
                 Surface::Board => ctx.region(!rail, |ctx| board::draw(ctx, app, ui)),
             }
-            splitter::draw(&mut ctx, ui.showing(app));
+            splitter::draw(&mut ctx, ui.showing(app), (ui.rail.stowed, ui.rail.folded));
             if ui.showing(app) == Surface::Session {
                 session::diff::popup::draw(&mut ctx, app, ui);
                 session::diff::completion::draw(&mut ctx, app, ui);

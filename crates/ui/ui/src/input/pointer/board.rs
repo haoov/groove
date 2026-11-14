@@ -18,7 +18,7 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         Target::Task(short_id) => task(ui, short_id.clone()),
         Target::Filter => filtering(ui),
         Target::Offer(at) => offered(ui, app, *at),
-        Target::AddTask => explorer(ui),
+        Target::AddTask | Target::NewExplorer => explorer(ui),
         Target::Place(_) => Vec::new(),
         Target::SortReview(by) => {
             ui.board.reviews = ui.board.reviews.clicked(*by);

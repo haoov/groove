@@ -32,15 +32,16 @@ pub(super) fn scroll(
     if ui.overlay.is_some() {
         return Vec::new();
     }
+    // The agent first: with the rail folded, it runs across the rail's column.
+    if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
+        return agent(ui, app, delta, point, &layout, metrics);
+    }
     if x <= layout.rail.right() {
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
         return Vec::new();
     }
     if ui.showing(app) == Surface::Session && layout.manual.contains(x, y) {
         return shelled(ui, app, delta, point, hits, metrics);
-    }
-    if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
-        return agent(ui, app, delta, point, &layout, metrics);
     }
     if ui.showing(app) == Surface::Board {
         column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));

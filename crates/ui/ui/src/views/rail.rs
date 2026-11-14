@@ -16,9 +16,9 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::{after_mark, square};
-use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::{floating_pane, inset_row, lead};
+use groove_ui_kit::shape::top_rule;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Button, flat_row, glass_pane, ground_under, lead};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -29,6 +29,8 @@ pub struct RailUi {
     pub feed: f32,
     /// The feed is folded to its own heading.
     pub folded: bool,
+    /// The sessions' window is folded to its own header.
+    pub stowed: bool,
     /// The feed shows the selected session alone.
     pub mine: bool,
     /// The routines' sessions stand open under their heading.
@@ -96,28 +98,45 @@ pub(crate) fn group_of(app: &AppState, open: &Open) -> Group {
     }
 }
 
-/// A floating pane of glass: the Board row, the sessions by state, the feed, the footer.
+/// Two windows of glass floating in the rail's place: the sessions' header, the Board row and the
+/// sessions by state, then the feed under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let pane = floating_pane(ctx, ctx.app.layout.rail, Ground::Deep);
-    let column = pane.pad(Edges::xy(0.0, ctx.tokens.sm));
+    let layout = ctx.app.layout;
+    ground_under(ctx, layout.rail, Ground::Deep);
+    glass_pane(ctx, layout.sessions);
+    glass_pane(ctx, layout.feed);
     let tall = |height: f32| Spec::default().height(height);
-    let parts = [
-        tall(ctx.tokens.header),
-        Spec::fill(),
-        tall(ctx.app.layout.feed.h),
-        tall(ctx.tokens.bar),
-    ];
-    let [board, rows, feed, foot] = column_in(column, parts);
+    let parts = [tall(ctx.tokens.bar), tall(ctx.tokens.header), Spec::fill()];
+    let [head, board, rows] = column_in(layout.sessions, parts);
+    header(ctx, app, ui, head);
+    feed::draw(ctx, layout.feed, app, ui);
+    if ui.rail.stowed {
+        return;
+    }
+    top_rule(ctx, board, ctx.styles.line());
     board_row(ctx, app, ui, board);
-    items(ctx, app, ui, rows);
-    feed::draw(ctx, feed, app, ui);
-    footer(ctx, foot);
+    top_rule(ctx, rows, ctx.styles.line());
+    items(ctx, app, ui, rows.pad(Edges::xy(0.0, ctx.tokens.xs)));
+}
+
+/// The window's name and how many sessions are open, a click on it folding the window to it,
+/// and the `+` that opens a new explorer.
+fn header(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) {
+    let md = ctx.tokens.md;
+    let row = flat_row(ctx, line, Target::SessionsFold, false);
+    let mut room = row.pad(Edges::across(md, ctx.tokens.sm));
+    let plus = Button::icon(Mark::Add, 0, Target::NewExplorer, Role::Faint);
+    plus.right(ctx, &mut room, 0.0);
+    groove_ui_kit::widgets::Heading::new("sessions")
+        .count(app.session.open.len())
+        .fold(!ui.rail.stowed)
+        .within(ctx, row, room);
 }
 
 /// The board. It carries the attention count when it is not zero.
 fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let up = ui.showing(app) == Surface::Board;
-    let row = inset_row(ctx, rect, Target::Board, (up, None));
+    let row = flat_row(ctx, rect, Target::Board, up);
     let md = ctx.tokens.md;
     let mut room = row.pad(Edges::across(md, md));
     asking(ctx, &mut room, app.task.attention.len());
@@ -190,7 +209,7 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
             Entry::Session(open) => item::draw(ctx, app, ui, rect, open),
             Entry::Group(group, count) => {
                 let named = groove_ui_kit::widgets::Heading::new(group.label());
-                let room = rect.pad(Edges::across(ctx.tokens.lg, ctx.tokens.lg));
+                let room = rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
                 named
                     .count(*count)
                     .role(group.role())
@@ -203,21 +222,10 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 
 /// The heading that folds the routines' sessions, with how many there are.
 fn heading(ctx: &mut Ctx, rect: Rect, count: usize, open: bool) {
-    let row = inset_row(ctx, rect, Target::Routines, (false, None));
-    let room = row.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
+    let row = flat_row(ctx, rect, Target::Routines, false);
+    let room = row.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     groove_ui_kit::widgets::Heading::new("routines")
         .count(count)
         .fold(open)
         .within(ctx, row, room);
-}
-
-fn footer(ctx: &mut Ctx, rect: Rect) {
-    let md = ctx.tokens.md;
-    let rule = rect.pad(Edges::across(md, md));
-    groove_ui_kit::shape::top_rule(ctx, rule, ctx.styles.line());
-    let line = inset_row(ctx, rect, Target::SettingsOpen, (false, None));
-    let style = ctx.styles.small(Role::Faint);
-    let mark = square(line.pad(Edges::across(md, 0.0)), ctx.tokens.icon);
-    groove_ui_kit::widgets::icon(ctx, mark, Mark::Settings, Role::Faint);
-    row(ctx, line, after_mark(ctx, md), "settings", style);
 }

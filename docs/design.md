@@ -133,7 +133,21 @@ No timeline, no activity heatmap, no *blocked by*: the task tools draw those bet
 
 ## Rail — mid scope
 
-The rail is a pane of glass floating inside its place, a small gap from the window's edges.
+The rail is two windows of glass floating inside its place, a small gap from the window's edges
+and from each other: the sessions' above, the feed's below. Nothing else stands in it; Settings
+opens from its chord and the palette. Enforced by
+`the_rail_floats_as_two_windows_of_glass_inside_its_place` and `the_rail_holds_no_settings_row`.
+The sessions' window is headed by its name and how many sessions are open, with a `+` that
+opens a new explorer; a rule sets the header and the Board row apart. Enforced by
+`the_sessions_window_is_headed_by_its_name_and_count_and_its_plus_opens_an_explorer`.
+A click on the header folds the window to it, as the feed folds to its own: the feed rises to a
+gap under it and its top is no longer dragged; a second click opens it as it was. `alt+r`
+opens it and hands it the keys; pressed while it has them, it folds it and hands them to the
+agent, as the workspace's chord does. Enforced by
+`a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_rises`,
+`both_folded_the_rail_is_its_two_headers`,
+`the_rail_s_chord_opens_the_folded_sessions_and_hands_them_the_keys` and
+`the_rail_s_chord_on_the_rail_folds_the_sessions_and_hands_the_keys_to_the_agent`.
 It holds only the sessions actually open, under three headings, each with its count: **needs you**,
 **working**, **idle**. A heading with no session is not drawn. Under a heading the sessions
 keep the order they were opened in; a session moves only when its state does. The Board row
@@ -147,35 +161,37 @@ drawn. Enforced by `the_arrows_walk_the_rows_in_the_order_drawn`.
 
 Each row:
 
-1. **State dot** — peach while it asks, green while done and not seen, red on an error, blue
-   while working, grey when idle, hollow once exited.
-2. **Type icon** — task, review, explorer, routine.
-3. **Title.**
-4. **Agent status** — `working`, `asks to commit`, `done`, `idle`, `exited`, `error`. One
+1. **Type icon** — task, review, explorer, routine, in the state's colour: peach while it asks,
+   green while done and not seen, red on an error, blue while working, grey otherwise.
+2. **Title.**
+3. **Agent status** — `working`, `asks to commit`, `done`, `idle`, `exited`, `error`. One
    line, truncated, never wrapped.
-5. **Relative time, right-aligned** — how long the agent has waited, or since it finished.
+4. **Relative time, right-aligned** — how long the agent has waited, or since it finished.
 
 ```
+ SESSIONS · 4                              +
+ ───────────────────────────────────────────
  ▤  Board                                   2
+ ───────────────────────────────────────────
  NEEDS YOU · 1
- ● ⚑  TASK-51  auth refresh                2m
-      asks to commit
+ ⚑  TASK-51  auth refresh                  2m
+    asks to commit
  WORKING · 1
- ● ◎  review-3  shop argo                 now
-      working
+ ◎  review-3  shop argo                   now
+    working
  IDLE · 2
- ● ⚑  fix/keys-50                          6m
-      done
- ● ⚑  TASK-48  finops export               3h
-      idle
+ ⚑  fix/keys-50                            6m
+    done
+ ⚑  TASK-48  finops export                 3h
+    idle
 ```
 
-Nothing else: no CI, no MR state, no worktree count. Rows stand inset from the rail's sides
-on rounded, see-through grounds, with no rule between them, as the palette's rows do: the
-selected one stronger, the one under the pointer lighter. Headings, rules and the footer keep
-the same inset. A row takes a tinted ground only while its agent asks, in peach, or is done and
-not yet seen, in green. Enforced by
-`the_selected_row_stands_inset_on_a_rounded_held_ground_and_the_hovered_one_lit`.
+Nothing else: no CI, no MR state, no worktree count, no state dot. Rows run edge to edge
+across the window with no rule between them, on square, see-through grounds: the selected one
+held, the one under the pointer lighter, the rest bare; no row is tinted. Headings keep the
+rows' padding. A row that asks shows it in its icon and its peach state line. Enforced by
+`the_selected_row_stands_edge_to_edge_on_the_held_ground_and_the_hovered_one_lit` and
+`a_row_that_asks_shows_its_icon_in_the_attention_colour_on_no_tint`.
 
 A row carries no button. An ask's text is peach, and a click on its row opens the session
 with the review sheet on the first ask. Enforced by
@@ -190,12 +206,14 @@ folded by default, below the other sessions. Its row offers a round glass play b
 runs the routine now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
 appears on the board.
 
-**Feed.** Below the rows, the event log of the opened sessions, newest first, filterable to
+**Feed.** In its own window under the sessions', the event log of the opened sessions, newest first, filterable to
 the selected session: agent turns, commits, pushes, MR events, CI results, notes.
 Monochrome, no motion, collapsible. Asks are never in the feed; they live on the row.
 Back-to-back events of one kind from one session fold into one row with a count; a click
 opens the run to one line per event.
-It shares the rail's glass with the rows, set apart by a gap, not a rule. Two icon tabs at its
+Its top is the line the user drags; folded, it is its header alone, a bar tall, and the
+sessions' window reaches down to a gap above it. Enforced by
+`a_folded_feed_is_its_heading_alone_and_the_sessions_reach_down_to_it`. Two icon tabs at its
 heading's end pick the session in hand or every session. Each line has its mark in a round. An
 open run and its lines stand on one held ground. An error lies on its colour's tint.
 Enforced by `back_to_back_events_of_one_kind_fold_into_one_row`,
@@ -210,7 +228,7 @@ The rail, then one ground for the agent with the workspace's strip of glass on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's pty, from the top, a bar's room left under it |
+| **Agent pane** | the agent's pty, a bar's room left over it and under it |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
@@ -223,9 +241,13 @@ takes its new size at once. Folding the terminals leaves a folded strip folded. 
 `any_tab_opens_the_folded_strip_on_itself`,
 `the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
 `folding_the_drawer_leaves_the_strip_folded`.
-The agent's screen runs from the board's top; the header, open or folded to its capsule, and the
-terminals' drawer stand a layer over it, so their glass blurs the screen rather than sitting under
-its text. Enforced by `the_folded_header_is_glass_over_the_agent_s_screen`.
+The agent's screen leaves a bar's room over it, where the folded header's capsule stands, and one
+under it. The header, open or folded, and the terminals' drawer stand a layer over the screen, so
+their glass blurs it rather than sitting under its text. Enforced by
+`the_folded_header_is_glass_over_the_agent_s_screen`. With both the rail's windows folded, the
+screen runs left across the rail's column to the window's edge, its two headers in the rooms over
+and under it; the wheel there scrolls the agent and the rail's edge is not dragged. Enforced by
+`with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
 
 **The terminals rise from the foot.** Their drawer is a pane of glass under the strip.
 Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the
@@ -351,9 +373,9 @@ does the same, its field a rounded field. Enforced by
 **Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
 menu, the cluster scope panel, the board's filter offers, and the language servers' popup
 are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
-list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected. A button on
+list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; the rail's sessions take theirs square, edge to edge. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
-`the_rail_floats_as_a_pane_of_glass_inside_its_place`,
+`the_rail_floats_as_two_windows_of_glass_inside_its_place`,
 `the_strip_stands_as_glass_on_the_agent_s_ground`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
@@ -494,7 +516,7 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 ## Settings
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
-the user was. Reached from the rail's footer and the palette. A section list on the left,
+the user was. Reached from its chord, `alt+,`, and the palette. A section list on the left,
 on a floating pane of glass as the rail's — Setup, Providers, Clusters, Agent, Appearance,
 Preferences, Keymap — under the title, *back* and a search field: typing filters every
 section to the matching rows, each shown with its section. The selected section's form on

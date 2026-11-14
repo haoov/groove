@@ -1,4 +1,4 @@
-//! Settings: opened from the rail and the palette, over the whole window, its rows searched and set.
+//! Settings: opened from its chord and the palette, over the whole window, its rows searched and set.
 
 use groove_controllers::config_service::Preference;
 use groove_controllers::{AppState, Command, config};
@@ -27,12 +27,10 @@ pub(super) fn opened() -> (AppState, Ui) {
 }
 
 #[test]
-fn the_rail_s_footer_opens_settings_over_the_whole_window_and_esc_comes_back() {
+fn the_chord_opens_settings_over_the_whole_window_and_esc_comes_back() {
     let app = full_app();
     let mut ui = Ui::default();
-    let (_, hits) = drawn(&app, &ui);
-    let footer = hits.rect_of(&Target::SettingsOpen).expect("the footer row");
-    click(footer, &mut ui, &app, &hits);
+    press(Key::Char(','), ALT, &mut ui, &app);
     assert!(ui.settings.open);
     let (texts, hits) = drawn(&app, &ui);
     assert!(
@@ -42,6 +40,14 @@ fn the_rail_s_footer_opens_settings_over_the_whole_window_and_esc_comes_back() {
     assert!(texts.iter().any(|one| one == "Preferences"), "{texts:?}");
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(!ui.settings.open);
+}
+
+#[test]
+fn the_rail_holds_no_settings_row() {
+    let app = full_app();
+    let ui = Ui::default();
+    let (texts, _) = drawn(&app, &ui);
+    assert!(!texts.iter().any(|one| one == "settings"), "{texts:?}");
 }
 
 #[test]
@@ -74,9 +80,7 @@ fn a_step_up_asks_for_the_preference_one_step_more() {
 fn opening_settings_checks_the_environment_and_the_kubeconfig_again() {
     let app = full_app();
     let mut ui = Ui::default();
-    let (_, hits) = drawn(&app, &ui);
-    let footer = hits.rect_of(&Target::SettingsOpen).expect("the footer row");
-    let asked = click(footer, &mut ui, &app, &hits);
+    let asked = press(Key::Char(','), ALT, &mut ui, &app);
     let scan = Command::Cluster(groove_controllers::cluster::Command::ScanContexts);
     assert_eq!(
         asked,

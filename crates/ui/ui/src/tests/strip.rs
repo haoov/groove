@@ -307,10 +307,8 @@ fn the_folded_header_is_glass_over_the_agent_s_screen() {
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
     assert!(
-        layout
-            .agent
-            .contains(layout.header.right() - 1.0, layout.header.y + 1.0),
-        "the capsule stands over the agent's screen"
+        layout.header.bottom() <= layout.agent.y,
+        "the capsule stands in the room over the agent's screen"
     );
     let capsule = frame.layers().iter().position(|one| {
         let over = |g: &groove_gfx::Glass| g.rect.right() == layout.header.right();

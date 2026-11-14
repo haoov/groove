@@ -17,10 +17,13 @@ pub const GLASS_ALPHA: (u8, u8) = (140, 95);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
 pub const ROW_TINT_ALPHA: (u8, u8) = (28, 64);
-pub const GLASS_HOVER_ALPHA: (u8, u8) = (18, 22);
-pub const GLASS_CARD_ALPHA: (u8, u8) = (12, 16);
-pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (38, 46);
-pub const GLASS_ACTIVE_ALPHA: (u8, u8) = (51, 64);
+/// Grounds laid on glass, dark then light. The frame blends in linear light, where a pale
+/// ground on a dark theme reads three to four times its alpha: the dark ones are set for what
+/// they read as, hover 7 %, a card under it, chosen 13 %, active 16 %.
+pub const GLASS_HOVER_ALPHA: (u8, u8) = (3, 22);
+pub const GLASS_CARD_ALPHA: (u8, u8) = (2, 16);
+pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (7, 46);
+pub const GLASS_ACTIVE_ALPHA: (u8, u8) = (9, 64);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.
 pub const GROUND_ALPHA: (u8, u8) = (12, 28);
 pub const NUMBER_TINT: f32 = 0.4;
@@ -198,7 +201,7 @@ const LOGICAL: Tokens = Tokens {
     hairline: 1.0,
     corner: 4.0,
     round: 2.0,
-    glass_round: 16.0,
+    glass_round: 4.0,
     bezel: 24.0,
     glass_row: 32.0,
     edge: 0.5,

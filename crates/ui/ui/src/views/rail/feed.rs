@@ -15,16 +15,20 @@ use crate::offsets::listed;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::from_right;
+use groove_ui_kit::shape::{band, from_right};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::marked_glass_tabs;
 
-/// The header that folds it, then the lines themselves.
-pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
-    let [head, body] = column_in(area, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-    heading(ctx, head, app, ui);
+/// Its own window: the header that folds it, a bar tall and alone while folded, then the lines.
+pub fn draw(ctx: &mut Ctx, window: Rect, app: &AppState, ui: &Ui) {
+    let [head, body] = column_in(
+        window,
+        [Spec::default().height(ctx.tokens.bar), Spec::fill()],
+    );
+    let tall = ctx.tokens.row;
+    heading(ctx, band(head, (head.h - tall) / 2.0, tall), app, ui);
     if !ui.rail.folded {
-        lines(ctx, body, app, ui);
+        lines(ctx, body.pad(Edges::xy(0.0, ctx.tokens.xs)), app, ui);
     }
 }
 

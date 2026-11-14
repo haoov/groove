@@ -35,8 +35,7 @@ pub enum Target {
     Place(groove_types::ExternalId),
     /// What hands the source the hours the clock measured.
     LogHours(groove_types::ExternalId),
-    /// The rail's footer row, which opens Settings, and its own bar's back.
-    SettingsOpen,
+    /// Settings' own bar's back.
     SettingsBack,
     /// A section of the list, and the search over them.
     SettingsSection(crate::views::settings::Section),
@@ -147,6 +146,8 @@ pub enum Target {
     Working,
     /// The feed's own heading, which folds it away.
     Feed,
+    /// The sessions' window's header, which folds it to itself.
+    SessionsFold,
     /// The rail's Routines heading, which folds their sessions away.
     Routines,
     /// A line of the feed, and the session it belongs to.
@@ -177,6 +178,8 @@ pub enum Target {
     Offer(usize),
     /// What starts a task, at the right of the board's header.
     AddTask,
+    /// The sessions' window's `+`, which opens a new explorer.
+    NewExplorer,
     /// A boundary between two columns.
     Split(Edge),
     /// What folds the sidebar away.

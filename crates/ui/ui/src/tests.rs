@@ -36,6 +36,7 @@ mod perf;
 mod perf_editor;
 mod perf_servers;
 mod rail;
+mod rail_fold;
 mod regions;
 mod resources;
 mod routine_session;

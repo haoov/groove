@@ -43,8 +43,12 @@ fn hidpi_scales_the_layout() {
         &mut groove_gfx::Fonts::embedded(),
     );
     assert_eq!(frame.layers()[0].glass[0].rect.w, 408.0);
+    let board = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "Board");
     assert_eq!(
-        frame.layers()[0].texts[0].style.size,
+        board.expect("the Board row").style.size,
         26.0,
         "13 logical, doubled"
     );

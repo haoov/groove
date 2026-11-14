@@ -32,6 +32,21 @@ pub fn inset_row<A: App>(
     row
 }
 
+/// `rect` whole, as a window of glass lays its rows edge to edge: the held ground when chosen,
+/// a lighter one under the pointer, square. Returns the row.
+pub fn flat_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target, chosen: bool) -> Rect {
+    let on = ctx.interact(rect, target);
+    let ground = match (chosen, on) {
+        (true, _) => Some(ctx.chosen()),
+        (false, true) => Some(ctx.styles.glass_hover()),
+        (false, false) => None,
+    };
+    if let Some(color) = ground {
+        ctx.quad(rect, color);
+    }
+    rect
+}
+
 /// A list row's rounded ground on glass, inset as the rail's rows are.
 fn glass_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let inset = rect.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));

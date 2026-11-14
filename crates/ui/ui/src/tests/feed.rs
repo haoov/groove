@@ -153,11 +153,17 @@ fn the_feed_keeps_its_own_minimum() {
 }
 
 #[test]
-fn a_folded_feed_is_its_heading_alone() {
+fn a_folded_feed_is_its_heading_alone_and_the_sessions_reach_down_to_it() {
     let mut ui = Ui::default();
     ui.rail.folded = true;
-    let band = crate::layout::Layout::of(window(), &ui).feed;
-    assert_eq!(band.h, crate::Tokens::new(1.0).row);
+    let layout = crate::layout::Layout::of(window(), &ui);
+    let tokens = crate::Tokens::new(1.0);
+    assert_eq!(layout.feed.h, tokens.bar, "the header alone");
+    assert_eq!(
+        layout.sessions.bottom() + tokens.sm,
+        layout.feed.y,
+        "the sessions' window stands a gap above it"
+    );
 }
 
 #[test]

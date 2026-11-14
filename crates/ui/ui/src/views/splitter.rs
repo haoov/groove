@@ -8,8 +8,14 @@ use crate::hit::Target;
 use crate::layout::Edge;
 
 /// A grab band over each boundary the surface shows, above whatever drew there.
-pub fn draw(ctx: &mut Ctx, surface: Surface) {
+/// The feed's top is not dragged while the sessions' window is folded: it rises under its header.
+/// With the feed folded too, the agent runs across the rail's column and its edge is not there.
+pub fn draw(ctx: &mut Ctx, surface: Surface, (stowed, folded): (bool, bool)) {
     for edge in shown(surface) {
+        let over = surface == Surface::Session && stowed && folded;
+        if (stowed && *edge == Edge::Feed) || (over && *edge == Edge::Rail) {
+            continue;
+        }
         let Some(band) = band(ctx, *edge) else {
             continue;
         };
