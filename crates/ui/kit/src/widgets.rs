@@ -7,7 +7,6 @@ mod completions;
 mod counts;
 mod field;
 mod fold;
-mod gauge;
 mod heading;
 mod icon;
 mod input;
@@ -29,10 +28,9 @@ mod typed;
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
 pub use completions::{Offer, completions};
-pub use counts::{changes, changes_room, counts, counts_room, faults, faults_room};
+pub use counts::{changes, counts, counts_room, faults, faults_room};
 pub use field::Field;
 pub use fold::{caret, fold, fold_turn, folder};
-pub use gauge::gauge_ring;
 pub use heading::Heading;
 pub use icon::{busy, dot, icon, lead, turned};
 pub use input::{Lead, caret_after, input_at, stepped_input, typed_line};
@@ -43,8 +41,8 @@ pub use inset::{
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};
 pub use modal::{
-    Corner, Material, floating_pane, glass_button, glass_gauge, glass_pane, glass_pill,
-    ground_under, modal, panel_at,
+    Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_under, modal,
+    panel_at,
 };
 pub use pane::{Side, glass_aside};
 pub use popup::{Piece, Said, popup};

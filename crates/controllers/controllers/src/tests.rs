@@ -1,13 +1,11 @@
 mod actions;
 mod agent;
-mod chat;
 mod cluster;
 mod config;
 mod deleting;
 mod delivery;
 mod docs;
 mod fixture;
-mod headless;
 mod landed;
 mod launches;
 mod layers;

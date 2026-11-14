@@ -54,10 +54,28 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> 
 
 /// One row of the note being typed: its piece of a line, the caret and what is held on it.
 fn typed(noting: &Noting, (row, inline): (usize, &Inline), lit: bool) -> Words {
-    let Some(piece) = inline.piece(row) else {
+    let buffer = &noting.buffer;
+    let Some((line, start, end)) = inline.piece(row) else {
         return Words::default();
     };
-    let (body, caret, held) = super::wrap::marked(&noting.buffer, piece);
+    let whole = buffer.line(line).unwrap_or_default();
+    let chars = whole.chars().count();
+    let tail = end >= chars;
+    let body: String = whole.chars().skip(start).take(end - start).collect();
+    let caret = buffer.caret();
+    let on = caret.line == line && caret.column >= start && (caret.column < end || tail);
+    let held = buffer
+        .selections()
+        .first()
+        .and_then(|one| one.on(line, chars));
+    let held = held.and_then(|(from, to, through)| {
+        let (from, to) = (from.max(start), to.min(end));
+        (from < to || (from == to && to == end && through && tail)).then_some((
+            from - start,
+            to - start,
+            through && tail,
+        ))
+    });
     Words {
         field: Some(Field {
             first: row == 0,
@@ -65,7 +83,7 @@ fn typed(noting: &Noting, (row, inline): (usize, &Inline), lit: bool) -> Words {
             lit,
         }),
         held,
-        caret,
+        caret: on.then(|| caret.column - start),
         body,
         ..Words::default()
     }

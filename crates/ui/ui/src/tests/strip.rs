@@ -1,12 +1,17 @@
 //! The workspace's strip: a click on the open tab folds it, any tab opens it again.
 
-use groove_gfx::Fonts;
+use groove_gfx::{CellSize, Fonts};
 
 use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tests::{click, full_app, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
+
+const CELL: CellSize = CellSize {
+    width: 8.0,
+    height: 17.0,
+};
 
 fn tab_click(tab: Tab, ui: &mut Ui, app: &groove_controllers::AppState) {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
@@ -31,7 +36,11 @@ fn a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent() {
     assert_eq!(folded.strip.right(), open.strip.right());
     assert!(folded.workspace.is_empty() && folded.sidebar.is_empty());
     assert_eq!(folded.agent.w, folded.board.w, "the agent takes the ground");
-    assert_eq!(folded.agent.y, open.agent.y, "under the top bar still");
+    assert_eq!(folded.agent.y, open.agent.y, "from the top still");
+    let tokens = window().tokens();
+    let (wide, _) = folded.agent_grid(&tokens, CELL);
+    let (narrow, _) = open.agent_grid(&tokens, CELL);
+    assert!(wide > narrow, "the grid is sized for the wide pane at once");
 }
 
 #[test]
@@ -52,8 +61,8 @@ fn the_strip_stands_as_glass_on_the_agent_s_ground() {
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
     let base = &frame.layers()[0];
-    assert!(base.glass.iter().any(|one| one.rect == layout.strip));
     assert!(base.under.iter().any(|(rect, _)| *rect == layout.board));
+    assert!(base.glass.iter().any(|one| one.rect == layout.strip));
     assert!(
         layout.header.y > layout.strip.y - 1.0 && layout.header.right() <= layout.strip.right()
     );
@@ -273,4 +282,49 @@ fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
             && quad.rect.w > code.w / 2.0
     });
     assert!(!sliced, "no card cut row by row among the code");
+}
+
+/// The layer the agent's screen draws on.
+fn screen_layer(frame: &groove_gfx::Frame) -> usize {
+    let mut layers = frame.layers().iter();
+    layers
+        .position(|one| !one.grids.is_empty())
+        .expect("the agent's screen")
+}
+
+#[test]
+fn the_folded_header_is_glass_over_the_agent_s_screen() {
+    let mut app = crate::tests::screen::asking(Vec::new());
+    crate::tests::agent::reading_mouse(&mut app);
+    let ui = Ui {
+        surface: crate::Surface::Session,
+        session: crate::views::session::SessionUi {
+            stowed: true,
+            ..Default::default()
+        },
+        ..Ui::default()
+    };
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let layout = Layout::of(window(), &ui);
+    assert!(
+        layout
+            .agent
+            .contains(layout.header.right() - 1.0, layout.header.y + 1.0),
+        "the capsule stands over the agent's screen"
+    );
+    let capsule = frame.layers().iter().position(|one| {
+        let over = |g: &groove_gfx::Glass| g.rect.right() == layout.header.right();
+        one.glass
+            .iter()
+            .any(|g| g.rect.y == layout.header.y && over(g))
+    });
+    assert!(
+        capsule > Some(screen_layer(&frame)),
+        "its glass is a layer over the screen, not under its text"
+    );
+    let tab = hits.rect_of(&Target::Tab(Tab::Diff)).expect("a tab");
+    assert_eq!(
+        hits.at(tab.x + 1.0, tab.y + 1.0),
+        Some(Target::Tab(Tab::Diff))
+    );
 }

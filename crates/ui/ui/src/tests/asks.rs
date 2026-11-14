@@ -5,7 +5,7 @@ use groove_controllers::{Command, agent};
 use groove_gfx::Fonts;
 use groove_types::{ApprovalId, SessionId};
 
-use super::bar::{ask, asking, session_ui};
+use super::screen::{ask, asking, session_ui};
 use crate::Ui;
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
@@ -137,7 +137,7 @@ fn escape_puts_the_sheet_away_without_deciding() {
 }
 
 #[test]
-fn the_bar_keeps_no_switch() {
+fn the_pane_holds_no_auto_approve_switch() {
     let app = committing();
     let ui = session_ui();
     let drawn = texts(&app, &ui);

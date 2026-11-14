@@ -1,10 +1,12 @@
 use groove_controllers::AppState;
-use groove_gfx::Palette;
+use groove_gfx::{CellSize, Palette, Size};
 use groove_types::{Rgb, Screen, ScreenCell};
 
 use crate::input::{Key, Modifiers, encode};
+use crate::layout::{Layout, Split};
 use crate::tests::{all_texts, metrics, press};
 use crate::{Ui, view};
+use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::widgets::grid_of;
 
 #[test]
@@ -45,6 +47,27 @@ fn hidpi_scales_the_layout() {
         frame.layers()[0].texts[0].style.size,
         26.0,
         "13 logical, doubled"
+    );
+}
+
+#[test]
+fn the_agent_pane_grid_follows_the_cell_size() {
+    let tokens = Tokens::new(1.0);
+    let layout = Layout::new(Size::new(1280, 800), &tokens, Split::default(), false);
+    let (cols, rows) = layout.agent_grid(
+        &tokens,
+        CellSize {
+            width: 8.0,
+            height: 17.0,
+        },
+    );
+    let pane = layout.agent;
+    assert_eq!(pane.w, Split::default().agent, "a width, not a share");
+    assert_eq!(cols, ((pane.w - 16.0) / 8.0).floor() as u16);
+    assert_eq!(
+        rows,
+        ((pane.h - 16.0) / 17.0).floor() as u16,
+        "the screen takes the whole pane"
     );
 }
 

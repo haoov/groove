@@ -1,13 +1,10 @@
 //! Keys and clicks to commands; the agent pane takes every key but the app ring, copy, file search and paste.
 
-mod answer;
-pub(crate) mod ask;
 pub(crate) mod follow;
 mod keys;
 mod paste;
 mod pointer;
 mod rest;
-mod reveal;
 mod scroll;
 mod selection;
 mod typed;
@@ -22,7 +19,6 @@ pub use follow::{follow, land};
 pub use keys::encode;
 pub use paste::{Aim, aim};
 pub use rest::{hovering, pointed, rest, resting, word};
-pub use reveal::reveal;
 
 /// A key as the ui reads it, free of the window library's types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -144,7 +140,6 @@ pub fn handle(
                     out.extend(selection::let_go(ui, app, grid, hits, metrics))
                 }
                 Some(Held::Selecting(grid)) => out.extend(selection::copied(app, grid)),
-                Some(Held::Reading) => out.extend(pointer::read_out(ui, hits)),
                 _ => {}
             }
             out

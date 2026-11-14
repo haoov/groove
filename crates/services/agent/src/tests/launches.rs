@@ -4,7 +4,7 @@ use groove_types::{Error, SessionId, Timestamp};
 
 use crate::State;
 
-fn failed() -> Result<crate::Stream, Error> {
+fn failed() -> Result<groove_terminal::Terminal, Error> {
     Err(Error::invalid("no terminal in this test"))
 }
 

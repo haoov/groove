@@ -7,7 +7,6 @@ mod approval;
 mod argo;
 mod attention;
 mod cells;
-pub mod chat;
 mod chord;
 mod cluster;
 mod config;

@@ -15,7 +15,7 @@ pub use split::{Edge, Split};
 pub struct Layout {
     pub window: Rect,
     pub rail: Rect,
-    /// The agent's screen and its bar, under the top bar.
+    /// The agent's screen: from the top, a bar's room left under it.
     pub agent: Rect,
     /// The workspace's pane of glass: its header alone while folded.
     pub strip: Rect,
@@ -25,8 +25,6 @@ pub struct Layout {
     pub info: Rect,
     /// Under the info line: the tab.
     pub workspace: Rect,
-    /// The row of the agent's own actions, under its screen.
-    pub agent_bar: Rect,
     /// The tab's own list, folded to nothing when the tab has none.
     pub sidebar: Rect,
     /// The rail's feed, above its footer, as tall as the user has dragged it.
@@ -48,13 +46,12 @@ impl Layout {
         let mut boxes = Boxes::new();
         let rail = rail(&mut boxes, tokens, split, window.h);
         let screen = boxes.leaf(fill);
-        let agent_bar = boxes.leaf(tall(tokens.bar + tokens.sm));
-        let under_top = Edges {
-            top: tokens.bar + tokens.sm,
+        let under = Edges {
+            bottom: tokens.bar + tokens.sm,
             ..Edges::all(0.0)
         };
-        let agent = Spec::default().width(scale(split.agent)).pad(under_top);
-        let agent = boxes.column(agent, &[screen, agent_bar]);
+        let agent = Spec::default().width(scale(split.agent)).pad(under);
+        let agent = boxes.column(agent, &[screen]);
         let header = boxes.leaf(tall(tokens.bar));
         let info = boxes.leaf(tall(tokens.row + tokens.sm));
         let workspace = boxes.leaf(fill);
@@ -71,8 +68,7 @@ impl Layout {
             window,
             feed: boxes.rect(rail.1),
             rail: boxes.rect(rail.0),
-            agent: boxes.rect(agent).pad(under_top),
-            agent_bar: boxes.rect(agent_bar),
+            agent: boxes.rect(agent).pad(under),
             strip: glass,
             header,
             info: boxes.rect(info),
@@ -135,7 +131,6 @@ impl Layout {
         if wide {
             let board = self.board;
             self.agent = Rect::new(board.x, self.agent.y, board.w, self.agent.h);
-            self.agent_bar = Rect::new(board.x, self.agent_bar.y, board.w, self.agent_bar.h);
         }
         self.strip = Rect::new(self.strip.x, self.strip.y, self.strip.w, self.header.h);
         let none = Rect::new(self.window.w, self.window.h, 0.0, 0.0);
@@ -148,12 +143,21 @@ impl Layout {
     pub fn alone(mut self) -> Self {
         let (rail, window) = (self.rail.w, self.window);
         self.agent = Rect::new(rail, self.agent.y, (window.w - rail).max(0.0), self.agent.h);
-        self.agent_bar = Rect::new(rail, self.agent_bar.y, self.agent.w, self.agent_bar.h);
         let none = Rect::new(window.w, window.h, 0.0, 0.0);
         (self.header, self.workspace, self.sidebar) = (none, none, none);
         (self.manual, self.work) = (none, none);
         (self.strip, self.info) = (none, none);
         self
+    }
+
+    /// Where the agent's grid starts inside its pane, under the bar.
+    pub fn agent_origin(&self, tokens: &Tokens) -> (f32, f32) {
+        (self.agent.x + tokens.sm, self.agent.y + tokens.sm)
+    }
+
+    /// The columns and rows the agent pane holds at this cell size.
+    pub fn agent_grid(&self, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
+        grid_in(self.agent, tokens, cell)
     }
 
     /// The manual section's grids under its bar: `count` side by side, a hairline between.

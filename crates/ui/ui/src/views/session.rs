@@ -14,9 +14,7 @@ mod sheet;
 mod state;
 mod tab;
 
-pub use state::{
-    Asked, Bar, Face, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
-};
+pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Showing, Tab, Term, Writing};
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -36,7 +34,7 @@ use groove_ui_kit::widgets::{Button, glass_pane, ground_under};
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ground_under(ctx, ctx.app.layout.board, Ground::Deep);
     if ui.session.alone && app.session.selected().is_some() {
-        return agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
+        return agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     }
     if !ctx.app.layout.work.is_empty() {
         glass_pane(ctx, ctx.app.layout.strip);
@@ -55,7 +53,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         });
         ctx.region(on(crate::Focus::Sidebar), |ctx| sidebar(ctx, app, ui));
     }
-    agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
+    // After the agent: the header, folded or not, and the drawer float over its screen.
+    agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     ctx.region(on(crate::Focus::Workspace), |ctx| {
         header::draw(ctx, app, ui)
     });

@@ -5,7 +5,6 @@ mod board;
 mod clusters;
 mod drag;
 mod focus;
-mod followed;
 mod menu;
 mod rail;
 mod resources;
@@ -15,7 +14,6 @@ mod sidebar;
 mod skilled;
 mod surface;
 
-pub(super) use agent::read_out;
 pub(super) use menu::asked;
 pub(super) use sidebar::act_on;
 pub(super) use surface::{at, middle};
@@ -59,7 +57,6 @@ pub(super) fn press(
         Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
         Some(target) if mods.ctrl && board::opens(&target) => opened_from_board(target, ui, false),
         Some(Target::Code) if mods.ctrl => defined(ui, app, hits, metrics, (x, y)),
-        Some(Target::Chat) if mods.ctrl => followed::followed(ui, app, hits, (x, y)),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
@@ -82,7 +79,6 @@ pub(super) fn moved(
         }
         Some(Held::Text) => return extended((x, y), ui, app, hits, metrics),
         Some(Held::Column(_)) => resources::dragged(ui, x, metrics),
-        Some(Held::Reading | Held::Prompt) => agent::dragged(ui, hits, (x, y), metrics),
         None => {}
     }
     Vec::new()
@@ -262,7 +258,7 @@ fn elsewhere(
     let target = target?;
     board::acted(target, ui, app)
         .or_else(|| rail::acted(target, ui, app))
-        .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
+        .or_else(|| agent::acted(target, point, ui, app, metrics))
         .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))
         .or_else(|| settings::acted(target, ui, app, hits))
         .or_else(|| resources::acted(target, ui, app, hits))
