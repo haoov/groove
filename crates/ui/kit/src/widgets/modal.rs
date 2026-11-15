@@ -68,6 +68,13 @@ pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     ctx.glass(rect, shape, ctx.styles.glass());
 }
 
+/// An opaque pane standing on the ground beside the others: the theme's base, edged by a hairline.
+/// Glass is kept for what floats over something; a panel has nothing under it to show.
+pub fn solid_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let (ground, edge) = (ctx.styles.ground(), ctx.styles.line());
+    ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
+}
+
 /// A pane of glass around `content`, `pad` wider on each side and as tall as a bar. Returns the pane.
 pub fn glass_pill<A: App>(ctx: &mut Ctx<'_, A>, content: Rect, pad: f32) -> Rect {
     let tall = ctx.tokens.bar;

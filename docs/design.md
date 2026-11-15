@@ -139,10 +139,10 @@ No timeline, no activity heatmap, no *blocked by*: the task tools draw those bet
 
 ## Rail — mid scope
 
-The rail is two windows of glass floating inside its place, a small gap from the window's edges
+The rail is two opaque windows inside its place, a small gap from the window's edges
 and from each other: the sessions' above, the feed's below. Nothing else stands in it; Settings
 opens from its chord and the palette. Enforced by
-`the_rail_floats_as_two_windows_of_glass_inside_its_place` and `the_rail_holds_no_settings_row`.
+`the_rail_stands_as_two_opaque_windows_inside_its_place` and `the_rail_holds_no_settings_row`.
 The sessions' window is headed by its name and how many sessions are open, with a `+` that
 opens a new explorer; a rule sets the header and the Board row apart. Enforced by
 `the_sessions_window_is_headed_by_its_name_and_count_and_its_plus_opens_an_explorer`.
@@ -239,7 +239,7 @@ Enforced by `a_line_is_its_age_its_code_and_its_text_in_three_mono_columns`,
 
 ## Session — small scope
 
-The rail, then one ground for the agent with the workspace's strip of glass on it.
+The rail, then one ground for the agent with the workspace's strip standing on it.
 
 | Part | Holds |
 |---|---|
@@ -258,14 +258,14 @@ takes its new size at once. Folding the terminals leaves a folded strip folded. 
 `the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
 `folding_the_drawer_leaves_the_strip_folded`.
 The agent's screen leaves a bar's room over it, where the folded header's capsule stands, and one
-under it. The header, open or folded, and the terminals' drawer stand a layer over the screen, so
-their glass blurs it rather than sitting under its text. Enforced by
-`the_folded_header_is_glass_over_the_agent_s_screen`. With both the rail's windows folded, the
+under it. The header, open or folded, and the terminals' drawer stand a layer over the screen,
+never under its text. Enforced by
+`the_folded_header_stands_a_layer_over_the_agent_s_screen`. With both the rail's windows folded, the
 screen runs left across the rail's column to the window's edge, its two headers in the rooms over
 and under it; the wheel there scrolls the agent and the rail's edge is not dragged. Enforced by
 `with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
 
-**The terminals rise from the foot.** Their drawer is a pane of glass under the strip.
+**The terminals rise from the foot.** Their drawer is an opaque panel under the strip.
 Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the
 height the user dragged and the strip ends a gap above it; with the strip folded it fills
 the column under the strip's header, and the agent gives it the room until it folds again.
@@ -377,22 +377,24 @@ its bar alone when collapsed.
 actions, and discard every change. No box in the window commits: the agent or a terminal
 does.
 
-**One deep ground, glass over it.** The deepest ground the theme has holds the session
-under the agent and the strip, the terminal widget, the board and Settings. What stands
-over it — the rail, the strip and its sidebar, the board's columns, Settings' sections —
-stands on glass, with no ground of its own. A note floats over the rows it takes as one pane of glass, on the layer
+**One deep ground, panels on it.** The deepest ground the theme has holds the session
+under the agent and the strip, the terminal widget, the board and Settings. The panels that
+stand beside each other on it — the rail's two windows, the strip and its folded capsule, the
+terminals' drawer, Settings' sections — are opaque: the theme's base, edged by a hairline.
+Nothing passes under a panel, so glass would only show the same ground through it. A note floats over the rows it takes as one pane of glass, on the layer
 the sticky file head uses, its replies and its buttons ruled off on it; a note being written
 does the same, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
 
-**Glass only where it floats.** The rail, the workspace's strip, the terminals' drawer, the palette, every
+**Glass only where it floats.** What stands over something is glass: the palette, every
 menu, the cluster scope panel, the board's filter offers, and the language servers' popup
-are glass: the work below shows through them, frosted, magnified and bent at the rim. The completion
+the diff's sticky file heads and its notes: the work below shows through them, frosted,
+magnified and bent at the rim. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; the rail's sessions take theirs square, edge to edge. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
-`the_rail_floats_as_two_windows_of_glass_inside_its_place`,
-`the_strip_stands_as_glass_on_the_agent_s_ground`,
+`the_rail_stands_as_two_opaque_windows_inside_its_place`,
+`the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
 `the_panel_stands_on_glass`,

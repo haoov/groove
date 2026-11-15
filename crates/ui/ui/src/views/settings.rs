@@ -19,7 +19,7 @@ use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, Field, Row, Search};
-use groove_ui_kit::widgets::{floating_pane, glass_field, glass_list, ground_under};
+use groove_ui_kit::widgets::{glass_field, glass_list, ground_under, solid_pane};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -50,7 +50,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         ctx.window,
         [Spec::default().width(ctx.tokens.sidebar), Spec::fill()],
     );
-    let pane = floating_pane(ctx, list, Ground::Deep);
+    ground_under(ctx, list, Ground::Deep);
+    let pane = list.pad(Edges::all(ctx.tokens.sm));
+    solid_pane(ctx, pane);
     sections(ctx, pane, app, &ui.settings);
     form::draw(ctx, window, app, &ui.settings);
 }

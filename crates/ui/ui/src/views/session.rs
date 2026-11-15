@@ -28,7 +28,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, glass_pane, ground_under};
+use groove_ui_kit::widgets::{Button, ground_under, solid_pane};
 
 /// The session: the agent on its ground, the workspace in a strip of glass beside it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -38,7 +38,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return crate::views::focus::draw(ctx, app, ui);
     }
     if !ctx.app.layout.work.is_empty() {
-        glass_pane(ctx, ctx.app.layout.strip);
+        solid_pane(ctx, ctx.app.layout.strip);
     }
     let on = |focus: crate::Focus| ui.focus == focus;
     if app.session.selected().is_none() {

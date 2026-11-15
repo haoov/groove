@@ -1,4 +1,4 @@
-//! The terminals' drawer under the strip, in glass: their bar alone while folded, then their grids.
+//! The terminals' drawer under the strip, an opaque panel: their bar alone while folded, then their grids.
 
 use groove_controllers::AppState;
 use groove_controllers::shell_service::{Shell, Shells};
@@ -12,7 +12,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Tab, fold_turn, glass_pane, screen};
+use groove_ui_kit::widgets::{Button, Tab, fold_turn, screen, solid_pane};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -23,7 +23,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     if !ui.session.manual {
         return folded(ctx, rect, shells);
     }
-    glass_pane(ctx, rect);
+    solid_pane(ctx, rect);
     let mut body = rect;
     bar(ctx, from_top(&mut body, ctx.tokens.bar, 0.0), ui, shells);
     let Some(shells) = shells.filter(|one| !one.tabs.is_empty()) else {
@@ -71,7 +71,7 @@ fn folded(ctx: &mut Ctx, line: Rect, shells: Option<&Shells>) {
     named.right(ctx, &mut room, md);
     let slot = folder(false).right(ctx, &mut room, 0.0);
     let left = slot.x - ctx.tokens.sm;
-    glass_pane(ctx, strip(line, left - line.x, line.right() - left));
+    solid_pane(ctx, strip(line, left - line.x, line.right() - left));
 }
 
 /// The caret that folds the drawer or opens it.

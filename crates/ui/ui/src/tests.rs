@@ -156,6 +156,20 @@ fn texts_of(frame: &groove_gfx::Frame) -> Vec<String> {
         .collect()
 }
 
+/// The opaque panes a frame drew, each with its layer: rounded quads in the theme's base.
+fn panes(frame: &groove_gfx::Frame, app: &AppState) -> Vec<(usize, Rect)> {
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let base = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).ground();
+    let layers = frame.layers().iter().enumerate();
+    let quads = layers.flat_map(|(at, one)| one.quads.iter().map(move |quad| (at, quad)));
+    quads
+        .filter(|(_, quad)| {
+            quad.color == base && quad.shape.radius > 0.0 && quad.shape.stroke == 0.0
+        })
+        .map(|(at, quad)| (at, quad.rect))
+        .collect()
+}
+
 /// What every layer of a frame says, bottom layer first.
 fn all_texts(frame: &groove_gfx::Frame) -> Vec<String> {
     frame

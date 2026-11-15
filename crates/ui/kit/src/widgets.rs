@@ -42,7 +42,7 @@ pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};
 pub use modal::{
     Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_under, modal,
-    panel_at,
+    panel_at, solid_pane,
 };
 pub use pane::{Side, glass_aside};
 pub use popup::{Piece, Said, popup};

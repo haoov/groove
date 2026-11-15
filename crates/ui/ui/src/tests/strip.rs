@@ -55,14 +55,18 @@ fn any_tab_opens_the_folded_strip_on_itself() {
 }
 
 #[test]
-fn the_strip_stands_as_glass_on_the_agent_s_ground() {
+fn the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground() {
     let app = full_app();
     let ui = Ui::default();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
     let base = &frame.layers()[0];
     assert!(base.under.iter().any(|(rect, _)| *rect == layout.board));
-    assert!(base.glass.iter().any(|one| one.rect == layout.strip));
+    let panes = crate::tests::panes(&frame, &app);
+    assert!(
+        panes.iter().any(|one| one.1 == layout.strip),
+        "its own opaque pane"
+    );
     assert!(
         layout.header.y > layout.strip.y - 1.0 && layout.header.right() <= layout.strip.right()
     );
@@ -117,23 +121,19 @@ fn the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs() {
     ui.session.stowed = true;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
-    let capsule = frame.layers()[0]
-        .glass
-        .iter()
-        .find(|one| one.rect.y == layout.header.y && one.rect.x > layout.rail.right())
-        .expect("the strip's glass");
-    assert_eq!(
-        capsule.rect.right(),
-        layout.strip.right(),
-        "at the right end"
-    );
-    assert!(capsule.rect.w < layout.strip.w, "only what it holds");
+    let capsule = crate::tests::panes(&frame, &app)
+        .into_iter()
+        .map(|one| one.1)
+        .find(|one| one.y == layout.header.y && one.x > layout.rail.right())
+        .expect("the strip's pane");
+    assert_eq!(capsule.right(), layout.strip.right(), "at the right end");
+    assert!(capsule.w < layout.strip.w, "only what it holds");
     let title = frame.layers()[0]
         .texts
         .iter()
         .find(|run| run.text == "Alpha" && run.y < layout.header.bottom())
         .expect("the title, whole");
-    assert!(title.x > capsule.rect.x);
+    assert!(title.x > capsule.x);
     let tab = hits.rect_of(&Target::Tab(Tab::Overview)).expect("a tab");
     assert!(tab.x > title.x, "the tabs after the title");
 }
@@ -293,7 +293,7 @@ fn screen_layer(frame: &groove_gfx::Frame) -> usize {
 }
 
 #[test]
-fn the_folded_header_is_glass_over_the_agent_s_screen() {
+fn the_folded_header_stands_a_layer_over_the_agent_s_screen() {
     let mut app = crate::tests::screen::asking(Vec::new());
     crate::tests::agent::reading_mouse(&mut app);
     let ui = Ui {
@@ -310,15 +310,12 @@ fn the_folded_header_is_glass_over_the_agent_s_screen() {
         layout.header.bottom() <= layout.agent.y,
         "the capsule stands in the room over the agent's screen"
     );
-    let capsule = frame.layers().iter().position(|one| {
-        let over = |g: &groove_gfx::Glass| g.rect.right() == layout.header.right();
-        one.glass
-            .iter()
-            .any(|g| g.rect.y == layout.header.y && over(g))
-    });
+    let capsule = crate::tests::panes(&frame, &app)
+        .into_iter()
+        .find(|(_, one)| one.y == layout.header.y && one.right() == layout.header.right());
     assert!(
-        capsule > Some(screen_layer(&frame)),
-        "its glass is a layer over the screen, not under its text"
+        capsule.map(|one| one.0) > Some(screen_layer(&frame)),
+        "its pane is a layer over the screen, not under its text"
     );
     let tab = hits.rect_of(&Target::Tab(Tab::Diff)).expect("a tab");
     assert_eq!(

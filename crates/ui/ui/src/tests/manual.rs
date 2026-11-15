@@ -164,15 +164,14 @@ fn the_folded_drawer_is_a_capsule_as_narrow_as_its_bar() {
     let ui = Ui::default();
     let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let layout = Layout::of(window(), &ui);
-    let capsule = frame.layers()[0]
-        .glass
-        .iter()
-        .find(|one| one.rect.y == layout.manual.y && one.rect.right() == layout.manual.right())
-        .expect("the drawer's glass");
+    let capsule = crate::tests::panes(&frame, &app)
+        .into_iter()
+        .map(|one| one.1)
+        .find(|one| one.y == layout.manual.y && one.right() == layout.manual.right())
+        .expect("the drawer's pane");
     assert!(
-        capsule.rect.w < layout.manual.w / 2.0,
-        "only what it holds: {:?}",
-        capsule.rect
+        capsule.w < layout.manual.w / 2.0,
+        "only what it holds: {capsule:?}"
     );
 }
 

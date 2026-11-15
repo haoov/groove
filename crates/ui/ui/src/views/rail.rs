@@ -18,7 +18,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::top_rule;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, flat_row, glass_pane, ground_under, lead};
+use groove_ui_kit::widgets::{Button, flat_row, ground_under, lead, solid_pane};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -98,13 +98,13 @@ pub(crate) fn group_of(app: &AppState, open: &Open) -> Group {
     }
 }
 
-/// Two windows of glass floating in the rail's place: the sessions' header, the Board row and the
+/// Two opaque windows in the rail's place: the sessions' header, the Board row and the
 /// sessions by state, then the feed under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let layout = ctx.app.layout;
     ground_under(ctx, layout.rail, Ground::Deep);
-    glass_pane(ctx, layout.sessions);
-    glass_pane(ctx, layout.feed);
+    solid_pane(ctx, layout.sessions);
+    solid_pane(ctx, layout.feed);
     let tall = |height: f32| Spec::default().height(height);
     let parts = [tall(ctx.tokens.bar), tall(ctx.tokens.header), Spec::fill()];
     let [head, board, rows] = column_in(layout.sessions, parts);

@@ -15,7 +15,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::strip;
 use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::{Button, Text, glass_pane, lead};
+use groove_ui_kit::widgets::{Button, Text, lead, solid_pane};
 
 /// The strip's first line: what the session is, then the tabs.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
@@ -36,7 +36,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
     let wide = (titled_width(ctx, open, page)).min(rest.w);
     let line = strip(rest, rest.w - wide, wide);
     titled(ctx, line, open, page);
-    glass_pane(ctx, strip(top, line.x - top.x, top.right() - line.x));
+    solid_pane(ctx, strip(top, line.x - top.x, top.right() - line.x));
 }
 
 /// What the title needs: its mark, its words, the link to its page, and the padding around.

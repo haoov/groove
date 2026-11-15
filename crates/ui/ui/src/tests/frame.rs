@@ -18,8 +18,8 @@ fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
         &mut groove_gfx::Fonts::embedded(),
     );
     assert_eq!(frame.layers().len(), 1);
-    let rail = &frame.layers()[0].glass[0];
-    let floating = (rail.rect.x, rail.rect.w);
+    let rail = crate::tests::panes(&frame, &AppState::default())[0].1;
+    let floating = (rail.x, rail.w);
     assert_eq!(
         floating,
         (8.0, 204.0),
@@ -42,7 +42,8 @@ fn hidpi_scales_the_layout() {
         metrics(2560, 1600, 2.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    assert_eq!(frame.layers()[0].glass[0].rect.w, 408.0);
+    let rail = crate::tests::panes(&frame, &AppState::default())[0].1;
+    assert_eq!(rail.w, 408.0);
     let board = frame.layers()[0]
         .texts
         .iter()

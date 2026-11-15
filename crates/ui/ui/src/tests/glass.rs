@@ -97,18 +97,24 @@ fn a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground() {
 }
 
 #[test]
-fn the_rail_floats_as_two_windows_of_glass_inside_its_place() {
+fn the_rail_stands_as_two_opaque_windows_inside_its_place() {
     let app = app();
     let ui = Ui::default();
     let (frame, _) = view(&app, &ui, metrics(1600, 1000, 1.0), &mut Fonts::embedded());
     let layout = crate::layout::Layout::of(metrics(1600, 1000, 1.0), &ui);
     let place = layout.rail;
-    let panes: Vec<_> = frame.layers()[0]
-        .glass
-        .iter()
+    let panes: Vec<_> = crate::tests::panes(&frame, &app)
+        .into_iter()
         .take(2)
-        .map(|one| one.rect)
+        .map(|one| one.1)
         .collect();
+    let glassed = frame.layers().iter().flat_map(|one| one.glass.iter());
+    assert!(
+        !glassed
+            .into_iter()
+            .any(|one| one.rect == layout.sessions || one.rect == layout.feed),
+        "no glass: nothing stands under them"
+    );
     assert_eq!(
         panes,
         [layout.sessions, layout.feed],
