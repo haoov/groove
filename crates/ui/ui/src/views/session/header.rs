@@ -15,7 +15,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::strip;
 use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::{Button, Text, lead, solid_pane};
+use groove_ui_kit::widgets::{Button, Text, lead, panel_head, solid_pane};
 
 /// The strip's first line: what the session is, then the tabs.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
@@ -25,18 +25,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
         Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);
         return;
     };
-    let rest = tabs::draw(ctx, top, app, ui);
     let page = app
         .task
         .worked(&open.session)
         .and_then(|one| one.url.as_deref());
     if !ctx.app.layout.work.is_empty() {
+        let strip_ = ctx.app.layout.strip;
+        let band = groove_ui_kit::shape::band(strip_, 0.0, top.bottom() - strip_.y);
+        panel_head(ctx, band, false);
+        let rest = tabs::draw(ctx, top, app, ui);
         return titled(ctx, rest, open, page);
     }
-    let wide = (titled_width(ctx, open, page)).min(rest.w);
-    let line = strip(rest, rest.w - wide, wide);
-    titled(ctx, line, open, page);
-    solid_pane(ctx, strip(top, line.x - top.x, top.right() - line.x));
+    // Folded, the capsule is measured first: its pane and band stand under what it holds.
+    let tabs_wide = tabs::width(ctx, app, ui).min(top.w);
+    let wide = titled_width(ctx, open, page).min(top.w - tabs_wide);
+    let capsule = strip(top, top.w - tabs_wide - wide, tabs_wide + wide);
+    solid_pane(ctx, capsule);
+    panel_head(ctx, capsule, true);
+    let rest = tabs::draw(ctx, top, app, ui);
+    titled(ctx, strip(rest, rest.w - wide, wide), open, page);
 }
 
 /// What the title needs: its mark, its words, the link to its page, and the padding around.
@@ -55,7 +62,10 @@ pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    let line = groove_ui_kit::shape::band(ctx.app.layout.info, 0.0, ctx.tokens.row);
+    let (info, sm, row) = (ctx.app.layout.info, ctx.tokens.sm, ctx.tokens.row);
+    let line = groove_ui_kit::shape::band(info, sm, row);
+    let under = groove_ui_kit::shape::band(info, sm * 2.0 + row, ctx.tokens.hairline);
+    groove_ui_kit::shape::top_rule(ctx, under, ctx.styles.line());
     if ui.losing() == Some(&crate::Losing::Everything) {
         let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
         return super::files::asking(ctx, room, "discard every change?");

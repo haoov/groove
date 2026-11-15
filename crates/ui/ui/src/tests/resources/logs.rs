@@ -119,7 +119,7 @@ fn a_range_picked_opens_the_stream_again_from_there_and_code_shrinks_while_logs_
     hit(&app, &mut ui, Target::MenuRow(3));
     assert!(asks(&app, &ui, worker(false, LogRange::Since(21_600))));
     let texts: Vec<String> = runs(&app, &ui).into_iter().map(|one| one.text).collect();
-    assert!(texts.iter().any(|one| one == "last 6h ▾"), "{texts:?}");
+    assert!(texts.iter().any(|one| one == "LAST 6H ▾"), "{texts:?}");
     let small = 13.0 * groove_ui_kit::base::tokens::SMALL;
     assert_eq!(crate::code_size(&app, &ui, (13.0, 14.0)), small);
     hit(&app, &mut ui, Target::ResourceView(View::Yaml));

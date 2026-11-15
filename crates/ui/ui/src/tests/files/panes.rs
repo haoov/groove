@@ -150,8 +150,8 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
         .map(|run| run.style.color);
     assert_eq!(
         quiet,
-        Some(styles.color(groove_ui_kit::base::style::Role::Muted)),
-        "the others are muted"
+        Some(styles.color(groove_ui_kit::base::style::Role::Faint)),
+        "the others are faint"
     );
 }
 

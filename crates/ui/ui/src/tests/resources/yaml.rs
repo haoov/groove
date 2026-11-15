@@ -53,7 +53,7 @@ fn the_yaml_view_reads_as_a_file_and_closing_the_tab_brings_the_list_back() {
     assert!(ui.session.resources.opened.is_empty());
     let (texts, _) = drawn(&app, &ui);
     assert!(
-        texts.iter().any(|one| one.starts_with("Pods · ")),
+        texts.iter().any(|one| one.starts_with("PODS · ")),
         "{texts:?}"
     );
 }

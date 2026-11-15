@@ -50,15 +50,12 @@ impl Layout {
         let mut boxes = Boxes::new();
         let rail = rail(&mut boxes, tokens, split);
         let screen = boxes.leaf(fill);
-        let under = Edges {
-            top: tokens.bar + tokens.sm,
-            bottom: tokens.bar + tokens.sm,
-            ..Edges::all(0.0)
-        };
+        let under = Edges::xy(0.0, tokens.bar + tokens.sm);
         let agent = Spec::default().width(scale(split.agent)).pad(under);
         let agent = boxes.column(agent, &[screen]);
         let header = boxes.leaf(tall(tokens.bar));
-        let info = boxes.leaf(tall(tokens.row + tokens.sm));
+        // The info line, a gap over and under it and a hairline between those under it.
+        let info = boxes.leaf(tall(tokens.row + tokens.sm + tokens.sm + tokens.sm));
         let workspace = boxes.leaf(fill);
         let aside = Spec::default().width(scale(split.aside(sidebar)));
         let sidebar = boxes.leaf(aside);
@@ -81,7 +78,10 @@ impl Layout {
             header,
             info: boxes.rect(info),
             workspace: boxes.rect(workspace),
-            sidebar: boxes.rect(sidebar).pad(Edges::across(0.0, tokens.sm)),
+            // Inside the sidebar's box, a hairline from its border: its rows reach across it whole.
+            sidebar: boxes
+                .rect(sidebar)
+                .pad(Edges::across(tokens.hairline, tokens.hairline)),
             board: boxes.rect(board),
             work: Rect::new(
                 glass.x,

@@ -16,12 +16,9 @@ pub const SCRIM_ALPHA: u8 = 120;
 pub const GLASS_ALPHA: (u8, u8) = (140, 95);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
-/// A row's tint in a state's colour, dark then light; the dark one set for what it reads as in
-/// linear blending, about a tenth, as the glass grounds below are.
+/// A row's tint in a state's colour, dark then light; the dark one reads as about a tenth.
 pub const ROW_TINT_ALPHA: (u8, u8) = (6, 64);
-/// Grounds laid on glass, dark then light. The frame blends in linear light, where a pale
-/// ground on a dark theme reads three to four times its alpha: the dark ones are set for what
-/// they read as, hover 7 %, a card under it, chosen 13 %.
+/// Grounds on glass, dark then light; the dark ones set for what they read as in linear blending.
 pub const GLASS_HOVER_ALPHA: (u8, u8) = (3, 22);
 pub const GLASS_CARD_ALPHA: (u8, u8) = (2, 16);
 pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (7, 46);
@@ -93,6 +90,8 @@ pub const SIDEBAR_MIN: f32 = 180.0;
 
 /// How much of the raised ground stands under a selection and under the word at the caret.
 pub const HELD: f32 = 0.8;
+/// How far a panel's header band stands from its base toward the theme's first surface.
+pub const PANEL_HEAD: f32 = 0.45;
 pub const OCCURS: f32 = 0.4;
 /// How much of the comment colour a scope's guide takes.
 pub const GUIDE: f32 = 0.55;
@@ -204,7 +203,7 @@ const LOGICAL: Tokens = Tokens {
     hairline: 1.0,
     corner: 4.0,
     round: 2.0,
-    glass_round: 4.0,
+    glass_round: 3.0,
     bezel: 24.0,
     glass_row: 32.0,
     edge: 0.5,

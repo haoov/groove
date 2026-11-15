@@ -1,4 +1,4 @@
-use groove_gfx::{Align, Color, Rect};
+use groove_gfx::{Align, Color, Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::ground::Ground;
@@ -73,6 +73,32 @@ pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
 pub fn solid_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     let (ground, edge) = (ctx.styles.ground(), ctx.styles.line());
     ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
+}
+
+/// A card set into a panel: a step below its base, edged by a hairline.
+pub fn sunk_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let (ground, edge) = (ctx.styles.band(), ctx.styles.line());
+    ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
+}
+
+/// A panel's header band across `rect`, inside the panel's edge: rounded at the top and ruled
+/// off under it, or rounded all round when the panel is folded to it alone.
+pub fn panel_head<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, alone: bool) {
+    let (edge, round) = (ctx.tokens.hairline, ctx.tokens.glass_round);
+    let inside = Edges {
+        bottom: if alone { edge } else { 0.0 },
+        ..Edges::all(edge)
+    };
+    let band = rect.pad(inside);
+    let color = ctx.styles.panel_head();
+    ctx.rounded(band, color, (round - edge).max(0.0));
+    if alone {
+        return;
+    }
+    let lower = Rect::new(band.x, band.y + band.h / 2.0, band.w, band.h / 2.0);
+    ctx.quad(lower, color);
+    let rule = Rect::new(rect.x, rect.bottom() - edge, rect.w, edge);
+    ctx.quad(rule, ctx.styles.line());
 }
 
 /// A pane of glass around `content`, `pad` wider on each side and as tall as a bar. Returns the pane.

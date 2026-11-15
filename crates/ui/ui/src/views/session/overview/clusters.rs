@@ -4,10 +4,8 @@ use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::Hue;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::lead;
 
 use super::Part;
 use crate::ctx::Ctx;
@@ -29,7 +27,7 @@ pub(super) fn parts<'a>(app: &AppState, open: &'a Open) -> Vec<Part<'a>> {
         .collect()
 }
 
-/// The context in its hue, faint once Settings no longer knows it, then its namespaces.
+/// The context in its hue, faint once Settings no longer knows it, then its namespaces; no mark.
 pub(super) fn draw(
     ctx: &mut Ctx,
     line: Rect,
@@ -39,7 +37,6 @@ pub(super) fn draw(
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
     let mut room = line.pad(Edges::across(md, md));
     let role = hue.map_or(Role::Faint, Role::Hue);
-    lead(ctx, &mut room, Mark::Context, role);
     Label::new(context, ctx.styles.label(role)).left(ctx, &mut room, md);
     for one in held {
         let label = match one {

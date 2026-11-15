@@ -23,6 +23,11 @@ the rail only as its attention count.
   action. The mouse is a shortcut.
 - **Selection is a background**: a ground one step above the hover's, neutral wherever it
   stands. A selected tab is held the same way.
+- **Tabs are segments of one box.** A set of tabs stands edge to edge inside a single hairline
+  box; a tab alone takes the box to itself. The selected one is held on the neutral ground,
+  square, the one under the pointer lit; the others' labels are faint. A label is small and mono,
+  a word in capitals — `DIFF`, `ALL` — and a name as it is given: a file, a terminal, an object,
+  a container. Enforced by `a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box`.
 - **Focus is a ring**: the region that has the keys — the sessions' window, the strip, the
   sidebar, the terminals — stands in a thin ring in the accent, read as half its strength on
   either theme. The agent's screen has no edge to ring: its cursor turns a solid block in the
@@ -306,8 +311,8 @@ keep their room before the cut, and a badge with no room left is dropped.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
-| overview | sections, each a heading over its own card, inset from the panel's sides: the task's properties on one line — status, priority, dates, hours — a missing one left out; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on rounded grounds as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
+| overview | sections, each a card set into the panel, a step below its base, inset from its sides and headed by its band — the section's name and, where it counts, how many — its rows ruled apart: the task's properties in columns, each name over its value — status, priority, dates, the hours logged — a missing one left out, sized to what they hold; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, a hairline box with no ground, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on square grounds edge to edge as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 | kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | the kinds the contexts serve, under headings that fold |
 
@@ -320,15 +325,15 @@ which the gutter holds together.
 | inline | the change as one column | the old and the new line number |
 | split | the old beside the new | one number per side |
 
-An added or a removed row wears one tint across its gutter and its text, and its numbers
-lean to its colour. Enforced by
-`a_changed_row_wears_one_tint_across_its_gutter_and_its_numbers_lean_to_it`.
+An added or a removed row wears one tint across its gutter and its text; its numbers stay
+quiet. Enforced by
+`a_changed_row_wears_one_tint_across_its_gutter_and_its_numbers_stay_quiet`.
 In split, a side with no line is hatched, gutter included.
 
 Over the diff, a band holds the whole change from the left — how many files, what it added
 and removed — then the inline and split switch and the base and working modes as rounded tabs. Over a file, the band names the file from the left, then what stands beside it: unsaved,
 changed, faults, servers (enforced by `a_file_s_band_reads_from_the_left_its_counts_right_after_its_path`). No rule stands between the gutter and the code; a run of unchanged lines stands between two
-rules, its arrows icon buttons. A file's head is a rounded row inset from the sides. Enforced by
+rules, its arrows icon buttons. A file's head is a square band across the surface whole, pinned or not. Enforced by
 `no_rule_stands_between_the_gutters_and_the_code` and `a_gap_reads_as_a_band_across_the_rows`.
 
 The new side is editable in every mode. A caret lives in the document, never in a row, so
@@ -381,17 +386,26 @@ does.
 under the agent and the strip, the terminal widget, the board and Settings. The panels that
 stand beside each other on it — the rail's two windows, the strip and its folded capsule, the
 terminals' drawer, Settings' sections — are opaque: the theme's base, edged by a hairline.
-Nothing passes under a panel, so glass would only show the same ground through it. A note floats over the rows it takes as one pane of glass, on the layer
+Nothing passes under a panel, so glass would only show the same ground through it.
+Each panel is headed by its band — a step from its base toward the theme's first surface —
+ruled off under it by a hairline; a panel folded to its header is that band alone, laid before
+what stands on it. Enforced by `every_open_panel_is_headed_by_its_band_ruled_off_under_it` and
+`a_folded_capsule_is_its_band_and_what_it_holds_stands_on_it`. A note floats over the rows it takes as one pane of glass, on the layer
 the sticky file head uses, its replies and its buttons ruled off on it; a note being written
 does the same, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and
 `a_note_being_written_stands_on_glass_as_a_read_one_does`.
+The sidebar is a box a step below its panel's base, from the info line's rule to the panel's
+edges, its rows lit and held across it whole; its own border is its separator, and the ring goes
+around that box when the sidebar has the keys. The diff's map runs the column's whole height,
+square-cornered, its lens too, and a changed row says so by its ground alone, its
+numbers left quiet.
 
 **Glass only where it floats.** What stands over something is glass: the palette, every
 menu, the cluster scope panel, the board's filter offers, and the language servers' popup
 the diff's sticky file heads and its notes: the work below shows through them, frosted,
 magnified and bent at the rim. The completion
-list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; the rail's sessions take theirs square, edge to edge. A button on
+list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; a row of the rail, a sidebar or a table takes its square, edge to edge. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_stands_as_two_opaque_windows_inside_its_place`,
 `the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground`,
@@ -553,7 +567,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
-| Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
+| Appearance | theme — Latte, Frappé, Macchiato, Mocha, Defense (teal-black and steel, cyan for what is live and for focus, amber for what asks, coral for what fails; its terminals in the same colours) · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |
 | Keymap | every action with its chords; a chord is rebound by pressing it |

@@ -279,7 +279,7 @@ fn the_sidebar_edge_drags_only_where_the_sidebar_stands() {
     let width = WINDOW.0 as f32;
     drag(width - 340.0, &mut ui, &app, &hits);
     assert_eq!(
-        wide(ui.split).sidebar.x,
+        wide(ui.split).sidebar.x - crate::tests::window().tokens().hairline,
         width - 340.0,
         "the edge under the pointer"
     );

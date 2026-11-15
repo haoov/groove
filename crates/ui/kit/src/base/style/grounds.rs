@@ -107,6 +107,12 @@ impl Styles {
         self.palette.text.with_alpha(self.alpha(GLASS_CHOSEN_ALPHA))
     }
 
+    /// A panel's header band: a step from its base toward the first surface, ruled off under it.
+    pub fn panel_head(&self) -> Color {
+        let p = &self.palette;
+        p.base.mix(p.surface0, crate::base::tokens::PANEL_HEAD)
+    }
+
     /// The ring around the region that has the keys: the accent, light and thin.
     pub fn focus(&self) -> Color {
         self.palette.rosewater.with_alpha(self.alpha(FOCUS_ALPHA))

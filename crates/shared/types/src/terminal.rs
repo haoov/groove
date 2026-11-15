@@ -83,6 +83,31 @@ pub struct AnsiPalette {
 }
 
 impl AnsiPalette {
+    /// Cyber defense: the theme's coral, teal-green, amber and cyans, on its panel ground.
+    pub const DEFENSE: AnsiPalette = AnsiPalette {
+        colors: [
+            Rgb::hex(0x213338),
+            Rgb::hex(0xff6159),
+            Rgb::hex(0x4fd1a0),
+            Rgb::hex(0xe8c468),
+            Rgb::hex(0x3fb8e0),
+            Rgb::hex(0x9d8cff),
+            Rgb::hex(0x4fd1e0),
+            Rgb::hex(0xa3b8bf),
+            Rgb::hex(0x566c73),
+            Rgb::hex(0xff8a7a),
+            Rgb::hex(0x6fe3b8),
+            Rgb::hex(0xf2d08a),
+            Rgb::hex(0x6fd6f0),
+            Rgb::hex(0xb8aaff),
+            Rgb::hex(0x8ae6f0),
+            Rgb::hex(0xd4e4e9),
+        ],
+        foreground: Rgb::hex(0xd4e4e9),
+        background: Rgb::hex(0x0b1216),
+        cursor: Rgb::hex(0x4fd1e0),
+    };
+
     pub const MOCHA: AnsiPalette = AnsiPalette {
         colors: [
             Rgb::hex(0x45475a),

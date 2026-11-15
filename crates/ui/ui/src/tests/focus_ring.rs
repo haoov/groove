@@ -32,7 +32,9 @@ fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
     let cases: [(Focus, Around); 4] = [
         (Focus::Rail, |one| one.sessions),
         (Focus::Workspace, |one| one.strip),
-        (Focus::Sidebar, |one| one.sidebar),
+        (Focus::Sidebar, |one| {
+            groove_ui_kit::widgets::aside_bounds(&Tokens::new(1.0), one.sidebar)
+        }),
         (Focus::Terminal, |one| one.manual),
     ];
     for (keys, around) in cases {

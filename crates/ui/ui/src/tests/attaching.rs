@@ -79,7 +79,7 @@ fn detach_picks_one_context_and_namespace_the_session_holds() {
 fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
     let app = attaching();
     let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
-    for shown in ["CLUSTERS", "staging", "shop", "hub", "whole cluster"] {
+    for shown in ["CLUSTERS · 2", "staging", "shop", "hub", "whole cluster"] {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
     assert_eq!(texts.iter().filter(|one| *one == "staging").count(), 1);

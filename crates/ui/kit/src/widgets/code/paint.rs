@@ -113,10 +113,8 @@ fn blamed<A: App>(
 
 /// The row's own line numbers, one to a gutter cell.
 fn numbers<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::Target>, gutter: Block) {
+    // A changed row says so by its ground alone; its numbers stay quiet.
     let (sm, mut style) = (ctx.tokens.sm, ctx.styles.code(Role::Ghost));
-    if let Some(color) = code.gutter {
-        style.color = color;
-    }
     if let Some(color) = super::faults::worst(ctx, code) {
         style.color = color;
     }

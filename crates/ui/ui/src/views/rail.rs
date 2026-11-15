@@ -18,7 +18,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::top_rule;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, flat_row, ground_under, lead, solid_pane};
+use groove_ui_kit::widgets::{Button, flat_row, ground_under, lead, panel_head, solid_pane};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -108,12 +108,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let tall = |height: f32| Spec::default().height(height);
     let parts = [tall(ctx.tokens.bar), tall(ctx.tokens.header), Spec::fill()];
     let [head, board, rows] = column_in(layout.sessions, parts);
+    panel_head(ctx, head, ui.rail.stowed);
     header(ctx, app, ui, head);
     feed::draw(ctx, layout.feed, app, ui);
     if ui.rail.stowed {
         return;
     }
-    top_rule(ctx, board, ctx.styles.line());
     board_row(ctx, app, ui, board);
     top_rule(ctx, rows, ctx.styles.line());
     items(ctx, app, ui, rows.pad(Edges::xy(0.0, ctx.tokens.xs)));

@@ -149,4 +149,35 @@ impl Palette {
         blue: Color::hex(0x1e66f5),
         lavender: Color::hex(0x7287fd),
     };
+
+    /// Cyber defense: a teal-black ground, steel panels, cyan for what is live and for focus,
+    /// amber for what asks, coral for what fails.
+    pub const DEFENSE: Palette = Palette {
+        crust: Color::hex(0x060a0d),
+        mantle: Color::hex(0x091014),
+        base: Color::hex(0x0b1216),
+        surface0: Color::hex(0x172429),
+        surface1: Color::hex(0x213338),
+        surface2: Color::hex(0x2c434a),
+        overlay0: Color::hex(0x566c73),
+        overlay1: Color::hex(0x637a81),
+        overlay2: Color::hex(0x71888f),
+        subtext0: Color::hex(0x7f969d),
+        subtext1: Color::hex(0xa3b8bf),
+        text: Color::hex(0xd4e4e9),
+        rosewater: Color::hex(0x4fd1e0),
+        flamingo: Color::hex(0xff8a7a),
+        pink: Color::hex(0xff7eb6),
+        mauve: Color::hex(0x9d8cff),
+        red: Color::hex(0xff6159),
+        maroon: Color::hex(0xff8a7a),
+        peach: Color::hex(0xf2a65a),
+        yellow: Color::hex(0xe8c468),
+        green: Color::hex(0x4fd1a0),
+        teal: Color::hex(0x2dd4aa),
+        sky: Color::hex(0x6fd6f0),
+        sapphire: Color::hex(0x3fb8e0),
+        blue: Color::hex(0x4fd1e0),
+        lavender: Color::hex(0xa8c8ff),
+    };
 }

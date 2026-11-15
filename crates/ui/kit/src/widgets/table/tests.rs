@@ -165,7 +165,7 @@ fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
 }
 
 #[test]
-fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
+fn a_selected_band_stands_on_a_square_held_ground_edge_to_edge_with_no_rules() {
     let columns = [column(Width::Fill)];
     let table = Table {
         columns: &columns,
@@ -188,8 +188,8 @@ fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
     let quads = &frame.layers()[0].quads;
     let line = Rect { h: 24.0, ..ROOM };
     let ground = quads.iter().find(|one| one.color == held).expect("held");
-    assert!(ground.rect.w < line.w, "set in from the sides");
-    assert!(ground.shape.radius > 0.0, "and rounded");
+    assert_eq!(ground.rect.w, line.w, "edge to edge");
+    assert_eq!(ground.shape.radius, 0.0, "and square");
     assert_eq!(quads.iter().filter(|one| one.color == chosen).count(), 0);
 }
 

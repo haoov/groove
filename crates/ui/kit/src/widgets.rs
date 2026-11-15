@@ -42,15 +42,15 @@ pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};
 pub use modal::{
     Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_under, modal,
-    panel_at, solid_pane,
+    panel_at, panel_head, solid_pane, sunk_pane,
 };
-pub use pane::{Side, glass_aside};
+pub use pane::{Side, aside_bounds, glass_aside};
 pub use popup::{Piece, Said, popup};
 pub use question::{offer, question};
 pub use scrolled::scrolled;
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};
-pub use tabs::{Tab, glass_tabs, marked_glass_tabs};
+pub use tabs::{Tab, glass_tabs, group_width, marked_glass_tabs, tab_group};
 pub use terminal::grid_of;
 pub use terminal::{accent_screen, screen};
 pub use toggle::Toggle;

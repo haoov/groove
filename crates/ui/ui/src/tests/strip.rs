@@ -171,7 +171,7 @@ fn an_icon_alone_is_a_circle_under_the_pointer() {
 }
 
 #[test]
-fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
+fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_on_a_square_one() {
     let app = full_app();
     let mut ui = Ui::default();
     let tokens = window().tokens();
@@ -182,15 +182,15 @@ fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
         .and_then(|one| one.worktrees.first())
         .map(|one| one.id.clone());
     let worktree = Target::Worktree(worktree.expect("a worktree"));
-    for target in [Target::ShellSplit, worktree] {
+    for (target, round) in [(Target::ShellSplit, tokens.glass_round), (worktree, 0.0)] {
         ui.hover = Some(target.clone());
         let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
         let at = hits.rect_of(&target).expect("drawn");
         let lit = frame.layers()[0]
             .quads
             .iter()
-            .any(|quad| quad.rect == at && quad.shape.radius == tokens.glass_round);
-        assert!(lit, "{target:?} on a rounded ground");
+            .any(|quad| quad.rect == at && quad.shape.radius == round);
+        assert!(lit, "{target:?} lit, its corners {round}");
     }
     let new = hits.rect_of(&Target::ShellNew).expect("the + button");
     assert_eq!(new.w, new.h, "an icon button, square around its circle");

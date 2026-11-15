@@ -34,7 +34,7 @@ pub enum Target {
     /// A task's place in the plan, which a drag moves.
     Place(groove_types::ExternalId),
     /// What hands the source the hours the clock measured.
-    LogHours(groove_types::ExternalId),
+
     /// Settings' own bar's back.
     SettingsBack,
     /// A section of the list, and the search over them.

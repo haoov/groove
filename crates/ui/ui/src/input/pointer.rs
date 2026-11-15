@@ -151,7 +151,6 @@ fn acted(
 /// What the task and its MR are asked from the pages that show them.
 fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     match target {
-        Some(Target::LogHours(id)) => logging(id),
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
@@ -171,12 +170,6 @@ fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> 
         Some(Target::Block(line)) => surface::fold(ui, app, line),
         _ => Vec::new(),
     }
-}
-
-/// The hours the clock measured, handed to the source.
-fn logging(external_id: groove_types::ExternalId) -> Vec<Command> {
-    let log = groove_controllers::task::Command::LogHours { external_id };
-    vec![Command::Task(log)]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {

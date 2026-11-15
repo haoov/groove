@@ -377,7 +377,7 @@ fn an_object_s_views_show_their_whole_names_at_every_text_size() {
         metrics.text = text;
         let (frame, _) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
         let mut texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
-        for view in ["logs", "yaml", "describe"] {
+        for view in ["LOGS", "YAML", "DESCRIBE"] {
             assert!(texts.any(|one| one.text == view), "{view} whole at {text}");
         }
     }

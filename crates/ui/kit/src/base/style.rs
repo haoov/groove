@@ -147,6 +147,16 @@ impl Styles {
         }
     }
 
+    /// A tab's label: mono, as small as a caption.
+    pub fn tab(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::Medium,
+            size: self.tokens.small,
+            color: self.color(role),
+        }
+    }
+
     /// A line of the feed's log: mono, as small as a caption.
     pub fn log(&self, role: Role) -> TextStyle {
         TextStyle {

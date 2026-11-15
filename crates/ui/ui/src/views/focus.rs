@@ -6,7 +6,7 @@ use groove_gfx::Rect;
 
 use crate::ctx::Ctx;
 use crate::{Focus, Surface, Ui};
-use groove_ui_kit::widgets::focus_ring;
+use groove_ui_kit::widgets::{aside_bounds, focus_ring};
 
 /// The ring around the focused region's own glass, when it stands open.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -21,8 +21,12 @@ fn region(ctx: &Ctx, app: &AppState, ui: &Ui) -> Option<Rect> {
     let session = ui.showing(app) == Surface::Session && app.session.selected().is_some();
     match ui.focus {
         Focus::Rail => Some(layout.sessions),
-        Focus::Workspace if session => Some(layout.strip),
-        Focus::Sidebar if session => Some(layout.sidebar),
+        // Folded, the strip's rect is the header's whole line, wider than its capsule: no ring.
+        Focus::Workspace if session && !ui.session.stowed => Some(layout.strip),
+        // The sidebar's box, its border the separator; none while it is folded away.
+        Focus::Sidebar if session && !layout.sidebar.is_empty() => {
+            Some(aside_bounds(&ctx.tokens, layout.sidebar))
+        }
         Focus::Terminal if session => Some(layout.manual),
         _ => None,
     }

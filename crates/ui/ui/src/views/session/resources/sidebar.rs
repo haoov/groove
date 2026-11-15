@@ -29,10 +29,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     };
     glass_aside(ctx, rect);
     let gap = Spec::default().height(ctx.tokens.sm);
-    let [_, body] = column_in(
-        rect.pad(Edges::across(ctx.tokens.sm, 0.0)),
-        [gap, Spec::fill()],
-    );
+    let [_, body] = column_in(rect, [gap, Spec::fill()]);
     let picked = scope::kind(app, open, &ui.session.resources);
     let lines = lines(app, open, ui);
     let stood = ui

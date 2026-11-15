@@ -39,15 +39,7 @@ fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Opti
         .source
         .clone()
         .or_else(|| super::super::first_container(pod).map(LogSource::Container));
-    for one in &pod.containers {
-        let label = match one.init {
-            true => format!("init · {}", one.name),
-            false => one.name.clone(),
-        };
-        let source = LogSource::Container(one.name.clone());
-        let on = chosen.as_ref() == Some(&source);
-        small(Tab::new(&label, Target::LogSource(source), on)).left(ctx, &mut room, xs);
-    }
+    containers(ctx, &mut room, pod, chosen.as_ref());
     if pod.containers.len() > 1 {
         let on = chosen == Some(LogSource::All);
         let all = Tab::new("all containers", Target::LogSource(LogSource::All), on);
@@ -78,6 +70,32 @@ fn toolbar(ctx: &mut Ctx, line: Rect, (tab, pod): (&Opened, &PodPart), log: Opti
     let picker = format!("{range} ▾");
     small(Tab::new(&picker, Target::LogRange, false)).left(ctx, &mut room, xs);
     stands(ctx, &mut room, (tab, log));
+}
+
+/// A tab for each container, its name as given, in one group from the left of `room`.
+fn containers(ctx: &mut Ctx, room: &mut Rect, pod: &PodPart, chosen: Option<&LogSource>) {
+    let labels: Vec<String> = pod
+        .containers
+        .iter()
+        .map(|one| match one.init {
+            true => format!("init · {}", one.name),
+            false => one.name.clone(),
+        })
+        .collect();
+    let sources: Vec<_> = pod
+        .containers
+        .iter()
+        .zip(&labels)
+        .map(|(one, label)| {
+            let source = LogSource::Container(one.name.clone());
+            let on = chosen == Some(&source);
+            small(Tab::new(label, Target::LogSource(source), on)).keep_case()
+        })
+        .collect();
+    if !sources.is_empty() {
+        let side = groove_ui_kit::widgets::Side::Left;
+        groove_ui_kit::widgets::tab_group(ctx, room, sources, (side, ctx.tokens.xs));
+    }
 }
 
 /// A control of the bar: small text on glass, no padding.

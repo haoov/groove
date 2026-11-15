@@ -54,7 +54,8 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview, tally): 
         Target::OpenTab(open.path.clone()),
         active,
     );
-    tab.italic(preview)
+    tab.keep_case()
+        .italic(preview)
         .tally(tally)
         .close(mark, close)
         .left(ctx, room, ctx.tokens.xs);

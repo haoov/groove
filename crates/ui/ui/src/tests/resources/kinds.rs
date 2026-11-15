@@ -141,18 +141,18 @@ fn in_the_sidebar_the_arrows_step_through_the_lines_enter_folds_a_heading_or_lis
 }
 
 #[test]
-fn the_kind_listed_stands_on_a_rounded_held_ground() {
+fn the_kind_listed_stands_on_a_square_held_ground() {
     use groove_ui_kit::base::style::Styles;
     let (app, ui) = listing();
     let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let held = Styles::new(app.config.theme(), window().tokens()).glass_chosen();
-    let round = window().tokens().glass_round;
+    let round = 0.0;
     let quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
     assert!(
         quads
             .into_iter()
             .any(|one| one.color == held && one.shape.radius == round),
-        "a quad on the rounded held ground"
+        "a quad on the square held ground"
     );
 }
 

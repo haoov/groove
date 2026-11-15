@@ -31,6 +31,7 @@ mod palette;
 mod palette_look;
 mod palette_more;
 mod palette_skills;
+mod panels;
 mod pasting;
 mod pending;
 mod perf;

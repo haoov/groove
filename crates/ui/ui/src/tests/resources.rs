@@ -131,7 +131,7 @@ fn the_list_tab_names_the_kind_and_its_count_over_rows_told_apart_by_namespace()
     let (app, ui) = listing();
     let (texts, _) = drawn(&app, &ui);
     for shown in [
-        "Pods · 3",
+        "PODS · 3",
         "NAMESPACE",
         "NAME",
         "STATUS",
@@ -165,7 +165,7 @@ fn a_name_word_narrows_the_rows_and_a_label_word_asks_the_server_for_its_own_wat
     let (app, mut ui) = listing();
     ui.session.resources.search.set("wkr-0");
     let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "Pods · 1"), "{texts:?}");
+    assert!(texts.iter().any(|one| one == "PODS · 1"), "{texts:?}");
     ui.session.resources.search.set("app=api");
     let asked = crate::render::frame_commands(&app, &ui, window());
     let selected = asked.iter().filter_map(|one| match one {
@@ -223,7 +223,7 @@ fn the_find_key_opens_the_list_s_bar_and_esc_shuts_it_while_empty() {
     assert!(ui.session.resources.finding && ui.session.resources.typing);
     typed("api", &mut ui, &app);
     let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "Pods · 1"), "{texts:?}");
+    assert!(texts.iter().any(|one| one == "PODS · 1"), "{texts:?}");
     press(crate::input::Key::Escape, Default::default(), &mut ui, &app);
     assert!(ui.session.resources.finding, "a bar with words stays");
     ui.session.resources.search.clear();
@@ -304,7 +304,7 @@ fn a_session_closed_or_deleted_lets_go_of_the_watchers_its_list_held() {
 fn the_strip_names_the_cluster_tab_kubernetes_in_capitals() {
     let (app, ui) = listing();
     let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "Kubernetes"), "{texts:?}");
+    assert!(texts.iter().any(|one| one == "KUBERNETES"), "{texts:?}");
     assert!(!texts.iter().any(|one| one == "k8s"), "{texts:?}");
 }
 

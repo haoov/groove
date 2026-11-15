@@ -42,7 +42,6 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             Target::Tab(_)
             | Target::Overview
             | Target::Worktree(_)
-            | Target::LogHours(_)
             | Target::Link(_)
             | Target::ResourceList
             | Target::ResourceRow(_)

@@ -14,9 +14,9 @@ use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::{band, from_right};
+use groove_ui_kit::shape::band;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{flat_row, marked_glass_tabs};
+use groove_ui_kit::widgets::{Side, Tab, flat_row, panel_head, tab_group};
 
 /// Its own window: the header that folds it, a bar tall and alone while folded, then the lines.
 pub fn draw(ctx: &mut Ctx, window: Rect, app: &AppState, ui: &Ui) {
@@ -24,6 +24,7 @@ pub fn draw(ctx: &mut Ctx, window: Rect, app: &AppState, ui: &Ui) {
         window,
         [Spec::default().height(ctx.tokens.bar), Spec::fill()],
     );
+    panel_head(ctx, head, ui.rail.folded);
     heading(ctx, head, ui);
     if !ui.rail.folded {
         lines(ctx, body.pad(Edges::xy(0.0, ctx.tokens.xs)), app, ui);
@@ -45,17 +46,11 @@ fn heading(ctx: &mut Ctx, line: Rect, ui: &Ui) {
 
 /// Which sessions it shows, as two tabs at the header's own end.
 fn narrowed(ctx: &mut Ctx, room: &mut Rect, ui: &Ui) {
-    let (sm, xs, md) = (ctx.tokens.sm, ctx.tokens.xs, ctx.tokens.md);
-    let style = ctx.styles.small(Role::Text);
-    let words = ctx.measure("this", &style) + ctx.measure("all", &style);
-    // Each tab padded `md` on both sides, a gap between them, a margin at each end.
-    let pads = (md + md) * 2.0 + xs + sm * 2.0;
-    let place = from_right(room, words + pads, 0.0);
-    let tabs = [
-        (None, "this", Target::FeedScope(true)),
-        (None, "all", Target::FeedScope(false)),
+    let tabs = vec![
+        Tab::new("this", Target::FeedScope(true), ui.rail.mine).tight(),
+        Tab::new("all", Target::FeedScope(false), !ui.rail.mine).tight(),
     ];
-    marked_glass_tabs(ctx, place, &tabs, usize::from(!ui.rail.mine));
+    tab_group(ctx, room, tabs, (Side::Right, 0.0));
 }
 
 /// The lines, scrolled and clipped to the room they have.

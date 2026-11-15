@@ -47,7 +47,8 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
         Edge::Agent => {
             (!ctx.app.layout.workspace.is_empty()).then(|| upright(ctx.app.layout.agent.right()))
         }
-        Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x)),
+        // The sidebar's room starts a hairline past its separator, where the edge is grabbed.
+        Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x - ctx.tokens.hairline)),
         Edge::Manual => {
             let manual = ctx.app.layout.manual;
             let open = manual.h > ctx.tokens.bar;

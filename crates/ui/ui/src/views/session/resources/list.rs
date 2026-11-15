@@ -102,16 +102,23 @@ fn title(
 ) {
     let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.md));
     let xs = ctx.tokens.xs;
-    if let Some(kind) = kind {
-        let named = format!("{} \u{b7} {count}", plural(kind));
-        let list = Tab::new(&named, Target::ResourceList, held.showing.is_none());
-        list.left(ctx, &mut room, xs);
+    let named = kind.map(|kind| format!("{} \u{b7} {count}", plural(kind)));
+    let mut tabs = Vec::new();
+    if let Some(named) = &named {
+        tabs.push(Tab::new(
+            named,
+            Target::ResourceList,
+            held.showing.is_none(),
+        ));
     }
     for (at, one) in held.opened.iter().enumerate() {
         let shown = held.showing == Some(at);
-        let tab = Tab::new(&one.link.name, Target::ResourceTab(at), shown);
-        let close = Target::ResourceClose(at);
-        tab.close(Mark::Close, close).left(ctx, &mut room, xs);
+        let tab = Tab::new(&one.link.name, Target::ResourceTab(at), shown).keep_case();
+        tabs.push(tab.close(Mark::Close, Target::ResourceClose(at)));
+    }
+    if !tabs.is_empty() {
+        let side = groove_ui_kit::widgets::Side::Left;
+        groove_ui_kit::widgets::tab_group(ctx, &mut room, tabs, (side, xs));
     }
 }
 
