@@ -119,3 +119,40 @@ fn a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box() {
         "a word in capitals: {texts:?}"
     );
 }
+
+#[test]
+fn the_defense_theme_lays_a_grid_on_the_deep_ground_and_the_others_none() {
+    let grid_in = |theme: groove_types::ThemeName| {
+        let mut app = crate::tests::screen::sourced(full_app(), true, true);
+        let mut config = app.config.config.clone().expect("a config");
+        config.ui.theme = theme;
+        app.config.config = Some(config);
+        let ui = Ui::default();
+        let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+        let color = Styles::new(theme, Tokens::new(1.0)).grid();
+        let unders = frame.layers().iter().flat_map(|one| one.under.iter());
+        let lines: Vec<Rect> = unders
+            .filter(|(_, c)| Some(*c) == color)
+            .map(|(rect, _)| *rect)
+            .collect();
+        (lines, Layout::of(window(), &ui))
+    };
+    let (lines, layout) = grid_in(groove_types::ThemeName::Defense);
+    assert!(!lines.is_empty(), "lines on the deep ground");
+    let pitch = groove_ui_kit::base::tokens::GRID;
+    assert!(
+        lines
+            .iter()
+            .all(|one| one.x % pitch == 0.0 || one.y % pitch == 0.0),
+        "every line on the grid's pitch, from the window's corner"
+    );
+    let agent = layout.agent;
+    assert!(
+        lines
+            .iter()
+            .any(|one| one.x > agent.x && one.x < agent.right() && one.h > 0.0),
+        "faint behind the agent's screen too"
+    );
+    let (none, _) = grid_in(groove_types::ThemeName::Mocha);
+    assert!(none.is_empty(), "no other theme lays one");
+}

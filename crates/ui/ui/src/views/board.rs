@@ -46,6 +46,7 @@ impl List {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.app.layout.board;
     groove_ui_kit::widgets::ground_under(ctx, area, Ground::Deep);
+    groove_ui_kit::widgets::ground_grid(ctx, area);
     let field = header::draw(ctx, area, ui);
     for list in List::ALL {
         let column = column_of(&ctx.tokens, area, list);

@@ -387,6 +387,10 @@ under the agent and the strip, the terminal widget, the board and Settings. The 
 stand beside each other on it — the rail's two windows, the strip and its folded capsule, the
 terminals' drawer, Settings' sections — are opaque: the theme's base, edged by a hairline.
 Nothing passes under a panel, so glass would only show the same ground through it.
+The defense theme lays a grid on that deepest ground: a faint hairline every 32 pixels, counted
+from the window's corner, under everything — the panels cover it, and it runs faintly behind the
+agent's screen. No other theme lays one. Enforced by
+`the_defense_theme_lays_a_grid_on_the_deep_ground_and_the_others_none`.
 Each panel is headed by its band — a step from its base toward the theme's first surface —
 ruled off under it by a hairline; a panel folded to its header is that band alone, laid before
 what stands on it. Enforced by `every_open_panel_is_headed_by_its_band_ruled_off_under_it` and

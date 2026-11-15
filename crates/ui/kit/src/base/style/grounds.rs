@@ -107,6 +107,12 @@ impl Styles {
         self.palette.text.with_alpha(self.alpha(GLASS_CHOSEN_ALPHA))
     }
 
+    /// The grid's lines on the deepest ground, for a theme that lays one; none for the others.
+    pub fn grid(&self) -> Option<Color> {
+        let alpha = crate::base::tokens::GRID_ALPHA;
+        self.grid.then(|| self.palette.sky.with_alpha(alpha))
+    }
+
     /// A panel's header band: a step from its base toward the first surface, ruled off under it.
     pub fn panel_head(&self) -> Color {
         let p = &self.palette;

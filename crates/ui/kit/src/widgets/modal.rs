@@ -141,6 +141,28 @@ pub fn ground_under<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, ground: Ground) {
     ctx.under(rect, ground.color(&ctx.styles));
 }
 
+/// The theme's grid over `rect`, laid with its ground so that all else stands over it: a hairline
+/// every `GRID`, counted from the window's corner so it never moves. Nothing for a theme with none.
+pub fn ground_grid<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let Some(color) = ctx.styles.grid() else {
+        return;
+    };
+    let pitch = (crate::base::tokens::GRID * ctx.tokens.scale)
+        .round()
+        .max(1.0);
+    let edge = ctx.tokens.hairline;
+    let mut x = (rect.x / pitch).ceil() * pitch;
+    while x < rect.right() {
+        ctx.under(Rect::new(x, rect.y, edge, rect.h), color);
+        x += pitch;
+    }
+    let mut y = (rect.y / pitch).ceil() * pitch;
+    while y < rect.bottom() {
+        ctx.under(Rect::new(rect.x, y, rect.w, edge), color);
+        y += pitch;
+    }
+}
+
 /// `place` on `ground`, a pane of glass floating inside it. Returns the pane.
 pub fn floating_pane<A: App>(ctx: &mut Ctx<'_, A>, place: Rect, ground: Ground) -> Rect {
     ground_under(ctx, place, ground);

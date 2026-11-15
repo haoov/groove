@@ -92,6 +92,9 @@ pub const SIDEBAR_MIN: f32 = 180.0;
 pub const HELD: f32 = 0.8;
 /// How far a panel's header band stands from its base toward the theme's first surface.
 pub const PANEL_HEAD: f32 = 0.45;
+/// The grid a theme lays on its deepest ground: a hairline every this many logical pixels, and its alpha.
+pub const GRID: f32 = 32.0;
+pub const GRID_ALPHA: u8 = 2;
 pub const OCCURS: f32 = 0.4;
 /// How much of the comment colour a scope's guide takes.
 pub const GUIDE: f32 = 0.55;
@@ -120,7 +123,6 @@ pub struct Tokens {
     pub code_line: f32,
     /// One line of the feed, which holds two texts, and its own age column.
     pub feed_row: f32,
-    pub feed_age: f32,
     /// The agent's own row, under its screen.
     pub bar: f32,
     pub hairline: f32,
@@ -180,7 +182,6 @@ const LINE: f32 = LOGICAL.line / LOGICAL.code;
 const CODE_LINE: f32 = LOGICAL.code_line / LOGICAL.code;
 const FEED_ROW: f32 = LOGICAL.feed_row / LOGICAL.text;
 const BAR: f32 = LOGICAL.bar / LOGICAL.text;
-const FEED_AGE: f32 = LOGICAL.feed_age / LOGICAL.text;
 
 /// The design's numbers, at scale 1.
 const LOGICAL: Tokens = Tokens {
@@ -198,7 +199,6 @@ const LOGICAL: Tokens = Tokens {
     line: 18.0,
     code_line: 21.0,
     feed_row: 20.0,
-    feed_age: 30.0,
     bar: 36.0,
     hairline: 1.0,
     corner: 4.0,
@@ -256,7 +256,6 @@ impl Tokens {
             code_line: row(CODE_LINE, code),
             feed_row: row(FEED_ROW, text),
             bar: row(BAR, text),
-            feed_age: of_text(FEED_AGE),
             hairline: s(LOGICAL.hairline),
             corner: s(LOGICAL.corner),
             round: s(LOGICAL.round),
