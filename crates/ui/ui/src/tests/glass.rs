@@ -74,7 +74,7 @@ fn the_completion_list_stays_solid() {
 }
 
 #[test]
-fn a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground() {
+fn a_palette_row_under_the_pointer_takes_a_square_see_through_ground() {
     let app = app();
     let mut ui = Ui {
         overlay: Some(Overlay::Palette(Palette::default())),
@@ -93,7 +93,7 @@ fn a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground() {
         .find(|q| q.color == hover)
         .expect("the ground");
     assert_eq!(ground.rect, row);
-    assert_eq!(ground.shape.radius, tokens.glass_round);
+    assert_eq!(ground.shape.radius, 0.0, "square, edge to edge");
 }
 
 #[test]

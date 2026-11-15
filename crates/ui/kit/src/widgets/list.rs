@@ -4,7 +4,6 @@ use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::shape::{after_mark, leading};
 use crate::text::{elide, lit_row, row};
-use crate::widgets::inset_row;
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
 pub struct Row<'a, T> {
@@ -14,6 +13,8 @@ pub struct Row<'a, T> {
     pub aside: Option<(f32, &'a str, TextStyle)>,
     /// A text against the right edge, a shortcut beside its action.
     pub end: Option<(&'a str, TextStyle)>,
+    /// The end text is a chord, each of its keys drawn in a hairline box.
+    pub keyed: bool,
     pub background: Option<Color>,
     /// A mark before the text and its rotation, in `tint` or the text's own colour.
     pub mark: Option<(Mark, u8)>,
@@ -34,6 +35,7 @@ impl<'a, T> Row<'a, T> {
             style,
             aside: None,
             end: None,
+            keyed: false,
             background: None,
             mark: None,
             tint: None,
@@ -78,6 +80,13 @@ impl<'a, T> Row<'a, T> {
         self.end = Some((text, style));
         self
     }
+
+    /// A chord against the right edge, `alt+shift+p`, each key in its own box.
+    pub fn keys(mut self, chord: &'a str, style: TextStyle) -> Self {
+        self.end = Some((chord, style));
+        self.keyed = true;
+        self
+    }
 }
 
 /// Rows from the top of `rect`, the selected one on a ground; returns the y under the last.
@@ -106,7 +115,7 @@ pub fn list<A: App>(
     y
 }
 
-/// Rows on glass, each ground rounded and see-through; returns the y under the last.
+/// Rows on glass, each ground square and see-through, edge to edge; returns the y under the last.
 pub fn glass_list<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,
@@ -118,7 +127,9 @@ pub fn glass_list<A: App>(
     for (i, item) in rows.iter().enumerate() {
         let line = Rect::new(rect.x, y, rect.w, height);
         let row = match &item.target {
-            Some(target) => inset_row(ctx, line, target.clone(), (selected == Some(i), None)),
+            Some(target) => {
+                crate::widgets::flat_row(ctx, line, target.clone(), selected == Some(i))
+            }
             None => line.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm)),
         };
         drawn(ctx, (rect, row), item);
@@ -138,7 +149,10 @@ fn drawn<A: App>(ctx: &mut Ctx<'_, A>, (rect, line): (Rect, Rect), item: &Row<'_
         ctx.icon(box_, mark, turn, item.tint.unwrap_or(item.style.color));
         indent = after_mark(ctx, indent);
     }
-    let right = ended(ctx, line, item.end);
+    let right = match item.keyed {
+        true => keyed(ctx, line, item.end),
+        false => ended(ctx, line, item.end),
+    };
     let start = line.x + indent;
     let ends = match item.aside {
         Some((at, _, _)) => rect.x + at - ctx.tokens.sm,
@@ -164,6 +178,34 @@ fn ended<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, end: Option<(&str, TextStyle)
     let at = Rect::new(edge - wide, line.y, wide, line.h);
     row(ctx, at, 0.0, text, style);
     edge - wide - ctx.tokens.md
+}
+
+/// The row's chord against its right edge, one hairline box a key; returns where the rest must stop.
+fn keyed<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, end: Option<(&str, TextStyle)>) -> f32 {
+    let edge = line.right() - ctx.tokens.md;
+    let Some((chord, style)) = end else {
+        return edge;
+    };
+    let (xs, tall) = (ctx.tokens.xs, ctx.tokens.row - ctx.tokens.sm);
+    let mut room = Rect::new(line.x, line.y, edge - line.x, line.h);
+    for key in chord.split(['+', ' ']).filter(|one| !one.is_empty()).rev() {
+        let said = match key {
+            "shift" => "⇧".to_string(),
+            other => other.to_uppercase(),
+        };
+        let wide = (ctx.measure(&said, &style) + xs * 2.0).max(tall);
+        let slot = crate::shape::from_right(&mut room, wide, xs);
+        let boxed = crate::shape::band(slot, (slot.h - tall) / 2.0, tall);
+        ctx.ring(
+            boxed,
+            ctx.styles.line(),
+            ctx.tokens.round,
+            ctx.tokens.hairline,
+        );
+        let inner = ctx.measure(&said, &style);
+        row(ctx, boxed, (boxed.w - inner) / 2.0, &said, style);
+    }
+    room.right() - ctx.tokens.sm
 }
 
 /// The row's text, its lit characters kept where the cut leaves them.

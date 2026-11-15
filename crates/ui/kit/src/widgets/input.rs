@@ -1,4 +1,4 @@
-use groove_gfx::{Edges, Rect, TextStyle};
+use groove_gfx::{Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
@@ -49,8 +49,6 @@ pub fn stepped_input<A: App>(
         row(ctx, rect, x, hint, faint);
     }
     caret_after(ctx, rect, at, before, style);
-    let line = ctx.styles.line();
-    hairline(ctx, rect.pad(Edges::across(pad, pad)), line);
 }
 
 /// What leads an input line: the step it answers, or a mark.

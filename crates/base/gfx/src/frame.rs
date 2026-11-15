@@ -68,13 +68,11 @@ pub struct TextRun {
     pub clip: Rect,
 }
 
-/// A pane that bends and frosts the layers below it.
+/// A pane that frosts the layers below it: their blur under its tint.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Glass {
     pub rect: Rect,
     pub radius: f32,
-    /// The width of the curved rim.
-    pub bezel: f32,
     pub tint: Color,
     pub clip: Rect,
 }
@@ -216,7 +214,7 @@ impl Frame {
         self.top().veil = Some(color);
     }
 
-    pub fn glass(&mut self, rect: Rect, (radius, bezel): (f32, f32), tint: Color) {
+    pub fn glass(&mut self, rect: Rect, radius: f32, tint: Color) {
         if rect.is_empty() {
             return;
         }
@@ -224,7 +222,6 @@ impl Frame {
         self.top().glass.push(Glass {
             rect,
             radius,
-            bezel,
             tint,
             clip,
         });

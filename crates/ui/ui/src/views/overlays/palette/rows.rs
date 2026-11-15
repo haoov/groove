@@ -18,13 +18,21 @@ pub(super) fn entry<'a>(
     let row = Row::new(ctx.tokens.md, text, styles.label(Role::Text));
     let row = row.lit(found, styles.label(Role::Accent));
     let row = match chord {
-        Some(chord) => row.end(chord, styles.small(Role::Faint)),
+        Some(chord) => row.keys(chord, styles.tab(chord_role(selected))),
         None => row,
     };
     let tint = styles.color(if selected { Role::Text } else { Role::Faint });
     match mark {
         Some(mark) => row.mark(mark).tint(tint),
         None => row,
+    }
+}
+
+/// A chord's keys lit with the selected row, faint on the others.
+fn chord_role(selected: bool) -> Role {
+    match selected {
+        true => Role::Text,
+        false => Role::Faint,
     }
 }
 

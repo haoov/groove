@@ -407,8 +407,8 @@ numbers left quiet.
 
 **Glass only where it floats.** What stands over something is glass: the palette, every
 menu, the cluster scope panel, the board's filter offers, and the language servers' popup
-the diff's sticky file heads and its notes: the work below shows through them, frosted,
-magnified and bent at the rim. The completion
+the diff's sticky file heads and its notes: the work below shows through them, blurred
+under the theme's tint; nothing bends, magnifies or lights them. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; a row of the rail, a sidebar or a table takes its square, edge to edge. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_stands_as_two_opaque_windows_inside_its_place`,
@@ -418,13 +418,20 @@ glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_panel_stands_on_glass`,
 `the_hover_popup_is_glass`,
 `the_completion_list_stays_solid` and
-`a_palette_row_under_the_pointer_takes_a_rounded_see_through_ground`.
+`a_palette_row_under_the_pointer_takes_a_square_see_through_ground`.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
 caret is, two rules stand instead of a ground: a place is not a state. The row a list stands
 on — the open file, the shown commit, the kind listed — has the two rules over the held
 ground, the accent dimmed into it. The rail is the exception: see below.
+
+**The palette stands as the rest does.** Its glass is ringed in the accent, for it has the
+keys; the query stands on its band, ruled off across the panel's width, with no line of its own; a group's heading carries its
+count, `GIT · 2`; its rows are lit and held square, edge to edge; and a chord stands as its keys,
+each in its own hairline box, `ALT` `⇧` `B`, shift as its sign. Enforced by
+`a_chord_stands_as_its_keys_each_in_a_hairline_box` and
+`a_palette_row_under_the_pointer_takes_a_square_see_through_ground`.
 
 **The palette keeps its groups while it filters.** Each group runs under its heading, the
 group with the best match first. A first word that starts a group's name keeps that group

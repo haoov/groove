@@ -64,8 +64,7 @@ fn made<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, border: Color, panel: Material
 
 /// A rounded pane of glass over `rect`.
 pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let shape = (ctx.tokens.glass_round, ctx.tokens.bezel);
-    ctx.glass(rect, shape, ctx.styles.glass());
+    ctx.glass(rect, ctx.tokens.glass_round, ctx.styles.glass());
 }
 
 /// An opaque pane standing on the ground beside the others: the theme's base, edged by a hairline.
@@ -120,11 +119,7 @@ pub fn glass_button<A: App>(
     let size = rect.w.min(rect.h);
     let round = rect.align((size, size), Align::Center, Align::Center);
     let radius = size / 2.0;
-    ctx.glass(
-        round,
-        (radius, radius.min(ctx.tokens.bezel)),
-        ctx.styles.glass(),
-    );
+    ctx.glass(round, radius, ctx.styles.glass());
     let on = ctx.interact(round, target);
     if on {
         ctx.rounded(round, ctx.styles.glass_hover(), radius);

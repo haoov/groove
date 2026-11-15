@@ -13,7 +13,7 @@ pub const SPINNER_MS: u64 = 120;
 /// How far a text may overrun its width and still stand whole.
 pub const ELIDE_SLACK: f32 = 0.5;
 pub const SCRIM_ALPHA: u8 = 120;
-pub const GLASS_ALPHA: (u8, u8) = (140, 95);
+pub const GLASS_ALPHA: (u8, u8) = (242, 175);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
 /// A row's tint in a state's colour, dark then light; the dark one reads as about a tenth.
@@ -132,7 +132,6 @@ pub struct Tokens {
     pub round: f32,
     /// A glass panel's corners, the width of its curved rim, and one line of a list on it.
     pub glass_round: f32,
-    pub bezel: f32,
     pub glass_row: f32,
     pub edge: f32,
     /// How wide a splitter is to grab.
@@ -204,7 +203,6 @@ const LOGICAL: Tokens = Tokens {
     corner: 4.0,
     round: 2.0,
     glass_round: 3.0,
-    bezel: 24.0,
     glass_row: 32.0,
     edge: 0.5,
     grab: 8.0,
@@ -260,7 +258,6 @@ impl Tokens {
             corner: s(LOGICAL.corner),
             round: s(LOGICAL.round),
             glass_round: s(LOGICAL.glass_round),
-            bezel: s(LOGICAL.bezel),
             glass_row: row(GLASS_ROW, text),
             edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),

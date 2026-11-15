@@ -138,8 +138,8 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.veil(color);
     }
 
-    pub(crate) fn glass(&mut self, rect: Rect, shape: (f32, f32), tint: Color) {
-        self.frame.glass(rect, shape, tint);
+    pub(crate) fn glass(&mut self, rect: Rect, radius: f32, tint: Color) {
+        self.frame.glass(rect, radius, tint);
     }
 
     pub(crate) fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {

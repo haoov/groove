@@ -68,7 +68,7 @@ fn the_selected_row_shows_under_its_heading() {
         .iter()
         .map(|t| t.text.clone())
         .collect();
-    assert!(texts.contains(&"NOTES".to_string()), "{texts:?}");
+    assert!(texts.iter().any(|t| t.starts_with("NOTES · ")), "{texts:?}");
     assert!(texts.contains(&rows[at].1), "{texts:?}");
     typed("pu", &mut ui, &app);
     let (frame, _) = view(
@@ -83,7 +83,7 @@ fn the_selected_row_shows_under_its_heading() {
         .map(|t| t.text.clone())
         .collect();
     assert!(
-        texts.contains(&"GIT".to_string()),
+        texts.iter().any(|t| t.starts_with("GIT · ")),
         "headings while typing too: {texts:?}"
     );
 }
@@ -254,7 +254,7 @@ fn the_last_row_selected_keeps_the_inset_under_it() {
         .expect("the selected row");
     assert_eq!(
         row.rect.bottom(),
-        boxed.bottom() - tokens.sm - tokens.xs / 2.0,
+        boxed.bottom() - tokens.sm,
         "the inset, no more"
     );
 }
@@ -287,4 +287,32 @@ fn a_hash_searches_the_worktree_files_and_opens_the_one_picked() {
     let commands = ui.closed_palette(palette.key(Key::Enter, &app), &app);
     assert_eq!(commands[0].id(), "workspace.open_file");
     assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
+}
+
+#[test]
+fn a_chord_stands_as_its_keys_each_in_a_hairline_box() {
+    let app = crate::tests::full_app();
+    let mut ui = crate::Ui::default();
+    crate::tests::press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
+    typed("board", &mut ui, &app);
+    let (frame, _) = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let layer = &frame.layers()[1];
+    let key = |said: &str| layer.texts.iter().find(|run| run.text == said).cloned();
+    let (alt, b) = (
+        key("ALT").expect("the alt key"),
+        key("B").expect("the b key"),
+    );
+    assert!(key("⇧").is_some(), "shift as its sign");
+    let boxed = |run: &groove_gfx::TextRun| {
+        layer.quads.iter().any(|quad| {
+            quad.shape.stroke > 0.0 && quad.rect.contains(run.x + 1.0, run.y + run.height / 2.0)
+        })
+    };
+    assert!(boxed(&alt) && boxed(&b), "each key in its box");
+    assert!(alt.x < b.x, "in the chord's order");
 }

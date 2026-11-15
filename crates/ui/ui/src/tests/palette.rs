@@ -262,7 +262,10 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .iter()
         .map(|t| t.text.clone())
         .collect();
-    assert!(texts.iter().any(|t| t == "GO"), "a heading over its group");
+    assert!(
+        texts.iter().any(|t| t.starts_with("GO · ")),
+        "a heading over its group, its count after it"
+    );
     assert!(texts.iter().any(|t| t == "Board"));
     typed("close work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
