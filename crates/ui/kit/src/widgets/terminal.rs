@@ -10,12 +10,37 @@ pub fn screen<A: App>(
     origin: (f32, f32),
     (screen, focused): (&Screen, bool),
 ) {
+    drawn(ctx, rect, origin, (screen, focused.then_some(None)));
+}
+
+/// The same, its cursor while `focused` a solid block in the accent: the agent's screen, which
+/// has no edge for a ring and shows the keys by its caret alone.
+pub fn accent_screen<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    origin: (f32, f32),
+    (screen, focused): (&Screen, bool),
+) {
+    let accent = ctx.styles.color(crate::base::style::Role::Accent);
+    drawn(ctx, rect, origin, (screen, focused.then_some(Some(accent))));
+}
+
+/// The screen; `solid` holds the focused cursor's ground, `None` inside it for its own colours swapped.
+fn drawn<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    origin: (f32, f32),
+    (screen, solid_in): (&Screen, Option<Option<Color>>),
+) {
     let cell = ctx.cell;
     let ground = ctx.styles.deep();
     let mut grid = cells_of(screen, origin.0, origin.1, ctx.terminal);
     let cursor = cursor_of(screen);
-    if focused && let Some(at) = cursor {
-        solid(&mut grid, at, ground);
+    let focused = solid_in.is_some();
+    match (solid_in, cursor) {
+        (Some(None), Some(at)) => solid(&mut grid, at, ground),
+        (Some(Some(accent)), Some(at)) => lit(&mut grid, at, (accent, ground)),
+        _ => {}
     }
     let held = ctx.styles.held();
     ctx.clipped(rect, |ctx| {
@@ -83,6 +108,20 @@ fn solid(grid: &mut CellGrid, (col, row): (usize, usize), ground: Color) {
         Cell {
             fg: bg,
             bg: under.fg,
+            ..under
+        },
+    );
+}
+
+/// The cell under the cursor on `accent`, its glyph in `ground`.
+fn lit(grid: &mut CellGrid, (col, row): (usize, usize), (accent, ground): (Color, Color)) {
+    let under = *grid.cell(col, row);
+    grid.set(
+        col,
+        row,
+        Cell {
+            fg: ground,
+            bg: accent,
             ..under
         },
     );

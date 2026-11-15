@@ -5,7 +5,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::screen;
+use groove_ui_kit::widgets::accent_screen;
 
 /// The agent's terminal, or why there is none. Over a terminal a new layer opens: what floats on
 /// it after, the header and the drawer, is glass that blurs its screen.
@@ -23,7 +23,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, focused: bool) {
         (Some(terminal), _) => {
             let origin = ctx.app.layout.agent_origin(&ctx.tokens);
             let grid = terminal.screen();
-            screen(ctx, pane, origin, (&grid, focused));
+            accent_screen(ctx, pane, origin, (&grid, focused));
             ctx.layer();
         }
         (None, AgentStatus::Error { message }) => note(ctx, message),

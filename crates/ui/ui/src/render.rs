@@ -7,7 +7,7 @@ use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
 use crate::layout::Layout;
 use crate::views::session::{Tab, resources};
-use crate::views::{board, overlays, rail, session, settings, splitter};
+use crate::views::{board, focus, overlays, rail, session, settings, splitter};
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::style::Styles;
@@ -28,11 +28,13 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         if ui.settings.open {
             settings::draw(&mut ctx, app, ui);
         } else {
-            let rail = ui.focus == crate::Focus::Rail;
-            ctx.region(rail, |ctx| rail::draw(ctx, app, ui));
+            rail::draw(&mut ctx, app, ui);
             match ui.showing(app) {
                 Surface::Session => session::draw(&mut ctx, app, ui),
-                Surface::Board => ctx.region(!rail, |ctx| board::draw(ctx, app, ui)),
+                Surface::Board => {
+                    board::draw(&mut ctx, app, ui);
+                    focus::draw(&mut ctx, app, ui);
+                }
             }
             splitter::draw(&mut ctx, ui.showing(app), (ui.rail.stowed, ui.rail.folded));
             if ui.showing(app) == Surface::Session {

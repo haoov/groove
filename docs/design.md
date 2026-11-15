@@ -21,9 +21,15 @@ the rail only as its attention count.
   a button. Groove never runs it by itself.
 - **Everything is reachable from the keyboard.** The palette is the front door to every
   action. The mouse is a shortcut.
-- **Selection is a background**: a rounded ground, one step above the hover's. A selected
-  tab is held the same way. In the region that has the keys it takes the accent; elsewhere
-  it stays neutral. The agent and a terminal show the keys by a solid cursor.
+- **Selection is a background**: a ground one step above the hover's, neutral wherever it
+  stands. A selected tab is held the same way.
+- **Focus is a ring**: the region that has the keys — the sessions' window, the strip, the
+  sidebar, the terminals — stands in a thin ring in the accent, read as half its strength on
+  either theme. The agent's screen has no edge to ring: its cursor turns a solid block in the
+  accent while it has the keys. A terminal shows them by a solid cursor too. Enforced by
+  `the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else`,
+  `the_agent_has_no_ring_and_its_caret_takes_the_accent` and
+  `a_selection_stays_neutral_in_the_region_that_has_the_keys`.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
   rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
   workspace and the sidebar unfold first, and a press while they hold the keys folds them

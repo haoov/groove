@@ -47,6 +47,12 @@ pub fn flat_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target, cho
     rect
 }
 
+/// A thin ring in the accent around `rect`, the region that has the keys.
+pub fn focus_ring<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let color = ctx.styles.focus();
+    ctx.ring(rect, color, ctx.tokens.glass_round, ctx.tokens.hairline);
+}
+
 /// `rect` whole on `color`, square: a flat row's tint.
 pub fn flat_ground<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     ctx.quad(rect, color);

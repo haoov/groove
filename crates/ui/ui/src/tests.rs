@@ -17,6 +17,7 @@ mod files;
 mod finding;
 mod first_run;
 mod focus;
+mod focus_ring;
 mod frame;
 mod glass;
 mod hover;

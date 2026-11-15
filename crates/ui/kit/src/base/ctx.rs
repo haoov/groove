@@ -55,7 +55,6 @@ pub struct Ctx<'a, A: App> {
     pub now: Timestamp,
     pub app: A,
     /// Whether what is drawn now stands in the region that has the keys.
-    pub active: bool,
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
     hover: Option<A::Target>,
@@ -82,7 +81,6 @@ impl<'a, A: App> Ctx<'a, A> {
             tick: metrics.tick,
             now: metrics.now,
             app,
-            active: true,
             frame,
             fonts,
             hover,
@@ -90,19 +88,10 @@ impl<'a, A: App> Ctx<'a, A> {
         }
     }
 
-    /// The ground of what is chosen: in the accent where the keys are, else neutral.
+    /// The ground of what is chosen, neutral wherever it stands: the region that has the keys is
+    /// marked by its ring, not by its selection.
     pub fn chosen(&self) -> Color {
-        match self.active {
-            true => self.styles.glass_active(),
-            false => self.styles.glass_chosen(),
-        }
-    }
-
-    /// Draws a region, active or not, then stands active again.
-    pub fn region(&mut self, active: bool, draw: impl FnOnce(&mut Self)) {
-        self.active = active;
-        draw(self);
-        self.active = true;
+        self.styles.glass_chosen()
     }
 
     pub fn hover(&self) -> Option<&A::Target> {

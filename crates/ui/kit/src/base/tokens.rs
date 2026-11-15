@@ -21,11 +21,12 @@ pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
 pub const ROW_TINT_ALPHA: (u8, u8) = (6, 64);
 /// Grounds laid on glass, dark then light. The frame blends in linear light, where a pale
 /// ground on a dark theme reads three to four times its alpha: the dark ones are set for what
-/// they read as, hover 7 %, a card under it, chosen 13 %, active 16 %.
+/// they read as, hover 7 %, a card under it, chosen 13 %.
 pub const GLASS_HOVER_ALPHA: (u8, u8) = (3, 22);
 pub const GLASS_CARD_ALPHA: (u8, u8) = (2, 16);
 pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (7, 46);
-pub const GLASS_ACTIVE_ALPHA: (u8, u8) = (9, 64);
+/// The focus ring in the accent, dark then light: each reads as half the accent on its glass.
+pub const FOCUS_ALPHA: (u8, u8) = (63, 144);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.
 pub const GROUND_ALPHA: (u8, u8) = (12, 28);
 pub const NUMBER_TINT: f32 = 0.4;

@@ -4,7 +4,7 @@ use groove_gfx::Color;
 
 use super::Styles;
 use crate::base::tokens::{
-    GLASS_ACTIVE_ALPHA, GLASS_ALPHA, GLASS_CARD_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA,
+    FOCUS_ALPHA, GLASS_ALPHA, GLASS_CARD_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA,
     GLASS_DIM_ALPHA, GLASS_HOVER_ALPHA, SCRIM_ALPHA,
 };
 
@@ -107,10 +107,8 @@ impl Styles {
         self.palette.text.with_alpha(self.alpha(GLASS_CHOSEN_ALPHA))
     }
 
-    /// What is chosen in the region that has the keys, in the accent.
-    pub fn glass_active(&self) -> Color {
-        self.palette
-            .rosewater
-            .with_alpha(self.alpha(GLASS_ACTIVE_ALPHA))
+    /// The ring around the region that has the keys: the accent, light and thin.
+    pub fn focus(&self) -> Color {
+        self.palette.rosewater.with_alpha(self.alpha(FOCUS_ALPHA))
     }
 }
