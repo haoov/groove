@@ -70,13 +70,13 @@ pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
 /// An opaque pane standing on the ground beside the others: the theme's base, edged by a hairline.
 /// Glass is kept for what floats over something; a panel has nothing under it to show.
 pub fn solid_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let (ground, edge) = (ctx.styles.ground(), ctx.styles.line());
+    let (ground, edge) = (ctx.styles.ground(), ctx.styles.panel_edge());
     ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
 }
 
 /// A card set into a panel: a step below its base, edged by a hairline.
 pub fn sunk_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let (ground, edge) = (ctx.styles.band(), ctx.styles.line());
+    let (ground, edge) = (ctx.styles.band(), ctx.styles.panel_edge());
     ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
 }
 

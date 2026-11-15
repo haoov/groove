@@ -33,5 +33,5 @@ pub fn glass_aside<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
         ground,
         (round - edge).max(0.0),
     );
-    ctx.ring(bounds, ctx.styles.line(), round, edge);
+    ctx.ring(bounds, ctx.styles.panel_edge(), round, edge);
 }

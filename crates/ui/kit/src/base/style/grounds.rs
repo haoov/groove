@@ -62,6 +62,11 @@ impl Styles {
         self.palette.surface0
     }
 
+    /// A panel's, a card's and the sidebar's own edge: a step past the lines inside them.
+    pub fn panel_edge(&self) -> Color {
+        self.palette.surface1
+    }
+
     /// A lighter edge, for a panel that stands over a band.
     pub fn border(&self) -> Color {
         self.palette.surface1
