@@ -80,6 +80,8 @@ pub struct Rows {
     pub ruled: bool,
     /// Each row a rounded card on glass instead of a ruled line.
     pub carded: bool,
+    /// A grid: the header on a band in capitals, a hairline between the columns and under each row.
+    pub gridded: bool,
 }
 
 pub struct Table<'a, T> {
@@ -165,7 +167,10 @@ impl<T: Clone + PartialEq> Table<'_, T> {
     /// Each column's left edge and width across `rect`.
     pub fn spans<A: App>(&self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Vec<(f32, f32)> {
         let md = ctx.tokens.md;
-        let label = ctx.styles.small(Role::Faint);
+        let label = match self.rows.gridded {
+            true => ctx.styles.tab(Role::Faint),
+            false => ctx.styles.small(Role::Faint),
+        };
         let (small, body) = (ctx.styles.small(Role::Text), ctx.styles.body(Role::Text));
         let fitted: Vec<Option<f32>> = self
             .columns
@@ -180,7 +185,8 @@ impl<T: Clone + PartialEq> Table<'_, T> {
                         (sample.wide(ctx).max(cell::sort_room(ctx, column)), 0.0)
                     }
                 };
-                Some(wide.max(ctx.measure(column.label, &label)) + slack)
+                let named = ctx.measure(&self.label(column.label), &label);
+                Some(wide.max(named) + slack)
             })
             .collect();
         let room = (rect.w - md * (self.columns.len() + 1) as f32).max(0.0);
@@ -201,6 +207,16 @@ impl<T: Clone + PartialEq> Table<'_, T> {
                 span
             })
             .collect()
+    }
+}
+
+impl<T> Table<'_, T> {
+    /// A column's label as its header writes it: in capitals on a grid.
+    fn label<'l>(&self, label: &'l str) -> std::borrow::Cow<'l, str> {
+        match self.rows.gridded {
+            true => label.to_uppercase().into(),
+            false => label.into(),
+        }
     }
 }
 

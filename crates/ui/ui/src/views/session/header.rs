@@ -8,7 +8,6 @@ use groove_gfx::{Edges, Rect};
 use crate::components::{delivered, room_for};
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
-use crate::views::session::resources::ResourcesUi;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
@@ -74,12 +73,11 @@ pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
         true => super::fold(ctx, line, ui),
         false => line,
     };
-    worktree_line(ctx, line, app, open);
-}
-
-/// The Kubernetes tab's line: the contexts and the namespaces it reads.
-pub fn scope(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held: &ResourcesUi) {
-    scope::draw(ctx, line, app, open, held);
+    // On the Kubernetes tab the line holds the scope the list reads, in the worktrees' place.
+    match ui.session.tab {
+        super::Tab::Resources => scope::draw(ctx, line, app, open, &ui.session.resources),
+        _ => worktree_line(ctx, line, app, open),
+    }
 }
 
 /// The session's kind and its title, cut where the actions begin, then what opens its page.

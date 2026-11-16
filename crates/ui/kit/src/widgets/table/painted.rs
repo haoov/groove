@@ -16,6 +16,11 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         line: Rect,
         spans: &[(f32, f32)],
     ) {
+        if self.rows.gridded {
+            ctx.quad(line, ctx.styles.panel_head());
+            hairline(ctx, line, ctx.styles.line());
+            dividers(ctx, line, (spans, self.columns));
+        }
         for (at, column) in self.columns.iter().enumerate() {
             let (x, w) = spans[at];
             let rect = Rect::new(x, line.y, w, line.h);
@@ -27,7 +32,10 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             if let Some(target) = column.sort.clone() {
                 ctx.hit(rect, target);
             }
-            let mut cell = Cell::small(column.label, role);
+            let mut cell = match self.rows.gridded {
+                true => Cell::tab(self.label(column.label), role),
+                false => Cell::small(column.label, role),
+            };
             if let Some(sorted) = sorted {
                 let turn = match sorted.descending {
                     true => 0,
@@ -52,7 +60,10 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         selected: bool,
     ) {
         match shown {
-            Shown::Band(band) => banded(ctx, line, band, (selected, self.rows.ruled)),
+            Shown::Band(band) => {
+                let ruled = self.rows.ruled || self.rows.gridded;
+                banded(ctx, line, band, (selected, ruled))
+            }
             Shown::Row(row) => self.row(ctx, line, spans, row, selected),
         }
     }
@@ -98,8 +109,29 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             }
         }
         under(ctx, rest.take_top(self.rows.under), start, row.under);
-        if self.rows.ruled && !selected && !self.rows.carded {
+        if self.rows.gridded {
+            dividers(ctx, line, (spans, self.columns));
+            hairline(ctx, line, ctx.styles.line());
+        } else if self.rows.ruled && !selected && !self.rows.carded {
             hairline(ctx, line, ctx.styles.line());
         }
+    }
+}
+
+/// A hairline down the middle of the gap before each column but the first, as tall as `line`;
+/// none beside a column with no label, a caret's or the slack's.
+fn dividers<A: App, T>(
+    ctx: &mut Ctx<'_, A>,
+    line: Rect,
+    (spans, columns): (&[(f32, f32)], &[super::Column<'_, T>]),
+) {
+    let (gap, thick) = (ctx.tokens.md, ctx.tokens.hairline);
+    let named = |at: usize| columns.get(at).is_some_and(|one| !one.label.is_empty());
+    for (at, (x, _)) in spans.iter().enumerate().skip(1) {
+        if !named(at) || !named(at - 1) {
+            continue;
+        }
+        let at = (x - gap / 2.0).floor();
+        ctx.quad(Rect::new(at, line.y, thick, line.h), ctx.styles.line());
     }
 }

@@ -28,6 +28,8 @@ enum Size {
     Small,
     Body,
     Label,
+    /// The tabs' own: mono, small.
+    Tab,
 }
 
 /// A short track before the text: its fill and a tick, each a part of the whole, in a role.
@@ -49,6 +51,14 @@ impl<'a> Cell<'a> {
             mark: None,
             bar: None,
             lit: Vec::new(),
+        }
+    }
+
+    /// A text in the tabs' mono.
+    pub fn tab(text: impl Into<Cow<'a, str>>, role: Role) -> Self {
+        Self {
+            size: Size::Tab,
+            ..Self::small(text, role)
         }
     }
 
@@ -201,13 +211,14 @@ impl<'a> Cell<'a> {
             Size::Small => ctx.styles.small(role),
             Size::Body => ctx.styles.body(role),
             Size::Label => ctx.styles.label(role),
+            Size::Tab => ctx.styles.tab(role),
         }
     }
 
     /// A mark's size and the gap after it, by the text's size.
     fn mark_room<A: App>(&self, ctx: &Ctx<'_, A>) -> (f32, f32) {
         match self.size {
-            Size::Small => (ctx.tokens.small, ctx.tokens.xs),
+            Size::Small | Size::Tab => (ctx.tokens.small, ctx.tokens.xs),
             Size::Body | Size::Label => (ctx.tokens.icon, ctx.tokens.sm),
         }
     }

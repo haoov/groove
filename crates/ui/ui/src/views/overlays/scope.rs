@@ -19,10 +19,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         return;
     };
     let lines = scope_lines(app, open, scoping);
-    let labels: Vec<String> = lines.iter().map(ScopeLine::label).collect();
+    let labels = labelled(&lines);
     let shown = lines.len().clamp(1, PALETTE_LINES);
     let (high, sm, xs) = (ctx.tokens.glass_row, ctx.tokens.sm, ctx.tokens.xs);
-    let height = ctx.tokens.bar + xs * 2.0 + high * shown as f32 + sm * 2.0;
+    let height = ctx.tokens.bar + xs * 2.0 + high * shown as f32 + sm;
     let edge = (ctx.styles.border(), Material::Glass);
     let rect = modal(
         ctx,
@@ -31,13 +31,17 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         edge,
     );
     ctx.hit(rect, Target::ScopePanel);
+    // As the palette stands: the search line on the panel's band, ruled off, the ring around.
+    let band = groove_ui_kit::shape::band(rect, 0.0, ctx.tokens.bar + xs * 2.0);
+    groove_ui_kit::widgets::panel_head(ctx, band, false);
+    groove_ui_kit::widgets::focus_ring(ctx, rect);
     let tall = |height: f32| Spec::default().height(height);
     let [_, line, _, body, _] = column_in(
         rect,
         [
             tall(xs),
             tall(ctx.tokens.bar),
-            tall(sm),
+            tall(xs + sm),
             tall(high * shown as f32),
             Spec::fill(),
         ],
@@ -53,6 +57,20 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         return;
     }
     rows(ctx, (app, open), (body, ui, scoping), (&lines, &labels));
+}
+
+/// Each line's text; a heading in capitals with how many lines stand under it, as the palette's.
+fn labelled(lines: &[ScopeLine]) -> Vec<String> {
+    let under = |at: usize| {
+        let rest = lines[at + 1..].iter();
+        rest.take_while(|one| !matches!(one, ScopeLine::Heading(_)))
+            .count()
+    };
+    let labelled = lines.iter().enumerate().map(|(at, line)| match line {
+        ScopeLine::Heading(text) => format!("{} \u{b7} {}", text.to_uppercase(), under(at)),
+        other => other.label(),
+    });
+    labelled.collect()
 }
 
 /// The line the search is typed in, led by what it picks.
@@ -77,7 +95,7 @@ fn item<'a>(
     let accent = ctx.styles.label(Role::Accent);
     let shown = match line {
         ScopeLine::Heading(_) => {
-            return Row::new(pad, label, ctx.styles.small(Role::Faint));
+            return Row::new(pad, label, ctx.styles.heading(Role::Faint));
         }
         ScopeLine::Held(context) => Some(!held.hidden_contexts.contains(context)),
         ScopeLine::Namespace(pair) => Some(shows(open, held, pair)),

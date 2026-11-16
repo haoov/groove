@@ -5,7 +5,8 @@ use std::sync::Arc;
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::{
-    AppCondition, AppSource, Container, Described, Operation, PodPart, SyncedResource, Usage,
+    AppCondition, AppSource, Condition, Container, Described, Operation, PodPart, SyncedResource,
+    Usage,
 };
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::{rounded_slice, scrolled};
@@ -14,6 +15,7 @@ use super::super::opened::{Opened, Section};
 use super::argo;
 use super::containers;
 use super::destined;
+use super::read::{events, key_width, usage};
 use super::relations::{self, Line};
 use super::sections::{self, Fact};
 use crate::ctx::Ctx;
@@ -27,7 +29,7 @@ pub(super) enum Block<'a> {
     Broke(&'a SyncedResource),
     AppCondition(&'a AppCondition),
     Source(&'a AppSource),
-    Conditions(&'a PodPart),
+    Condition(&'a Condition),
     Summary(Vec<Fact>),
     /// A line of a table, under its header when it is the first.
     Relation(Line, bool),
@@ -38,8 +40,6 @@ pub(super) enum Block<'a> {
     Event(&'a groove_types::EventRow),
     /// The room between two cards.
     Gap,
-    /// The room inside a card above its heading and below what it holds.
-    Inset,
 }
 
 /// What a section's heading says after its name.
@@ -74,15 +74,15 @@ pub(super) fn draw(
                 return;
             }
             let card = line.pad(Edges::across(md, md));
-            let ground = match tint.filter(|(_, until)| at < until) {
-                Some((role, _)) => ctx.styles.tint(role),
-                None => ctx.styles.glass_card(),
-            };
+            let tinted = tint.filter(|(_, until)| at < until);
             let gap = |one: Option<&Block>| matches!(one, None | Some(Block::Gap));
             let ends = (gap(blocks.get(at.wrapping_sub(1))), gap(blocks.get(at + 1)));
-            rounded_slice(ctx, card, ends, (ground, None));
+            carded(ctx, card, (block, ends), tinted.map(|(role, _)| role));
             let rect = match block {
                 Block::Heading(..) => card,
+                Block::Container(..) | Block::Relation(..) | Block::Detail(_) => {
+                    card.pad(Edges::across(ctx.tokens.hairline, ctx.tokens.hairline))
+                }
                 _ => card.pad(Edges::across(md, md)),
             };
             let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()));
@@ -92,6 +92,26 @@ pub(super) fn draw(
     ctx.app.hits.scrolls(Scroller::Resources, extent);
     if let Some(tip) = &tip {
         containers::tip(ctx, tip);
+    }
+}
+
+/// A slice of its section's card: the sunk ground inside the panel's edge, the heading on its
+/// band, ruled off under it unless the section is folded to it alone. The operation's colour
+/// tints its card whole, its heading included.
+fn carded(ctx: &mut Ctx, card: Rect, (block, ends): (&Block, (bool, bool)), tint: Option<Role>) {
+    let ground = match tint {
+        Some(role) => ctx.styles.tint(role),
+        None => ctx.styles.band(),
+    };
+    rounded_slice(ctx, card, ends, (ground, Some(ctx.styles.panel_edge())));
+    if !matches!(block, Block::Heading(..)) {
+        return;
+    }
+    let alone = ends.1;
+    match tint {
+        None => groove_ui_kit::widgets::panel_head(ctx, card, alone),
+        Some(_) if !alone => groove_ui_kit::shape::hairline(ctx, card, ctx.styles.line()),
+        Some(_) => {}
     }
 }
 
@@ -110,7 +130,7 @@ fn one(
         Block::Operation(_) | Block::Said(_) | Block::Broke(_) => operated(ctx, rect, block),
         Block::AppCondition(one) => argo::condition(ctx, rect, one, ctx.now),
         Block::Source(one) => argo::source(ctx, rect, one, last),
-        Block::Conditions(pod) => sections::conditions(ctx, rect, pod),
+        Block::Condition(one) => sections::condition(ctx, rect, one),
         Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
         Block::Relation(line, header) => relations::draw(ctx, rect, (line, *header), last),
         Block::Container(one, header) => {
@@ -119,7 +139,7 @@ fn one(
         Block::Detail(line) => containers::detail(ctx, rect, line, last),
         Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
         Block::Event(row) => sections::event(ctx, rect, row, last),
-        Block::Gap | Block::Inset => {}
+        Block::Gap => {}
     }
     None
 }
@@ -149,9 +169,9 @@ fn height(ctx: &Ctx, block: &Block) -> f32 {
     match block {
         Block::Summary(facts) => row * facts.len() as f32,
         Block::Relation(_, true) | Block::Container(_, true) => row * 2.0,
+        Block::Heading(..) => row + ctx.tokens.xs,
         Block::Source(one) => row * argo::source_rows(one) as f32,
         Block::Gap => ctx.tokens.md,
-        Block::Inset => groove_ui_kit::widgets::card_inset(&ctx.tokens),
         _ => row,
     }
 }
@@ -169,11 +189,10 @@ fn blocks<'a>(
         if out.len() > 1 {
             out.push(Block::Gap);
         }
-        out.extend([Block::Inset, Block::Heading(section, count)]);
+        out.push(Block::Heading(section, count));
         if !tab.shut.contains(&section) {
             out.extend(held);
         }
-        out.push(Block::Inset);
     }
     out.push(Block::Gap);
     out
@@ -191,11 +210,8 @@ fn parts<'a>(
     let mut parts: Vec<(Section, Tally, Vec<Block<'a>>)> = Vec::new();
     parts.extend(app.map(argo::parts).unwrap_or_default());
     if let Some(pod) = pod {
-        parts.push((
-            Section::Conditions,
-            Tally::Count(0),
-            vec![Block::Conditions(pod)],
-        ));
+        let lines = pod.conditions.iter().map(Block::Condition).collect();
+        parts.push((Section::Conditions, Tally::Count(0), lines));
     }
     let facts = match app {
         Some(one) => {
@@ -261,37 +277,4 @@ fn around<'a>(
         ),
         (Section::Events, said, rows.map(Block::Event).collect()),
     ]
-}
-
-/// The key column of labels and annotations: as wide as the widest key, half of `room` at most.
-fn key_width(ctx: &mut Ctx, object: &Described, room: f32) -> f32 {
-    let style = ctx.styles.small(Role::Ghost);
-    let keys = object
-        .labels
-        .iter()
-        .chain(&object.annotations)
-        .map(|(key, _)| key);
-    let widest = keys.map(|key| ctx.measure(key, &style)).fold(0.0, f32::max);
-    (widest + ctx.tokens.lg).min(room / 2.0)
-}
-
-/// The events about the object, warnings first, then the latest.
-fn events(app: &AppState, tab: &Opened, object: &Described) -> Vec<Arc<Described>> {
-    let store = &app.cluster.store;
-    let namespace = tab.link.namespace.as_deref();
-    let key = store.events_key(&tab.link.context, namespace, &object.uid);
-    let held = key.and_then(|key| store.follows.get(&key));
-    let mut events: Vec<Arc<Described>> = held.map(|one| one.objects.clone()).unwrap_or_default();
-    let rank = |one: &Arc<Described>| {
-        let row = one.event.as_ref();
-        let warning = row.is_some_and(|row| row.warning);
-        (!warning, std::cmp::Reverse(row.and_then(|row| row.last)))
-    };
-    events.sort_by_key(rank);
-    events
-}
-
-/// The pod's usage as last read, when the cluster runs a metrics-server.
-fn usage(app: &AppState, tab: &Opened) -> Option<Usage> {
-    app.cluster.store.follows.usage(&tab.link.pod())?.0.clone()
 }

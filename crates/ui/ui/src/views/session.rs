@@ -74,13 +74,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             open_files::draw(ctx, strip, app, ui);
             diff::draw(ctx, app, ui, body)
         }
-        Tab::Resources => {
-            let [line, body] = column_in(body, [band, Spec::fill()]);
-            if let Some(open) = app.session.selected() {
-                header::scope(ctx, line, app, open, &ui.session.resources);
-            }
-            resources::draw(ctx, app, ui, body)
-        }
+        Tab::Resources => resources::draw(ctx, app, ui, body),
     }
 }
 

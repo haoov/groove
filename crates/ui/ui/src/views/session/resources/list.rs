@@ -217,6 +217,7 @@ fn listed(
             under: 0.0,
             ruled: false,
             carded: false,
+            gridded: true,
         },
         count: rows.len(),
         offset,

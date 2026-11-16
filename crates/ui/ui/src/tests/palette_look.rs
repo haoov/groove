@@ -230,7 +230,7 @@ fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
 }
 
 #[test]
-fn the_last_row_selected_keeps_the_inset_under_it() {
+fn the_last_row_selected_reaches_the_panels_bottom() {
     let app = full_app();
     let mut ui = Ui::default();
     press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
@@ -254,8 +254,8 @@ fn the_last_row_selected_keeps_the_inset_under_it() {
         .expect("the selected row");
     assert_eq!(
         row.rect.bottom(),
-        boxed.bottom() - tokens.sm,
-        "the inset, no more"
+        boxed.bottom(),
+        "no room under the last row"
     );
 }
 

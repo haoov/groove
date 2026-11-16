@@ -27,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let lines = lines(&rows, prompt.is_none());
     let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
     let shown = lines.len().clamp(usize::from(!typing_only), PALETTE_LINES);
-    let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm * 2.0;
+    let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm;
     let height = rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0;
     let edge = (ctx.styles.border(), Material::Glass);
     let rect = modal(

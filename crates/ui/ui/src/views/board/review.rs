@@ -61,6 +61,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
             under: super::row::lines(&tokens) - first,
             ruled: false,
             carded: true,
+            gridded: false,
         },
         count: asked.len(),
         offset: ui.board.review,

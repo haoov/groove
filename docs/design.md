@@ -295,8 +295,9 @@ is one icon alone is a circle. Enforced by
 which every tab and the terminals follow, with the worktree's MR and CI and a refresh
 button, and the sidebar's fold at the far end. A git mark leads it. It only tells: `alt+w`
 opens the palette on every worktree as `repo/branch`, the best fuzzy match first, and Enter
-selects one. The Kubernetes tab's own first line, led by a cluster mark, holds its scope:
-the contexts shown, a lone one in its hue, then the namespaces. It only tells: `alt+c`
+selects one. On the Kubernetes tab that line holds the tab's scope in the worktree's place,
+led by a cluster mark: the contexts shown, a lone one in its hue, then the namespaces
+(`on_the_kubernetes_tab_the_info_line_holds_the_scope_in_the_worktree_s_place`). It only tells: `alt+c`
 opens the context panel and `alt+n` the namespace panel, from any tab, where the palette
 stands, with a search and the first line stood on. The context panel holds the session's
 contexts, a check to show one and a × to detach it, then what it could attach; a pick
@@ -429,9 +430,12 @@ ground, the accent dimmed into it. The rail is the exception: see below.
 **The palette stands as the rest does.** Its glass is ringed in the accent, for it has the
 keys; the query stands on its band, ruled off across the panel's width, with no line of its own; a group's heading carries its
 count, `GIT · 2`; its rows are lit and held square, edge to edge; and a chord stands as its keys,
-each in its own hairline box, `ALT` `⇧` `B`, shift as its sign. Enforced by
-`a_chord_stands_as_its_keys_each_in_a_hairline_box` and
-`a_palette_row_under_the_pointer_takes_a_square_see_through_ground`.
+each in its own hairline box, `ALT` `⇧` `B`, shift as its sign; the last row meets the panel's
+bottom edge. The context and namespace panels stand the same, their headings `IN THIS SESSION · 1`.
+Enforced by `a_chord_stands_as_its_keys_each_in_a_hairline_box`,
+`a_palette_row_under_the_pointer_takes_a_square_see_through_ground`,
+`the_last_row_selected_reaches_the_panels_bottom` and
+`the_scope_panel_stands_as_the_palette_does_on_its_band_with_headings_in_capitals`.
 
 **The palette keeps its groups while it filters.** Each group runs under its heading, the
 group with the best match first. A first word that starts a group's name keeps that group
@@ -480,8 +484,10 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   by value, and a second click turns the order round; its edge drags the column's width,
   kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words —
   `bil-eu-st` keeps `billing-eu-staging` — and `label=value` words the server filters
-  on. `alt+c` opens the context panel, `alt+n` the namespace panel, `alt+k` the kind palette. No rule stands under the header; a row under
-  the pointer or selected stands on a rounded ground, as the rail's rows do. The list's tab
+  on. `alt+c` opens the context panel, `alt+n` the namespace panel, `alt+k` the kind palette. The table
+  is a grid: its header in capitals on a band, a hairline between the columns and under each
+  row; a row under the pointer or selected is tinted square, edge to edge. Enforced by
+  `a_gridded_table_bands_its_header_and_rules_each_column_and_row`. The list's tab
   and each open object's are glass tabs as the Files tab's are, an object's with its ×, no
   rule under them; the find bar is a rounded field.
 - **Object.** A row opens its object in a tab of its own beside the list, `describe ·
@@ -500,8 +506,11 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   and events start folded. A name, an address, an image, a label or an event's message
   copies on a click: the copy mark shows on hover and turns to a green tick once copied. A
   link copies the same way; `ctrl`+click opens its object. Each section stands on a
-  rounded glass card, its heading lit whole with its caret under the pointer, with no rule
-  between the sections or inside them. A copy under the pointer lights on a rounded glass
+  sunk card as the overview's do, its heading on the card's band, ruled off under it and lit
+  whole with its caret under the pointer; a folded one is its band alone. Every entry stands on
+  a line of its own, a condition included, and the containers and the relations are the list's
+  grid. Enforced by
+  `a_section_stands_on_a_sunk_card_headed_by_its_band_and_its_conditions_a_line_each`. A copy under the pointer lights on a square glass
   ground, and a usage's tip floats on glass.
 - **Logs.** Its logs are the file editor's view too, read-only, at the small text size: a
   tab per container and one for all of them, the current run or the previous one, the last
@@ -525,7 +534,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   of sync, syncing or all, each in its colour with its count; it opens on what needs
   attention, or on the sync while one runs. Its filters are glass tabs. Both it and syncing
   are the list's table, its headers sorting each group's rows and its edges dragging widths
-  kept for both; no rule stands between a group's heading and its rows. Resources stand by
+  kept for both; a group's heading stands on a band, ruled off as each row is. Resources stand by
   kind, the kinds needing attention first; under all, a kind with nothing to see stands
   folded. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync

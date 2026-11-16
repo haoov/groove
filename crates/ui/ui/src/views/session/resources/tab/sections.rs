@@ -3,7 +3,7 @@
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Described, EventRow, PodPart, Timestamp};
+use groove_types::{Condition, Described, EventRow, PodPart, Timestamp};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::text::Label;
@@ -59,24 +59,24 @@ pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool
     heading.within(ctx, rect, rect.pad(Edges::across(md, md)));
 }
 
-/// Every condition on one line: a mark, its name, and why and since when where it is not met.
-pub(super) fn conditions(ctx: &mut Ctx, rect: Rect, pod: &PodPart) {
-    let mut room = rect;
-    for one in &pod.conditions {
-        let (mark, role, name) = match one.met {
-            true => ("✓", Role::Ok, Role::Muted),
-            false => ("✗", Role::Bad, Role::Text),
-        };
-        Label::new(mark, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.xs);
-        Label::new(&one.kind, ctx.styles.body(name)).left(ctx, &mut room, ctx.tokens.xs);
-        let since = one
-            .since
-            .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()));
-        let why = [one.reason.clone().filter(|_| !one.met), since];
-        let why: Vec<String> = why.into_iter().flatten().collect();
-        let why = why.join(" · ");
-        Label::new(&why, ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.lg);
-    }
+/// One condition a line: a mark, its name in the key column, then why and since when where it
+/// is not met.
+pub(super) fn condition(ctx: &mut Ctx, rect: Rect, one: &Condition) {
+    let (mark, role, name) = match one.met {
+        true => ("✓", Role::Ok, Role::Muted),
+        false => ("✗", Role::Bad, Role::Text),
+    };
+    let marked = Spec::default().width(ctx.tokens.icon);
+    let keyed = Spec::default().width(ctx.tokens.aside_mid);
+    let [at, kind, said] = row_in(rect, [marked, keyed, Spec::fill()]);
+    Label::new(mark, ctx.styles.small(role)).draw(ctx, at);
+    Label::new(&one.kind, ctx.styles.body(name)).draw(ctx, kind);
+    let since = one
+        .since
+        .map(|at| groove_types::human_age(at.age_at(ctx.now).as_secs()));
+    let why = [one.reason.clone().filter(|_| !one.met), since];
+    let why: Vec<String> = why.into_iter().flatten().collect();
+    Label::new(&why.join(" · "), ctx.styles.small(Role::Ghost)).draw(ctx, said);
 }
 
 /// The summary's facts: a pod's state and place, a workload's replicas; the Helm release.

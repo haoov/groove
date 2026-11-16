@@ -42,6 +42,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
             under: super::row::lines(&tokens) - first,
             ruled: false,
             carded: true,
+            gridded: false,
         },
         count: living.len(),
         offset: ui.board.live,
