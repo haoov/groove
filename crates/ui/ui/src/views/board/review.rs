@@ -18,9 +18,8 @@ use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::{ago, row};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
 
-/// Every MR still to review, neither approved nor open in a session, as the filter and sort leave it.
+/// Every MR still to review, neither approved nor open in a session, as the sort leaves it.
 pub fn sorted<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a ReviewMr> {
-    let query = ui.board.query();
     let live = |mr: &ReviewMr| {
         app.session
             .get(&groove_types::SessionId::new(mr.session_id()))
@@ -30,7 +29,7 @@ pub fn sorted<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a ReviewMr> {
         .delivery
         .reviews
         .iter()
-        .filter(|mr| !mr.approved && !live(mr) && query.lets_review(mr))
+        .filter(|mr| !mr.approved && !live(mr))
         .collect();
     ui.board.reviews.sort(&mut asked);
     asked
@@ -38,10 +37,7 @@ pub fn sorted<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a ReviewMr> {
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
     if asked.is_empty() {
-        let text = match ui.board.query().is_empty() {
-            true => "nothing is waiting on you",
-            false => "nothing the filter lets through",
-        };
+        let text = "nothing is waiting on you";
         let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
         return row(
             ctx,

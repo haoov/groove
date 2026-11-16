@@ -1,4 +1,4 @@
-//! What a click on the board does: its rows, its filter, its button.
+//! What a click on the board does: its rows and its columns' headings.
 
 use groove_controllers::{AppState, Command, delivery, session, task};
 use groove_gfx::Rect;
@@ -12,13 +12,11 @@ use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::Tokens;
 
 /// What a click on one of the board's own targets does, if it is one.
-pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
     Some(match target {
         Target::Board => board(ui),
         Target::Task(short_id) => task(ui, short_id.clone()),
-        Target::Filter => filtering(ui),
-        Target::Offer(at) => offered(ui, app, *at),
-        Target::AddTask | Target::NewExplorer => explorer(ui),
+        Target::NewExplorer => explorer(ui),
         Target::Place(_) => Vec::new(),
         Target::SortReview(by) => {
             ui.board.reviews = ui.board.reviews.clicked(*by);
@@ -48,22 +46,6 @@ pub(crate) fn reads() -> Vec<Command> {
 pub(super) fn task(ui: &mut Ui, short_id: String) -> Vec<Command> {
     ui.surface = Surface::Session;
     vec![Command::Task(task::Command::Open { short_id })]
-}
-
-/// The keyboard into the board's filter.
-pub(super) fn filtering(ui: &mut Ui) -> Vec<Command> {
-    ui.board.focus();
-    Vec::new()
-}
-
-/// One row the filter offered, taken into what it holds.
-pub(super) fn offered(ui: &mut Ui, app: &AppState, at: usize) -> Vec<Command> {
-    let offers = crate::views::board::complete::offers(app, ui.board.filter.text());
-    let Some(pick) = offers.get(at) else {
-        return Vec::new();
-    };
-    ui.board.take(pick);
-    Vec::new()
 }
 
 /// A new explorer, which is how a task is started from the board.
@@ -111,7 +93,7 @@ pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 
 /// Up next's own room, which a drag is measured against.
 fn next_column(tokens: &Tokens, layout: Layout) -> Rect {
-    let mut column = crate::views::board::column_of(tokens, layout.board, List::Next);
+    let mut column = crate::views::board::column_of(layout.lists, List::Next);
     column.take_top(tokens.header);
     column
 }

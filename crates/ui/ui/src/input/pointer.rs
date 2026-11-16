@@ -249,7 +249,7 @@ fn elsewhere(
     metrics: Metrics,
 ) -> Option<Vec<Command>> {
     let target = target?;
-    board::acted(target, ui, app)
+    board::acted(target, ui)
         .or_else(|| rail::acted(target, ui, app))
         .or_else(|| agent::acted(target, point, ui, app, metrics))
         .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))

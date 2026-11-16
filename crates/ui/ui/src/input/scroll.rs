@@ -32,9 +32,13 @@ pub(super) fn scroll(
     if ui.overlay.is_some() {
         return Vec::new();
     }
-    // The agent first: with the rail folded, it runs across the rail's column.
+    // The agent or the board first: with the rail folded, they run across the rail's column.
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
         return agent(ui, app, delta, point, &layout, metrics);
+    }
+    if ui.showing(app) == Surface::Board && layout.lists.contains(x, y) {
+        column(x, pixels(tokens.row), ui, hits, layout.lists);
+        return Vec::new();
     }
     if x <= layout.rail.right() {
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
@@ -42,10 +46,6 @@ pub(super) fn scroll(
     }
     if ui.showing(app) == Surface::Session && layout.manual.contains(x, y) {
         return shelled(ui, app, delta, point, hits, metrics);
-    }
-    if ui.showing(app) == Surface::Board {
-        column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));
-        return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
         ui.wheeled(beside(ui), pixels(tokens.row), hits);
@@ -191,8 +191,8 @@ fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
     }
 }
 
-fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, (board, tokens): (Rect, &Tokens)) {
-    if let Some(list) = crate::views::board::list_at(tokens, board, x) {
+fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, lists: Rect) {
+    if let Some(list) = crate::views::board::list_at(lists, x) {
         ui.wheeled(Scroller::Column(list as u8), pixels, hits);
     }
 }

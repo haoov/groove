@@ -121,8 +121,9 @@ pub fn rounded_slice<A: App>(
     });
 }
 
-/// A row as a card on glass: its rounded ground, held when selected, lit under the pointer.
-pub fn glass_card_row<A: App>(
+/// A row as a sunk card, as the overview's: the band's ground inside the panel's edge, held when
+/// selected, lit under the pointer.
+pub fn sunk_card_row<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,
     target: Option<A::Target>,
@@ -130,7 +131,7 @@ pub fn glass_card_row<A: App>(
 ) -> Rect {
     let card = rect.pad(Edges::xy(0.0, ctx.tokens.xs));
     let round = ctx.tokens.glass_round;
-    ctx.rounded(card, ctx.styles.glass_card(), round);
+    crate::widgets::sunk_pane(ctx, card);
     let lit = target.is_some_and(|target| ctx.interact(rect, target));
     let tint = match (selected, lit) {
         (true, _) => Some(ctx.chosen()),

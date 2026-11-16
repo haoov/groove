@@ -100,11 +100,11 @@ the rail only as its attention count.
 The board replaces the agent pane, the workspace and the sidebar; the rail stays. Three
 columns, one per list, each scrolling on its own, on the deep ground. The page has no title.
 
-**Header.** At the top, in the middle, the filter on its own pane of glass — `field:value`
-tokens and bare words, with autocomplete — applied to all three columns at once. Just right
-of it, a round **+** made of glass, which starts an explorer; the pointer lights its whole glass.
-Filing the task at the provider is the agent's own write. Enforced by
-`the_filter_stands_on_glass_at_the_top_middle_and_the_button_beside_it`.
+**No header.** The columns' headings stand at the top; the board has no filter and no
+button. An explorer starts from the rail or the palette. The columns keep the agent's room:
+clear of a bar's height above and below, and across the rail's column once both its windows
+are folded. Enforced by `the_board_opens_straight_on_its_columns_headings` and
+`the_board_keeps_the_agent_s_room_and_with_the_rail_folded_takes_its_width`.
 
 | Column | Holds | Sort |
 |---|---|---|
@@ -112,7 +112,9 @@ Filing the task at the provider is the agent's own write. Enforced by
 | **Up next** | tickets with no session, in the user's local order — the plan | the user's order |
 | **Review** | the forge queue: MRs where the user is a requested reviewer, neither approved by them nor open in a session | updated |
 
-Each column heading carries its count. Each item is a rounded card; no rule parts them.
+Each column heading carries its count. Each item is a sunk card as the overview's are, the
+band's ground inside a hairline edge; no rule parts them. Enforced by
+`a_board_item_stands_on_a_sunk_card_as_the_overview_s_do`.
 
 **Live item.** One line: the kind icon, blue while the session is open, the title, then
 the repo count and the worktree count when it is not one. A click opens the session,
@@ -407,7 +409,7 @@ square-cornered, its lens too, and a changed row says so by its ground alone, it
 numbers left quiet.
 
 **Glass only where it floats.** What stands over something is glass: the palette, every
-menu, the cluster scope panel, the board's filter offers, and the language servers' popup
+menu, the cluster scope panel, and the language servers' popup
 the diff's sticky file heads and its notes: the work below shows through them, blurred
 under the theme's tint; nothing bends, magnifies or lights them. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; a row of the rail, a sidebar or a table takes its square, edge to edge. A button on

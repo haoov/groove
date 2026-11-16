@@ -78,7 +78,7 @@ pub struct Rows {
     /// The second line's height; nothing when the rows have none.
     pub under: f32,
     pub ruled: bool,
-    /// Each row a rounded card on glass instead of a ruled line.
+    /// Each row a sunk card instead of a ruled line.
     pub carded: bool,
     /// A grid: the header on a band in capitals, a hairline between the columns and under each row.
     pub gridded: bool,

@@ -173,11 +173,6 @@ pub enum Target {
     TaskPage(String),
     /// A link in prose.
     Link(String),
-    /// The board's filter, and one row it offers.
-    Filter,
-    Offer(usize),
-    /// What starts a task, at the right of the board's header.
-    AddTask,
     /// The sessions' window's `+`, which opens a new explorer.
     NewExplorer,
     /// A boundary between two columns.
@@ -242,9 +237,7 @@ impl Target {
     /// What the pointer says over it: a row is a pointer, and these are not.
     pub(super) fn cursor(&self) -> Cursor {
         match self {
-            Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
-                Cursor::Text
-            }
+            Target::Term(_) | Target::Finding | Target::Message | Target::Code => Cursor::Text,
             Target::Agent
             | Target::Shell(_)
             | Target::Pinned

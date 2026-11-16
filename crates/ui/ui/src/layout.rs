@@ -39,6 +39,9 @@ pub struct Layout {
     pub board: Rect,
     /// The strip open, under its header: the info line, the tab and the sidebar.
     pub work: Rect,
+    /// The board's columns: right of the rail, clear of the bar's room above and below as the
+    /// agent is.
+    pub lists: Rect,
 }
 
 impl Layout {
@@ -65,8 +68,7 @@ impl Layout {
         let root = boxes.row(Spec::default(), &[rail, board]);
         boxes.place(root, window);
         let glass = boxes.rect(strip).pad(Edges::all(tokens.sm));
-        let header = boxes.rect(header);
-        let place = boxes.rect(rail);
+        let (header, place) = (boxes.rect(header), boxes.rect(rail));
         let (sessions, feed) = rail_windows(place, tokens, (split.feed * tokens.scale).floor());
         Self {
             window,
@@ -83,6 +85,7 @@ impl Layout {
                 .rect(sidebar)
                 .pad(Edges::across(tokens.hairline, tokens.hairline)),
             board: boxes.rect(board),
+            lists: boxes.rect(board).pad(under),
             work: Rect::new(
                 glass.x,
                 header.bottom(),
@@ -126,7 +129,8 @@ impl Layout {
         held
     }
 
-    /// The agent stretched left to the window's edge, under the rail's two folded headers.
+    /// The agent and the board's columns stretched left to the window's edge, between the rail's
+    /// two folded headers.
     fn over_rail(mut self) -> Self {
         let grow = (self.agent.x - self.window.x).max(0.0);
         self.agent = Rect::new(
@@ -134,6 +138,13 @@ impl Layout {
             self.agent.y,
             self.agent.w + grow,
             self.agent.h,
+        );
+        let grow = (self.lists.x - self.window.x).max(0.0);
+        self.lists = Rect::new(
+            self.window.x,
+            self.lists.y,
+            self.lists.w + grow,
+            self.lists.h,
         );
         self
     }

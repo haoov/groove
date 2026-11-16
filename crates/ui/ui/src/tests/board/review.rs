@@ -86,30 +86,6 @@ fn nothing_waiting_says_so() {
 }
 
 #[test]
-fn the_filter_narrows_the_column_by_title_author_and_repo() {
-    let app = waiting();
-    let mut ui = on_board(&app).0;
-    ui.board.filter.set("another");
-    let drawn = texts(&app, &ui);
-    assert!(drawn.iter().any(|t| t == "feat: a thing"), "{drawn:?}");
-    assert!(
-        !drawn.iter().any(|t| t == "fix(forge): read the checks"),
-        "the other author's is gone: {drawn:?}"
-    );
-
-    ui.board.filter.set("repo:other");
-    let drawn = texts(&app, &ui);
-    assert!(drawn.iter().any(|t| t == "feat: a thing"), "{drawn:?}");
-
-    ui.board.filter.set("kind:review");
-    let drawn = texts(&app, &ui);
-    assert!(
-        drawn.iter().any(|t| t == "feat: a thing"),
-        "both stay, and the other columns empty: {drawn:?}"
-    );
-}
-
-#[test]
 fn clicking_an_mr_opens_the_session_that_reviews_it() {
     let app = waiting();
     let (mut ui, hits) = on_board(&app);
@@ -213,9 +189,10 @@ fn review_rows_stand_apart_as_cards() {
     let row = hits
         .rect_of(&Target::Review("acme/groove".into(), 7))
         .expect("the row");
-    let carded = frame.layers()[0].quads.iter().any(|quad| {
-        quad.color == styles.glass_card() && row.contains(quad.rect.x, quad.rect.y + 1.0)
-    });
+    let carded = frame.layers()[0]
+        .quads
+        .iter()
+        .any(|quad| quad.color == styles.band() && row.contains(quad.rect.x, quad.rect.y + 1.0));
     assert!(carded, "a card under the row");
 }
 

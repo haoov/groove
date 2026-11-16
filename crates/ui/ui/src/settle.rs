@@ -81,7 +81,7 @@ impl Ui {
                     self.overlay = None;
                 }
             }
-            Surface::Session => self.board.typing = false,
+            Surface::Session => {}
         }
     }
 

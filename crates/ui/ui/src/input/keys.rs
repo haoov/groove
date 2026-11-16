@@ -4,7 +4,6 @@ mod agent;
 mod app;
 mod bar;
 mod board;
-mod filter;
 mod listed;
 mod moves;
 mod naming;
@@ -29,7 +28,6 @@ pub use agent::encode;
 use agent::{to_agent, to_shell};
 use bar::{finding, in_bar, opened, typing};
 pub(in crate::input) use bar::{refound, searches};
-use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
@@ -131,7 +129,7 @@ fn in_pane(
         }
     }
     if ui.showing(app) == Surface::Board {
-        return on_board(key, mods, ui, app, seen);
+        return board::on_board((key, mods), ui, app, seen);
     }
     if ui.focus == Focus::Workspace {
         if let Some(commands) = opened::chord((key, mods), ui, app, (keymap, seen)) {

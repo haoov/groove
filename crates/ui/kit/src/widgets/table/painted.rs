@@ -81,7 +81,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             "a slot past the last column"
         );
         if self.rows.carded {
-            crate::widgets::glass_card_row(ctx, line, row.target.clone(), selected);
+            crate::widgets::sunk_card_row(ctx, line, row.target.clone(), selected);
         } else {
             if selected {
                 crate::widgets::glass_chosen(ctx, line);
