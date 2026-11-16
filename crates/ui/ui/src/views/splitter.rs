@@ -8,15 +8,14 @@ use crate::hit::Target;
 use crate::layout::Edge;
 
 /// A grab band over each boundary the surface shows, above whatever drew there.
-/// The feed's top is not dragged while the sessions' window is folded: it rises under its header.
-/// With the feed folded too, the agent runs across the rail's column and its edge is not there.
+/// With both the rail's windows folded the agent, or the board, runs across the rail's column:
+/// neither the rail's edge nor the one between its windows is there.
 pub fn draw(ctx: &mut Ctx, surface: Surface, (stowed, folded): (bool, bool)) {
     for edge in shown(surface) {
-        let over = surface == Surface::Session && stowed && folded;
-        if (stowed && *edge == Edge::Feed) || (over && *edge == Edge::Rail) {
+        if stowed && folded && matches!(edge, Edge::Rail | Edge::Feed) {
             continue;
         }
-        let Some(band) = band(ctx, *edge) else {
+        let Some(band) = band(ctx, *edge, folded) else {
             continue;
         };
         ctx.hit(band, Target::Split(*edge));
@@ -38,14 +37,19 @@ fn shown(surface: Surface) -> &'static [Edge] {
 }
 
 /// The band to grab a boundary by, or nothing when its column is folded.
-fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
+fn band(ctx: &Ctx, edge: Edge, feed_folded: bool) -> Option<Rect> {
     let (grab, window) = (ctx.tokens.grab, ctx.window);
     let upright = |x: f32| groove_ui_kit::shape::strip(window, x - grab / 2.0, grab);
     let aside = ctx.app.layout.sidebar;
     match edge {
-        Edge::Rail => Some(upright(ctx.app.layout.rail.right())),
+        // Each band stands on the border the user sees: the rail's windows' right edge, the
+        // strip's left one, not the gap's far side.
+        Edge::Rail => Some(upright(ctx.app.layout.sessions.right())),
+        // The strip's column stands while its workspace or its terminals are open.
         Edge::Agent => {
-            (!ctx.app.layout.workspace.is_empty()).then(|| upright(ctx.app.layout.agent.right()))
+            let layout = &ctx.app.layout;
+            let column = !layout.workspace.is_empty() || layout.manual.h > ctx.tokens.bar;
+            column.then(|| upright(layout.strip.x))
         }
         // The sidebar's room starts a hairline past its separator, where the edge is grabbed.
         Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x - ctx.tokens.hairline)),
@@ -54,10 +58,15 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
             let open = manual.h > ctx.tokens.bar;
             open.then(|| groove_ui_kit::shape::band(manual, -grab / 2.0, grab))
         }
+        // On the feed's top; with the feed folded, on the sessions' foot, which it sizes.
         Edge::Feed => {
-            let feed = ctx.app.layout.feed;
+            let (sessions, feed) = (ctx.app.layout.sessions, ctx.app.layout.feed);
             let rail = Edges::across(0.0, ctx.tokens.hairline);
-            Some(groove_ui_kit::shape::band(feed, -grab / 2.0, grab).pad(rail))
+            let at = match feed_folded {
+                true => sessions.h,
+                false => feed.y - sessions.y,
+            };
+            Some(groove_ui_kit::shape::band(sessions, at - grab / 2.0, grab).pad(rail))
         }
     }
 }

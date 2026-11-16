@@ -201,7 +201,10 @@ fn a_press_on_a_boundary_takes_hold_of_it() {
     let before = columns(ui.split);
     assert!(click(edge, &mut ui, &app, &hits).is_empty());
     assert!(ui.dragging(), "the press grabbed the boundary");
-    drag(300.0, &mut ui, &app, &hits);
+    // The band stands on the rail's window's border, a gap inside the column's edge; the
+    // boundary keeps that offset to the pointer.
+    let offset = before.rail.right() - (edge.x + edge.w / 2.0);
+    drag(300.0 - offset, &mut ui, &app, &hits);
     assert_eq!(ui.split.rail, 300.0);
     release(&mut ui, &app, &hits);
     assert!(!ui.dragging());

@@ -162,16 +162,23 @@ fn the_feed_keeps_its_own_minimum() {
 }
 
 #[test]
-fn a_folded_feed_is_its_heading_alone_and_the_sessions_reach_down_to_it() {
+fn a_folded_feed_is_its_heading_alone_and_the_sessions_keep_their_height() {
     let mut ui = Ui::default();
+    let open = crate::layout::Layout::of(window(), &ui);
     ui.rail.folded = true;
     let layout = crate::layout::Layout::of(window(), &ui);
     let tokens = crate::Tokens::new(1.0);
     assert_eq!(layout.feed.h, tokens.bar, "the header alone");
-    assert_eq!(
-        layout.sessions.bottom() + tokens.sm,
-        layout.feed.y,
-        "the sessions' window stands a gap above it"
+    assert_eq!(layout.feed.bottom(), open.feed.bottom(), "at the foot");
+    assert_eq!(layout.sessions, open.sessions, "the sessions as they stood");
+    let app = crate::tests::full_app();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let edge = hits
+        .rect_of(&crate::hit::Target::Split(crate::layout::Edge::Feed))
+        .expect("the sessions' foot is dragged");
+    assert!(
+        edge.y < layout.sessions.bottom() + tokens.sm && edge.bottom() > layout.sessions.bottom(),
+        "under the sessions' window"
     );
 }
 

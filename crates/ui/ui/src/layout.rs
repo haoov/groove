@@ -99,21 +99,21 @@ impl Layout {
     pub fn of(metrics: Metrics, ui: &Ui) -> Self {
         let tokens = metrics.tokens();
         let mut held = Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar());
+        // A window folds to its header; the other keeps the height it was given.
         if ui.rail.folded {
             let feed = held.feed;
             let tall = tokens.bar.min(feed.h);
             held.feed = Rect::new(feed.x, feed.bottom() - tall, feed.w, tall);
-            held.sessions.h = (held.feed.y - tokens.sm - held.sessions.y).max(0.0);
         }
         if ui.rail.stowed {
-            held = held.sessions_folded(tokens.bar, tokens.sm, ui.rail.folded);
+            held.sessions.h = tokens.bar.min(held.sessions.h);
         }
         let asked = ui.examining().is_some() || ui.losing() == Some(&crate::Losing::Everything);
         let stowing = ui.session.stowed && !asked;
-        let tall = match (ui.session.manual, stowing) {
-            (true, true) => f32::MAX,
-            (true, false) => (ui.split.manual * tokens.scale).floor(),
-            (false, _) => tokens.bar,
+        // The terminals keep the height they were given, the strip folded or not.
+        let tall = match ui.session.manual {
+            true => (ui.split.manual * tokens.scale).floor(),
+            false => tokens.bar,
         };
         held = held.drawer(tall, tokens.sm);
         if stowing {
@@ -146,18 +146,6 @@ impl Layout {
             self.lists.w + grow,
             self.lists.h,
         );
-        self
-    }
-
-    /// The sessions' window folded to its header, `tall` high; the feed, unless folded too,
-    /// rising to a `gap` under it.
-    fn sessions_folded(mut self, tall: f32, gap: f32, feed_folded: bool) -> Self {
-        self.sessions.h = tall.min(self.sessions.h);
-        if !feed_folded {
-            let top = self.sessions.bottom() + gap;
-            let foot = self.feed.bottom();
-            self.feed = Rect::new(self.feed.x, top, self.feed.w, (foot - top).max(0.0));
-        }
         self
     }
 

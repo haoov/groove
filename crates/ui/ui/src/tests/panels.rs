@@ -156,3 +156,27 @@ fn the_defense_theme_lays_a_grid_on_the_deep_ground_and_the_others_none() {
     let (none, _) = grid_in(groove_types::ThemeName::Mocha);
     assert!(none.is_empty(), "no other theme lays one");
 }
+
+#[test]
+fn a_boundary_is_grabbed_on_the_border_the_user_sees() {
+    use crate::layout::Edge;
+    let app = full_app();
+    let ui = Ui::default();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let layout = Layout::of(window(), &ui);
+    let at = |edge: Edge| hits.rect_of(&Target::Split(edge)).expect("its band");
+    let across = |band: Rect, x: f32| band.x <= x && band.right() >= x;
+    assert!(
+        across(at(Edge::Rail), layout.sessions.right()),
+        "the rail's border"
+    );
+    assert!(
+        across(at(Edge::Agent), layout.strip.x),
+        "the strip's border"
+    );
+    let feed = at(Edge::Feed);
+    assert!(
+        feed.y <= layout.feed.y && feed.bottom() >= layout.feed.y,
+        "the feed's top"
+    );
+}

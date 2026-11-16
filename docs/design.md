@@ -153,11 +153,11 @@ opens from its chord and the palette. Enforced by
 The sessions' window is headed by its name and how many sessions are open, with a `+` that
 opens a new explorer; a rule sets the header and the Board row apart. Enforced by
 `the_sessions_window_is_headed_by_its_name_and_count_and_its_plus_opens_an_explorer`.
-A click on the header folds the window to it, as the feed folds to its own: the feed rises to a
-gap under it and its top is no longer dragged; a second click opens it as it was. `alt+r`
+A click on the header folds the window to it, as the feed folds to its own: the feed keeps the
+height it was given, its top still dragged; a second click opens it as it was. `alt+r`
 opens it and hands it the keys; pressed while it has them, it folds it and hands them to the
 agent, as the workspace's chord does. Enforced by
-`a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_rises`,
+`a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_keeps_its_height`,
 `both_folded_the_rail_is_its_two_headers`,
 `the_rail_s_chord_opens_the_folded_sessions_and_hands_them_the_keys` and
 `the_rail_s_chord_on_the_rail_folds_the_sessions_and_hands_the_keys_to_the_agent`.
@@ -230,8 +230,8 @@ tint; every other code is faint. Back-to-back events of one kind from one sessio
 line, `commit ×3 ▸`; a click opens it, held, its events hanging under it by `│` and `└`. A line
 takes the user to its session.
 Its top is the line the user drags; folded, it is its header alone, a bar tall, and the
-sessions' window reaches down to a gap above it. Enforced by
-`a_folded_feed_is_its_heading_alone_and_the_sessions_reach_down_to_it`. Two tabs at its
+sessions' window keeps the height it was given, its foot the line dragged. Enforced by
+`a_folded_feed_is_its_heading_alone_and_the_sessions_keep_their_height`. Two tabs at its
 heading's end, `this` and `all`, pick the session in hand or every session; they stand however
 many sessions are open. Enforced by `the_scope_tabs_stand_whatever_number_of_sessions_is_open`.
 Its header lights under the pointer as the sessions' does, square and edge to edge. Enforced by
@@ -274,11 +274,12 @@ and under it; the wheel there scrolls the agent and the rail's edge is not dragg
 
 **The terminals rise from the foot.** Their drawer is an opaque panel under the strip.
 Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the
-height the user dragged and the strip ends a gap above it; with the strip folded it fills
-the column under the strip's header, and the agent gives it the room until it folds again.
+height the user dragged and the strip ends a gap above it; with the strip folded it keeps that
+height, its top and its column's edge still dragged, and the agent gives it the column until it
+folds again. Only the strip fills the room a folded neighbour leaves.
 Enforced by `the_folded_drawer_is_a_capsule_as_narrow_as_its_bar`,
 `an_open_drawer_rises_its_height_and_the_strip_ends_above_it` and
-`an_open_drawer_fills_the_column_beside_the_agent_while_the_strip_is_folded`.
+`an_open_drawer_keeps_its_height_beside_the_agent_while_the_strip_is_folded`.
 
 The rail, the agent pane and the sidebar each have a width the user drags, kept between
 runs. The strip takes what is left, folded or open. A boundary moves the two parts it stands
