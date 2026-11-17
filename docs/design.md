@@ -563,7 +563,9 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
-  resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
+  resource's row opens its tab there. A row's right-click offers the skills of its kind, as
+  a list row's does. The find key opens a find bar under its filters, as over the list: its
+  words narrow the rows by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
   the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
   a commit of the list does, fetched first when the clone lacks it. Its `resources` view
@@ -573,7 +575,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   are the list's table, its headers sorting each group's rows and its edges dragging widths
   kept for both; a group's heading stands on a band, ruled off as each row is. Resources stand by
   kind, the kinds needing attention first; under all, a kind with nothing to see stands
-  folded. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
+  folded. Syncing shows the sync's line on its colour, over a square bar that
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.

@@ -10,7 +10,7 @@ use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Shown, Tab};
 
-use super::super::Filter;
+use super::super::{ArgoUi, Filter};
 use super::super::opened::Opened;
 use super::grouped::{self, Columned};
 use super::{destined, stages, syncing};
@@ -49,7 +49,8 @@ pub(super) fn draw(
     if filter == Filter::Syncing {
         return syncing::draw(ctx, rest, (tab, part), dragged);
     }
-    let mut groups = groups(part, filter);
+    let rest = super::found::bar(ctx, rest, tab);
+    let mut groups = groups(part, (filter, &tab.argo));
     for group in &mut groups {
         grouped::order(&mut group.rows, tab, |one, column| key(part, one, column));
     }
@@ -108,9 +109,10 @@ fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
     groove_ui_kit::widgets::tab_group(ctx, &mut room, tabs, (side, ctx.tokens.xs));
 }
 
-fn groups(part: &AppPart, filter: Filter) -> Vec<Group<'_>> {
+fn groups<'a>(part: &'a AppPart, (filter, argo): (Filter, &ArgoUi)) -> Vec<Group<'a>> {
     let mut by: BTreeMap<&str, Vec<&AppResource>> = BTreeMap::new();
-    for one in part.resources.iter().filter(|one| filter.holds(part, one)) {
+    let kept = |one: &&AppResource| filter.holds(part, one) && argo.found(one);
+    for one in part.resources.iter().filter(kept) {
         by.entry(&one.kind).or_default().push(one);
     }
     let first = |one: &&AppResource| (!part.attention(one), one.name.clone());

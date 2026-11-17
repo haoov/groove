@@ -120,6 +120,7 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 Target::LogSource(source) => tab.logs.source = Some(source.clone()),
                 Target::LogPrevious(previous) => tab.logs.previous = *previous,
                 Target::LogFollow => tab.logs.following = true,
+                Target::ArgoSearch => tab.argo.typing = true,
                 Target::ArgoFilter(filter) => {
                     (tab.argo.filter, tab.scroll) = (Some(*filter), 0.0);
                     tab.toggled.clear();

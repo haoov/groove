@@ -225,6 +225,7 @@ fn listed(
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
     let (_, names) = scope::search(held);
+    let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     let laid = table.draw(ctx, body, |at| one(app, rows[at], (&plan, &names)));
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
