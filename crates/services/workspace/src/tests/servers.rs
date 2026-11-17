@@ -309,3 +309,30 @@ fn a_definition_opens_inside_the_worktree_and_is_said_outside_it() {
         Landing::Said("No definition here".into())
     );
 }
+
+#[test]
+fn a_server_starting_keeps_one_text_a_file_however_many_keys_are_typed() {
+    let mut servers = Servers::default();
+    let one = key("/w");
+    servers.tell(&one, opened("a.py"));
+    let changed = |text: &str| Tell::Changed {
+        path: "a.py".into(),
+        text: text.into(),
+    };
+    for typed in ["x", "xy", "xyz"] {
+        servers.tell(&one, changed(typed));
+    }
+    assert_eq!(servers.queued(&one), 1, "the open takes the last text");
+    servers.tell(
+        &one,
+        Tell::Saved {
+            path: "a.py".into(),
+        },
+    );
+    servers.tell(&one, changed("xyzw"));
+    assert_eq!(
+        servers.queued(&one),
+        3,
+        "a change after a save keeps its place"
+    );
+}

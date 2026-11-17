@@ -37,6 +37,18 @@ impl Error {
         sorted
     }
 
+    /// An answer from a service behind the proxy: its status is the service's, never the context's sign-in.
+    pub(crate) fn proxied(context: &str, error: kube::Error) -> Self {
+        match error {
+            kube::Error::Api(status) => Error::Api {
+                context: context.to_string(),
+                status: status.code,
+                message: status.message,
+            },
+            other => Self::of(context, other),
+        }
+    }
+
     /// Nothing came back from `context` for `long`; its client is dropped.
     pub(crate) fn silent(context: &str, long: std::time::Duration) -> Self {
         crate::pool::forget(context);

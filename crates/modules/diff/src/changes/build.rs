@@ -3,9 +3,9 @@
 use std::ops::Range;
 
 use groove_text::Document;
-use groove_types::{Row, RowKind};
+use groove_types::{FileDiff, FileStatus, Hunk, Row, RowKind};
 
-use super::Aligned;
+use super::{Aligned, Changes};
 use crate::hunked::Hunked;
 use crate::layout::Layout;
 use crate::opened::MAX_SHOWN_BYTES;
@@ -66,4 +66,45 @@ pub(crate) fn text_of(old: &Document, new: &Document, row: &Row) -> String {
         (None, None) => None,
     };
     line.unwrap_or_default().to_string()
+}
+
+/// Files given as two texts each, an empty side added or deleted: the stream and each file's counts.
+pub fn from_pairs(pairs: Vec<(String, String, String)>) -> (Vec<FileDiff>, Changes) {
+    let mut files = Vec::new();
+    let mut aligned_all = Vec::new();
+    for (path, before, after) in pairs {
+        let file = aligned(&path, &before, &after);
+        let count = |side: fn(&Hunk) -> u32| file.hunked.hunks.iter().map(side).sum::<u32>();
+        let status = match (before.is_empty(), after.is_empty()) {
+            (true, _) => FileStatus::Added,
+            (_, true) => FileStatus::Deleted,
+            _ => FileStatus::Modified,
+        };
+        files.push(FileDiff {
+            path,
+            added: count(|one| one.after.end - one.after.start),
+            deleted: count(|one| one.before.end - one.before.start),
+            status,
+            staged: None,
+        });
+        aligned_all.push(file);
+    }
+    (files, Changes::new(aligned_all))
+}
+
+/// One file's change as text: `+` added, `-` removed, unchanged runs said by their length.
+pub fn unified(path: &str, before: &str, after: &str) -> String {
+    let file = aligned(path, before, after);
+    let mut out = format!("--- {path}\n");
+    for (row, text) in file.rows().zip(file.texts()) {
+        let line = match row.kind {
+            RowKind::Context => format!("  {text}"),
+            RowKind::Removed => format!("- {text}"),
+            RowKind::Added => format!("+ {text}"),
+            RowKind::Gap(lines) => format!("  … {lines} lines alike"),
+        };
+        out.push_str(&line);
+        out.push('\n');
+    }
+    out
 }

@@ -5,6 +5,9 @@ use std::io::{Error, ErrorKind};
 use serde_json::Value;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
+/// The longest body a frame may hold.
+pub(crate) const MOST: usize = 64 * 1024 * 1024;
+
 /// The next message, or `None` once the stream ends.
 pub(crate) async fn read<R: AsyncBufRead + Unpin>(
     reader: &mut R,
@@ -31,6 +34,12 @@ pub(crate) async fn read<R: AsyncBufRead + Unpin>(
             "a frame without a length",
         ));
     };
+    if length > MOST {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            format!("a frame of {length} bytes, over {MOST}"),
+        ));
+    }
     let mut body = vec![0; length];
     reader.read_exact(&mut body).await?;
     serde_json::from_slice(&body)

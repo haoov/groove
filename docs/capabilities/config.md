@@ -47,8 +47,8 @@ reads the tasks again.
 context's name; the credentials stay in the kubeconfig, exec plugins included. A context
 Groove does not know cannot be attached.
 
-**Each context has a configuration of its own**: a hue and read-only. A new context takes
-the first hue no other context holds. Read-only refuses every write to the context, the
+**Each context has a configuration of its own**: a hue, read-only, and whether it is the
+Argo CD hub. A new context takes the first hue no other context holds. Read-only refuses every write to the context, the
 user's and the agent's, once cluster writes land.
 Namespaces belong to the session that attaches the context, not to the context.
 

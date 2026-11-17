@@ -25,6 +25,11 @@ pub(super) fn part(app: &Value) -> AppPart {
     let (spec, status) = (&app["spec"], &app["status"]);
     let automated = automated(spec);
     AppPart {
+        compared: format!(
+            "{} {}",
+            text(status, "/reconciledAt"),
+            crate::argo::revisions(Some(status))
+        ),
         project: text(spec, "/project"),
         sync: text(status, "/sync/status"),
         health: text(status, "/health/status"),

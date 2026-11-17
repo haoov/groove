@@ -5,7 +5,7 @@ use groove_controllers::AppState;
 use crate::views::session::resources::Link;
 use crate::{Corner, Menu, Of, Offer, Ui};
 
-/// The menu of skills for the resource a list row or an object tab stands for.
+/// The menu of skills for the resource a list row, an object tab or an Application's row stands for.
 pub(super) fn menu(
     ui: &Ui,
     app: &AppState,
@@ -42,6 +42,8 @@ fn linked(ui: &Ui, app: &AppState, target: &crate::hit::Target) -> Option<Link> 
             crate::views::session::resources::row_link(app, open, held, uid)
         }
         crate::hit::Target::ResourceTab(at) => held.opened.get(*at).map(|one| one.link.clone()),
+        crate::hit::Target::ResourceOpen(link) => Some((**link).clone()),
+        crate::hit::Target::ResourceDrift(_, link) => link.as_deref().cloned(),
         _ => None,
     }
 }

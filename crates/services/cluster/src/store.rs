@@ -4,11 +4,13 @@ mod follows;
 mod leases;
 mod logs;
 mod related;
+mod trees;
 mod yamls;
 
 pub use follows::{Follow, Follows, Named};
 pub use logs::{CAP, Log, Logs, Streaming};
 pub use related::Up;
+pub use trees::Trees;
 pub use yamls::Yamls;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -48,6 +50,7 @@ pub struct Store {
     due: Option<Timestamp>,
     pub follows: Follows,
     pub logs: Logs,
+    pub trees: Trees,
 }
 
 impl Store {

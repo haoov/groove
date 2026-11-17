@@ -32,6 +32,8 @@ pub enum Command {
     Usage { pod: Named },
     /// `cluster.helm_revision`: a Helm release's latest revision, read once.
     HelmRevision { release: Named },
+    /// `cluster.follow_argo`: `reader` reads an Application's resource health from Argo CD on the hub.
+    FollowArgo { reader: String, app: Named },
     /// `cluster.caret`: the caret or what it holds moved in an object's YAML; nothing writes.
     Caret { key: Box<FollowKey>, edit: Edit },
     /// `cluster.copy`: what the caret holds in an object's YAML, to the clipboard.
@@ -65,6 +67,7 @@ impl Command {
             Command::CopyValue { .. } => "cluster.copy_value",
             Command::Usage { .. } => "cluster.usage",
             Command::HelmRevision { .. } => "cluster.helm_revision",
+            Command::FollowArgo { .. } => "cluster.follow_argo",
             Command::FollowLogs { .. } => "cluster.follow_logs",
             Command::LogCaret { .. } => "cluster.log_caret",
             Command::LogCopy { .. } => "cluster.log_copy",
@@ -107,6 +110,7 @@ pub fn dispatch(
         Command::LogCopy { key } => logs::copy(state, services, spawner, &key),
         Command::Usage { pod } => follows::usage(state, spawner, pod),
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
+        Command::FollowArgo { reader, app } => follows::argo(state, spawner, &reader, app),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
         Command::Age { now } => state.cluster.store.age(now),
     }
@@ -123,6 +127,9 @@ fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
     });
     later(spawner, store.logs.release(reader), |state, key, n| {
         state.cluster.store.logs.drop_unread(key, n)
+    });
+    later(spawner, store.trees.release(reader), |state, app, n| {
+        state.cluster.store.trees.drop_unread(app, n)
     });
 }
 

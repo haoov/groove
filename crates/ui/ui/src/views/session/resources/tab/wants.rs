@@ -2,7 +2,8 @@
 
 use std::collections::BTreeSet;
 
-use groove_controllers::{AppState, Command, cluster};
+use groove_controllers::cluster_service::Named;
+use groove_controllers::{AppState, Command, cluster, workspace};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
 use super::super::around::{helm_release, lineage};
@@ -20,15 +21,42 @@ pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Ve
     let added = |tab: &&Opened| app.config.cluster(&tab.link.context).is_some();
     let tab = held.tab().filter(|_| up).filter(added);
     let mut out = Vec::new();
-    let (keys, log) = match tab {
+    let (keys, streams) = match tab {
         Some(tab) => {
             out.extend(asks(app, tab, now));
-            (keys(app, tab), logged(app, tab))
+            (keys(app, tab), (logged(app, tab), treed(app, tab)))
         }
-        None => (Vec::new(), None),
+        None => (Vec::new(), (None, None)),
     };
-    out.extend(leases(app, keys, log));
+    out.extend(leases(app, keys, streams));
+    out.extend(drift(app, tab));
     out
+}
+
+/// The drift read while an Application's diff shows, at its version; the worktree's change once it does not.
+fn drift(app: &AppState, tab: Option<&Opened>) -> Option<Command> {
+    let read = &app.workspace.drift_read;
+    if let Some(tab) = tab.filter(|one| one.view == View::Diff) {
+        let (key, at) = (
+            tab.link.pod(),
+            tab.link.read(app)?.app.as_ref()?.compared.clone(),
+        );
+        let shown = app.workspace.drift.as_ref();
+        let shown = shown.is_some_and(|one| one.app == key && one.at == at);
+        let failed = read.failed.as_ref();
+        let failed = failed.is_some_and(|(one, version, _)| *one == key && *version == at);
+        let asking = read.asking.as_ref().is_some_and(|(one, _)| *one == key);
+        let show = workspace::Command::ShowDrift { app: key, at };
+        return (!shown && !failed && !asking).then_some(Command::Workspace(show));
+    }
+    let held = app.workspace.drift.is_some() || read.asking.is_some();
+    held.then_some(Command::Workspace(workspace::Command::LeaveDrift))
+}
+
+/// The Application whose resource health the tab reads while its resources show.
+fn treed(app: &AppState, tab: &Opened) -> Option<Named> {
+    let shown = tab.view == View::Resources && tab.link.read(app)?.app.is_some();
+    shown.then(|| tab.link.pod())
 }
 
 /// The log stream the tab reads while its logs show.
@@ -64,13 +92,14 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     let follows = &app.cluster.store.follows;
     let mut out = Vec::new();
     let pod = link.pod();
-    let stale = match follows.usage(&pod) {
-        Some((_, at)) => now.seconds() - at.seconds() >= USAGE_EVERY,
-        None => true,
-    };
+    let stale = follows
+        .usage(&pod)
+        .is_none_or(|(_, at)| due_at(*at, USAGE_EVERY, now));
     let described = tab.view == View::Describe;
     if object.pod.is_some() && described && stale && !follows.asking(&pod) {
-        out.push(Command::Cluster(cluster::Command::Usage { pod }));
+        out.push(Command::Cluster(cluster::Command::Usage {
+            pod: pod.clone(),
+        }));
     }
     if let Some(part) = &object.app {
         out.extend(super::destined::asks(app, &link.context, part));
@@ -85,11 +114,19 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     out
 }
 
-/// The followers and the log stream held while they are the ones wanted; else the new ones.
-fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Command> {
-    let held: BTreeSet<&FollowKey> = app.cluster.store.follows.read_by(READER).collect();
-    let logs: Vec<&LogKey> = app.cluster.store.logs.read_by(READER).collect();
-    let same = logs == log.iter().collect::<Vec<_>>() && held == wanted.iter().collect();
+/// The followers and the streams held while they are the ones wanted; else the new ones.
+fn leases(
+    app: &AppState,
+    wanted: Vec<FollowKey>,
+    (log, tree): (Option<LogKey>, Option<Named>),
+) -> Vec<Command> {
+    let store = &app.cluster.store;
+    let held: BTreeSet<&FollowKey> = store.follows.read_by(READER).collect();
+    let logs: Vec<&LogKey> = store.logs.read_by(READER).collect();
+    let trees: Vec<&Named> = store.trees.read_by(READER).collect();
+    let same = logs == log.iter().collect::<Vec<_>>()
+        && trees == tree.iter().collect::<Vec<_>>()
+        && held == wanted.iter().collect();
     let follow = |key| {
         Command::Cluster(cluster::Command::Follow {
             reader: READER.into(),
@@ -102,8 +139,18 @@ fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Co
             key: Box::new(key),
         })
     });
-    let reads = wanted.into_iter().map(follow).chain(stream);
+    let treed = tree.map(|app| {
+        Command::Cluster(cluster::Command::FollowArgo {
+            reader: READER.into(),
+            app,
+        })
+    });
+    let reads = wanted.into_iter().map(follow).chain(stream).chain(treed);
     super::super::leases(READER, same, reads)
+}
+
+fn due_at(at: Timestamp, every: i64, now: Timestamp) -> bool {
+    now.seconds() - at.seconds() >= every
 }
 
 /// When the tab shown next wants a pod's usage read.
