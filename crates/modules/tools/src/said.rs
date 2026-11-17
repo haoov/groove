@@ -19,6 +19,8 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "add_task_worktree" => said("branch"),
         "log_task_hours" => joined("the hours the clock measured", &said("task")),
         "adopt_task" => said("task"),
+        "spawn_session" => joined(&said("title"), &said("brief")),
+        "log_work" => joined(&said("what"), &said("why")),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
         _ => shown(arguments),
     }

@@ -214,6 +214,10 @@ session, nothing asks. A working status is blue and its glyph moves.
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
 
+**Children.** A [child session](glossary.md#child-session) stands right under its parent,
+indented, whatever its own state; only the parent counts under a state's heading. Enforced by
+`a_working_child_stands_under_its_idle_parent`.
+
 **Routines.** A standalone routine's session stands under its own heading, `Routines · N`,
 folded by default, below the other sessions. Its row offers a round glass play button, which
 runs the routine now, while no run is on it. Selected, it shows its agent pane alone, full width. It never

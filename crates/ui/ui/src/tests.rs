@@ -38,6 +38,7 @@ mod perf;
 mod perf_editor;
 mod perf_servers;
 mod rail;
+mod rail_children;
 mod rail_fold;
 mod regions;
 mod resources;
@@ -302,6 +303,8 @@ fn open(id: &str, title: &str) -> Open {
         status: Default::default(),
         read: Default::default(),
         clusters: vec![],
+        children: vec![],
+        log: vec![],
     }
 }
 

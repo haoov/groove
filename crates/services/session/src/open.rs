@@ -16,6 +16,10 @@ pub struct Open {
     /// The files read, per worktree, as the session remembers them.
     pub read: BTreeMap<WorktreeId, BTreeSet<String>>,
     pub clusters: Vec<groove_types::Attached>,
+    /// The sessions it spawned, the oldest first.
+    pub children: Vec<Session>,
+    /// What it and its children did, the newest first.
+    pub log: Vec<groove_types::LogEntry>,
 }
 
 impl Open {

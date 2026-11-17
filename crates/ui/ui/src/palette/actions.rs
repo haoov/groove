@@ -78,6 +78,7 @@ pub(super) fn actions(app: &AppState) -> Vec<Entry> {
     out.extend(agent(app, open));
     out.extend(noting(app));
     out.extend(tasked(app, open));
+    out.extend(super::maintenance::entries(open));
     out.extend(super::skills::entries(app, open));
     out.extend(themes(app));
     out

@@ -1,7 +1,8 @@
 mod feed;
 mod item;
+mod order;
 
-pub(crate) use item::asks_to;
+pub(crate) use item::{asks_to, state_of};
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
@@ -58,6 +59,8 @@ pub enum Fold {
 /// One row of the rail's list.
 enum Entry<'a> {
     Session(&'a Open),
+    /// A session spawned by the one above it.
+    Child(&'a Open),
     /// A state's heading and how many sessions stand under it.
     Group(Group, usize),
     /// The routines heading and its count.
@@ -153,34 +156,33 @@ fn asking(ctx: &mut Ctx, room: &mut Rect, count: usize) {
     }
 }
 
-/// The open sessions by state, then the routines' own, each in the order opened.
-fn split(app: &AppState) -> (Vec<&Open>, Vec<&Open>) {
-    let routine = |open: &&Open| open.session.kind.routine().is_none();
-    let (mut sessions, routines): (Vec<&Open>, Vec<&Open>) =
-        app.session.open.iter().partition(routine);
-    sessions.sort_by_key(|open| group_of(app, open));
-    (sessions, routines)
-}
-
 /// The sessions the rail shows, in its order: the routines' only while their heading is open.
 pub(crate) fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Open> {
-    let (mut sessions, routines) = split(app);
+    let (placed, routines) = order::split(app);
+    let mut sessions: Vec<&Open> = placed.into_iter().map(|(open, _)| open).collect();
     if ui.rail.routines {
         sessions.extend(routines);
     }
     sessions
 }
 
-/// One item per open session, the routines' under their own heading, scrolled and clipped to `area`.
-fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let (sessions, routines) = split(app);
+/// The rail's entries in order: a heading over each state, children under their parent.
+fn entries<'a>(app: &'a AppState, ui: &Ui) -> Vec<Entry<'a>> {
+    let (sessions, routines) = order::split(app);
+    let tops: Vec<&Open> = sessions.iter().filter(|one| !one.1).map(|one| one.0).collect();
     let mut entries: Vec<Entry> = Vec::new();
-    for (at, open) in sessions.iter().enumerate() {
+    let mut last = None;
+    for (open, child) in sessions {
+        if child {
+            entries.push(Entry::Child(open));
+            continue;
+        }
         let group = group_of(app, open);
-        if at == 0 || group_of(app, sessions[at - 1]) != group {
-            let count = sessions.iter().filter(|one| group_of(app, one) == group);
+        if last != Some(group) {
+            let count = tops.iter().filter(|one| group_of(app, one) == group);
             entries.push(Entry::Group(group, count.count()));
         }
+        last = Some(group);
         entries.push(Entry::Session(open));
     }
     if !routines.is_empty() {
@@ -189,11 +191,17 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     if ui.rail.routines {
         entries.extend(routines.into_iter().map(Entry::Session));
     }
+    entries
+}
+
+/// One item per open session, the routines' under their own heading, scrolled and clipped to `area`.
+fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
+    let entries = entries(app, ui);
     let items: Vec<_> = entries
         .into_iter()
         .map(|entry| {
             let tall = match &entry {
-                Entry::Session(_) => item::height(ctx),
+                Entry::Session(_) | Entry::Child(_) => item::height(ctx),
                 Entry::Group(..) | Entry::Routines(_) => ctx.tokens.row,
             };
             (entry, tall)
@@ -207,7 +215,8 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         &items,
         |(_, tall)| *tall,
         |ctx, rect, (entry, _)| match entry {
-            Entry::Session(open) => item::draw(ctx, app, ui, rect, open),
+            Entry::Session(open) => item::draw(ctx, app, ui, rect, open, 0.0),
+            Entry::Child(open) => item::draw(ctx, app, ui, rect, open, ctx.tokens.lg),
             Entry::Group(group, count) => {
                 let named = groove_ui_kit::widgets::Heading::new(group.label());
                 let room = rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));

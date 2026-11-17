@@ -1,5 +1,6 @@
 //! What the session capability asks of the store and the pool.
 
+mod children;
 mod clusters;
 mod log;
 mod promote;
@@ -28,6 +29,8 @@ pub struct Contents {
     /// The files marked read, by the worktree they belong to.
     pub read: Vec<(WorktreeId, String)>,
     pub clusters: Vec<groove_types::Attached>,
+    pub children: Vec<Session>,
+    pub log: Vec<groove_types::LogEntry>,
 }
 
 /// A worktree just made, with what the user should hear about it.
@@ -205,6 +208,8 @@ impl Service {
         Ok(Contents {
             read: self.store.reads_of(id).await?,
             clusters: self.store.clusters_of(id).await?,
+            children: self.store.children(id).await?,
+            log: self.store.log_of(id).await?,
             repos,
             worktrees,
             status,

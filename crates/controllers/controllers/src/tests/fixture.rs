@@ -69,6 +69,8 @@ pub fn with_explorer() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
         status: Default::default(),
         read: Default::default(),
         clusters: vec![],
+        children: vec![],
+        log: vec![],
     });
     (home, spawner, services, state)
 }

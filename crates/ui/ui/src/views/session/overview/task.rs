@@ -12,8 +12,8 @@ use groove_ui_kit::text::Label;
 
 /// The properties the task has a value for, in columns across the card: each name over its value,
 /// a hairline between them.
-pub(super) fn properties(ctx: &mut Ctx, card: Rect, task: &Task) {
-    let said = said(task);
+pub(super) fn properties(ctx: &mut Ctx, card: Rect, task: &Task, maintenance: bool) {
+    let said = said(task, maintenance);
     if said.is_empty() {
         return;
     }
@@ -53,7 +53,7 @@ fn widths(ctx: &mut Ctx, said: &[(&str, String, Role)], room: f32) -> Vec<f32> {
 }
 
 /// Each property the task has a value for: its name, its value, the role it reads in.
-fn said(task: &Task) -> Vec<(&'static str, String, Role)> {
+fn said(task: &Task, maintenance: bool) -> Vec<(&'static str, String, Role)> {
     let dates = match (task.dates.start, task.dates.due) {
         (Some(start), Some(due)) => Some(format!("{start} → {due}")),
         (Some(start), None) => Some(format!("from {start}")),
@@ -67,6 +67,7 @@ fn said(task: &Task) -> Vec<(&'static str, String, Role)> {
         ("priority", priority, Role::Text),
         ("dates", dates, Role::Text),
         ("hours", task.logged.map(hours), Role::Text),
+        ("maintenance", maintenance.then(|| "on".to_string()), Role::Accent),
     ]
     .into_iter()
     .filter_map(|(name, one, role)| one.map(|one| (name, one, role)))

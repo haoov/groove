@@ -1,10 +1,12 @@
+mod children;
 mod clusters;
+mod log;
 mod task;
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Repo, SessionKind, Task, Worktree};
+use groove_types::{LogEntry, Repo, Session, SessionKind, Task, Worktree};
 
 use crate::Ui;
 use crate::components::worktree_row;
@@ -23,7 +25,11 @@ enum Part<'a> {
     Card(f32),
     /// The section's head band: its name, and how many it holds when it counts.
     Head(&'a str, Option<usize>),
-    Properties(&'a Task),
+    /// The task's properties, and whether it is marked as maintenance.
+    Properties(&'a Task, bool),
+    Child(&'a Session),
+    Entry(&'a LogEntry),
+    NoLog,
     NoRepos,
     Repo(&'a Repo),
     Worktree(&'a Worktree),
@@ -53,7 +59,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     ctx.clipped(area, |ctx| {
         let mut ruled = false;
         for (part, rect) in parts.iter().zip(rects) {
-            let row = matches!(part, Part::Repo(_) | Part::Worktree(_) | Part::Cluster(..));
+            let row = matches!(
+                part,
+                Part::Repo(_) | Part::Worktree(_) | Part::Cluster(..) | Part::Child(_) | Part::Entry(_) | Part::NoLog
+            );
             if row && ruled {
                 top_rule(ctx, inset(ctx, rect), ctx.styles.line());
             }
@@ -75,7 +84,7 @@ fn parts<'a>(ctx: &mut Ctx, app: &'a AppState, open: &'a Open, wide: f32) -> Vec
             ctx,
             &mut out,
             ("Properties", None),
-            vec![Part::Properties(one)],
+            vec![Part::Properties(one, open.state.maintenance)],
         );
     }
     let mut repos = Vec::new();
@@ -94,6 +103,8 @@ fn parts<'a>(ctx: &mut Ctx, app: &'a AppState, open: &'a Open, wide: f32) -> Vec
         let count = Some(parts.len());
         section(ctx, &mut out, ("Clusters", count), parts);
     }
+    maintained(ctx, &mut out, open);
+    logged(ctx, &mut out, open);
     let (title, text) = match &open.session.kind {
         SessionKind::Review { .. } => ("Description", described(app, open)),
         _ => ("Body", worked.and_then(|one| app.task.body(&one.short_id))),
@@ -103,6 +114,29 @@ fn parts<'a>(ctx: &mut Ctx, app: &'a AppState, open: &'a Open, wide: f32) -> Vec
         section(ctx, &mut out, (title, None), vec![Part::Body(text, tall)]);
     }
     out
+}
+
+/// A maintenance task's children; nothing on another session.
+fn maintained<'a>(ctx: &Ctx, out: &mut Vec<Part<'a>>, open: &'a Open) {
+    if !open.state.maintenance && open.children.is_empty() {
+        return;
+    }
+    let children: Vec<Part> = open.children.iter().map(Part::Child).collect();
+    let count = Some(children.len());
+    section(ctx, out, ("Children", count), children);
+}
+
+/// The log of a task or an explorer, the newest entry first.
+fn logged<'a>(ctx: &Ctx, out: &mut Vec<Part<'a>>, open: &'a Open) {
+    if !matches!(open.session.kind, SessionKind::Task { .. } | SessionKind::Explorer) {
+        return;
+    }
+    let mut entries: Vec<Part> = open.log.iter().map(Part::Entry).collect();
+    let count = Some(entries.len());
+    if entries.is_empty() {
+        entries.push(Part::NoLog);
+    }
+    section(ctx, out, ("Log", count), entries);
 }
 
 /// A card holding its head band, then `items`.
@@ -125,9 +159,12 @@ fn height(ctx: &Ctx, part: &Part) -> f32 {
         Part::Card(_) => 0.0,
         Part::Gap => ctx.tokens.md,
         Part::Body(_, tall) => tall + ctx.tokens.md * 2.0,
-        Part::Properties(_) => row * 2.0 + ctx.tokens.sm * 2.0,
+        Part::Properties(..) => row * 2.0 + ctx.tokens.sm * 2.0,
+        Part::Entry(one) => log::height(ctx, one),
         Part::Cluster(..) => row + ctx.tokens.sm,
-        Part::Head(..) | Part::NoRepos | Part::Repo(_) | Part::Worktree(_) => row + ctx.tokens.xs,
+        Part::Head(..) | Part::NoRepos | Part::Repo(_) | Part::Worktree(_) | Part::Child(_) | Part::NoLog => {
+            row + ctx.tokens.xs
+        }
     }
 }
 
@@ -153,7 +190,16 @@ fn draw_part(ctx: &mut Ctx, app: &AppState, open: &Open, (area, rect): (Rect, Re
             };
             named.draw(ctx, band);
         }
-        Part::Properties(one) => task::properties(ctx, inset(ctx, rect), one),
+        Part::Properties(one, maintenance) => {
+            task::properties(ctx, inset(ctx, rect), one, *maintenance)
+        }
+        Part::Child(one) => children::child(ctx, app, inset(ctx, rect), one),
+        Part::Entry(one) => log::entry(ctx, inset(ctx, rect), one),
+        Part::NoLog => {
+            let line = inset(ctx, line).pad(Edges::across(pad, pad));
+            let style = ctx.styles.body(Role::Faint);
+            Label::new("Nothing logged yet.", style).draw(ctx, line);
+        }
         Part::NoRepos => {
             let style = ctx.styles.body(Role::Faint);
             let line = inset(ctx, line).pad(Edges::across(pad, pad));

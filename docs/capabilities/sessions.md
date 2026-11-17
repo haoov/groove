@@ -39,6 +39,25 @@ cluster, which replaces that context's namespaces; a namespace, which the agent 
 for, replaces a cluster held whole. The namespace panel picks what the list shows and
 holds nothing. The pairs stay with the session across restarts and go with it.
 
+## Maintenance tasks
+
+**The user marks a task as [maintenance](../glossary.md#maintenance-task) in Groove**, from the palette; nothing reads it off the
+title. Only a task is marked. Enforced by `only_a_task_is_marked_as_maintenance`.
+
+**Only a maintenance task spawns [children](../glossary.md#child-session).** A child is an explorer whose agent starts from
+the parent's brief, and the brief is all it gets. The agent spawns with `spawn_session`, the
+user from the palette. Enforced by `a_task_not_marked_as_maintenance_spawns_no_child` and
+`a_maintenance_task_spawns_a_child_beside_it_and_remembers_it`.
+
+**A child keeps its parent**, adopted as a task or not; a parent deleted leaves it without
+one. Enforced by `a_child_adopted_as_a_task_keeps_its_parent` and
+`a_deleted_parent_leaves_its_children_without_one`.
+
+**A session keeps a log of what it did**, which the user reads when they come back: what,
+why when it is not plain, the MR. The agent writes it with `log_work` when it lands the work
+and when it closes; a child's entry goes to its parent's log, named after the child. Groove
+keeps the log. Enforced by `a_child_logs_to_its_parent_and_the_parent_to_its_own_log`.
+
 ## Overview
 
 One overview for task, explorer and review sessions: the task's properties, the repos
@@ -46,6 +65,11 @@ with their worktree rows, the clusters it holds, then the body. An explorer has 
 
 A worktree row joins its git status to its MR. Its skill button sends the skill that
 fits the row's state, with `agent.send_skill`. Finish is a palette row.
+
+A maintenance task adds its children, each with its agent's state or `closed`. A task or an
+explorer then shows its log, the newest entry first, `Nothing logged yet.` while it is empty.
+Enforced by `a_maintenance_task_lists_its_children_and_the_log_shows_who_wrote_each_entry` and
+`a_task_not_marked_shows_no_children_and_an_empty_log`.
 
 The clusters name what is attached and nothing else: each context once, in its hue, its
 namespaces under it. No health, no counts. A session with none has no clusters section.

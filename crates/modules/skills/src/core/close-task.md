@@ -23,7 +23,10 @@ on a check you have not run.
    last steps are these. `get_task_body` for its `url`, then the WHOLE new body at
    the source — the Notion MCP on Notion, `gh issue edit` on GitHub — saying what
    shipped. Then `log_task_hours`.
-6. `finish_task`. It sets the status done at the source itself, so no
+6. `log_work`, unless `groove:save-task` just logged it: what the task delivered,
+   why when it is not plain, the MR link.
+   A child's entry goes to its parent's log.
+7. `finish_task`. It sets the status done at the source itself, so no
    property update for that.
 
 Say what the checks found either way, before the last call. The user approves

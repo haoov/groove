@@ -41,6 +41,7 @@ pub(crate) fn all() -> Vec<Tool> {
     out.extend(repos());
     out.extend(skills());
     out.extend(rows());
+    out.extend(children());
     out
 }
 
@@ -179,6 +180,43 @@ fn rows() -> Vec<Tool> {
                     "task",
                     text("The task's URL, as its source shows it, or its id."),
                 )],
+            ),
+        ),
+    ]
+}
+
+/// What a maintenance task spawns, and what a session writes to its log.
+fn children() -> Vec<Tool> {
+    vec![
+        write(
+            does("spawn_session", "spawn a child", &["title"]),
+            "Spawn a child session from this maintenance task: an explorer with a clean \
+             agent, which starts from your brief. Only a task marked as maintenance spawns.",
+            takes(
+                &["title", "brief"],
+                vec![
+                    ("title", text("The child's title, a few words.")),
+                    (
+                        "brief",
+                        text(
+                            "All the child gets: the goal, what is known, the limits. A link \
+                             and a description when it comes from an alert.",
+                        ),
+                    ),
+                ],
+            ),
+        ),
+        write(
+            does("log_work", "log the work", &["what"]),
+            "Add what this session did to its log, which the user reads when they come back. \
+             A child's entry goes to its parent's log.",
+            takes(
+                &["what"],
+                vec![
+                    ("what", text("What was done, one or two sentences.")),
+                    ("why", text("Why, when what alone leaves it unclear.")),
+                    ("mr_url", text("The MR that carries it, when there is one.")),
+                ],
             ),
         ),
     ]

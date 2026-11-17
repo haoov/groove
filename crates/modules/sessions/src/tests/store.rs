@@ -3,7 +3,7 @@ use groove_types::{RepoId, Session, SessionId, SessionKind, Timestamp};
 
 use crate::{Error, Store};
 
-fn explorer(id: &str, at: i64) -> Session {
+pub(super) fn explorer(id: &str, at: i64) -> Session {
     Session {
         id: SessionId::new(id),
         title: format!("explorer {id}"),
@@ -119,7 +119,7 @@ async fn remove_cascades_to_the_leaf_and_the_repos() {
     assert!(store.opened().await.unwrap().is_empty());
 }
 
-fn task() -> groove_types::Task {
+pub(super) fn task() -> groove_types::Task {
     groove_types::Task {
         external_id: groove_types::ExternalId::new("github.com/haoov/groove#50"),
         short_id: "gh-haoov-groove-50".into(),
@@ -138,7 +138,7 @@ fn task() -> groove_types::Task {
     }
 }
 
-fn promoted() -> Session {
+pub(super) fn promoted() -> Session {
     Session {
         id: SessionId::new("gh-haoov-groove-50"),
         title: "Harden Groove".into(),

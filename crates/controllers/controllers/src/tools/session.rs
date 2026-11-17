@@ -11,11 +11,10 @@ pub(super) fn active(state: &AppState, call: Call) {
     let Some(open) = state.session.get(&super::session(&call)) else {
         return call.reply.failed(super::NO_SESSION);
     };
-    let (auto, repos) = (open.state.auto_approve, &open.repos);
     call.reply.json(&answers::session(
         &open.session,
-        auto,
-        repos,
+        &open.state,
+        &open.repos,
         &open.worktrees,
     ));
 }

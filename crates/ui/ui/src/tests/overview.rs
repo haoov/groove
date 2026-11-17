@@ -1,5 +1,6 @@
 //! The overview tab: what it names, what it counts, and what it offers.
 
+mod children;
 mod delivery;
 mod header;
 mod markdown;
