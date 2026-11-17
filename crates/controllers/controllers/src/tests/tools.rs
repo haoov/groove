@@ -1,6 +1,7 @@
 //! What the agent's tools answer, from a session the fixture opened.
 
 mod adopt;
+pub(crate) mod children;
 mod clusters;
 mod forge;
 mod owned;

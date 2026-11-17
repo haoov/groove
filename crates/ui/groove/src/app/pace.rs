@@ -25,17 +25,19 @@ impl App {
         if let Some(left) = groove_ui::input::resting(&self.ui, tick) {
             return Some(Duration::from_millis(left));
         }
-        let waiting =
-            !self.state.agent.agents.is_empty() || groove_controllers::delivery::polls(&self.state);
+        let waiting = !self.state.agent.agents.is_empty()
+            || groove_controllers::delivery::polls(&self.state)
+            || groove_controllers::alert::polls(&self.state);
         let clock = waiting.then(|| Duration::from_secs(CLOCK_S));
         let aging = groove_ui::ages_due(&self.state, &self.ui).map(events::until);
         clock.into_iter().chain(aging).min()
     }
 
-    /// The clock on the task being worked, and the poll on the open MRs.
+    /// The clock on the task being worked, the poll on the open MRs, the alerts.
     pub(super) fn clock(&mut self) {
         let now = groove_types::Timestamp::now();
         groove_controllers::task::time::tick(&mut self.state, &self.services, &self.spawner, now);
         groove_controllers::delivery::poll(&mut self.state, &self.services, &self.spawner, now);
+        groove_controllers::alert::poll(&mut self.state, &self.services, &self.spawner, now);
     }
 }

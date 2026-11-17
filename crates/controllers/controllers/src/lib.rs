@@ -1,6 +1,7 @@
 //! The controllers: commands go down, continuations come back, events arrive, on one thread.
 
 pub mod agent;
+pub mod alert;
 pub mod asker;
 pub mod cluster;
 pub mod config;
@@ -30,6 +31,7 @@ pub use spawn::{Continuation, Deliver, Detached, Spawner, SyncSpawner, TokioSpaw
 pub use state::{AppState, Env, Pending, Told};
 
 pub use groove_agent_service as agent_service;
+pub use groove_alert_service as alert_service;
 pub use groove_cluster_service as cluster_service;
 pub use groove_config_service as config_service;
 pub use groove_delivery_service as delivery_service;

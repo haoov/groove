@@ -68,6 +68,25 @@ pub struct SessionState {
     pub seen_at: Option<Timestamp>,
     pub auto_approve: bool,
     pub selected_worktree: Option<WorktreeId>,
+    /// The user marked this task as maintenance.
+    #[serde(default)]
+    pub maintenance: bool,
+    /// The maintenance task that spawned this session.
+    #[serde(default)]
+    pub parent: Option<SessionId>,
+}
+
+/// One entry of a session's log: what was done, why, and the MR that carries it.
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct LogEntry {
+    /// Its row in the store.
+    pub id: i64,
+    /// The child that wrote it, by its title then; none when the session wrote it itself.
+    pub from: Option<String>,
+    pub what: String,
+    pub why: Option<String>,
+    pub mr_url: Option<String>,
+    pub at: Timestamp,
 }
 
 /// One skill an agent can be sent, from the core plugin or the user's own.

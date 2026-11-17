@@ -61,7 +61,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, List, Terminal};
 
-pub const TABLE: [Spec; 56] = [
+pub const TABLE: [Spec; 57] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -125,6 +125,11 @@ pub const TABLE: [Spec; 56] = [
     pane(A::BoardNext, ("board.next", "board up next"), &["alt+2"]),
     pane(A::BoardReview, ("board.review", "board review"), &["alt+3"]),
     pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+a"]),
+    pane(
+        A::FocusAlerts,
+        ("pane.alerts", "the alerts: open, focus, fold"),
+        &["alt+i"],
+    ),
     pane(
         A::FocusWorkspace,
         ("pane.workspace", "the workspace: open, focus, fold"),

@@ -1,0 +1,20 @@
+[package]
+name = "groove-alerts"
+description = "The firing alerts of the user's teams, asked of incident.io with the key the `inc` CLI holds"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-http = { path = "../../base/http" }
+groove-token = { path = "../token" }
+groove-types = { path = "../../shared/types" }
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+wiremock.workspace = true
+
+[lints]
+workspace = true

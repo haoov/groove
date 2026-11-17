@@ -21,6 +21,7 @@ pub struct Ui {
     pub board: BoardUi,
     pub settings: views::settings::SettingsUi,
     pub agent: AgentUi,
+    pub alerts: views::alerts::AlertsUi,
     pub split: Split,
     /// What the pointer's button holds while it is down.
     pub held: Option<Held>,

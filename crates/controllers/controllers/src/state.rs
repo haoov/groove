@@ -57,6 +57,7 @@ pub struct AppState {
     pub shell: groove_shell_service::State,
     pub config: groove_config_service::State,
     pub cluster: groove_cluster_service::State,
+    pub alert: groove_alert_service::State,
     /// What the clipboard held when the surface asked; `Some(None)` when it held no text.
     pub pasted: Option<Option<String>>,
     /// What waits for a config revision to reach the disk.

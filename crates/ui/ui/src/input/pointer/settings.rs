@@ -1,5 +1,6 @@
 //! What a click on Settings does, from opening it to signing in.
 
+use groove_controllers::config_service::SignIn;
 use groove_controllers::{AppState, Command, agent, config};
 
 use crate::hit::{Hits, Target};
@@ -42,10 +43,8 @@ pub(super) fn acted(
         }
         Target::SettingsBack => return Some(ui.close_settings()),
         Target::SettingsCheck => config::Command::CheckEnvironment,
-        Target::SettingsLogin => {
-            let (cols, rows) = groove_controllers::session::FIRST_SIZE;
-            config::Command::Login { cols, rows }
-        }
+        Target::SettingsLogin => login(SignIn::Claude),
+        Target::SettingsIncLogin => login(SignIn::Inc),
         Target::SettingsLoginEnd => config::Command::EndLogin,
         _ => {
             let picked = sourced(target, ui).or_else(|| skilled(target, ui));
@@ -55,6 +54,12 @@ pub(super) fn acted(
         }
     };
     Some(vec![Command::Config(asked)])
+}
+
+/// That CLI's login, on a terminal of the agent's first size.
+fn login(to: SignIn) -> config::Command {
+    let (cols, rows) = groove_controllers::session::FIRST_SIZE;
+    config::Command::Login { to, cols, rows }
 }
 
 /// A task source turned on through its fields, or off once confirmed.

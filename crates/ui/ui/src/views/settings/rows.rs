@@ -1,6 +1,7 @@
 //! Every row Settings shows: its section, its label, the words a search finds it by, its value.
 
 mod agent;
+mod alerts;
 mod appearance;
 mod drafting;
 mod keymap;
@@ -29,6 +30,7 @@ pub enum Section {
     Setup,
     Providers,
     Clusters,
+    Alerts,
     Agent,
     Appearance,
     Servers,
@@ -38,10 +40,11 @@ pub enum Section {
 }
 
 impl Section {
-    pub const ALL: [Section; 8] = [
+    pub const ALL: [Section; 9] = [
         Section::Setup,
         Section::Providers,
         Section::Clusters,
+        Section::Alerts,
         Section::Agent,
         Section::Appearance,
         Section::Servers,
@@ -54,6 +57,7 @@ impl Section {
             Section::Setup => "Setup",
             Section::Providers => "Providers",
             Section::Clusters => "Clusters",
+            Section::Alerts => "Alerts",
             Section::Agent => "Agent",
             Section::Appearance => "Appearance",
             Section::Servers => "Language servers",
@@ -206,6 +210,7 @@ fn grouped(group: &'static str, rows: Vec<Row>) -> Vec<Row> {
 pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
     let mut out = setup::setup(app);
     out.extend(providers::providers(app, settings));
+    out.extend(alerts::alerts(app));
     out.extend(agent::agent(app, settings));
     out.extend(appearance::appearance(app));
     out.extend(servers::servers(app));

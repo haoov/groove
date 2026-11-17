@@ -9,7 +9,7 @@ use crate::keymap::Action;
 use crate::palette::{Action as FlowAction, Flow, Palette};
 use crate::views::session::Tab;
 use crate::views::session::resources::Scoping;
-use crate::{Focus, Grid, Overlay, Surface, Ui};
+use crate::{Focus, Overlay, Surface, Ui};
 
 pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let selected = app.session.selected.clone();
@@ -42,6 +42,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::FocusAgent => ui.focus = Focus::Agent,
         Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
+        Action::FocusAlerts if ui.alerts.shown => alerts(ui),
         Action::NextTab | Action::PreviousTab => {
             let forward = action == Action::NextTab;
             if ui.focus == Focus::Terminal {
@@ -192,6 +193,16 @@ fn workspace(ui: &mut Ui) {
     };
 }
 
+/// The alerts unfolded and given the keys, or folded away when they have them.
+fn alerts(ui: &mut Ui) {
+    let held = ui.alerts.open && ui.focus == Focus::Alerts;
+    ui.alerts.open = !held;
+    ui.focus = match held {
+        true => Focus::Agent,
+        false => Focus::Alerts,
+    };
+}
+
 /// The palette on the selected worktree's files.
 fn files(ui: &mut Ui) -> Vec<Command> {
     let mut palette = Palette::default();
@@ -236,20 +247,6 @@ fn new_terminal(ui: &mut Ui, selected: Option<groove_types::SessionId>) -> Vec<C
         cols,
         rows,
     })]
-}
-
-/// The selection of the terminal that has the keys, to the clipboard.
-pub(super) fn copied(focus: Focus, app: &AppState) -> Vec<Command> {
-    let grid = match focus {
-        Focus::Terminal => app
-            .session
-            .selected
-            .as_ref()
-            .and_then(|session| app.shell.shells(session)?.focused())
-            .map(Grid::Shell),
-        _ => Some(Grid::Agent),
-    };
-    grid.map_or_else(Vec::new, |grid| crate::input::selection::copied(app, grid))
 }
 
 fn holds_clusters(app: &AppState) -> bool {

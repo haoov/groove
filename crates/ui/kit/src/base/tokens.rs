@@ -50,6 +50,8 @@ pub const MESSAGE_LINES: usize = 10;
 pub const PINNED_DEEP: usize = 3;
 pub const PINNED_SHARE: f32 = 4.0;
 
+pub const ALERTS_TALL: f32 = 280.0;
+
 /// How many rows a search keeps above the match it lands on.
 pub const ABOVE_MATCH: usize = 4;
 
@@ -116,6 +118,7 @@ pub struct Tokens {
     pub header: f32,
     pub rail: f32,
     pub agent: f32,
+    pub alerts: f32,
     pub sidebar: f32,
     /// One line of text, with its leading.
     pub line: f32,
@@ -194,6 +197,7 @@ const LOGICAL: Tokens = Tokens {
     header: 36.0,
     rail: 220.0,
     agent: 380.0,
+    alerts: 420.0,
     sidebar: 260.0,
     line: 18.0,
     code_line: 21.0,
@@ -249,6 +253,7 @@ impl Tokens {
             header: row(HEADER, text),
             rail: s(LOGICAL.rail),
             agent: s(LOGICAL.agent),
+            alerts: s(LOGICAL.alerts),
             sidebar: s(LOGICAL.sidebar),
             line: row(LINE, code),
             code_line: row(CODE_LINE, code),

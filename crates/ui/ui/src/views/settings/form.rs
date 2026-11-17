@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
 use groove_controllers::agent_service::Terminal;
-use groove_controllers::config_service::Preference;
+use groove_controllers::config_service::{Preference, SignIn};
 
 mod agent;
 mod clusters;
@@ -44,7 +44,7 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
         return clusters::draw(ctx, body, app);
     }
     let login = app.config.login.as_ref();
-    if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
+    if let Some(terminal) = login.filter(|_| !searching && settings.section == login_at(app)) {
         body = signing_in(ctx, inner, terminal);
     }
     let lines = lines(&shown, searching);
@@ -68,6 +68,14 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
             Line::Setting(one, ends) => carded(ctx, rect, (one, *ends), searching),
         },
     );
+}
+
+/// The section a running sign-in's terminal stands in.
+fn login_at(app: &AppState) -> Section {
+    match app.config.signing {
+        SignIn::Claude => Section::Setup,
+        SignIn::Inc => Section::Alerts,
+    }
 }
 
 /// One line of the form: a group's heading, or a row.

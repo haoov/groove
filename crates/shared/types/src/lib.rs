@@ -2,6 +2,7 @@
 
 mod activity;
 mod aging;
+mod alert;
 mod annotation;
 mod approval;
 mod argo;
@@ -47,6 +48,7 @@ mod tests;
 
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
 pub use aging::{Aging, agings, human_age, tells_time};
+pub use alert::{Alert, AlertChild, AlertsConfig};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
@@ -95,7 +97,7 @@ pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use review::{ReviewMr, review_for, review_of};
 pub use routine::{Action, Routine, RoutineKind, Trigger};
 pub use secret::Secret;
-pub use session::{Session, SessionKind, SessionState, Skill};
+pub use session::{LogEntry, Session, SessionKind, SessionState, Skill};
 pub use sought::{Sought, ranked, runs, sought, spans};
 pub use syntax::{Capture, Highlight, spans_within};
 pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours};

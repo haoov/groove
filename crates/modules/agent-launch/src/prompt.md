@@ -52,6 +52,8 @@ session holds with the `kube` tool. Name its context, and pass the kubectl
 arguments as a list. Reads only, and a secret's data never comes back. To read a
 cluster the session does not hold, attach it first with `attach_cluster`.
 
+Never run `inc` either: Groove reads incident.io alerts itself.
+
 ## The user already sees your work
 
 Groove renders the diff, your annotations in the file, and the MR. Do not paste
@@ -63,6 +65,15 @@ back what it shows. Say what you did and what you need.
 - `review` — someone else's MR, checked out to read and annotate.
 - `explorer` — no ticket yet. File one at its source, then `adopt_task` makes this
   session the task's.
+
+A task the user marked as maintenance (`maintenance` in `get_active_task`) holds
+unrelated actions. Hand each one to a child with `spawn_session`: the brief is all
+the child gets. A child has a `parent`.
+
+`log_work` keeps the session's log, which the user reads when they come back to
+the task. Call it only from `groove:save-task` or when the user asks, and only for
+what matters to that reader: the work landed, a decision, a settled question.
+A child's newest entry goes to its parent's log when the child closes.
 
 ## The skills are the procedures
 

@@ -10,7 +10,7 @@ groove-hint: Commit, push, MR, and update the task.
 
 A task can hold several repos, and several worktrees on one repo. Steps 3 to 5
 run once for EVERY worktree that has work, not for the one that has the most.
-Steps 6 to 8 run once for the task.
+Steps 6 to 9 run once for the task.
 
 1. `get_active_task`, `get_commit_log` and `get_task_diff` — every worktree the
    task has, and what each one carries.
@@ -35,6 +35,8 @@ Then once, for the task:
    one still unset that the work now gives a value. Leave the rest alone.
 8. `log_task_hours` — it hands the source what the clock measured and has not
    told it yet.
+9. `log_work` — one entry, what someone coming back needs from this landing: why
+   when it is not plain, and the MR link when this landing opened the MR.
 
 A worktree with nothing to do is skipped, not reported as a failure.
 

@@ -1,5 +1,6 @@
 use crate::{
-    AppState, Services, Spawner, agent, cluster, config, delivery, session, shell, task, workspace,
+    AppState, Services, Spawner, agent, alert, cluster, config, delivery, session, shell, task,
+    workspace,
 };
 
 /// One variant per controller function, grouped by controller.
@@ -13,6 +14,7 @@ pub enum Command {
     Shell(shell::Command),
     Config(config::Command),
     Cluster(cluster::Command),
+    Alert(alert::Command),
 }
 
 impl Command {
@@ -27,6 +29,7 @@ impl Command {
             Command::Shell(c) => c.id(),
             Command::Config(c) => c.id(),
             Command::Cluster(c) => c.id(),
+            Command::Alert(c) => c.id(),
         }
     }
 }
@@ -47,5 +50,6 @@ pub fn dispatch(
         Command::Shell(c) => shell::dispatch(c, state, services, spawner),
         Command::Config(c) => config::dispatch(c, state, services, spawner),
         Command::Cluster(c) => cluster::dispatch(c, state, services, spawner),
+        Command::Alert(c) => alert::dispatch(c, state, services, spawner),
     }
 }

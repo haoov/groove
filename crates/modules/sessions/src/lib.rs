@@ -2,6 +2,8 @@
 
 mod clusters;
 mod error;
+mod log;
+mod maintenance;
 mod promote;
 mod rows;
 mod state;

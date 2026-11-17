@@ -50,6 +50,8 @@ pub enum Focus {
     /// The manual section's selected terminal.
     Terminal,
     Sidebar,
+    /// A maintenance task's alerts.
+    Alerts,
 }
 
 impl Focus {
@@ -60,6 +62,7 @@ impl Focus {
     pub fn beside(self, right: bool) -> Self {
         let from = match self {
             Focus::Terminal => Focus::Workspace,
+            Focus::Alerts => Focus::Agent,
             one => one,
         };
         let at = Self::ALL.iter().position(|it| *it == from).unwrap_or(1);

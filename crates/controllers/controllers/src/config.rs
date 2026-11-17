@@ -9,7 +9,7 @@ mod sources;
 
 use std::collections::BTreeMap;
 
-use groove_config_service::Preference;
+use groove_config_service::{Preference, SignIn};
 use groove_types::{ClusterChange, Error, Mapping, ProviderId, Secret};
 
 use crate::{AppState, Services, Spawner};
@@ -20,8 +20,8 @@ pub enum Command {
     SetPreference(Preference),
     /// `config.check_environment`: each program's version and sign-in, read again.
     CheckEnvironment,
-    /// `config.login`: `claude auth login` on a terminal of Setup's own.
-    Login { cols: u16, rows: u16 },
+    /// `config.login`: a CLI's login, `claude` or `inc`, on a terminal of Settings' own.
+    Login { to: SignIn, cols: u16, rows: u16 },
     /// What goes to the sign-in's terminal while it runs.
     SendLogin { bytes: Vec<u8> },
     /// What is pasted into the sign-in's terminal.
@@ -107,7 +107,7 @@ pub fn dispatch(
     match command {
         Command::SetPreference(one) => set_preference(state, services, spawner, one),
         Command::CheckEnvironment => environment::check(state, spawner),
-        Command::Login { cols, rows } => environment::login(state, spawner, (cols, rows)),
+        Command::Login { to, cols, rows } => environment::login(state, spawner, (to, cols, rows)),
         Command::SendLogin { bytes } => environment::send(state, &bytes),
         Command::PasteLogin { text } => environment::paste(state, &text),
         Command::ResizeLogin { cols, rows } => environment::resize(state, (cols, rows)),

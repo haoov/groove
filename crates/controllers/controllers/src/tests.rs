@@ -1,5 +1,6 @@
 mod actions;
 mod agent;
+mod alerts;
 mod cluster;
 mod config;
 mod deleting;

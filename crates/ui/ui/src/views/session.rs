@@ -54,6 +54,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     }
     // After the agent: the header, folded or not, and the drawer float over its screen.
     agent_pane::draw(ctx, app, on(crate::Focus::Agent));
+    crate::views::alerts::draw(ctx, app, ui);
     header::draw(ctx, app, ui);
     if let Some(session) = app.session.selected.as_ref() {
         manual::draw(ctx, app, ui, session);

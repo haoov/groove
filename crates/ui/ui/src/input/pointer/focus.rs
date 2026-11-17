@@ -37,6 +37,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
         Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
         Some(Target::Agent) => Focus::Agent,
         Some(Target::Shell(_)) => Focus::Terminal,
+        Some(Target::AlertRow(_) | Target::AlertColumn(_) | Target::AlertsFold) => Focus::Alerts,
         Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
         Some(
             Target::Tab(_)

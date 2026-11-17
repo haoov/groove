@@ -3,8 +3,8 @@
 use groove_types::Panes;
 
 use groove_ui_kit::base::tokens::{
-    AGENT_MIN, CODE_MIN, FEED_MIN, MANUAL_MIN, MANUAL_TALL, RAIL_MIN, SESSIONS_MIN, SIDEBAR_MIN,
-    Tokens, WORKSPACE_MIN,
+    AGENT_MIN, ALERTS_TALL, CODE_MIN, FEED_MIN, MANUAL_MIN, MANUAL_TALL, RAIL_MIN, SESSIONS_MIN,
+    SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
 };
 
 /// A boundary the user drags.
@@ -20,6 +20,8 @@ pub enum Edge {
     Feed,
     /// Between the workspace's tab and the manual section under it.
     Manual,
+    /// Between a maintenance task's alerts and the agent under them.
+    Alerts,
 }
 
 impl Edge {
@@ -28,7 +30,7 @@ impl Edge {
 
     /// Whether the boundary is a vertical line, which the pointer moves sideways.
     pub fn upright(self) -> bool {
-        !matches!(self, Edge::Feed | Edge::Manual)
+        !matches!(self, Edge::Feed | Edge::Manual | Edge::Alerts)
     }
 }
 
@@ -42,6 +44,8 @@ pub struct Split {
     pub feed: f32,
     /// How tall the manual section stands open.
     pub manual: f32,
+    /// How far down the alerts reach open, from the window's top.
+    pub alerts: f32,
 }
 
 impl Default for Split {
@@ -53,6 +57,7 @@ impl Default for Split {
             sidebar: tokens.sidebar,
             feed: FEED_MIN * 2.0,
             manual: MANUAL_TALL,
+            alerts: ALERTS_TALL,
         }
     }
 }
@@ -66,6 +71,7 @@ impl Split {
             sidebar: panes.sidebar.max(SIDEBAR_MIN),
             feed: panes.feed.max(FEED_MIN),
             manual: panes.manual.max(MANUAL_MIN),
+            alerts: panes.alerts.max(FEED_MIN),
         }
     }
 
@@ -76,6 +82,7 @@ impl Split {
             sidebar: self.sidebar,
             feed: self.feed,
             manual: self.manual,
+            alerts: self.alerts,
         }
     }
 
@@ -105,6 +112,7 @@ impl Split {
                 let most = (height - CODE_MIN).max(MANUAL_MIN);
                 self.manual = (height - at).clamp(MANUAL_MIN, most);
             }
+            Edge::Alerts => self.alerts = at.clamp(FEED_MIN, (height - CODE_MIN).max(FEED_MIN)),
         }
     }
 
@@ -116,6 +124,7 @@ impl Split {
             Edge::Sidebar => width - self.aside(sidebar),
             Edge::Feed => height - self.feed,
             Edge::Manual => height - self.manual,
+            Edge::Alerts => self.alerts,
         }
     }
 

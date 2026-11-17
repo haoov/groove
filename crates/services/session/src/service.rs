@@ -1,5 +1,6 @@
 //! What the session capability asks of the store and the pool.
 
+mod children;
 mod clusters;
 mod log;
 mod promote;
@@ -28,6 +29,9 @@ pub struct Contents {
     /// The files marked read, by the worktree they belong to.
     pub read: Vec<(WorktreeId, String)>,
     pub clusters: Vec<groove_types::Attached>,
+    pub children: Vec<Session>,
+    pub log: Vec<groove_types::LogEntry>,
+    pub alerted: Vec<groove_types::AlertChild>,
 }
 
 /// A worktree just made, with what the user should hear about it.
@@ -120,7 +124,7 @@ impl Service {
         Ok(self.store.rename_explorer(id, title).await?)
     }
 
-    /// The session gone: its worktrees, its row. Unforced, work not yet landed stops it.
+    /// The session gone: worktrees, log to its parent, row. Unforced, lost work stops it.
     pub async fn remove(
         &self,
         id: &SessionId,
@@ -128,6 +132,7 @@ impl Service {
         landed: &std::collections::BTreeSet<WorktreeId>,
     ) -> Result<(), Error> {
         self.pool.cleanup_session(id, force, landed).await?;
+        self.store.hand_log_over(id).await?;
         Ok(self.store.remove(id).await?)
     }
 
@@ -205,6 +210,9 @@ impl Service {
         Ok(Contents {
             read: self.store.reads_of(id).await?,
             clusters: self.store.clusters_of(id).await?,
+            children: self.store.children(id).await?,
+            log: self.store.log_of(id).await?,
+            alerted: self.store.alert_children(id).await?,
             repos,
             worktrees,
             status,

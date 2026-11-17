@@ -19,10 +19,12 @@ pub fn height(ctx: &Ctx) -> f32 {
 
 /// The type icon in the state's colour, the title and how long it has waited, then the agent's
 /// state under them; the row edge to edge on the window's glass.
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
+/// `depth` indents what the row says, never its ground.
+pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open, depth: f32) {
     let id = &open.session.id;
     let up = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
     let row = flat_row(ctx, rect, Target::Session(id.clone()), up);
+    let row = row.pad(Edges::across(depth, 0.0));
     let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = row;
     from_top(&mut body, 0.0, sm);
@@ -132,7 +134,7 @@ fn state(ctx: &mut Ctx, app: &AppState, rect: Rect, open: &Open) {
 }
 
 /// What the agent is doing, and its colour.
-fn state_of(app: &AppState, open: &Open) -> (String, Role) {
+pub(crate) fn state_of(app: &AppState, open: &Open) -> (String, Role) {
     let Some(activity) = app.agent.activity(&open.session.id) else {
         return ("idle".into(), Role::Ghost);
     };

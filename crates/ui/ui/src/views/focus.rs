@@ -28,6 +28,7 @@ fn region(ctx: &Ctx, app: &AppState, ui: &Ui) -> Option<Rect> {
             Some(aside_bounds(&ctx.tokens, layout.sidebar))
         }
         Focus::Terminal if session => Some(layout.manual),
+        Focus::Alerts if session => Some(layout.alerts),
         _ => None,
     }
 }

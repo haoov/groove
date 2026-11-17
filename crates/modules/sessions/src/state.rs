@@ -12,6 +12,8 @@ struct StateRow {
     seen_at: Option<i64>,
     auto_approve: bool,
     selected_worktree_id: Option<String>,
+    maintenance: bool,
+    parent_id: Option<String>,
 }
 
 impl From<StateRow> for SessionState {
@@ -21,6 +23,8 @@ impl From<StateRow> for SessionState {
             seen_at: row.seen_at.map(Timestamp::new),
             auto_approve: row.auto_approve,
             selected_worktree: row.selected_worktree_id.map(WorktreeId::new),
+            maintenance: row.maintenance,
+            parent: row.parent_id.map(SessionId::new),
         }
     }
 }
@@ -28,7 +32,8 @@ impl From<StateRow> for SessionState {
 impl Store {
     pub async fn state(&self, id: &SessionId) -> Result<SessionState> {
         let row: Option<StateRow> = sqlx::query_as(
-            "SELECT opened_at, seen_at, auto_approve, selected_worktree_id FROM session_state WHERE session_id = ?",
+            "SELECT opened_at, seen_at, auto_approve, selected_worktree_id, maintenance, parent_id
+             FROM session_state WHERE session_id = ?",
         )
         .bind(id.as_str())
         .fetch_optional(self.db.pool())
@@ -50,6 +55,23 @@ impl Store {
     pub async fn set_auto_approve(&self, id: &SessionId, on: bool) -> Result<()> {
         self.upsert_state(Column::AutoApprove, Some(i64::from(on)), id)
             .await
+    }
+
+    pub async fn set_maintenance(&self, id: &SessionId, on: bool) -> Result<()> {
+        self.upsert_state(Column::Maintenance, Some(i64::from(on)), id)
+            .await
+    }
+
+    pub async fn set_parent(&self, id: &SessionId, parent: &SessionId) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO session_state (session_id, parent_id) VALUES (?, ?)
+             ON CONFLICT(session_id) DO UPDATE SET parent_id = excluded.parent_id",
+        )
+        .bind(id.as_str())
+        .bind(parent.as_str())
+        .execute(self.db.pool())
+        .await?;
+        Ok(())
     }
 
     pub async fn set_selected_worktree(
@@ -123,6 +145,10 @@ impl Store {
                 "INSERT INTO session_state (session_id, auto_approve) VALUES (?, ?)
                  ON CONFLICT(session_id) DO UPDATE SET auto_approve = excluded.auto_approve"
             }
+            Column::Maintenance => {
+                "INSERT INTO session_state (session_id, maintenance) VALUES (?, ?)
+                 ON CONFLICT(session_id) DO UPDATE SET maintenance = excluded.maintenance"
+            }
         };
         sqlx::query(sql)
             .bind(id.as_str())
@@ -138,4 +164,5 @@ enum Column {
     OpenedAt,
     SeenAt,
     AutoApprove,
+    Maintenance,
 }

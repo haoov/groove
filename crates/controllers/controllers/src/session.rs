@@ -1,10 +1,12 @@
 //! The `session` controller: one function per user action on the `session` service.
 
+mod children;
 mod clusters;
 
 pub(crate) use clusters::{attach as attach_cluster, detach as detach_cluster};
 mod delete;
 pub(crate) mod feed;
+mod log;
 mod open;
 mod rail;
 mod repos;
@@ -14,8 +16,11 @@ use groove_types::{Attached, RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::asker::Asker;
 
+pub use children::set_maintenance;
+pub(crate) use children::{Child, spawn_child};
 pub(crate) use delete::delete_then;
 pub use delete::{delete, delete_local, force_delete};
+pub(crate) use log::{Logged, log_work};
 pub(crate) use open::{Start, begun, begun_with};
 pub use open::{close, open, open_explorer, restore, select};
 pub use rail::{list, refresh_status, rename_explorer};
@@ -118,6 +123,12 @@ pub enum Command {
         session: SessionId,
         attached: Attached,
     },
+    /// `session.set_maintenance`: a task marked as maintenance, or no longer.
+    SetMaintenance { session: SessionId, on: bool },
+    /// `session.spawn_child`: an explorer spawned from a maintenance task, selected.
+    SpawnChild { parent: SessionId },
+    /// `session.remove_log_entry`: one entry off the session's log.
+    RemoveLogEntry { session: SessionId, entry: i64 },
 }
 
 impl Command {
@@ -143,6 +154,9 @@ impl Command {
             Command::ListBranches { .. } => "session.list_branches",
             Command::AttachCluster { .. } => "session.attach_cluster",
             Command::DetachCluster { .. } => "session.detach_cluster",
+            Command::SetMaintenance { .. } => "session.set_maintenance",
+            Command::SpawnChild { .. } => "session.spawn_child",
+            Command::RemoveLogEntry { .. } => "session.remove_log_entry",
         }
     }
 }
@@ -201,6 +215,6 @@ fn worktrees(command: Command, state: &mut AppState, services: &Services, spawne
         } => close_worktree(state, services, spawner, &session, &worktree, force),
         Command::ListRepos => list_repos(services, spawner),
         Command::ListBranches { repo } => list_branches(services, spawner, &repo),
-        cluster => clusters::dispatch(cluster, state, services, spawner),
+        other => children::dispatch(other, state, services, spawner),
     }
 }

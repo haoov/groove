@@ -1331,6 +1331,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-alert-service"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-alerts",
+ "groove-types",
+]
+
+[[package]]
+name = "groove-alerts"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-http",
+ "groove-token",
+ "groove-types",
+ "serde_json",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "groove-annotations"
 version = "1.0.0-beta.2"
 dependencies = [
@@ -1414,6 +1434,7 @@ name = "groove-controllers"
 version = "1.0.0-beta.2"
 dependencies = [
  "groove-agent-service",
+ "groove-alert-service",
  "groove-cluster-service",
  "groove-config-service",
  "groove-delivery-service",

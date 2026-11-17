@@ -1,8 +1,8 @@
 //! What a tool answers, in the names the agent reads.
 
 use groove_types::{
-    Annotation, CiStatus, CommitEntry, FileDiff, Mr, MrThread, PoolEntry, Repo, Session, Skill,
-    Task, Worktree, WorktreeStatus,
+    Annotation, CiStatus, CommitEntry, FileDiff, Mr, MrThread, PoolEntry, Repo, Session,
+    SessionState, Skill, Task, Worktree, WorktreeStatus,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -46,10 +46,17 @@ pub fn status(one: &Worktree, told: &WorktreeStatus) -> Value {
 }
 
 /// The session the call comes from, with its repos and its worktrees.
-pub fn session(one: &Session, auto_approve: bool, repos: &[Repo], worktrees: &[Worktree]) -> Value {
+pub fn session(
+    one: &Session,
+    state: &SessionState,
+    repos: &[Repo],
+    worktrees: &[Worktree],
+) -> Value {
     json!({
         "session": one,
-        "auto_approve": auto_approve,
+        "auto_approve": state.auto_approve,
+        "maintenance": state.maintenance,
+        "parent": state.parent,
         "repos": repos.iter().map(repo).collect::<Vec<Value>>(),
         "worktrees": worktrees.iter().map(|w| worktree(w, json!({}))).collect::<Vec<Value>>(),
     })

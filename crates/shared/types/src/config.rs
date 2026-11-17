@@ -41,6 +41,8 @@ pub struct Config {
     /// The language servers to start; the defaults when absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language_servers: Option<Vec<LanguageServer>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alerts: Option<crate::AlertsConfig>,
 }
 
 /// The routines switched on, and the triggers the user turned off on each.
@@ -197,6 +199,9 @@ pub struct Preferences {
     /// How many agents run routines at once; a run past it waits its turn.
     #[serde(default = "default_routine_cap")]
     pub routine_cap: u32,
+    /// How long the alerts wait between two reads of incident.io, in seconds.
+    #[serde(default = "default_alerts_poll")]
+    pub alerts_poll_secs: u64,
     /// Every routine paused, whatever each one is switched to.
     #[serde(default)]
     pub routines_paused: bool,
@@ -210,6 +215,7 @@ impl Default for Preferences {
             poll_interval_secs: default_poll_interval(),
             stale_after_secs: default_stale_after(),
             routine_cap: default_routine_cap(),
+            alerts_poll_secs: default_alerts_poll(),
             routines_paused: false,
         }
     }
@@ -217,6 +223,10 @@ impl Default for Preferences {
 
 fn default_routine_cap() -> u32 {
     5
+}
+
+fn default_alerts_poll() -> u64 {
+    60
 }
 
 /// The config as the ui sees it: everything except the Notion token.

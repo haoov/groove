@@ -1,7 +1,7 @@
-//! Setup's environment check, and the `claude` sign-in it offers.
+//! Setup's environment check, and the `claude` and `inc` sign-ins Settings offers.
 
 use groove_agent_service::Hooks;
-use groove_config_service::Event as ConfigEvent;
+use groove_config_service::{Event as ConfigEvent, SignIn};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
@@ -25,17 +25,22 @@ pub(super) fn check(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The sign-in asked last, on its own terminal; the check runs again when it exits.
-pub(super) fn login(state: &mut AppState, spawner: &dyn Spawner, size: (u16, u16)) {
+/// The sign-in asked last, on its own terminal; what it unlocks is read again when it exits.
+pub(super) fn login(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    (to, cols, rows): (SignIn, u16, u16),
+) {
     if state.config.login.is_some() || state.config.signing_in {
         return;
     }
-    state.config.signing_in = true;
+    (state.config.signing_in, state.config.signing) = (true, to);
     state.config.sign_in += 1;
     let generation = state.config.sign_in;
     let palette = groove_agent_service::palette(state.config.theme());
     let (home, hooks) = (state.env.home.clone(), hooks(spawner, generation));
     spawner.spawn(Box::pin(async move {
+        let size = (to, cols, rows);
         let result = groove_config_service::login(&home, size, palette, hooks).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             let current = state.config.sign_in == generation;
@@ -83,11 +88,17 @@ fn hooks(spawner: &dyn Spawner, generation: u64) -> Hooks {
     }));
     let on_exit = Box::new(move |_code| {
         sink.deliver(Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 if state.config.sign_in == generation {
                     state.config.login = None;
                 }
-                check(state, spawner);
+                match state.config.signing {
+                    SignIn::Claude => check(state, spawner),
+                    SignIn::Inc => {
+                        let read = crate::alert::Command::Read;
+                        crate::alert::dispatch(read, state, services, spawner);
+                    }
+                }
             },
         ));
     });

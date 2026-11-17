@@ -19,6 +19,7 @@ impl Ui {
             Scroller::Settings => self.settings.scroll,
             Scroller::Resources => self.session.resources.scroll(),
             Scroller::Kinds => self.session.resources.kinds,
+            Scroller::Alerts => self.alerts.scroll,
             Scroller::Column(at) => self.board.scroll(List::ALL[at as usize]),
         }
     }
@@ -34,6 +35,7 @@ impl Ui {
             Scroller::Settings => self.settings.scroll = to,
             Scroller::Resources => *self.session.resources.scroll_mut() = to,
             Scroller::Kinds => self.session.resources.kinds = to,
+            Scroller::Alerts => self.alerts.scroll = to,
             Scroller::Column(at) => self.board.scrolled(List::ALL[at as usize], to),
         }
     }

@@ -1,18 +1,31 @@
-//! Setup's `claude auth login`, on a terminal of its own.
+//! A CLI's browser login, `claude` or `inc`, on a terminal of its own.
 
 use std::path::Path;
 
 use groove_terminal::{Hooks, Terminal};
 use groove_types::{AnsiPalette, Error, ErrorKind};
 
-/// `claude auth login` on a terminal of `cols` by `rows`.
+/// The CLI a login runs.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum SignIn {
+    /// `claude auth login`, from Setup.
+    #[default]
+    Claude,
+    /// `inc auth login`, from Alerts.
+    Inc,
+}
+
+/// That CLI's login on a terminal of `cols` by `rows`.
 pub async fn login(
     home: &Path,
-    (cols, rows): (u16, u16),
+    (which, cols, rows): (SignIn, u16, u16),
     palette: AnsiPalette,
     hooks: Hooks,
 ) -> Result<Terminal, Error> {
-    let spec = groove_agent_launch::login(home, cols, rows).await;
+    let spec = match which {
+        SignIn::Claude => groove_agent_launch::login(home, cols, rows).await,
+        SignIn::Inc => groove_agent_launch::inc_login(home, cols, rows),
+    };
     Terminal::spawn(spec, palette, hooks)
         .await
         .map_err(|e| Error::new(ErrorKind::Agent, e.to_string()))

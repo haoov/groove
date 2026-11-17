@@ -12,6 +12,13 @@ pub struct Panes {
     /// How tall the manual section stands open.
     #[serde(default = "manual")]
     pub manual: f32,
+    /// How far down a maintenance task's alerts reach open.
+    #[serde(default = "alerts")]
+    pub alerts: f32,
+}
+
+fn alerts() -> f32 {
+    280.0
 }
 
 fn manual() -> f32 {

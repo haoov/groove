@@ -1,9 +1,11 @@
 //! What a key does, by the pane that holds the keyboard.
 
 mod agent;
+mod alerts;
 mod app;
 mod bar;
 mod board;
+mod copy;
 mod listed;
 mod moves;
 mod naming;
@@ -116,7 +118,7 @@ fn in_pane(
 ) -> Vec<Command> {
     let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
-        return app::copied(ui.focus, app);
+        return copy::copied(ui.focus, app);
     }
     let bars = [
         (Action::OpenPath, Term::Path, !raw),
@@ -149,12 +151,26 @@ fn in_pane(
     {
         return commands;
     }
+    to_focused((key, mods), ui, app, (keymap, seen))
+}
+
+/// The key to the pane that has the keyboard.
+fn to_focused(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    (keymap, seen): (
+        &Keymap,
+        (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
+    ),
+) -> Vec<Command> {
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),
         Focus::Rail => in_rail(key, ui, app),
+        Focus::Alerts => alerts::in_alerts(key, ui, app),
     }
 }
 

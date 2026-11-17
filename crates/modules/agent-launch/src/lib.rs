@@ -28,13 +28,14 @@ pub struct Paths<'a> {
     pub knowledge: Option<&'a Path>,
 }
 
-/// The cluster tools the agent never runs itself: it reads through Groove's `kube` tool.
-const DENIED: [&str; 5] = [
+/// The tools the agent never runs itself: it reads clusters through `kube`, Groove reads alerts.
+const DENIED: [&str; 6] = [
     "Bash(kubectl:*)",
     "Bash(helm:*)",
     "Bash(k9s:*)",
     "Bash(kubectx:*)",
     "Bash(kubens:*)",
+    "Bash(inc:*)",
 ];
 
 /// The command line, ready to spawn.
@@ -100,6 +101,18 @@ pub async fn login(home: &Path, cols: u16, rows: u16) -> PtySpec {
         args: vec!["auth".into(), "login".into()],
         cwd: home.to_path_buf(),
         env: env(),
+        rows,
+        cols,
+    }
+}
+
+/// `inc auth login` in `home`, for the incident.io login the alerts read with.
+pub fn inc_login(home: &Path, cols: u16, rows: u16) -> PtySpec {
+    PtySpec {
+        program: "inc".into(),
+        args: vec!["auth".into(), "login".into()],
+        cwd: home.to_path_buf(),
+        env: Vec::new(),
         rows,
         cols,
     }

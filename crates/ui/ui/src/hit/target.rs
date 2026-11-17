@@ -44,6 +44,8 @@ pub enum Target {
     SettingsCheck,
     SettingsLogin,
     SettingsLoginEnd,
+    /// The alerts' `inc auth login`.
+    SettingsIncLogin,
     /// The sign-in's terminal, which takes the keys while it runs.
     Login,
     /// A task source: its fields opened to turn it on, one of them given the keys, sent.
@@ -148,6 +150,17 @@ pub enum Target {
     Feed,
     /// The sessions' window's header, which folds it to itself.
     SessionsFold,
+    /// A log entry's remove button, by the entry's id.
+    LogRemove(i64),
+    /// The alerts' header, which folds their window to it.
+    AlertsFold,
+    /// A firing alert's button: its child opened, or one spawned on it.
+    Investigate(String),
+    /// A firing alert's row, which it selects.
+    AlertRow(String),
+    AlertColumn(String),
+    /// The boundary after an alerts column, dragged to its width.
+    AlertEdge(String),
     /// The rail's Routines heading, which folds their sessions away.
     Routines,
     /// A line of the feed, and the session it belongs to.
@@ -244,7 +257,7 @@ impl Target {
             | Target::Palette
             | Target::Overview => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
-            Target::ResourceEdge(_) => Cursor::ColResize,
+            Target::ResourceEdge(_) | Target::AlertEdge(_) => Cursor::ColResize,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,

@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub use keeper::Keeper;
-pub use login::{claude_bin, login};
+pub use login::{SignIn, claude_bin, login};
 pub use sources::Source;
 
 use groove_types::{Config, Error, FontFamily, Preferences, ThemeName, Tool, UiConfig};
@@ -39,6 +39,7 @@ pub enum Preference {
     CiFailedMinutes(u32),
     PollIntervalSecs(u64),
     StaleAfterSecs(u64),
+    AlertsPollSecs(u64),
     RoutineCap(u32),
     RoutinesPaused(bool),
     WrapCode(bool),
@@ -70,8 +71,10 @@ pub struct State {
     /// What each source was last read to hold, and the sources being read.
     pub schemas: Vec<(groove_types::ProviderId, Vec<groove_types::Property>)>,
     pub reading: Vec<groove_types::ProviderId>,
-    /// The sign-in Setup runs, while it runs.
+    /// The sign-in Setup or Alerts runs, while it runs.
     pub login: Option<groove_terminal::Terminal>,
+    /// The CLI the last sign-in asked runs.
+    pub signing: SignIn,
     /// A sign-in asked for whose terminal is still being spawned.
     pub signing_in: bool,
     /// Moves on with each sign-in asked or ended: an older one's terminal is not kept.
@@ -124,6 +127,17 @@ impl State {
         self.preferences().poll_interval_secs.max(POLL_MIN) as i64
     }
 
+    /// How long the alerts wait between two reads of incident.io, in seconds.
+    pub fn alerts_poll(&self) -> i64 {
+        self.preferences().alerts_poll_secs.max(POLL_MIN) as i64
+    }
+
+    /// Which incident.io attributes the alerts read, and the alerts they keep.
+    pub fn alerts(&self) -> groove_types::AlertsConfig {
+        let held = self.config.as_ref().and_then(|c| c.alerts.clone());
+        held.unwrap_or_default()
+    }
+
     /// How old an MR's last read may be before its row says so, in seconds.
     pub fn stale_after(&self) -> i64 {
         self.preferences().stale_after_secs as i64
@@ -163,6 +177,7 @@ impl State {
             Preference::CiFailedMinutes(minutes) => held.thresholds.ci_failed_minutes = minutes,
             Preference::PollIntervalSecs(secs) => held.poll_interval_secs = secs.max(POLL_MIN),
             Preference::StaleAfterSecs(secs) => held.stale_after_secs = secs,
+            Preference::AlertsPollSecs(secs) => held.alerts_poll_secs = secs.max(POLL_MIN),
             Preference::RoutineCap(agents) => held.routine_cap = agents.max(1),
             Preference::RoutinesPaused(paused) => held.routines_paused = paused,
             Preference::WrapCode(on) => ui.wrap_code = on,

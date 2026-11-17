@@ -72,6 +72,7 @@ fn first() -> Config {
         routines: Default::default(),
         clusters: Vec::new(),
         language_servers: None,
+        alerts: None,
     }
 }
 

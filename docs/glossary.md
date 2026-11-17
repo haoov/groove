@@ -16,6 +16,12 @@ A session with no ticket yet. Filing a ticket and adopting it turns it into a ta
 ### Review
 A session on someone else's MR, checked out to read and annotate.
 
+### Maintenance task
+A task the user marked as maintenance in Groove. It spawns children, and their entries land on its log.
+
+### Child session
+An explorer a maintenance task spawned, which starts from a brief. It keeps its parent when it becomes a task.
+
 ### Routine session
 The session a standalone routine runs in. It holds only its agent, and never shows on the board.
 

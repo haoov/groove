@@ -5,6 +5,7 @@ mod entries;
 mod files;
 mod flow;
 mod grouped;
+mod maintenance;
 mod marks;
 mod mr;
 mod skills;

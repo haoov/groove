@@ -51,13 +51,24 @@ pub struct ResourcesUi {
     pub kinds: f32,
 }
 
-/// A column's edge held: its kind, none in an object's tab; its label, where the press was, and its width then.
+/// A column's edge held: its table, its label, where the press was, and its width then.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dragged {
-    pub kind: Option<String>,
+    pub table: Columns,
     pub label: String,
     pub from: f32,
     pub width: f32,
+}
+
+/// The table whose column widths a drag writes.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Columns {
+    /// The list of one kind.
+    Kind(String),
+    /// An object's own tab.
+    Tab,
+    /// A maintenance task's alerts.
+    Alerts,
 }
 
 /// The contexts the session holds, in the order first attached.

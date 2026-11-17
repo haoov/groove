@@ -36,14 +36,16 @@ the rail only as its attention count.
   `the_agent_has_no_ring_and_its_caret_takes_the_accent` and
   `a_selection_stays_neutral_in_the_region_that_has_the_keys`.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
-  rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
-  workspace and the sidebar unfold first, and a press while they hold the keys folds them
+  rail, the agent, the workspace and the sidebar; `alt+i` hands them to a maintenance task's
+  alerts; the terminals keep their own chord. The
+  workspace, the sidebar and the alerts unfold first, and a press while they hold the keys folds them
   away. `ctrl+alt` with `h`, `j`, `k` or `l` moves the boundary of the region that holds the keys
   that way.
   Enforced by `alt_and_a_region_s_letter_hand_it_the_keys`,
   `a_second_press_folds_the_sidebar_away`,
   `alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it` and
-  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way`.
+  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way` and
+  `alt_i_unfolds_the_alerts_gives_them_the_keys_then_folds_them`.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
@@ -214,6 +216,10 @@ session, nothing asks. A working status is blue and its glyph moves.
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
 
+**Children.** A [child session](glossary.md#child-session) stands right under its parent,
+indented, whatever its own state; only the parent counts under a state's heading. Enforced by
+`a_working_child_stands_under_its_idle_parent`.
+
 **Routines.** A standalone routine's session stands under its own heading, `Routines · N`,
 folded by default, below the other sessions. Its row offers a round glass play button, which
 runs the routine now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
@@ -255,6 +261,7 @@ The rail, then one ground for the agent with the workspace's strip standing on i
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
+| **Alerts** | a maintenance task's firing alerts, over the agent: their header alone while folded |
 
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
@@ -271,6 +278,24 @@ never under its text. Enforced by
 screen runs left across the rail's column to the window's edge, its two headers in the rooms over
 and under it; the wheel there scrolls the agent and the rail's edge is not dragged. Enforced by
 `with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
+
+**A maintenance task's alerts stand over the agent.** Open, they take the bar's free room over
+the agent, down to the foot the user drags, the agent under them. Folded, they are their header alone in
+the bar over the agent; with everything folded, that header stands after the sessions' header
+and before the strip's capsule. The header counts the alerts by rank. They list on the kit's grid, one
+line each: the priority in its colour, the alert, its environment, its cluster in its hue, its
+namespace, its age, its child's state, then an Investigate or Open button. A header orders the
+rows and its edge drags the column's width. A click on a row selects it and gives the alerts the
+keys: the arrows step through the rows and Enter investigates; only the button or Enter spawns or
+opens a child. A resolved alert stays,
+greyed, while its child is on the rail. Enforced by
+`open_the_alerts_stand_over_the_agent_which_keeps_the_rest_of_its_height`,
+`folded_the_alerts_are_their_header_in_the_bar_over_the_agent`,
+`with_everything_folded_the_alerts_take_the_bar_between_the_sessions_header_and_the_strip`,
+`the_alerts_count_by_rank_and_list_on_one_line_of_a_grid_with_a_button_to_investigate`,
+`an_alerts_column_drags_its_width_and_its_header_orders_the_rows`,
+`a_row_takes_the_keys_and_only_its_button_or_enter_investigates`,
+`the_alerts_foot_is_dragged_and_the_agent_follows` and `a_session_not_marked_has_no_alerts`.
 
 **The terminals rise from the foot.** Their drawer is an opaque panel under the strip.
 Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the
@@ -572,8 +597,8 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
 the user was. Reached from its chord, `alt+,`, and the palette. A section list on the left,
-on a floating pane of glass as the rail's — Setup, Providers, Clusters, Agent, Appearance,
-Preferences, Keymap — under the title, *back* and a search field: typing filters every
+on a floating pane of glass as the rail's — Setup, Providers, Clusters, Alerts, Agent,
+Appearance, Preferences, Keymap — under the title, *back* and a search field: typing filters every
 section to the matching rows, each shown with its section. The selected section's form on
 the right: labels left, controls right as glass buttons, one row per setting, each group a
 rounded card under its name, paths and ids in mono. Clusters alone is a table on its card,
@@ -589,6 +614,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
+| Alerts | incident.io: the `inc` login as the last alerts read found it, with *log in*, which runs `inc auth login` on Settings' terminal · the poll interval |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha, Defense (teal-black and steel, cyan for what is live and for focus, amber for what asks, coral for what fails; its terminals in the same colours) · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
