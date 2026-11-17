@@ -45,11 +45,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    // As far off the strip's bottom edge as the first card stands under the info line's rule.
-    let area = area.pad(Edges {
-        bottom: ctx.tokens.sm,
-        ..Edges::all(0.0)
-    });
     let parts = parts(ctx, app, open, area.w);
     let heights: Vec<f32> = parts.iter().map(|part| height(ctx, part)).collect();
     let specs: Vec<Spec> = heights.iter().map(|h| Spec::default().height(*h)).collect();

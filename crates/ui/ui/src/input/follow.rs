@@ -31,6 +31,7 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
 
 /// Centres the view once on the definition just landed on, in the file tab when the diff lacks it.
 pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
+    super::drift::landed(ui, app, metrics);
     let servers = &app.workspace.servers;
     let Some((path, at)) = servers.landed.as_ref() else {
         return;

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
     Aligned, At, Changes, Derived, Document, HEAD_ROWS, Opened, UNSHOWN, aligned, column_of,
-    display_of, from_documents, from_text, shown,
+    display_of, from_documents, from_text, shown, unified,
 };
 pub use groove_editor::Clipboard;
 pub use groove_grep::{Found, Search};
@@ -21,6 +21,7 @@ use groove_watch::{QUIET, Watch};
 mod blame;
 mod buffer;
 mod buffers;
+mod drift;
 mod filing;
 mod git;
 mod paths;
@@ -34,6 +35,7 @@ mod tests;
 
 pub use blame::{Blames, Read, blame};
 pub use buffers::Buffers;
+pub use drift::{Drift, DriftKey, DriftRead, Prepared, in_sync, prepare, prepared};
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{
@@ -86,6 +88,9 @@ pub struct State {
     pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
+    /// The Argo CD drift the surface shows instead of the working tree.
+    pub drift: Option<Drift>,
+    pub drift_read: DriftRead,
     /// A repo's slug to select a worktree of in a session, and a commit of it to show once read.
     pub revision: Option<Revision>,
     /// Moves on with each commit asked to show; only the last one asked lands.
@@ -146,9 +151,9 @@ impl State {
         self.showing = 0..0;
     }
 
-    /// Whether what it shows is a commit, which nothing may write.
+    /// Whether what it shows is a commit or a drift, which nothing may write.
     pub fn readonly(&self) -> bool {
-        self.commit.is_some()
+        self.commit.is_some() || self.drift.is_some()
     }
 
     /// Shuts every open file the path that is gone is, or holds.

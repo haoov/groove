@@ -65,7 +65,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 /// The tab, and the sidebar when it has one.
 fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let body = ctx.app.layout.workspace;
+    // As far off the strip's bottom edge as the first card stands under the info line's rule.
+    let body = ctx.app.layout.workspace.pad(Edges {
+        bottom: ctx.tokens.sm,
+        ..Edges::all(0.0)
+    });
     let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     match ui.session.tab {
         Tab::Overview => overview::draw(ctx, app, ui, body),

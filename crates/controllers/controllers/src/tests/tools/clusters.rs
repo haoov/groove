@@ -159,3 +159,41 @@ fn only_what_the_session_holds_is_let_go() {
         .unwrap();
     assert!(open.clusters.is_empty());
 }
+
+#[test]
+fn an_argo_health_read_waits_for_a_hub_that_the_session_holds() {
+    let (home, spawner, services, mut state) = fixture::fresh();
+    let id = known(home.path(), (&mut state, &services, &spawner));
+    let read = json!({ "app": "argocd/shop" });
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "argo_health",
+        read.clone(),
+    );
+    assert!(
+        answer.failed && answer.text.contains("Settings › Clusters"),
+        "{}",
+        answer.text
+    );
+    let hub = crate::config::Command::SetCluster {
+        context: "kind".into(),
+        change: groove_types::ClusterChange::ArgoHub(true),
+    };
+    dispatch(Cmd::Config(hub), &mut state, &services, &spawner);
+    let answer = asked(&mut state, &services, &spawner, &id, "argo_health", read);
+    assert!(
+        answer.failed && answer.text.contains("does not hold the Argo CD hub kind"),
+        "{}",
+        answer.text
+    );
+    let unnamed = json!({ "app": "shop" });
+    let refused = asked(&mut state, &services, &spawner, &id, "argo_health", unnamed);
+    assert!(
+        refused.failed && refused.text.contains("<namespace>/<name>"),
+        "{}",
+        refused.text
+    );
+}

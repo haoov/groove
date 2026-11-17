@@ -25,6 +25,11 @@ pub(super) fn part(app: &Value) -> AppPart {
     let (spec, status) = (&app["spec"], &app["status"]);
     let automated = automated(spec);
     AppPart {
+        compared: format!(
+            "{} {}",
+            text(status, "/reconciledAt"),
+            crate::argo::revisions(Some(status))
+        ),
         project: text(spec, "/project"),
         sync: text(status, "/sync/status"),
         health: text(status, "/health/status"),
@@ -116,15 +121,18 @@ fn resource(one: &Value) -> SyncedResource {
 fn managed(all: &Value) -> Vec<AppResource> {
     let all = all.as_array().map(Vec::as_slice).unwrap_or_default();
     all.iter()
-        .map(|one| AppResource {
-            group: text(one, "/group"),
-            kind: text(one, "/kind"),
-            namespace: optional(one, "/namespace").filter(|one| !one.is_empty()),
-            name: text(one, "/name"),
-            sync: text(one, "/status"),
-            wave: one["syncWave"].as_i64().unwrap_or_default(),
-            prune: one["requiresPruning"].as_bool().unwrap_or_default(),
-            hook: one["hook"].as_bool().unwrap_or_default(),
+        .map(|one| {
+            let hook = one["hook"].as_bool().unwrap_or_default();
+            AppResource {
+                group: text(one, "/group"),
+                kind: text(one, "/kind"),
+                namespace: optional(one, "/namespace").filter(|one| !one.is_empty()),
+                name: text(one, "/name"),
+                sync: text(one, "/status"),
+                wave: one["syncWave"].as_i64().unwrap_or_default(),
+                prune: !hook && one["requiresPruning"].as_bool().unwrap_or_default(),
+                hook,
+            }
         })
         .collect()
 }

@@ -64,3 +64,20 @@ fn a_dotted_section_reads_its_settings() {
     assert_eq!(protocol::section(&settings, Some("ty")), json!(null));
     assert_eq!(protocol::section(&settings, None), settings);
 }
+
+#[tokio::test]
+async fn a_frame_longer_than_the_most_is_refused_before_it_is_read() {
+    let head = format!("Content-Length: {}\r\n\r\n", frame::MOST + 1);
+    let mut reader = tokio::io::BufReader::new(head.as_bytes());
+    let refused = frame::read(&mut reader).await.unwrap_err();
+    assert!(refused.to_string().contains("over"), "{refused}");
+}
+
+#[tokio::test]
+async fn a_request_to_a_closed_server_leaves_nothing_waiting() {
+    let (outgoing, closed) = tokio::sync::mpsc::unbounded_channel();
+    drop(closed);
+    let link = crate::link::Link::new(outgoing);
+    assert!(link.request("initialize", json!({})).await.is_err());
+    assert_eq!(link.waiting(), 0);
+}
