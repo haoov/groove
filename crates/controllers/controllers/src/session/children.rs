@@ -163,10 +163,7 @@ fn maintained(state: &AppState, parent: &SessionId) -> Option<String> {
     open.state.maintenance.then(|| open.session.title.clone())
 }
 
-/// The child's first message: the brief, and what it does once the work is done.
+/// The child's first message: the brief, under its parent's title.
 fn briefed(parent: &str, brief: &str) -> String {
-    format!(
-        "Brief from {parent}:\n\n{brief}\n\nWhen the work is done, call log_work with what \
-         you did and why, and the MR link if you opened one, before the session closes."
-    )
+    format!("Brief from {parent}:\n\n{brief}")
 }

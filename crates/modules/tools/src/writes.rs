@@ -208,8 +208,10 @@ fn children() -> Vec<Tool> {
         ),
         write(
             does("log_work", "log the work", &["what"]),
-            "Add what this session did to its log, which the user reads when they come back. \
-             A child's newest entry goes to its parent's log when the child closes.",
+            "Add to this session's log what someone coming back to the task needs: the work \
+             landed, a decision, a result that settles a question. Call it only from \
+             groove:save-task or when the user asks, never for a routine step. A child's \
+             newest entry goes to its parent's log when the child closes.",
             takes(
                 &["what"],
                 vec![

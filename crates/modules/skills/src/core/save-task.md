@@ -35,8 +35,8 @@ Then once, for the task:
    one still unset that the work now gives a value. Leave the rest alone.
 8. `log_task_hours` — it hands the source what the clock measured and has not
    told it yet.
-9. `log_work` — what this landing did, why when it is not plain, and the MR link
-   when this landing opened the MR.
+9. `log_work` — one entry, what someone coming back needs from this landing: why
+   when it is not plain, and the MR link when this landing opened the MR.
 
 A worktree with nothing to do is skipped, not reported as a failure.
 

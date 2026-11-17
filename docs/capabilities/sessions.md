@@ -55,7 +55,8 @@ one. Enforced by `a_child_adopted_as_a_task_keeps_its_parent` and
 
 **A session keeps a log of what it did**, which the user reads when they come back: what,
 why when it is not plain, and the MR when that work opened it. The agent writes it with
-`log_work` when it lands the work and when it closes. A child keeps its own log; when it closes,
+`log_work` only from `groove:save-task` or when the user asks, and only what matters to that
+reader. A child keeps its own log; when it closes,
 its newest entry goes to its parent's log, named after the child: one entry per child. Groove
 keeps the log, and each entry's button on the overview takes a wrong one off it.
 Enforced by `a_closed_child_hands_its_newest_entry_to_its_parent`,
