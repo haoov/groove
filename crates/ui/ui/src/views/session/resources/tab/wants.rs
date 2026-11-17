@@ -37,6 +37,9 @@ pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Ve
 fn drift(app: &AppState, tab: Option<&Opened>) -> Option<Command> {
     let read = &app.workspace.drift_read;
     if let Some(tab) = tab.filter(|one| one.view == View::Diff) {
+        super::off_hub(app, &tab.link.context)
+            .is_none()
+            .then_some(())?;
         let (key, at) = (
             tab.link.pod(),
             tab.link.read(app)?.app.as_ref()?.compared.clone(),
@@ -56,7 +59,8 @@ fn drift(app: &AppState, tab: Option<&Opened>) -> Option<Command> {
 /// The Application whose resource health the tab reads while its resources show.
 fn treed(app: &AppState, tab: &Opened) -> Option<Named> {
     let shown = tab.view == View::Resources && tab.link.read(app)?.app.is_some();
-    shown.then(|| tab.link.pod())
+    let on_hub = super::off_hub(app, &tab.link.context).is_none();
+    (shown && on_hub).then(|| tab.link.pod())
 }
 
 /// The log stream the tab reads while its logs show.

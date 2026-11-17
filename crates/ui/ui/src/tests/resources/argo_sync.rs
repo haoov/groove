@@ -38,9 +38,11 @@ fn result(kind: &str, name: &str, hook: bool, hook_phase: &str) -> SyncedResourc
     }
 }
 
-/// The Application's tab open on its resources view.
+/// The Application's tab open on its resources view, its context the Argo CD hub.
 pub(super) fn opened_application(object: Described) -> (AppState, Ui) {
     let (mut app, mut ui) = listed();
+    let hub = groove_types::ClusterChange::ArgoHub(true);
+    app.config.change_cluster("staging", hub);
     let link = Link {
         context: "staging".into(),
         kind: applications(),

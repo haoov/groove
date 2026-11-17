@@ -1,17 +1,20 @@
 [package]
 name = "groove-token"
-description = "The bearer token a forge host is called with, asked of its own CLI"
+description = "The bearer token a host is called with, asked of its own CLI"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-argocd = { path = "../argocd" }
 groove-exec = { path = "../../base/exec" }
 groove-http = { path = "../../base/http" }
+tokio = { workspace = true, features = ["sync", "fs"] }
 
 [dev-dependencies]
-tokio.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints]
 workspace = true

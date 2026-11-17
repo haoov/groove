@@ -162,3 +162,29 @@ fn a_row_of_the_application_offers_the_skills_of_its_kind() {
     let told = offered[0].args.as_deref().unwrap_or_default();
     assert!(told.contains("name: billing-api"), "{told}");
 }
+
+#[test]
+fn off_the_hub_the_views_say_so_and_read_nothing() {
+    let (mut app, mut ui) = opened_application(failing());
+    let off = groove_types::ClusterChange::ArgoHub(false);
+    app.config.change_cluster("staging", off);
+    let said = "no context is the Argo CD hub: mark one in Settings › Clusters";
+    let resources = texts(&app, &ui);
+    assert!(
+        resources
+            .iter()
+            .any(|one| one == &format!("no health: {said}")),
+        "{resources:?}"
+    );
+    hit(&app, &mut ui, Target::ResourceView(View::Diff));
+    assert!(texts(&app, &ui).iter().any(|one| one == said));
+    let asked = crate::frame_commands(&app, &ui, window());
+    let reads = asked.iter().any(|one| {
+        matches!(
+            one,
+            Command::Workspace(Workspace::ShowDrift { .. })
+                | Command::Cluster(groove_controllers::cluster::Command::FollowArgo { .. })
+        )
+    });
+    assert!(!reads, "{asked:?}");
+}

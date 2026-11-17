@@ -8,5 +8,5 @@ mod tree;
 mod tests;
 
 pub use drift::{Drifted, drift, drift_path};
-pub use login::{Token, config_path, token_of};
+pub use login::{REFRESH, Token, config_path, token_of};
 pub use tree::{SERVER_LABEL, health, streamed, tree_path};

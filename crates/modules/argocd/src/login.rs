@@ -12,6 +12,45 @@ impl Token {
     pub fn cookie(&self) -> String {
         format!("argocd.token={}", self.0)
     }
+
+    /// The token itself, for a header or a cookie to carry.
+    pub fn secret(&self) -> &str {
+        &self.0
+    }
+
+    /// When it expires, in seconds since the epoch; none when it reads as no JWT.
+    pub fn expires(&self) -> Option<i64> {
+        let payload = self.0.split('.').nth(1)?;
+        let claims: serde_json::Value = serde_json::from_slice(&base64url(payload)?).ok()?;
+        claims["exp"].as_i64()
+    }
+}
+
+/// The CLI call that refreshes an expired SSO token before it asks anything: the lightest one.
+pub const REFRESH: [&str; 2] = ["account", "get-user-info"];
+
+/// Unpadded base64url, as a JWT's parts are written.
+fn base64url(text: &str) -> Option<Vec<u8>> {
+    let value = |c: u8| match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(c - b'a' + 26),
+        b'0'..=b'9' => Some(c - b'0' + 52),
+        b'-' => Some(62),
+        b'_' => Some(63),
+        _ => None,
+    };
+    let mut out = Vec::with_capacity(text.len() * 3 / 4);
+    let (mut held, mut bits) = (0u32, 0);
+    for c in text.trim_end_matches('=').bytes() {
+        held = (held << 6) | u32::from(value(c)?);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((held >> bits) as u8);
+            held &= (1 << bits) - 1;
+        }
+    }
+    Some(out)
 }
 
 impl std::fmt::Debug for Token {

@@ -46,3 +46,12 @@ fn no_login_gives_no_token() {
     assert!(token_of(&signed_out).is_none());
     assert!(token_of("").is_none());
 }
+
+#[test]
+fn a_jwt_tells_when_it_expires_and_another_token_does_not() {
+    let jwt = CONFIG.replace("secret-token", "e30.eyJleHAiOjE3OTQ5NDQ0MDB9.c2ln");
+    let (_, token) = token_of(&jwt).expect("a token");
+    assert_eq!(token.expires(), Some(1_794_944_400));
+    let (_, opaque) = token_of(CONFIG).expect("a token");
+    assert_eq!(opaque.expires(), None);
+}
