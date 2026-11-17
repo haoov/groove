@@ -121,7 +121,7 @@ fn the_selected_tab_stands_on_a_rounded_ground_as_a_rail_row() {
         let quads = frame.layers().iter().flat_map(|one| one.quads.iter());
         quads
             .into_iter()
-            .any(|quad| quad.rect == at && quad.color == styles.glass_active())
+            .any(|quad| quad.rect == at && quad.color == styles.glass_chosen())
     };
     assert!(held(Target::Tab(Tab::Diff)), "the selected tab");
     assert!(!held(Target::Tab(Tab::Overview)), "not the others");
@@ -201,7 +201,10 @@ fn a_press_on_a_boundary_takes_hold_of_it() {
     let before = columns(ui.split);
     assert!(click(edge, &mut ui, &app, &hits).is_empty());
     assert!(ui.dragging(), "the press grabbed the boundary");
-    drag(300.0, &mut ui, &app, &hits);
+    // The band stands on the rail's window's border, a gap inside the column's edge; the
+    // boundary keeps that offset to the pointer.
+    let offset = before.rail.right() - (edge.x + edge.w / 2.0);
+    drag(300.0 - offset, &mut ui, &app, &hits);
     assert_eq!(ui.split.rail, 300.0);
     release(&mut ui, &app, &hits);
     assert!(!ui.dragging());
@@ -279,7 +282,7 @@ fn the_sidebar_edge_drags_only_where_the_sidebar_stands() {
     let width = WINDOW.0 as f32;
     drag(width - 340.0, &mut ui, &app, &hits);
     assert_eq!(
-        wide(ui.split).sidebar.x,
+        wide(ui.split).sidebar.x - crate::tests::window().tokens().hairline,
         width - 340.0,
         "the edge under the pointer"
     );

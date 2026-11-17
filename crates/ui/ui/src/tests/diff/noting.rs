@@ -1,7 +1,6 @@
 //! Leaving a note: the menu a right click opens, the words typed in place, the note
 //! the keyboard asks for.
 
-mod asking;
 mod composer;
 mod forged;
 mod own;

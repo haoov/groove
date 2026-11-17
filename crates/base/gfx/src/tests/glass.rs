@@ -18,9 +18,9 @@ fn the_backdrop_starts_at_the_first_layer_with_glass() {
     assert_eq!(frame.backdrop(), None);
     frame.layer();
     frame.layer();
-    frame.glass(Rect::new(0.0, 0.0, 4.0, 4.0), (2.0, 1.0), Color::WHITE);
+    frame.glass(Rect::new(0.0, 0.0, 4.0, 4.0), 2.0, Color::WHITE);
     frame.layer();
-    frame.glass(Rect::new(0.0, 0.0, 4.0, 4.0), (2.0, 1.0), Color::WHITE);
+    frame.glass(Rect::new(0.0, 0.0, 4.0, 4.0), 2.0, Color::WHITE);
     assert_eq!(frame.backdrop(), Some(2));
 }
 
@@ -39,11 +39,7 @@ fn glass_blurs_what_lies_below_it_and_nothing_beside_it() {
     let mut r = renderer(size);
     let mut frame = striped(size, 4.0, Color::BLACK, Color::WHITE);
     frame.layer();
-    frame.glass(
-        Rect::new(40.0, 16.0, 80.0, 48.0),
-        (6.0, 8.0),
-        Color::TRANSPARENT,
-    );
+    frame.glass(Rect::new(40.0, 16.0, 80.0, 48.0), 6.0, Color::TRANSPARENT);
     let image = r.snapshot(&frame).expect("snapshot");
     assert!(r.backdrop.targets().is_some());
     let spread = |x: u32| image.pixel(x, 40)[0].abs_diff(image.pixel(x + 4, 40)[0]);
@@ -68,7 +64,7 @@ fn glass_matches_golden() {
     frame.layer();
     frame.glass(
         Rect::new(30.0, 24.0, 180.0, 72.0),
-        (12.0, 14.0),
+        12.0,
         p.text.with_alpha(30),
     );
     frame.text(
@@ -106,18 +102,10 @@ fn a_later_pane_shows_what_was_drawn_after_an_earlier_one() {
     let size = Size::new(160, 80);
     let mut r = renderer(size);
     let mut frame = Frame::new(size, Color::BLACK);
-    frame.glass(
-        Rect::new(0.0, 0.0, 40.0, 80.0),
-        (6.0, 8.0),
-        Color::TRANSPARENT,
-    );
+    frame.glass(Rect::new(0.0, 0.0, 40.0, 80.0), 6.0, Color::TRANSPARENT);
     frame.quad(Rect::new(40.0, 0.0, 120.0, 80.0), Color::WHITE);
     frame.layer();
-    frame.glass(
-        Rect::new(60.0, 10.0, 80.0, 60.0),
-        (6.0, 8.0),
-        Color::TRANSPARENT,
-    );
+    frame.glass(Rect::new(60.0, 10.0, 80.0, 60.0), 6.0, Color::TRANSPARENT);
     let image = r.snapshot(&frame).expect("snapshot");
     assert!(image.pixel(100, 40)[0] > 120, "{:?}", image.pixel(100, 40));
 }
@@ -128,11 +116,7 @@ fn a_ground_under_glass_shows_through_it_and_around_it() {
     let mut r = renderer(size);
     let mut frame = Frame::new(size, Color::BLACK);
     frame.under(Rect::new(0.0, 0.0, 80.0, 80.0), Color::WHITE);
-    frame.glass(
-        Rect::new(20.0, 20.0, 40.0, 40.0),
-        (6.0, 8.0),
-        Color::TRANSPARENT,
-    );
+    frame.glass(Rect::new(20.0, 20.0, 40.0, 40.0), 6.0, Color::TRANSPARENT);
     let image = r.snapshot(&frame).expect("snapshot");
     assert_eq!(image.pixel(4, 4)[0], 255, "around the pane");
     assert!(

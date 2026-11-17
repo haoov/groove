@@ -169,3 +169,13 @@ pub(super) fn stepped(key: Key, at: Option<usize>, len: usize) -> Option<usize> 
         _ => None,
     }
 }
+
+/// The sessions unfolded and given the keys, or folded away under the agent when they have them.
+pub(super) fn rail(ui: &mut Ui) {
+    let held = !ui.rail.stowed && ui.focus == crate::Focus::Rail;
+    ui.rail.stowed = held;
+    ui.focus = match held {
+        true => crate::Focus::Agent,
+        false => crate::Focus::Rail,
+    };
+}

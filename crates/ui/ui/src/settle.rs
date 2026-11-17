@@ -81,7 +81,7 @@ impl Ui {
                     self.overlay = None;
                 }
             }
-            Surface::Session => self.board.typing = false,
+            Surface::Session => {}
         }
     }
 
@@ -101,8 +101,7 @@ impl Ui {
             _ => false,
         };
         if session_left {
-            (self.session.going, self.session.revealing) = (None, None);
-            (self.agent.reading, self.agent.scroll) = (None, 0.0);
+            self.session.going = None;
         }
         if session_left && !promoted {
             self.swap_resources(was.0, now.0.clone());

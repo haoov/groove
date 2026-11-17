@@ -1,4 +1,4 @@
-//! Settings: opened from the rail and the palette, over the whole window, its rows searched and set.
+//! Settings: opened from its chord and the palette, over the whole window, its rows searched and set.
 
 use groove_controllers::config_service::Preference;
 use groove_controllers::{AppState, Command, config};
@@ -27,12 +27,10 @@ pub(super) fn opened() -> (AppState, Ui) {
 }
 
 #[test]
-fn the_rail_s_footer_opens_settings_over_the_whole_window_and_esc_comes_back() {
+fn the_chord_opens_settings_over_the_whole_window_and_esc_comes_back() {
     let app = full_app();
     let mut ui = Ui::default();
-    let (_, hits) = drawn(&app, &ui);
-    let footer = hits.rect_of(&Target::SettingsOpen).expect("the footer row");
-    click(footer, &mut ui, &app, &hits);
+    press(Key::Char(','), ALT, &mut ui, &app);
     assert!(ui.settings.open);
     let (texts, hits) = drawn(&app, &ui);
     assert!(
@@ -45,9 +43,17 @@ fn the_rail_s_footer_opens_settings_over_the_whole_window_and_esc_comes_back() {
 }
 
 #[test]
+fn the_rail_holds_no_settings_row() {
+    let app = full_app();
+    let ui = Ui::default();
+    let (texts, _) = drawn(&app, &ui);
+    assert!(!texts.iter().any(|one| one == "settings"), "{texts:?}");
+}
+
+#[test]
 fn a_search_finds_rows_of_every_section_and_names_the_group_of_each() {
     let (app, mut ui) = opened();
-    let app = crate::tests::bar::sourced(app, true, true);
+    let app = crate::tests::screen::sourced(app, true, true);
     ui.settings.search.set("token");
     let (texts, _) = drawn(&app, &ui);
     for shown in ["Notion", "GitHub", "Forge tokens", "gh", "glab"] {
@@ -74,9 +80,7 @@ fn a_step_up_asks_for_the_preference_one_step_more() {
 fn opening_settings_checks_the_environment_and_the_kubeconfig_again() {
     let app = full_app();
     let mut ui = Ui::default();
-    let (_, hits) = drawn(&app, &ui);
-    let footer = hits.rect_of(&Target::SettingsOpen).expect("the footer row");
-    let asked = click(footer, &mut ui, &app, &hits);
+    let asked = press(Key::Char(','), ALT, &mut ui, &app);
     let scan = Command::Cluster(groove_controllers::cluster::Command::ScanContexts);
     assert_eq!(
         asked,
@@ -132,7 +136,7 @@ fn setup_shows_each_program_in_its_state_and_offers_the_claude_sign_in() {
 #[test]
 fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
     let (app, mut ui) = opened();
-    let mut app = crate::tests::bar::sourced(app, true, true);
+    let mut app = crate::tests::screen::sourced(app, true, true);
     if let Some(notion) = app.config.config.as_mut().and_then(|c| c.notion.as_mut()) {
         notion.properties.status = "Status".into();
         notion.properties.due = Some("Due date".into());
@@ -167,7 +171,7 @@ fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
 #[test]
 fn a_form_taller_than_the_window_scrolls_to_its_last_group() {
     let (app, mut ui) = opened();
-    let app = crate::tests::bar::sourced(app, true, true);
+    let app = crate::tests::screen::sourced(app, true, true);
     ui.settings.section = crate::views::settings::Section::Providers;
     let short = metrics(1280, 400, 1.0);
     let texts = |ui: &Ui| render(&app, ui, short);
@@ -194,7 +198,7 @@ fn a_form_taller_than_the_window_scrolls_to_its_last_group() {
 #[test]
 fn a_source_turns_on_through_its_fields_and_the_token_never_shows() {
     let (app, mut ui) = opened();
-    let app = crate::tests::bar::sourced(app, true, false);
+    let app = crate::tests::screen::sourced(app, true, false);
     ui.settings.section = crate::views::settings::Section::Providers;
     let (_, hits) = drawn(&app, &ui);
     let on = Target::SettingsTurnOn(ProviderId::Notion);
@@ -223,7 +227,7 @@ fn a_source_turns_on_through_its_fields_and_the_token_never_shows() {
 #[test]
 fn a_source_turns_off_only_once_confirmed() {
     let (app, mut ui) = opened();
-    let app = crate::tests::bar::sourced(app, true, true);
+    let app = crate::tests::screen::sourced(app, true, true);
     ui.settings.section = crate::views::settings::Section::Providers;
     let (_, hits) = drawn(&app, &ui);
     let off = Target::SettingsTurnOff(ProviderId::Github);
@@ -281,7 +285,7 @@ fn the_shared_repo_is_named_through_its_url_and_branch() {
 #[test]
 fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
     let (app, mut ui) = opened();
-    let mut app = crate::tests::bar::sourced(app, false, false);
+    let mut app = crate::tests::screen::sourced(app, false, false);
     let shared = groove_types::SharedConfig {
         url: "git@github.com:team/skills.git".into(),
         branch: "main".into(),
@@ -321,7 +325,7 @@ fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
 #[test]
 fn the_auto_approve_default_stands_in_the_agent_section() {
     let (app, mut ui) = opened();
-    let app = crate::tests::bar::sourced(app, false, false);
+    let app = crate::tests::screen::sourced(app, false, false);
     let shown = |ui: &Ui| {
         drawn(&app, ui)
             .0
@@ -354,7 +358,7 @@ fn skill(id: &str, enabled: bool) -> groove_types::Skill {
 /// Settings › Agent over a core skill, one of the user's own, and a shared one switched off.
 fn skilled() -> (AppState, Ui) {
     let (app, mut ui) = opened();
-    let mut app = crate::tests::bar::sourced(app, false, false);
+    let mut app = crate::tests::screen::sourced(app, false, false);
     app.skill.skills = vec![
         skill("groove:save-task", true),
         skill("platform:follow-ups", false),

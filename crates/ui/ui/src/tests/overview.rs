@@ -33,7 +33,7 @@ fn working_a_task() -> groove_controllers::AppState {
 }
 
 #[test]
-fn a_task_session_shows_its_properties_on_one_line_and_the_body() {
+fn a_task_session_shows_its_properties_in_columns_and_the_body() {
     let app = working_a_task();
     let (frame, _) = view(
         &app,
@@ -48,10 +48,13 @@ fn a_task_session_shows_its_properties_on_one_line_and_the_body() {
             .y
     };
     let line = at("In progress");
-    for said in ["2026-09-14 → 2026-09-30", "1.5h of 4h"] {
+    for said in ["2026-09-14 → 2026-09-30", "1.5h"] {
         assert_eq!(at(said), line, "{said} on the status's line");
     }
-    assert!(at("PROPERTIES") < line, "the heading above");
+    for name in ["STATUS", "DATES", "HOURS"] {
+        assert!(at(name) < line, "{name} over its value");
+    }
+    assert!(at("PROPERTIES") < at("STATUS"), "the heading above");
     assert!(at("Close the gates before the release.") > line);
 }
 
@@ -123,9 +126,11 @@ fn a_property_the_task_lacks_is_left_out() {
     one.logged = None;
     one.dates.start = None;
     let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
-    for said in ["due 2026-09-30", "4h estimated"] {
-        assert!(texts.iter().any(|t| t == said), "{said}: {texts:?}");
-    }
+    assert!(texts.iter().any(|t| t == "due 2026-09-30"), "{texts:?}");
+    assert!(
+        !texts.iter().any(|t| t == "HOURS"),
+        "an estimate alone shows no hours: {texts:?}"
+    );
     assert!(!texts.iter().any(|t| t == "—"), "no dash: {texts:?}");
 }
 
@@ -140,8 +145,8 @@ fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let texts: Vec<String> = texts_of(&frame);
-    assert!(texts.iter().any(|t| t == "Overview"));
-    assert!(texts.iter().any(|t| t == "REPOS AND WORKTREES"));
+    assert!(texts.iter().any(|t| t == "OVERVIEW"));
+    assert!(texts.iter().any(|t| t.starts_with("REPOS AND WORKTREES")));
     assert!(texts.iter().any(|t| t == "kiwi"));
     assert_eq!(
         texts.iter().filter(|t| *t == "explorer/alpha").count(),
@@ -224,7 +229,11 @@ fn each_section_stands_in_its_own_card_inset_from_the_panel() {
     let cards: Vec<_> = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.glass_card() && quad.shape.radius == tokens.glass_round)
+        .filter(|quad| {
+            quad.color == styles.band()
+                && quad.shape.radius == tokens.glass_round
+                && quad.shape.stroke == 0.0
+        })
         .collect();
     assert_eq!(cards.len(), 3, "the properties, the repos, the body");
     for card in cards {
@@ -242,11 +251,11 @@ fn each_section_stands_in_its_own_card_inset_from_the_panel() {
 }
 
 #[test]
-fn the_hours_the_clock_measured_are_offered_to_the_source() {
+fn hours_show_what_was_logged_alone_and_nothing_offers_to_log_more() {
     let mut app = working_a_task();
     let id = ExternalId::new("github.com/haoov/groove#50");
     app.task.time.insert(
-        id.clone(),
+        id,
         groove_types::TimeSummary {
             tracked_seconds: 5400,
             logged_seconds: 1800,
@@ -254,33 +263,9 @@ fn the_hours_the_clock_measured_are_offered_to_the_source() {
             unlogged_seconds: 3600,
         },
     );
-    let window = metrics(1280, 800, 1.0);
-    let mut ui = Ui::default();
-    let (texts, hits) = render(&app, &ui, window);
-    assert!(texts.iter().any(|t| t == "log 1h"), "{texts:?}");
-    let button = hits
-        .rect_of(&crate::hit::Target::LogHours(id.clone()))
-        .expect("the hours are offered");
-    let commands = crate::tests::click(button, &mut ui, &app, &hits);
-    assert_eq!(
-        commands,
-        [groove_controllers::Command::Task(
-            groove_controllers::task::Command::LogHours { external_id: id }
-        )]
-    );
-}
-
-#[test]
-fn a_task_with_nothing_measured_offers_no_hours() {
-    let app = working_a_task();
-    let (_, hits) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let id = ExternalId::new("github.com/haoov/groove#50");
-    assert!(hits.rect_of(&crate::hit::Target::LogHours(id)).is_none());
+    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
+    assert!(!texts.iter().any(|t| t.starts_with("log ")), "{texts:?}");
+    assert!(!texts.iter().any(|t| t.contains(" of ")), "{texts:?}");
 }
 
 #[test]

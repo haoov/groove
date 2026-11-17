@@ -11,7 +11,6 @@ pub struct Post {
     pub session: SessionId,
     pub kind: HookKind,
     pub tool: Option<ToolCall>,
-    pub transcript: Option<std::path::PathBuf>,
 }
 
 /// Claude's payload: the event's name, and the tool when the event has one.
@@ -26,10 +25,6 @@ pub(crate) fn post(session: &str, body: &[u8]) -> Option<Post> {
         session: SessionId::new(session),
         kind,
         tool: tool(&value),
-        transcript: value
-            .get("transcript_path")
-            .and_then(|one| one.as_str())
-            .map(std::path::PathBuf::from),
     })
 }
 

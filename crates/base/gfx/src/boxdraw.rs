@@ -44,6 +44,15 @@ pub(crate) fn quads(ch: char, x0: f32, y0: f32, w: f32, h: f32, size: f32) -> Op
     Some(out)
 }
 
+/// The glyph a cell draws for `ch`: a character only a colour emoji face holds becomes its plain
+/// twin, so Claude Code's `⏺` stays a dot in the cell's colour, not a grey emoji tile.
+pub(crate) fn plain(ch: char) -> char {
+    match ch {
+        '\u{23FA}' => '\u{25CF}',
+        other => other,
+    }
+}
+
 /// Full, half, eighth and shaded blocks.
 fn block(ch: char, x0: f32, y0: f32, w: f32, h: f32) -> Option<Vec<BoxQuad>> {
     let all = [x0, y0, x0 + w, y0 + h];

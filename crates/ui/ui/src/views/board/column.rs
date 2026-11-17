@@ -25,15 +25,15 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: Lis
             super::review::draw(ctx, body, ui, &asked);
         }
         List::Live => {
-            let living = super::live::living(app, ui);
+            let living = super::live::living(app);
             heading(ctx, head, list, living.len());
             match living.is_empty() {
-                true => nothing(ctx, body, super::live::empty(ui)),
+                true => nothing(ctx, body, super::live::EMPTY),
                 false => super::live::draw(ctx, body, app, ui, &living),
             }
         }
         List::Next => {
-            let lines = super::plan::lines(app, ui);
+            let lines = super::plan::lines(app);
             heading(ctx, head, list, counted(&lines));
             rows(ctx, body, app, ui, &lines);
         }

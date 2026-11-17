@@ -2,7 +2,6 @@ mod activity;
 mod aging;
 mod argo;
 mod attention;
-mod chat;
 mod chord;
 mod clusters;
 mod config;

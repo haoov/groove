@@ -377,8 +377,40 @@ fn an_object_s_views_show_their_whole_names_at_every_text_size() {
         metrics.text = text;
         let (frame, _) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
         let mut texts = frame.layers().iter().flat_map(|layer| layer.texts.iter());
-        for view in ["logs", "yaml", "describe"] {
+        for view in ["LOGS", "YAML", "DESCRIBE"] {
             assert!(texts.any(|one| one.text == view), "{view} whole at {text}");
         }
     }
+}
+
+#[test]
+fn a_section_stands_on_a_sunk_card_headed_by_its_band_and_its_conditions_a_line_each() {
+    use crate::views::session::resources::Section;
+    let (mut app, ui) = opened();
+    lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
+    let metrics = crate::tests::metrics(1960, 1440, 1.0);
+    let (frame, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), metrics.tokens());
+    let heading = hits
+        .rect_of(&Target::ResourceSection(Section::Conditions))
+        .expect("its heading");
+    let quads = frame.layers().iter().flat_map(|one| one.quads.iter());
+    let band = quads.clone().any(|q| {
+        q.color == styles.panel_head() && (q.rect.y - heading.y).abs() <= 1.0 && q.rect.w > 100.0
+    });
+    assert!(band, "the heading on its band");
+    let texts = frame.layers().iter().flat_map(|one| one.texts.iter());
+    let ready = texts
+        .clone()
+        .find(|one| one.text == "Ready")
+        .expect("the condition");
+    let why = texts
+        .clone()
+        .find(|one| one.text == "ContainersNotReady")
+        .expect("why it is not met");
+    assert!((ready.y - why.y).abs() < 4.0, "its why on its own line");
+    assert!(
+        texts.clone().any(|one| one.text == "RESTARTS"),
+        "the containers' table in capitals"
+    );
 }

@@ -37,7 +37,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return;
     }
     glass_aside(ctx, rect);
-    let rect = rect.pad(Edges::across(ctx.tokens.sm, 0.0));
     let tall = |height: f32| Spec::default().height(height);
     let list = rect;
     let bar = bar::draw(ctx, rect, ui);

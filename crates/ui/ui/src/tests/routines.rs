@@ -12,7 +12,7 @@ const FIX_CI: &str = "---\ndescription: fix it\nskills: groove:fix-ci\nkind: bou
 
 /// Settings › Agent over one routine that reads and one that does not.
 fn routed(on: bool) -> (AppState, Ui) {
-    let mut app = crate::tests::bar::sourced(full_app(), false, false);
+    let mut app = crate::tests::screen::sourced(full_app(), false, false);
     let id = "user:fix-red-ci";
     app.routine.routines = vec![
         Listed {

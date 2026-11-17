@@ -1,6 +1,6 @@
 //! Where the wheel leaves each column that scrolls.
 
-use groove_controllers::{AppState, Command};
+use groove_controllers::{AppState, Command, agent};
 
 use super::Delta;
 use crate::hit::{Hits, Scroller, Target};
@@ -32,20 +32,20 @@ pub(super) fn scroll(
     if ui.overlay.is_some() {
         return Vec::new();
     }
+    // The agent or the board first: with the rail folded, they run across the rail's column.
+    if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
+        return agent(ui, app, delta, point, &layout, metrics);
+    }
+    if ui.showing(app) == Surface::Board && layout.lists.contains(x, y) {
+        column(x, pixels(tokens.row), ui, hits, layout.lists);
+        return Vec::new();
+    }
     if x <= layout.rail.right() {
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
         return Vec::new();
     }
     if ui.showing(app) == Surface::Session && layout.manual.contains(x, y) {
         return shelled(ui, app, delta, point, hits, metrics);
-    }
-    if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
-        agent(ui, delta, point, (hits, metrics));
-        return Vec::new();
-    }
-    if ui.showing(app) == Surface::Board {
-        column(x, pixels(tokens.row), ui, hits, (layout.board, &tokens));
-        return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
         ui.wheeled(beside(ui), pixels(tokens.row), hits);
@@ -110,15 +110,31 @@ fn follow(ui: &mut Ui) {
     }
 }
 
-/// The wheel over the agent's pane: the prompt's rows under the pointer, else the conversation.
-fn agent(ui: &mut Ui, delta: Delta, point: (f32, f32), (hits, metrics): (&Hits, Metrics)) {
+/// The wheel over the agent's screen. What is not yet worth a line is carried on.
+fn agent(
+    ui: &mut Ui,
+    app: &AppState,
+    delta: Delta,
+    point: (f32, f32),
+    layout: &Layout,
+    metrics: Metrics,
+) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
     let tokens = metrics.tokens();
-    if hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
-        ui.agent.prompt.scroll = hits.typed().scroll;
-        return ui.wheeled(Scroller::Prompt, delta.down(tokens.code_line), hits);
+    let lines = turned(ui, delta, tokens.line);
+    if lines == 0 {
+        return Vec::new();
     }
-    let far = hits.extent(Scroller::Chat);
-    ui.agent.scroll = (ui.agent.scroll + delta.down(tokens.row)).clamp(0.0, far);
+    let origin = layout.agent_origin(&tokens);
+    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
+    vec![Command::Agent(agent::Command::Scroll {
+        session,
+        lines,
+        col,
+        row,
+    })]
 }
 
 /// The wheel over one terminal of the manual section, at the cell it stands on.
@@ -175,8 +191,8 @@ fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
     }
 }
 
-fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, (board, tokens): (Rect, &Tokens)) {
-    if let Some(list) = crate::views::board::list_at(tokens, board, x) {
+fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, lists: Rect) {
+    if let Some(list) = crate::views::board::list_at(lists, x) {
         ui.wheeled(Scroller::Column(list as u8), pixels, hits);
     }
 }

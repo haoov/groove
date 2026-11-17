@@ -1,4 +1,4 @@
-//! The terminals' drawer under the strip, in glass: their bar alone while folded, then their grids.
+//! The terminals' drawer under the strip, an opaque panel: their bar alone while folded, then their grids.
 
 use groove_controllers::AppState;
 use groove_controllers::shell_service::{Shell, Shells};
@@ -12,7 +12,9 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Tab, fold_turn, glass_pane, screen};
+use groove_ui_kit::widgets::{
+    Button, Side, Tab, fold_turn, group_width, panel_head, screen, solid_pane, tab_group,
+};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -23,9 +25,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     if !ui.session.manual {
         return folded(ctx, rect, shells);
     }
-    glass_pane(ctx, rect);
+    solid_pane(ctx, rect);
     let mut body = rect;
-    bar(ctx, from_top(&mut body, ctx.tokens.bar, 0.0), ui, shells);
+    let line = from_top(&mut body, ctx.tokens.bar, 0.0);
+    panel_head(ctx, line, false);
+    bar(ctx, line, ui, shells);
     let Some(shells) = shells.filter(|one| !one.tabs.is_empty()) else {
         return said(
             ctx,
@@ -50,28 +54,58 @@ fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
     folder(ui.session.manual).left(ctx, &mut room, md);
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.left(ctx, &mut room, md);
-    for (name, id, selected) in tabs(shells) {
-        tab(&name, id, selected).left(ctx, &mut room, ctx.tokens.xs);
-    }
+    let held = tabs(shells);
+    let shown: Vec<_> = held
+        .iter()
+        .map(|(name, id, on)| tab(name, *id, *on))
+        .collect();
+    tab_group(ctx, &mut room, shown, (Side::Left, ctx.tokens.xs));
 }
 
-/// The bar alone, as narrow as what it holds, at the drawer's right end.
+/// The bar alone, as narrow as what it holds, at the drawer's right end: its pane and band laid
+/// first, as wide as `folded_width` measures, so what stands on them is drawn over them.
 fn folded(ctx: &mut Ctx, line: Rect, shells: Option<&Shells>) {
     let (xs, md) = (ctx.tokens.xs, ctx.tokens.md);
+    let wide = folded_width(ctx, shells).min(line.w);
+    let pane = strip(line, line.w - wide, wide);
+    solid_pane(ctx, pane);
+    panel_head(ctx, pane, true);
     let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
     actions(ctx, &mut room);
     let held = tabs(shells);
-    for (name, id, selected) in held.iter().rev() {
-        tab(name, *id, *selected).right(ctx, &mut room, xs);
+    let shown: Vec<_> = held
+        .iter()
+        .map(|(name, id, on)| tab(name, *id, *on))
+        .collect();
+    if !shown.is_empty() {
+        tab_group(ctx, &mut room, shown, (Side::Right, xs));
     }
     if !held.is_empty() {
         from_right(&mut room, md - xs, 0.0);
     }
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.right(ctx, &mut room, md);
-    let slot = folder(false).right(ctx, &mut room, 0.0);
-    let left = slot.x - ctx.tokens.sm;
-    glass_pane(ctx, strip(line, left - line.x, line.right() - left));
+    folder(false).right(ctx, &mut room, 0.0);
+}
+
+/// How wide the folded bar stands: a margin each end, the actions, the tabs, the name and the caret.
+fn folded_width(ctx: &mut Ctx, shells: Option<&Shells>) -> f32 {
+    let (xs, sm, md) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md);
+    let (ground, hover) = (ctx.styles.ground(), ctx.styles.glass_hover());
+    let splits = Button::new("split", Target::ShellSplit, Role::Muted, ground);
+    let new = Button::icon(Mark::Add, 0, Target::ShellNew, Role::Muted);
+    let actions = splits.flat().hover(hover).width(ctx) + xs + new.width(ctx) + sm;
+    let held = tabs(shells);
+    let shown: Vec<_> = held
+        .iter()
+        .map(|(name, id, on)| tab(name, *id, *on))
+        .collect();
+    let mut wide = sm + actions;
+    if !held.is_empty() {
+        wide += group_width(ctx, &shown) + xs + md - xs;
+    }
+    let named = Label::new("terminals", ctx.styles.label(Role::Muted)).width(ctx);
+    wide + named + md + folder(false).width(ctx) + sm
 }
 
 /// The caret that folds the drawer or opens it.
@@ -110,7 +144,9 @@ fn tabs(shells: Option<&Shells>) -> Vec<(String, u64, bool)> {
 
 /// One tab, a rounded row on the glass, and the cross that ends its terminals.
 fn tab(name: &str, id: u64, selected: bool) -> Tab<'_, Target> {
-    Tab::new(name, Target::ShellTab(id), selected).close(Mark::Close, Target::ShellCloseTab(id))
+    Tab::new(name, Target::ShellTab(id), selected)
+        .keep_case()
+        .close(Mark::Close, Target::ShellCloseTab(id))
 }
 
 /// One terminal's grid, or what stands in its place; a pane of several can close alone.

@@ -1,68 +1,76 @@
-//! What the overview shows of the task a session works: its properties on one line, its body.
+//! What the overview shows of the task a session works: its properties in columns, its body.
 
 use groove_gfx::{Edges, Rect};
-use groove_types::{Task, TimeSummary};
+use groove_types::Task;
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::markdown::{blocks, laid, prose};
+use groove_ui_kit::shape::{band, from_left, side_rule};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Button;
 
-/// The properties the task has a value for, in one line, then the hours left to log.
-pub(super) fn properties(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>) {
-    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = line.pad(Edges::across(md, md));
-    for (at, (said, role)) in said(task).into_iter().enumerate() {
-        if at > 0 {
-            Label::new("·", ctx.styles.body(Role::Ghost)).left(ctx, &mut room, sm);
-        }
-        Label::new(&said, ctx.styles.body(role)).left(ctx, &mut room, sm);
+/// The properties the task has a value for, in columns across the card: each name over its value,
+/// a hairline between them.
+pub(super) fn properties(ctx: &mut Ctx, card: Rect, task: &Task) {
+    let said = said(task);
+    if said.is_empty() {
+        return;
     }
-    logging(ctx, &mut room, task, time);
+    let (md, row) = (ctx.tokens.md, ctx.tokens.row);
+    let wide = widths(ctx, &said, card.w);
+    let mut room = card;
+    for (at, ((name, value, role), wide)) in said.into_iter().zip(wide).enumerate() {
+        let column = from_left(&mut room, wide, 0.0);
+        if at > 0 {
+            side_rule(ctx, column, column.x, ctx.styles.line());
+        }
+        let inner = column.pad(Edges::across(md, md));
+        let named = band(inner, ctx.tokens.sm, row);
+        let style = ctx.styles.heading(Role::Ghost);
+        Label::new(&name.to_uppercase(), style).draw(ctx, named);
+        let shown = band(inner, ctx.tokens.sm + row, row);
+        Label::new(&value, ctx.styles.body(role)).draw(ctx, shown);
+    }
 }
 
-/// Each property the task has a value for, with the role it reads in.
-fn said(task: &Task) -> Vec<(String, Role)> {
+/// Each column as wide as its name or its value, padded, the room left shared out evenly.
+fn widths(ctx: &mut Ctx, said: &[(&str, String, Role)], room: f32) -> Vec<f32> {
+    let pad = ctx.tokens.md * 2.0;
+    let (heading, body) = (ctx.styles.heading(Role::Ghost), ctx.styles.body(Role::Text));
+    let natural: Vec<f32> = said
+        .iter()
+        .map(|(name, value, _)| {
+            let named = ctx.measure(&name.to_uppercase(), &heading);
+            named.max(ctx.measure(value, &body)) + pad
+        })
+        .collect();
+    let spare = (room - natural.iter().sum::<f32>()) / natural.len().max(1) as f32;
+    natural
+        .into_iter()
+        .map(|one| (one + spare).max(0.0))
+        .collect()
+}
+
+/// Each property the task has a value for: its name, its value, the role it reads in.
+fn said(task: &Task) -> Vec<(&'static str, String, Role)> {
     let dates = match (task.dates.start, task.dates.due) {
         (Some(start), Some(due)) => Some(format!("{start} → {due}")),
         (Some(start), None) => Some(format!("from {start}")),
         (None, Some(due)) => Some(format!("due {due}")),
         (None, None) => None,
     };
-    let hours = match (task.logged, task.estimate) {
-        (Some(logged), Some(estimate)) => Some(format!("{} of {}", hours(logged), hours(estimate))),
-        (Some(logged), None) => Some(format!("{} logged", hours(logged))),
-        (None, Some(estimate)) => Some(format!("{} estimated", hours(estimate))),
-        (None, None) => None,
-    };
     let status = (!task.status.is_empty()).then(|| task.status.clone());
     let priority = task.priority.map(|one| one.label().to_string());
     [
-        (status, Role::Text),
-        (priority, Role::Muted),
-        (dates, Role::Muted),
-        (hours, Role::Text),
+        ("status", status, Role::Text),
+        ("priority", priority, Role::Text),
+        ("dates", dates, Role::Text),
+        ("hours", task.logged.map(hours), Role::Text),
     ]
     .into_iter()
-    .filter_map(|(one, role)| one.map(|one| (one, role)))
+    .filter_map(|(name, one, role)| one.map(|one| (name, one, role)))
     .collect()
-}
-
-/// What hands the source the hours the clock measured and nobody logged yet.
-fn logging(ctx: &mut Ctx, room: &mut Rect, task: &Task, time: Option<TimeSummary>) {
-    let left = time.map(TimeSummary::unlogged_hours).unwrap_or_default();
-    if left <= 0.0 {
-        return;
-    }
-    let target = Target::LogHours(task.external_id.clone());
-    let (band, hover) = (ctx.styles.band(), ctx.styles.glass_hover());
-    let label = format!("log {}", hours(left));
-    let log = Button::new(&label, target, Role::Working, band)
-        .flat()
-        .hover(hover);
-    log.left(ctx, room, ctx.tokens.sm);
 }
 
 /// How tall the body stands as Markdown `wide` across.

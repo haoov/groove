@@ -10,7 +10,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Badge, card_inset, glass_card_row, lead};
+use groove_ui_kit::widgets::{Badge, card_inset, lead, sunk_card_row};
 
 /// One line of Up next: a task.
 pub(super) enum Line<'a> {
@@ -55,7 +55,7 @@ pub(super) fn lines(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
 
 /// One task waiting: its source and title, then its worth and why it needs the user.
 pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
-    glass_card_row(ctx, rect, Some(Target::Task(task.short_id.clone())), false);
+    sunk_card_row(ctx, rect, Some(Target::Task(task.short_id.clone())), false);
     let mut rest = rect.pad(Edges::xy(0.0, card_inset(&ctx.tokens)));
     let line = from_top(&mut rest, item(&ctx.tokens), 0.0);
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));

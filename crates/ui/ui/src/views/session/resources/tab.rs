@@ -8,6 +8,7 @@ mod destined;
 mod grouped;
 mod logs;
 mod managed;
+mod read;
 mod relations;
 mod sections;
 mod stages;
@@ -20,7 +21,7 @@ use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Badge, Tab, Text};
+use groove_ui_kit::widgets::{Badge, Tab};
 
 pub use wants::{due, wants};
 
@@ -61,11 +62,12 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
         Some(one) if one.app.is_some() => &[View::Yaml, View::Resources, View::Describe],
         _ => &[View::Yaml, View::Describe],
     };
-    for view in views {
-        let shown = Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view);
-        let shown = shown.text(Text::Small).tight();
-        shown.right(ctx, &mut room, ctx.tokens.xs);
-    }
+    let shown: Vec<_> = views
+        .iter()
+        .map(|view| Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view).tight())
+        .collect();
+    let side = groove_ui_kit::widgets::Side::Right;
+    groove_ui_kit::widgets::tab_group(ctx, &mut room, shown, (side, ctx.tokens.xs));
     let mut at = room.x;
     for (said, role) in object.map(stands).unwrap_or_default() {
         let badge = Badge::new(&said, role);

@@ -9,6 +9,7 @@ pub(crate) fn flavour(theme: ThemeName) -> Palette {
         ThemeName::Frappe => Palette::FRAPPE,
         ThemeName::Macchiato => Palette::MACCHIATO,
         ThemeName::Mocha => Palette::MOCHA,
+        ThemeName::Defense => Palette::DEFENSE,
     }
 }
 

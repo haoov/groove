@@ -8,8 +8,21 @@ use crate::hit::{Hits, Scroller};
 use crate::views::board::List;
 use groove_ui_kit::base::ctx::Metrics;
 
+/// A key while the board is up: the rail's when it has the keys, else the column's.
+pub(super) fn on_board(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    seen: (&Hits, Metrics),
+) -> Vec<Command> {
+    if ui.focus == crate::Focus::Rail {
+        return super::panes::in_rail(key, ui, app);
+    }
+    chosen((key, mods), ui, app, seen)
+}
+
 /// The column picked, or the review table: the arrows walk it, Enter goes, ctrl+Enter stays.
-pub(super) fn chosen(
+fn chosen(
     (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,

@@ -61,7 +61,7 @@ fn the_filter_counts_open_resolved_and_all_and_shows_the_one_picked() {
     ]);
     let drawn = in_sidebar(&app, &ui);
     assert_eq!(tab_said(&app, &ui, Pane::Notes).as_deref(), Some("2"));
-    for text in ["open · 2", "resolved · 1", "all · 3"] {
+    for text in ["OPEN · 2", "RESOLVED · 1", "ALL · 3"] {
         assert!(drawn.iter().any(|one| one == text), "{text}: {drawn:?}");
     }
     let said = |drawn: &[String], text: &str| drawn.iter().any(|one| one == text);

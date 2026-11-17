@@ -32,13 +32,38 @@ pub fn inset_row<A: App>(
     row
 }
 
-/// A list row's rounded ground on glass, inset as the rail's rows are.
-fn glass_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
-    let inset = rect.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
-    ctx.rounded(inset, color, ctx.tokens.glass_round);
+/// `rect` whole, as a window of glass lays its rows edge to edge: the held ground when chosen,
+/// a lighter one under the pointer, square. Returns the row.
+pub fn flat_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target, chosen: bool) -> Rect {
+    let on = ctx.interact(rect, target);
+    let ground = match (chosen, on) {
+        (true, _) => Some(ctx.chosen()),
+        (false, true) => Some(ctx.styles.glass_hover()),
+        (false, false) => None,
+    };
+    if let Some(color) = ground {
+        ctx.quad(rect, color);
+    }
+    rect
 }
 
-/// Registers `target` at `rect`, lit on a rounded ground while the pointer rests on it.
+/// A thin ring in the accent around `rect`, the region that has the keys.
+pub fn focus_ring<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let color = ctx.styles.focus();
+    ctx.ring(rect, color, ctx.tokens.glass_round, ctx.tokens.hairline);
+}
+
+/// `rect` whole on `color`, square: a flat row's tint.
+pub fn flat_ground<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    ctx.quad(rect, color);
+}
+
+/// A list row's ground: the row whole, edge to edge and square, as the rail's rows are.
+fn glass_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    ctx.quad(rect, color);
+}
+
+/// Registers `target` at `rect`, lit on a square ground while the pointer rests on it.
 pub fn glass_hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target) -> bool {
     let on = ctx.interact(rect, target);
     if on {
@@ -47,11 +72,12 @@ pub fn glass_hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Targ
     on
 }
 
-/// A row-high field on a rounded glass ground, centred in `rect`; returns the field.
+/// A row-high field, centred in `rect`: a hairline box with no ground of its own. Returns the field.
 pub fn glass_field<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) -> Rect {
     let down = ((rect.h - ctx.tokens.row) / 2.0).max(0.0);
     let field = rect.pad(Edges::xy(ctx.tokens.sm, down));
-    ctx.rounded(field, ctx.styles.glass_hover(), ctx.tokens.glass_round);
+    let color = ctx.styles.line();
+    ctx.ring(field, color, ctx.tokens.round, ctx.tokens.hairline);
     field
 }
 
@@ -65,12 +91,12 @@ pub fn glass_lit<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     glass_row(ctx, rect, ctx.styles.glass_hover());
 }
 
-/// A list row on a rounded ground of `color`, as a row in a role's tint stands.
+/// A list row on a square ground of `color`, as a row in a role's tint stands.
 pub fn glass_tinted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     glass_row(ctx, rect, color);
 }
 
-/// The row a list stands on, held on a rounded ground.
+/// The row a list stands on, held on a square ground.
 pub fn glass_chosen<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     let ground = ctx.chosen();
     glass_row(ctx, rect, ground);
@@ -95,8 +121,9 @@ pub fn rounded_slice<A: App>(
     });
 }
 
-/// A row as a card on glass: its rounded ground, held when selected, lit under the pointer.
-pub fn glass_card_row<A: App>(
+/// A row as a sunk card, as the overview's: the band's ground inside the panel's edge, held when
+/// selected, lit under the pointer.
+pub fn sunk_card_row<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,
     target: Option<A::Target>,
@@ -104,7 +131,7 @@ pub fn glass_card_row<A: App>(
 ) -> Rect {
     let card = rect.pad(Edges::xy(0.0, ctx.tokens.xs));
     let round = ctx.tokens.glass_round;
-    ctx.rounded(card, ctx.styles.glass_card(), round);
+    crate::widgets::sunk_pane(ctx, card);
     let lit = target.is_some_and(|target| ctx.interact(rect, target));
     let tint = match (selected, lit) {
         (true, _) => Some(ctx.chosen()),

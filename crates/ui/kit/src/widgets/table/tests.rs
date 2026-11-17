@@ -28,6 +28,7 @@ fn fitted(width: Width<'_>) -> f32 {
             under: 0.0,
             ruled: false,
             carded: false,
+            gridded: false,
         },
         count: 0,
         offset: 0.0,
@@ -91,6 +92,7 @@ fn a_fitted_cell_counts_its_size_and_its_bar() {
             under: 0.0,
             ruled: false,
             carded: false,
+            gridded: false,
         },
         count: 1,
         offset: 0.0,
@@ -147,6 +149,7 @@ fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
                         under: 0.0,
                         ruled: false,
                         carded: false,
+                        gridded: false,
                     },
                     count: 1,
                     offset: 0.0,
@@ -165,7 +168,7 @@ fn a_cell_in_a_column_fitted_to_it_is_never_cut() {
 }
 
 #[test]
-fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
+fn a_selected_band_stands_on_a_square_held_ground_edge_to_edge_with_no_rules() {
     let columns = [column(Width::Fill)];
     let table = Table {
         columns: &columns,
@@ -174,6 +177,7 @@ fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
             under: 0.0,
             ruled: false,
             carded: false,
+            gridded: false,
         },
         count: 1,
         offset: 0.0,
@@ -183,13 +187,13 @@ fn a_selected_band_stands_on_a_rounded_held_ground_with_no_rules() {
     let band = Shown::band(vec![Cell::small("pods", Role::Text)]);
     let ((held, chosen), frame) = drawn(|ctx| {
         table.one(ctx, ROOM, band);
-        (ctx.styles.glass_active(), ctx.styles.chosen())
+        (ctx.styles.glass_chosen(), ctx.styles.chosen())
     });
     let quads = &frame.layers()[0].quads;
     let line = Rect { h: 24.0, ..ROOM };
     let ground = quads.iter().find(|one| one.color == held).expect("held");
-    assert!(ground.rect.w < line.w, "set in from the sides");
-    assert!(ground.shape.radius > 0.0, "and rounded");
+    assert_eq!(ground.rect.w, line.w, "edge to edge");
+    assert_eq!(ground.shape.radius, 0.0, "and square");
     assert_eq!(quads.iter().filter(|one| one.color == chosen).count(), 0);
 }
 
@@ -203,6 +207,7 @@ fn a_folding_band_leads_with_the_kit_caret() {
             under: 0.0,
             ruled: false,
             carded: false,
+            gridded: false,
         },
         count: 1,
         offset: 0.0,
@@ -242,6 +247,7 @@ fn laid_stands_where_draw_puts_the_rows() {
             under: 0.0,
             ruled: true,
             carded: false,
+            gridded: false,
         },
         count: 1,
         offset: 0.0,
@@ -277,6 +283,7 @@ fn a_body_cell_in_a_column_fitted_to_its_sample_is_never_cut() {
                     under: 0.0,
                     ruled: false,
                     carded: false,
+                    gridded: false,
                 },
                 count: 1,
                 offset: 0.0,
@@ -291,4 +298,63 @@ fn a_body_cell_in_a_column_fitted_to_its_sample_is_never_cut() {
             assert!(cut.is_none(), "{sample:?} at {scale}: {cut:?}");
         }
     }
+}
+
+#[test]
+fn a_gridded_table_bands_its_header_and_rules_each_column_and_row() {
+    let columns = [
+        Column::plain("name", Width::Fill),
+        Column::plain("age", Width::Fit("12d")),
+    ];
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: 24.0,
+            under: 0.0,
+            ruled: false,
+            carded: false,
+            gridded: true,
+        },
+        count: 2,
+        offset: 0.0,
+        selected: Some(0),
+        sorted: Some(super::Sorted::NONE),
+    };
+    let room = Rect::new(0.0, 0.0, 400.0, 200.0);
+    let ((laid, (band, line)), frame) = drawn(|ctx| {
+        let laid = table.draw(ctx, room, |_| {
+            Shown::row(vec![
+                Cell::small("pod", Role::Text),
+                Cell::small("1d", Role::Muted),
+            ])
+        });
+        (laid, (ctx.styles.panel_head(), ctx.styles.line()))
+    });
+    let quads = frame.layers().iter().flat_map(|one| one.quads.iter());
+    let lines: Vec<Rect> = quads
+        .clone()
+        .filter(|q| q.color == line)
+        .map(|q| q.rect)
+        .collect();
+    assert!(
+        quads.clone().any(|q| q.color == band && q.rect.w == room.w),
+        "the header on its band"
+    );
+    let (x, _) = laid.spans[1];
+    let down = lines
+        .iter()
+        .filter(|one| one.x < x && one.x > x - 24.0 && one.h > 1.0);
+    assert_eq!(
+        down.count(),
+        3,
+        "a hairline between the columns, header and both rows"
+    );
+    let across = lines.iter().filter(|one| one.w == room.w && one.h <= 1.0);
+    assert_eq!(
+        across.count(),
+        3,
+        "under the header and under each row, the selected one too"
+    );
+    let mut texts = frame.layers().iter().flat_map(|one| one.texts.iter());
+    assert!(texts.any(|one| one.text == "NAME"), "labels in capitals");
 }

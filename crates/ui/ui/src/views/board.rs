@@ -2,9 +2,6 @@
 
 mod attention;
 mod column;
-pub mod complete;
-pub mod filter;
-mod header;
 mod live;
 pub mod plan;
 pub mod review;
@@ -20,7 +17,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::tokens::Tokens;
-use groove_ui_kit::layout::{Spec, column_in, row_in};
+use groove_ui_kit::layout::{Spec, row_in};
 
 /// Which list a column holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,17 +39,16 @@ impl List {
     }
 }
 
-/// The board: the header, the three columns under it.
+/// The board: its three columns, clear of the bar's room above and below as the agent is.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let area = ctx.app.layout.board;
-    groove_ui_kit::widgets::ground_under(ctx, area, Ground::Deep);
-    let field = header::draw(ctx, area, ui);
+    let (board, area) = (ctx.app.layout.board, ctx.app.layout.lists);
+    groove_ui_kit::widgets::ground_under(ctx, board, Ground::Deep);
+    groove_ui_kit::widgets::ground_grid(ctx, board);
     for list in List::ALL {
-        let column = column_of(&ctx.tokens, area, list);
+        let column = column_of(area, list);
         let column = column.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
         column::draw(ctx, column, app, ui, list);
     }
-    header::offers(ctx, field, app, ui);
 }
 
 /// What a click on each row of a column aims at, where the row starts, and how tall it stands.
@@ -70,7 +66,7 @@ pub fn spans(
     };
     match list {
         List::Live => even(
-            live::living(app, ui)
+            live::living(app)
                 .into_iter()
                 .map(|one| Target::Session(one.session.id.clone()))
                 .collect(),
@@ -82,7 +78,7 @@ pub fn spans(
                 .collect(),
         ),
         List::Next => {
-            let lines = plan::lines(app, ui);
+            let lines = plan::lines(app);
             let heights = row::heights(tokens, app, &lines);
             let mut top = 0.0;
             let mut out = Vec::new();
@@ -96,21 +92,17 @@ pub fn spans(
     }
 }
 
-/// The room one list's column takes under the header.
-pub fn column_of(tokens: &Tokens, area: Rect, list: List) -> Rect {
-    let [_, body] = column_in(
-        area,
-        [Spec::default().height(header::tall(tokens)), Spec::fill()],
-    );
+/// The room one list's column takes across `body`, the board's columns.
+pub fn column_of(body: Rect, list: List) -> Rect {
     let wide = Spec::default().width((body.w / List::ALL.len() as f32).floor());
     let at = List::ALL.iter().position(|one| *one == list).unwrap_or(0);
     row_in(body, [wide; List::ALL.len()])[at]
 }
 
 /// The list whose column stands at `x`.
-pub fn list_at(tokens: &Tokens, area: Rect, x: f32) -> Option<List> {
+pub fn list_at(area: Rect, x: f32) -> Option<List> {
     let within = |list: &List| {
-        let column = column_of(tokens, area, *list);
+        let column = column_of(area, *list);
         x >= column.x && x < column.right()
     };
     List::ALL.into_iter().find(within)

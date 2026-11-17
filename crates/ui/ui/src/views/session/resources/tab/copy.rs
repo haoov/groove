@@ -74,7 +74,7 @@ impl<'a> Copied<'a> {
             let lit = band(spot, (spot.h - tall) / 2.0, tall);
             let lit = lit.pad(Edges::across(-xs, -xs));
             let ground = Panel::default().ground(ctx.styles.glass_hover());
-            ground.radius(ctx.tokens.sm).draw(ctx, lit);
+            ground.draw(ctx, lit);
         }
         let drawn = Label::new(self.text, style).draw(ctx, room);
         if on {

@@ -2,6 +2,7 @@
 
 use groove_types::{Error, SessionId};
 
+use super::FIRST_SIZE;
 use super::rail::list;
 use crate::{AppState, Continuation, Services, Spawner, agent};
 
@@ -78,7 +79,7 @@ fn gone(state: &mut AppState, spawner: &dyn Spawner, id: &SessionId) {
 fn kept(state: &mut AppState, spawner: &dyn Spawner, id: &SessionId, running: bool, e: Error) {
     state.failed(e);
     if running {
-        agent::start(state, spawner, id.clone());
+        agent::start(state, spawner, id.clone(), FIRST_SIZE);
     }
 }
 

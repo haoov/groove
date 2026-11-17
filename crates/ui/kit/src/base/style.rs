@@ -41,6 +41,8 @@ pub enum Role {
 pub struct Styles {
     palette: Palette,
     tokens: Tokens,
+    /// The theme lays a grid on its deepest ground.
+    grid: bool,
 }
 
 impl Styles {
@@ -48,6 +50,7 @@ impl Styles {
         Self {
             palette: crate::base::palette::flavour(theme),
             tokens,
+            grid: theme == ThemeName::Defense,
         }
     }
 
@@ -144,6 +147,26 @@ impl Styles {
             font: if em { Font::Italic } else { base.font },
             weight: if strong { Weight::Bold } else { base.weight },
             ..base
+        }
+    }
+
+    /// A tab's label: mono, as small as a caption.
+    pub fn tab(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::Medium,
+            size: self.tokens.small,
+            color: self.color(role),
+        }
+    }
+
+    /// A line of the feed's log: mono, as small as a caption.
+    pub fn log(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::Regular,
+            size: self.tokens.small,
+            color: self.color(role),
         }
     }
 

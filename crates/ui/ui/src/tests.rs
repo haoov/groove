@@ -1,10 +1,9 @@
+mod agent;
 mod appearance;
 mod asks;
 mod attaching;
-mod bar;
 mod board;
 mod budget;
-mod chat;
 mod chords;
 mod clusters;
 mod completion;
@@ -18,6 +17,7 @@ mod files;
 mod finding;
 mod first_run;
 mod focus;
+mod focus_ring;
 mod frame;
 mod glass;
 mod hover;
@@ -30,19 +30,21 @@ mod painted;
 mod palette;
 mod palette_look;
 mod palette_more;
+mod palette_skills;
+mod panels;
 mod pasting;
 mod pending;
 mod perf;
-mod perf_chat;
 mod perf_editor;
-mod perf_moves;
 mod perf_servers;
 mod rail;
+mod rail_fold;
 mod regions;
 mod resources;
 mod routine_session;
 mod routines;
 mod scoping;
+mod screen;
 mod settings;
 mod staging;
 mod strip;
@@ -152,6 +154,20 @@ fn texts_of(frame: &groove_gfx::Frame) -> Vec<String> {
         .texts
         .iter()
         .map(|run| run.text.clone())
+        .collect()
+}
+
+/// The opaque panes a frame drew, each with its layer: rounded quads in the theme's base.
+fn panes(frame: &groove_gfx::Frame, app: &AppState) -> Vec<(usize, Rect)> {
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let base = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens).ground();
+    let layers = frame.layers().iter().enumerate();
+    let quads = layers.flat_map(|(at, one)| one.quads.iter().map(move |quad| (at, quad)));
+    quads
+        .filter(|(_, quad)| {
+            quad.color == base && quad.shape.radius > 0.0 && quad.shape.stroke == 0.0
+        })
+        .map(|(at, quad)| (at, quad.rect))
         .collect()
 }
 

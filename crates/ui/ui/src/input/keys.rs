@@ -4,7 +4,6 @@ mod agent;
 mod app;
 mod bar;
 mod board;
-mod filter;
 mod listed;
 mod moves;
 mod naming;
@@ -12,7 +11,6 @@ mod noting;
 mod offered;
 mod opened;
 mod panes;
-mod prompt;
 mod resources;
 mod scope;
 mod worded;
@@ -27,10 +25,9 @@ use crate::views::settings::Draft;
 use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
-use agent::to_shell;
+use agent::{to_agent, to_shell};
 use bar::{finding, in_bar, opened, typing};
 pub(in crate::input) use bar::{refound, searches};
-use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
@@ -117,7 +114,7 @@ fn in_pane(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    let raw = ui.focus == Focus::Terminal;
+    let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return app::copied(ui.focus, app);
     }
@@ -132,7 +129,7 @@ fn in_pane(
         }
     }
     if ui.showing(app) == Surface::Board {
-        return on_board(key, mods, ui, app, seen);
+        return board::on_board((key, mods), ui, app, seen);
     }
     if ui.focus == Focus::Workspace {
         if let Some(commands) = opened::chord((key, mods), ui, app, (keymap, seen)) {
@@ -141,9 +138,11 @@ fn in_pane(
         if let Some(commands) = resources::in_table((key, mods), ui, app, seen) {
             return commands;
         }
-        if let Some(commands) = offered::in_list((key, mods), ui, app) {
-            return commands;
-        }
+    }
+    if ui.focus == Focus::Workspace
+        && let Some(commands) = offered::in_list((key, mods), ui, app)
+    {
+        return commands;
     }
     if ui.focus == Focus::Terminal
         && let Some(commands) = opened::in_terminal((key, mods), app, keymap)
@@ -151,7 +150,7 @@ fn in_pane(
         return commands;
     }
     match ui.focus {
-        Focus::Agent => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
+        Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),

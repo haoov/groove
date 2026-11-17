@@ -63,7 +63,7 @@ fn the_switch_names_the_two_views_and_picks_one() {
     assert_eq!(ui.session.view, DiffView::Split);
 
     let (texts, _) = render(&app, &ui, window());
-    for named in ["inline", "split"] {
+    for named in ["INLINE", "SPLIT"] {
         assert!(texts.iter().any(|one| one == named), "{named}: {texts:?}");
     }
 }

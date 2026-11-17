@@ -1,4 +1,4 @@
-use groove_gfx::{Align, Color, Rect};
+use groove_gfx::{Align, Color, Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::ground::Ground;
@@ -23,7 +23,6 @@ pub fn panel_at<A: App>(
     let (width, height) = size;
     let (x, y) = match corner {
         Corner::TopLeft => at,
-        Corner::TopRight => (at.0 - width, at.1),
         Corner::BottomLeft => (at.0, at.1 - height),
         Corner::BottomRight => (at.0 - width, at.1 - height),
     };
@@ -65,8 +64,40 @@ fn made<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, border: Color, panel: Material
 
 /// A rounded pane of glass over `rect`.
 pub fn glass_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let shape = (ctx.tokens.glass_round, ctx.tokens.bezel);
-    ctx.glass(rect, shape, ctx.styles.glass());
+    ctx.glass(rect, ctx.tokens.glass_round, ctx.styles.glass());
+}
+
+/// An opaque pane standing on the ground beside the others: the theme's base, edged by a hairline.
+/// Glass is kept for what floats over something; a panel has nothing under it to show.
+pub fn solid_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let (ground, edge) = (ctx.styles.ground(), ctx.styles.panel_edge());
+    ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
+}
+
+/// A card set into a panel: a step below its base, edged by a hairline.
+pub fn sunk_pane<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let (ground, edge) = (ctx.styles.band(), ctx.styles.panel_edge());
+    ctx.rounded_box(rect, ground, edge, ctx.tokens.glass_round);
+}
+
+/// A panel's header band across `rect`, inside the panel's edge: rounded at the top and ruled
+/// off under it, or rounded all round when the panel is folded to it alone.
+pub fn panel_head<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, alone: bool) {
+    let (edge, round) = (ctx.tokens.hairline, ctx.tokens.glass_round);
+    let inside = Edges {
+        bottom: if alone { edge } else { 0.0 },
+        ..Edges::all(edge)
+    };
+    let band = rect.pad(inside);
+    let color = ctx.styles.panel_head();
+    ctx.rounded(band, color, (round - edge).max(0.0));
+    if alone {
+        return;
+    }
+    let lower = Rect::new(band.x, band.y + band.h / 2.0, band.w, band.h / 2.0);
+    ctx.quad(lower, color);
+    let rule = Rect::new(rect.x, rect.bottom() - edge, rect.w, edge);
+    ctx.quad(rule, ctx.styles.line());
 }
 
 /// A pane of glass around `content`, `pad` wider on each side and as tall as a bar. Returns the pane.
@@ -85,46 +116,46 @@ pub fn glass_button<A: App>(
     (mark, role): (Mark, Role),
     target: A::Target,
 ) -> bool {
-    let (at, on) = round_glass(ctx, rect, target);
-    let color = ctx.styles.color(role);
-    ctx.icon(at, mark, 0, color);
-    on
-}
-
-/// A round button made of glass, a ring of `share` in its middle, the whole glass lit under the pointer.
-pub fn glass_gauge<A: App>(
-    ctx: &mut Ctx<'_, A>,
-    rect: Rect,
-    share: f32,
-    target: A::Target,
-) -> bool {
-    let (at, on) = round_glass(ctx, rect, target);
-    let colors = (ctx.styles.color(Role::Accent), ctx.styles.line());
-    crate::widgets::gauge_ring(ctx, at, share, colors);
-    on
-}
-
-/// The round glass of a button, lit under the pointer; where its middle mark goes, and whether lit.
-fn round_glass<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target) -> (Rect, bool) {
     let size = rect.w.min(rect.h);
     let round = rect.align((size, size), Align::Center, Align::Center);
     let radius = size / 2.0;
-    ctx.glass(
-        round,
-        (radius, radius.min(ctx.tokens.bezel)),
-        ctx.styles.glass(),
-    );
+    ctx.glass(round, radius, ctx.styles.glass());
     let on = ctx.interact(round, target);
     if on {
         ctx.rounded(round, ctx.styles.glass_hover(), radius);
     }
     let icon = ctx.tokens.icon;
-    (round.align((icon, icon), Align::Center, Align::Center), on)
+    let at = round.align((icon, icon), Align::Center, Align::Center);
+    let color = ctx.styles.color(role);
+    ctx.icon(at, mark, 0, color);
+    on
 }
 
 /// `rect` on `ground`, which glass drawn over it shows blurred.
 pub fn ground_under<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, ground: Ground) {
     ctx.under(rect, ground.color(&ctx.styles));
+}
+
+/// The theme's grid over `rect`, laid with its ground so that all else stands over it: a hairline
+/// every `GRID`, counted from the window's corner so it never moves. Nothing for a theme with none.
+pub fn ground_grid<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    let Some(color) = ctx.styles.grid() else {
+        return;
+    };
+    let pitch = (crate::base::tokens::GRID * ctx.tokens.scale)
+        .round()
+        .max(1.0);
+    let edge = ctx.tokens.hairline;
+    let mut x = (rect.x / pitch).ceil() * pitch;
+    while x < rect.right() {
+        ctx.under(Rect::new(x, rect.y, edge, rect.h), color);
+        x += pitch;
+    }
+    let mut y = (rect.y / pitch).ceil() * pitch;
+    while y < rect.bottom() {
+        ctx.under(Rect::new(rect.x, y, rect.w, edge), color);
+        y += pitch;
+    }
 }
 
 /// `place` on `ground`, a pane of glass floating inside it. Returns the pane.
@@ -147,7 +178,6 @@ fn lifted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
     TopLeft,
-    TopRight,
     BottomLeft,
     BottomRight,
 }

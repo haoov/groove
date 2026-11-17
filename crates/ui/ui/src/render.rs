@@ -1,14 +1,13 @@
 //! The one owner of a `Frame`, and what a new window size asks of the agents.
 
-use groove_controllers::{AppState, Command};
+use groove_controllers::{AppState, Command, agent};
 use groove_gfx::{Fonts, Frame};
-use groove_types::chat::Chat;
 
 use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
 use crate::layout::Layout;
 use crate::views::session::{Tab, resources};
-use crate::views::{board, overlays, rail, session, settings, splitter};
+use crate::views::{board, focus, overlays, rail, session, settings, splitter};
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::style::Styles;
@@ -29,13 +28,15 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         if ui.settings.open {
             settings::draw(&mut ctx, app, ui);
         } else {
-            let rail = ui.focus == crate::Focus::Rail;
-            ctx.region(rail, |ctx| rail::draw(ctx, app, ui));
+            rail::draw(&mut ctx, app, ui);
             match ui.showing(app) {
                 Surface::Session => session::draw(&mut ctx, app, ui),
-                Surface::Board => ctx.region(!rail, |ctx| board::draw(ctx, app, ui)),
+                Surface::Board => {
+                    board::draw(&mut ctx, app, ui);
+                    focus::draw(&mut ctx, app, ui);
+                }
             }
-            splitter::draw(&mut ctx, ui.showing(app));
+            splitter::draw(&mut ctx, ui.showing(app), (ui.rail.stowed, ui.rail.folded));
             if ui.showing(app) == Surface::Session {
                 session::diff::popup::draw(&mut ctx, app, ui);
                 session::diff::completion::draw(&mut ctx, app, ui);
@@ -59,6 +60,7 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     let mut out = walks(app, ui);
     out.extend(notes(app));
     out.extend(log(app, ui));
+    out.extend(fitted(app, ui, metrics));
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
@@ -110,14 +112,6 @@ pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
 
 /// Whether the object's tab shown holds an Application syncing, whose mark turns.
 pub fn spins(app: &AppState, ui: &Ui) -> bool {
-    let chat = app
-        .session
-        .selected
-        .as_ref()
-        .and_then(|one| app.agent.chat(one));
-    if ui.showing(app) == Surface::Session && chat.is_some_and(Chat::sending) {
-        return true;
-    }
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
     let read = ui
         .session
@@ -181,6 +175,30 @@ fn walks(app: &AppState, ui: &Ui) -> Vec<Command> {
         )],
         false => Vec::new(),
     }
+}
+
+/// Every agent's grid to the pane it stands in.
+fn fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
+    let tokens = metrics.tokens();
+    let layout = Layout::of(metrics, ui);
+    let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);
+    app.agent
+        .agents
+        .iter()
+        .filter(|(_, agent)| {
+            agent
+                .terminal
+                .as_ref()
+                .is_some_and(|t| t.size() != (cols, rows))
+        })
+        .map(|(session, _)| {
+            Command::Agent(agent::Command::Resize {
+                session: session.clone(),
+                cols,
+                rows,
+            })
+        })
+        .collect()
 }
 
 /// The open section's terminals, each to the grid its pane now holds.

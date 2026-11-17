@@ -1,12 +1,17 @@
 //! The workspace's strip: a click on the open tab folds it, any tab opens it again.
 
-use groove_gfx::Fonts;
+use groove_gfx::{CellSize, Fonts};
 
 use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tests::{click, full_app, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
+
+const CELL: CellSize = CellSize {
+    width: 8.0,
+    height: 17.0,
+};
 
 fn tab_click(tab: Tab, ui: &mut Ui, app: &groove_controllers::AppState) {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
@@ -31,7 +36,11 @@ fn a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent() {
     assert_eq!(folded.strip.right(), open.strip.right());
     assert!(folded.workspace.is_empty() && folded.sidebar.is_empty());
     assert_eq!(folded.agent.w, folded.board.w, "the agent takes the ground");
-    assert_eq!(folded.agent.y, open.agent.y, "under the top bar still");
+    assert_eq!(folded.agent.y, open.agent.y, "from the top still");
+    let tokens = window().tokens();
+    let (wide, _) = folded.agent_grid(&tokens, CELL);
+    let (narrow, _) = open.agent_grid(&tokens, CELL);
+    assert!(wide > narrow, "the grid is sized for the wide pane at once");
 }
 
 #[test]
@@ -46,14 +55,18 @@ fn any_tab_opens_the_folded_strip_on_itself() {
 }
 
 #[test]
-fn the_strip_stands_as_glass_on_the_agent_s_ground() {
+fn the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground() {
     let app = full_app();
     let ui = Ui::default();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
     let base = &frame.layers()[0];
-    assert!(base.glass.iter().any(|one| one.rect == layout.strip));
     assert!(base.under.iter().any(|(rect, _)| *rect == layout.board));
+    let panes = crate::tests::panes(&frame, &app);
+    assert!(
+        panes.iter().any(|one| one.1 == layout.strip),
+        "its own opaque pane"
+    );
     assert!(
         layout.header.y > layout.strip.y - 1.0 && layout.header.right() <= layout.strip.right()
     );
@@ -108,23 +121,19 @@ fn the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs() {
     ui.session.stowed = true;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
-    let capsule = frame.layers()[0]
-        .glass
-        .iter()
-        .find(|one| one.rect.y == layout.header.y && one.rect.x > layout.rail.right())
-        .expect("the strip's glass");
-    assert_eq!(
-        capsule.rect.right(),
-        layout.strip.right(),
-        "at the right end"
-    );
-    assert!(capsule.rect.w < layout.strip.w, "only what it holds");
+    let capsule = crate::tests::panes(&frame, &app)
+        .into_iter()
+        .map(|one| one.1)
+        .find(|one| one.y == layout.header.y && one.x > layout.rail.right())
+        .expect("the strip's pane");
+    assert_eq!(capsule.right(), layout.strip.right(), "at the right end");
+    assert!(capsule.w < layout.strip.w, "only what it holds");
     let title = frame.layers()[0]
         .texts
         .iter()
         .find(|run| run.text == "Alpha" && run.y < layout.header.bottom())
         .expect("the title, whole");
-    assert!(title.x > capsule.rect.x);
+    assert!(title.x > capsule.x);
     let tab = hits.rect_of(&Target::Tab(Tab::Overview)).expect("a tab");
     assert!(tab.x > title.x, "the tabs after the title");
 }
@@ -162,7 +171,7 @@ fn an_icon_alone_is_a_circle_under_the_pointer() {
 }
 
 #[test]
-fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
+fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_on_a_square_one() {
     let app = full_app();
     let mut ui = Ui::default();
     let tokens = window().tokens();
@@ -173,15 +182,15 @@ fn a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_too() {
         .and_then(|one| one.worktrees.first())
         .map(|one| one.id.clone());
     let worktree = Target::Worktree(worktree.expect("a worktree"));
-    for target in [Target::ShellSplit, worktree] {
+    for (target, round) in [(Target::ShellSplit, tokens.glass_round), (worktree, 0.0)] {
         ui.hover = Some(target.clone());
         let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
         let at = hits.rect_of(&target).expect("drawn");
         let lit = frame.layers()[0]
             .quads
             .iter()
-            .any(|quad| quad.rect == at && quad.shape.radius == tokens.glass_round);
-        assert!(lit, "{target:?} on a rounded ground");
+            .any(|quad| quad.rect == at && quad.shape.radius == round);
+        assert!(lit, "{target:?} lit, its corners {round}");
     }
     let new = hits.rect_of(&Target::ShellNew).expect("the + button");
     assert_eq!(new.w, new.h, "an icon button, square around its circle");
@@ -273,4 +282,44 @@ fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
             && quad.rect.w > code.w / 2.0
     });
     assert!(!sliced, "no card cut row by row among the code");
+}
+
+/// The layer the agent's screen draws on.
+fn screen_layer(frame: &groove_gfx::Frame) -> usize {
+    let mut layers = frame.layers().iter();
+    layers
+        .position(|one| !one.grids.is_empty())
+        .expect("the agent's screen")
+}
+
+#[test]
+fn the_folded_header_stands_a_layer_over_the_agent_s_screen() {
+    let mut app = crate::tests::screen::asking(Vec::new());
+    crate::tests::agent::reading_mouse(&mut app);
+    let ui = Ui {
+        surface: crate::Surface::Session,
+        session: crate::views::session::SessionUi {
+            stowed: true,
+            ..Default::default()
+        },
+        ..Ui::default()
+    };
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let layout = Layout::of(window(), &ui);
+    assert!(
+        layout.header.bottom() <= layout.agent.y,
+        "the capsule stands in the room over the agent's screen"
+    );
+    let capsule = crate::tests::panes(&frame, &app)
+        .into_iter()
+        .find(|(_, one)| one.y == layout.header.y && one.right() == layout.header.right());
+    assert!(
+        capsule.map(|one| one.0) > Some(screen_layer(&frame)),
+        "its pane is a layer over the screen, not under its text"
+    );
+    let tab = hits.rect_of(&Target::Tab(Tab::Diff)).expect("a tab");
+    assert_eq!(
+        hits.at(tab.x + 1.0, tab.y + 1.0),
+        Some(Target::Tab(Tab::Diff))
+    );
 }

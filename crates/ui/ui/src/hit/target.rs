@@ -34,9 +34,8 @@ pub enum Target {
     /// A task's place in the plan, which a drag moves.
     Place(groove_types::ExternalId),
     /// What hands the source the hours the clock measured.
-    LogHours(groove_types::ExternalId),
-    /// The rail's footer row, which opens Settings, and its own bar's back.
-    SettingsOpen,
+
+    /// Settings' own bar's back.
     SettingsBack,
     /// A section of the list, and the search over them.
     SettingsSection(crate::views::settings::Section),
@@ -147,6 +146,8 @@ pub enum Target {
     Working,
     /// The feed's own heading, which folds it away.
     Feed,
+    /// The sessions' window's header, which folds it to itself.
+    SessionsFold,
     /// The rail's Routines heading, which folds their sessions away.
     Routines,
     /// A line of the feed, and the session it belongs to.
@@ -172,11 +173,8 @@ pub enum Target {
     TaskPage(String),
     /// A link in prose.
     Link(String),
-    /// The board's filter, and one row it offers.
-    Filter,
-    Offer(usize),
-    /// What starts a task, at the right of the board's header.
-    AddTask,
+    /// The sessions' window's `+`, which opens a new explorer.
+    NewExplorer,
     /// A boundary between two columns.
     Split(Edge),
     /// What folds the sidebar away.
@@ -229,27 +227,6 @@ pub enum Target {
     View(DiffView),
     /// The agent's pane.
     Agent,
-    /// The conversation's column, the file an edit wrote at its hunk's first line, and the prompt.
-    Chat,
-    Edited {
-        path: String,
-        line: u32,
-    },
-    Prompt,
-    /// A glance's commands, by its first command.
-    Commands(String),
-    /// An answer to what the headless agent asks.
-    Answer(Answering),
-    /// The agent's model beside the prompt, which opens the models' menu.
-    ModelButton,
-    /// The ring of the agent's context beside the prompt, which opens what it uses.
-    UsageButton,
-    /// One of the commands `/` offers, by its place in the offers.
-    Offered(usize),
-    /// An agent's row in the dock: its card, opened and in sight.
-    Subagent(String),
-    /// The dock of agents at work, folded to its head or opened.
-    FoldAgents,
     /// One button of a note's own row.
     Note(groove_types::NoteOrigin, NoteButton),
     /// What the composer of the note being typed offers.
@@ -260,14 +237,8 @@ impl Target {
     /// What the pointer says over it: a row is a pointer, and these are not.
     pub(super) fn cursor(&self) -> Cursor {
         match self {
-            Target::Term(_)
-            | Target::Finding
-            | Target::Filter
-            | Target::Message
-            | Target::Code
-            | Target::Prompt => Cursor::Text,
+            Target::Term(_) | Target::Finding | Target::Message | Target::Code => Cursor::Text,
             Target::Agent
-            | Target::Chat
             | Target::Shell(_)
             | Target::Pinned
             | Target::Palette
@@ -281,12 +252,4 @@ impl Target {
             _ => Cursor::Pointer,
         }
     }
-}
-
-/// What answers a headless agent's ask: leave to run the tool, a refusal, or one option of its question.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Answering {
-    Allow,
-    Refuse,
-    Pick(String),
 }

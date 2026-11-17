@@ -27,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let lines = lines(&rows, prompt.is_none());
     let typing_only = rows.is_empty() && prompt.as_ref().is_some_and(|one| one.free);
     let shown = lines.len().clamp(usize::from(!typing_only), PALETTE_LINES);
-    let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm * 2.0;
+    let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm;
     let height = rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0;
     let edge = (ctx.styles.border(), Material::Glass);
     let rect = modal(
@@ -37,6 +37,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         edge,
     );
     ctx.hit(rect, Target::Palette);
+    // The query line on the panel's band, ruled off across its width; the ring says it has the keys.
+    let band = groove_ui_kit::shape::band(rect, 0.0, ctx.tokens.bar + ctx.tokens.xs * 2.0);
+    groove_ui_kit::widgets::panel_head(ctx, band, false);
+    groove_ui_kit::widgets::focus_ring(ctx, rect);
     let under = input_line(ctx, rect, palette, &prompt);
     let body = inset(ctx, under, shown);
     let ends = (
@@ -197,7 +201,11 @@ fn items(
 ) {
     let first = first_line(lines, palette.selected, PALETTE_LINES);
     let head_style = ctx.styles.heading(Role::Faint);
-    let heads: Vec<String> = rows.iter().map(|(group, _)| group.to_uppercase()).collect();
+    let count = |group: &str| rows.iter().filter(|(one, _)| one == group).count();
+    let heads: Vec<String> = rows
+        .iter()
+        .map(|(group, _)| format!("{} \u{b7} {}", group.to_uppercase(), count(group)))
+        .collect();
     let texts: Vec<&str> = rows
         .iter()
         .map(|(group, label)| if prompt.is_some() { group } else { label }.as_str())

@@ -3,7 +3,6 @@
 use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
-use crate::shape::side_rule;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -11,13 +10,28 @@ pub enum Side {
     Right,
 }
 
-/// A pane on glass: no ground, a hairline down its left edge, short of the ends.
+/// The sidebar's box: its room, a hairline in from each side, out to its border and up to the
+/// rule `sm` over it. Its own border is the separator, and what a focus ring goes around.
+pub fn aside_bounds(tokens: &crate::base::tokens::Tokens, rect: Rect) -> Rect {
+    let edge = tokens.hairline;
+    rect.pad(Edges {
+        top: -tokens.sm,
+        left: -edge,
+        right: -edge,
+        bottom: 0.0,
+    })
+}
+
+/// The sidebar set into its panel: a box a step below the panel's base, edged by a hairline that
+/// is its separator on the left and lies on the panel's own lines elsewhere.
 pub fn glass_aside<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let lg = ctx.tokens.lg;
-    let span = rect.pad(Edges {
-        top: lg,
-        bottom: lg,
-        ..Edges::all(0.0)
-    });
-    side_rule(ctx, span, rect.x, ctx.styles.line());
+    let (edge, round) = (ctx.tokens.hairline, ctx.tokens.glass_round);
+    let bounds = aside_bounds(&ctx.tokens, rect);
+    let ground = ctx.styles.band();
+    ctx.rounded(
+        bounds.pad(Edges::all(edge)),
+        ground,
+        (round - edge).max(0.0),
+    );
+    ctx.ring(bounds, ctx.styles.panel_edge(), round, edge);
 }

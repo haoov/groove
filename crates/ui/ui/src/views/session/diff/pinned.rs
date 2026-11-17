@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{At, Document, HEAD_ROWS, shown};
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 use groove_types::Highlight;
 
 use super::notes::Inline;
@@ -66,7 +66,7 @@ pub(super) fn draw(
         .collect();
     ctx.layer();
     ctx.clipped(body, |ctx| {
-        backed(ctx, band, named.is_some());
+        backed(ctx, band);
         let rows = Rows {
             lines: &lines,
             first: 0,
@@ -82,14 +82,10 @@ pub(super) fn draw(
     });
 }
 
-/// The glass the pins stand on, shaped as a head's rounded row when they name a file.
-fn backed(ctx: &mut Ctx, band: Rect, head: bool) {
+/// The glass the pins stand on, across the surface whole as a file's head is.
+fn backed(ctx: &mut Ctx, band: Rect) {
     shadow_under(ctx, band);
-    let pane = match head {
-        true => band.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0)),
-        false => band,
-    };
-    glass_pane(ctx, pane);
+    glass_pane(ctx, band);
 }
 
 /// How far the next file's head, coming up under the pinned one, pushes it up.

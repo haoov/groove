@@ -93,18 +93,16 @@ fn beside(
 
 /// The views after the totals, the current one held.
 fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
-    for view in DiffView::ALL {
-        let tab = widgets::Tab::new(view.label(), Target::View(view), view == current);
-        tab.left(ctx, room, ctx.tokens.xs);
-    }
+    let tabs = DiffView::ALL
+        .map(|view| widgets::Tab::new(view.label(), Target::View(view), view == current));
+    widgets::tab_group(ctx, room, tabs.into(), (widgets::Side::Left, ctx.tokens.xs));
 }
 
 /// What the change is read against, the one in use held.
 fn modes(ctx: &mut Ctx, room: &mut Rect, current: DiffMode) {
-    for mode in DiffMode::ALL {
-        let tab = widgets::Tab::new(mode.label(), Target::Mode(mode), mode == current);
-        tab.left(ctx, room, ctx.tokens.xs);
-    }
+    let tabs = DiffMode::ALL
+        .map(|mode| widgets::Tab::new(mode.label(), Target::Mode(mode), mode == current));
+    widgets::tab_group(ctx, room, tabs.into(), (widgets::Side::Left, ctx.tokens.xs));
 }
 
 /// How many files the change touches, then what it added and removed in all, from the left.

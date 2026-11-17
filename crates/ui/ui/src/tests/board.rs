@@ -1,9 +1,9 @@
 //! The board: what its columns hold, and how the window gets to it and back.
 
 mod attention;
-mod filter;
 mod plan;
 mod review;
+mod top;
 
 use groove_controllers::AppState;
 use groove_gfx::Fonts;
@@ -205,7 +205,7 @@ fn every_row_of_a_column_is_a_rounded_card_and_no_rule_parts_them() {
     let cards = quads
         .iter()
         .filter(middle)
-        .filter(|quad| quad.color == styles.glass_card() && quad.shape.radius == tokens.glass_round)
+        .filter(|quad| quad.color == styles.band() && quad.shape.radius == tokens.glass_round)
         .count();
     assert_eq!(cards, 3, "a card a task, and no divider");
     let rules = quads

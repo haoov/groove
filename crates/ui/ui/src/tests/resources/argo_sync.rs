@@ -86,10 +86,10 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     let (app, mut ui) = opened_application(object);
     let shown = texts(&app, &ui);
     for one in [
-        "resources",
-        "needs attention · 2",
-        "out of sync · 1",
-        "syncing · 0",
+        "RESOURCES",
+        "NEEDS ATTENTION · 2",
+        "OUT OF SYNC · 1",
+        "SYNCING · 0",
         "Deployment",
         "billing-api",
         "1 out of sync",
@@ -137,7 +137,7 @@ fn a_running_sync_opens_on_its_stages_and_counts_what_it_has_applied() {
     let (app, ui) = opened_application(object);
     let shown = texts(&app, &ui);
     for one in [
-        "syncing · 2",
+        "SYNCING · 2",
         "Syncing",
         "1 of 3",
         "PreSync hooks",
@@ -206,7 +206,7 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
     let (app, mut ui) = opened_application(object);
     let shown = texts(&app, &ui);
     assert!(
-        shown.iter().any(|text| text == "out of sync · 0"),
+        shown.iter().any(|text| text == "OUT OF SYNC · 0"),
         "{shown:?}"
     );
     hit(&app, &mut ui, Target::ArgoFilter(Filter::Syncing));

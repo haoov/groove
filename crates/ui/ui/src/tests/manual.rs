@@ -123,7 +123,7 @@ fn an_open_drawer_rises_its_height_and_the_strip_ends_above_it() {
 }
 
 #[test]
-fn an_open_drawer_fills_the_column_beside_the_agent_while_the_strip_is_folded() {
+fn an_open_drawer_keeps_its_height_beside_the_agent_while_the_strip_is_folded() {
     let mut ui = Ui::default();
     ui.session.stowed = true;
     let wide = Layout::of(window(), &ui);
@@ -144,12 +144,15 @@ fn an_open_drawer_fills_the_column_beside_the_agent_while_the_strip_is_folded() 
     );
     assert_eq!(narrow.strip.h, narrow.header.h, "the strip still folded");
     let sm = window().tokens().sm;
-    assert_eq!(
-        narrow.manual.y,
-        narrow.strip.bottom() + sm,
-        "the drawer fills the column"
-    );
+    let dragged = (ui.split.manual * window().tokens().scale).floor();
+    assert_eq!(narrow.manual.h, dragged, "the height it was given");
     assert_eq!(narrow.manual.bottom(), narrow.window.bottom() - sm);
+    let app = full_app();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    for edge in [crate::layout::Edge::Manual, crate::layout::Edge::Agent] {
+        let target = crate::hit::Target::Split(edge);
+        assert!(hits.rect_of(&target).is_some(), "{edge:?} dragged");
+    }
     ui.session.manual = false;
     assert_eq!(
         Layout::of(window(), &ui).agent.w,
@@ -164,15 +167,14 @@ fn the_folded_drawer_is_a_capsule_as_narrow_as_its_bar() {
     let ui = Ui::default();
     let (frame, _) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let layout = Layout::of(window(), &ui);
-    let capsule = frame.layers()[0]
-        .glass
-        .iter()
-        .find(|one| one.rect.y == layout.manual.y && one.rect.right() == layout.manual.right())
-        .expect("the drawer's glass");
+    let capsule = crate::tests::panes(&frame, &app)
+        .into_iter()
+        .map(|one| one.1)
+        .find(|one| one.y == layout.manual.y && one.right() == layout.manual.right())
+        .expect("the drawer's pane");
     assert!(
-        capsule.rect.w < layout.manual.w / 2.0,
-        "only what it holds: {:?}",
-        capsule.rect
+        capsule.w < layout.manual.w / 2.0,
+        "only what it holds: {capsule:?}"
     );
 }
 
@@ -228,7 +230,7 @@ fn the_copy_chord_on_a_terminal_copies_that_terminal() {
 fn a_program_that_reads_the_mouse_hears_it_and_shift_selects_instead() {
     let mut app = full_app();
     let id = app.shell.reserve(&session(&app), false);
-    let reader = mouse_reader();
+    let reader = super::agent::mouse_reader();
     app.shell.started(&session(&app), id, Ok(reader));
     let mut ui = Ui::default();
     ui.session.manual = true;
@@ -258,40 +260,4 @@ fn a_program_that_reads_the_mouse_hears_it_and_shift_selects_instead() {
         "shift drags a selection"
     );
     assert_eq!(act(Input::Release, &mut ui), ["shell.copy"]);
-}
-
-/// A terminal whose program has asked for the mouse.
-fn mouse_reader() -> groove_controllers::agent_service::Terminal {
-    use groove_controllers::agent_service::{Hooks, PtySpec, Terminal};
-    let spec = PtySpec {
-        program: "sh".into(),
-        args: vec![
-            "-c".into(),
-            "printf '\\033[?1000h\\033[?1006h'; sleep 30".into(),
-        ],
-        cwd: "/".into(),
-        env: Vec::new(),
-        rows: 24,
-        cols: 80,
-    };
-    let hooks = Hooks {
-        on_damage: Box::new(|| {}),
-        on_exit: Box::new(|_| {}),
-    };
-    let runtime = groove_controllers::SyncSpawner::new().expect("a runtime");
-    let terminal = runtime
-        .block_on(Terminal::spawn(
-            spec,
-            groove_types::AnsiPalette::MOCHA,
-            hooks,
-        ))
-        .expect("a terminal");
-    for _ in 0..100 {
-        if terminal.reads_mouse() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
-    assert!(terminal.reads_mouse(), "the program asked for the mouse");
-    terminal
 }

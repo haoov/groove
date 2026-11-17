@@ -1,6 +1,6 @@
 //! The clipboard into whatever holds the keyboard, and where a paste would land.
 
-use groove_controllers::{AppState, Command};
+use groove_controllers::{AppState, Command, agent};
 
 use super::keys;
 use super::typed::{self, Typed};
@@ -16,7 +16,6 @@ enum Sink {
     Scope,
     Palette,
     Settings,
-    Board,
     Field(Typed),
     Find,
     Agent,
@@ -60,7 +59,7 @@ fn sink(ui: &Ui, app: &AppState) -> Option<Sink> {
         return Some(Sink::Settings);
     }
     if ui.showing(app) == Surface::Board {
-        return ui.board.typing.then_some(Sink::Board);
+        return None;
     }
     if let Some(typed) = typed::keyed(ui, app) {
         return Some(Sink::Field(typed));
@@ -95,13 +94,9 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
             }
         }
         Some(Sink::Settings) => return pasted_in_settings(text, ui, app),
-        Some(Sink::Board) => {
-            ui.board.filter.paste(text);
-            ui.board.offer = 0;
-        }
         Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui),
         Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
-        Some(Sink::Agent) => ui.agent.prompt.edit(&lines(text)),
+        Some(Sink::Agent) => return typed_at_agent(text, app),
         Some(Sink::Terminal) => return typed_at_shell(text, app),
         Some(Sink::Buffer) => return pasted_in_buffer(text, ui, app),
         None => {}
@@ -187,5 +182,16 @@ fn typed_at_shell(text: &str, app: &AppState) -> Vec<Command> {
         session,
         id,
         text,
+    })]
+}
+
+/// The clipboard at the agent of the open session.
+fn typed_at_agent(text: &str, app: &AppState) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    vec![Command::Agent(agent::Command::Paste {
+        session,
+        text: text.to_string(),
     })]
 }

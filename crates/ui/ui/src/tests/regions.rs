@@ -11,10 +11,10 @@ fn no_region_takes_a_negative_size_in_a_window_shorter_than_its_bands() {
             let held = Layout::new(Size::new(w, h), &tokens, Split::default(), sidebar);
             let regions: [(&str, Rect); 9] = [
                 ("rail", held.rail),
+                ("sessions", held.sessions),
                 ("agent", held.agent),
                 ("header", held.header),
                 ("workspace", held.workspace),
-                ("agent_bar", held.agent_bar),
                 ("sidebar", held.sidebar),
                 ("feed", held.feed),
                 ("manual", held.manual),

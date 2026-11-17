@@ -43,12 +43,7 @@ fn stands(app: &mut AppState, id: &str, status: AgentStatus, changed_at: i64) {
         seen_at: None,
     };
     let agent = Agent {
-        stream: None,
-        permissions: Vec::new(),
-        commands: Vec::new(),
-        limits: Default::default(),
-        windows: Vec::new(),
-        chosen: None,
+        terminal: None,
         activity,
         started_at: Timestamp::new(0),
         launch: 0,
@@ -100,7 +95,7 @@ fn a_title_too_long_for_the_rail_is_cut_with_an_ellipsis() {
 }
 
 #[test]
-fn the_selected_row_stands_inset_on_a_rounded_held_ground_and_the_hovered_one_lit() {
+fn the_selected_row_stands_edge_to_edge_on_the_held_ground_and_the_hovered_one_lit() {
     let app = full_app();
     let mut ui = Ui::default();
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
@@ -112,25 +107,27 @@ fn the_selected_row_stands_inset_on_a_rounded_held_ground_and_the_hovered_one_li
     };
     let (alpha, beta) = (row("a"), row("b"));
     let on = |frame: &groove_gfx::Frame, rect: groove_gfx::Rect, color| {
-        frame.layers()[0].quads.iter().any(|quad| {
-            quad.rect == rect && quad.color == color && quad.shape.radius == tokens.glass_round
-        })
+        let quads = frame.layers()[0].quads.iter();
+        quads
+            .into_iter()
+            .any(|quad| quad.rect == rect && quad.color == color && quad.shape.radius == 0.0)
     };
-    let rail = crate::layout::Layout::of(window(), &ui).rail;
-    assert!(alpha.x > rail.x, "inset from the rail's side");
+    let window_ = crate::layout::Layout::of(window(), &ui).sessions;
+    assert_eq!((alpha.x, alpha.w), (window_.x, window_.w), "edge to edge");
     assert!(
         on(&frame, alpha, styles.glass_chosen()),
-        "the selected row is held"
+        "the selected row is held, square"
     );
-    let ruled = frame.layers()[0]
-        .quads
-        .iter()
-        .any(|quad| quad.color == styles.chosen() && quad.rect.right() <= rail.right());
-    assert!(!ruled, "no rules on the rail");
     assert!(
         !on(&frame, beta, styles.glass_hover()),
         "an idle row has no ground"
     );
+    let dots = frame.layers()[0].quads.iter().filter(|quad| {
+        alpha.contains(quad.rect.x, quad.rect.y)
+            && quad.rect.w == quad.rect.h
+            && quad.rect.w < tokens.icon
+    });
+    assert_eq!(dots.count(), 0, "no state dot");
     ui.hover = Some(Target::Session(SessionId::new("b")));
     let (hovered, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(
@@ -222,4 +219,25 @@ fn the_arrows_walk_the_rows_in_the_order_drawn() {
         session: SessionId::new("a"),
     };
     assert_eq!(walked, [groove_controllers::Command::Session(select)]);
+}
+
+#[test]
+fn the_sessions_window_is_headed_by_its_name_and_count_and_its_plus_opens_an_explorer() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let count = app.session.open.len();
+    let named = format!("SESSIONS · {count}");
+    let head = frame.layers()[0].texts.iter().find(|run| run.text == named);
+    let head = head.expect("the header");
+    let sessions = crate::layout::Layout::of(window(), &ui).sessions;
+    let board = hits.rect_of(&Target::Board).expect("the Board row");
+    assert!(
+        head.y >= sessions.y && head.y < board.y,
+        "above the Board row"
+    );
+    let plus = hits.rect_of(&Target::NewExplorer).expect("the plus");
+    let acted = crate::tests::click(plus, &mut ui, &app, &hits);
+    let open = groove_controllers::session::Command::OpenExplorer { title: None };
+    assert_eq!(acted, [groove_controllers::Command::Session(open)]);
 }

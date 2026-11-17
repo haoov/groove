@@ -55,20 +55,10 @@ pub struct Ctx<'a, A: App> {
     pub now: Timestamp,
     pub app: A,
     /// Whether what is drawn now stands in the region that has the keys.
-    pub active: bool,
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
     hover: Option<A::Target>,
     clip: Option<Rect>,
-    reading: Option<Vec<Run>>,
-}
-
-/// One run of text as it was drawn.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Run {
-    pub text: String,
-    pub rect: Rect,
-    pub style: TextStyle,
 }
 
 impl<'a, A: App> Ctx<'a, A> {
@@ -91,28 +81,17 @@ impl<'a, A: App> Ctx<'a, A> {
             tick: metrics.tick,
             now: metrics.now,
             app,
-            active: true,
             frame,
             fonts,
             hover,
             clip: None,
-            reading: None,
         }
     }
 
-    /// The ground of what is chosen: in the accent where the keys are, else neutral.
+    /// The ground of what is chosen, neutral wherever it stands: the region that has the keys is
+    /// marked by its ring, not by its selection.
     pub fn chosen(&self) -> Color {
-        match self.active {
-            true => self.styles.glass_active(),
-            false => self.styles.glass_chosen(),
-        }
-    }
-
-    /// Draws a region, active or not, then stands active again.
-    pub fn region(&mut self, active: bool, draw: impl FnOnce(&mut Self)) {
-        self.active = active;
-        draw(self);
-        self.active = true;
+        self.styles.glass_chosen()
     }
 
     pub fn hover(&self) -> Option<&A::Target> {
@@ -159,8 +138,8 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.veil(color);
     }
 
-    pub(crate) fn glass(&mut self, rect: Rect, shape: (f32, f32), tint: Color) {
-        self.frame.glass(rect, shape, tint);
+    pub(crate) fn glass(&mut self, rect: Rect, radius: f32, tint: Color) {
+        self.frame.glass(rect, radius, tint);
     }
 
     pub(crate) fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {
@@ -180,29 +159,7 @@ impl<'a, A: App> Ctx<'a, A> {
     }
 
     pub(crate) fn text(&mut self, text: &str, x: f32, y: f32, height: f32, style: TextStyle) {
-        if self.reading.is_some() {
-            let rect = Rect::new(x, y, self.measure(text, &style), height);
-            let run = Run {
-                text: text.to_string(),
-                rect,
-                style,
-            };
-            self.reading
-                .iter_mut()
-                .for_each(|runs| runs.push(run.clone()));
-        }
         self.frame.text(text, x, y, height, style);
-    }
-
-    /// Runs `draw`, and returns the text it drew, in the order it drew it.
-    pub fn read(&mut self, draw: impl FnOnce(&mut Self)) -> Vec<Run> {
-        let outer = self.reading.replace(Vec::new());
-        draw(self);
-        let runs = std::mem::replace(&mut self.reading, outer).unwrap_or_default();
-        if let Some(outer) = self.reading.as_mut() {
-            outer.extend(runs.iter().cloned());
-        }
-        runs
     }
 
     /// A mark in `rect`, turned by eighths of a turn.

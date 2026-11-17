@@ -1,4 +1,4 @@
-//! The window: the rail, the agent, and the workspace in a strip of glass beside it.
+//! The window: the rail's two windows, the agent, and the workspace in a strip of glass beside it.
 
 use groove_gfx::{CellSize, Edges, Rect, Size};
 
@@ -14,8 +14,12 @@ pub use split::{Edge, Split};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Layout {
     pub window: Rect,
+    /// The rail's place, its two windows of glass inside it.
     pub rail: Rect,
-    /// The agent's screen and its bar, under the top bar.
+    /// The sessions' window: the Board row and the sessions, down to a gap above the feed.
+    pub sessions: Rect,
+    /// The agent's screen: a bar's room left over it and under it, across the rail's column too
+    /// while both its windows are folded.
     pub agent: Rect,
     /// The workspace's pane of glass: its header alone while folded.
     pub strip: Rect,
@@ -25,11 +29,9 @@ pub struct Layout {
     pub info: Rect,
     /// Under the info line: the tab.
     pub workspace: Rect,
-    /// The row of the agent's own actions, under its screen.
-    pub agent_bar: Rect,
     /// The tab's own list, folded to nothing when the tab has none.
     pub sidebar: Rect,
-    /// The rail's feed, above its footer, as tall as the user has dragged it.
+    /// The feed's window under the sessions', as tall as the user has dragged it: its header alone while folded.
     pub feed: Rect,
     /// The terminals under the workspace's tab: their bar alone while folded.
     pub manual: Rect,
@@ -37,6 +39,9 @@ pub struct Layout {
     pub board: Rect,
     /// The strip open, under its header: the info line, the tab and the sidebar.
     pub work: Rect,
+    /// The board's columns: right of the rail, clear of the bar's room above and below as the
+    /// agent is.
+    pub lists: Rect,
 }
 
 impl Layout {
@@ -46,39 +51,41 @@ impl Layout {
         let fill = Spec::default().grow(1.0);
         let tall = |height: f32| Spec::default().height(height);
         let mut boxes = Boxes::new();
-        let rail = rail(&mut boxes, tokens, split, window.h);
+        let rail = rail(&mut boxes, tokens, split);
         let screen = boxes.leaf(fill);
-        let agent_bar = boxes.leaf(tall(tokens.bar + tokens.sm));
-        let under_top = Edges {
-            top: tokens.bar + tokens.sm,
-            ..Edges::all(0.0)
-        };
-        let agent = Spec::default().width(scale(split.agent)).pad(under_top);
-        let agent = boxes.column(agent, &[screen, agent_bar]);
+        let under = Edges::xy(0.0, tokens.bar + tokens.sm);
+        let agent = Spec::default().width(scale(split.agent)).pad(under);
+        let agent = boxes.column(agent, &[screen]);
         let header = boxes.leaf(tall(tokens.bar));
-        let info = boxes.leaf(tall(tokens.row + tokens.sm));
+        // The info line, a gap over and under it and a hairline between those under it.
+        let info = boxes.leaf(tall(tokens.row + tokens.sm + tokens.sm + tokens.sm));
         let workspace = boxes.leaf(fill);
         let aside = Spec::default().width(scale(split.aside(sidebar)));
         let sidebar = boxes.leaf(aside);
         let below = boxes.row(fill, &[workspace, sidebar]);
         let strip = boxes.column(fill.pad(Edges::all(tokens.sm)), &[header, info, below]);
         let board = boxes.row(fill, &[agent, strip]);
-        let root = boxes.row(Spec::default(), &[rail.0, board]);
+        let root = boxes.row(Spec::default(), &[rail, board]);
         boxes.place(root, window);
         let glass = boxes.rect(strip).pad(Edges::all(tokens.sm));
-        let header = boxes.rect(header);
+        let (header, place) = (boxes.rect(header), boxes.rect(rail));
+        let (sessions, feed) = rail_windows(place, tokens, (split.feed * tokens.scale).floor());
         Self {
             window,
-            feed: boxes.rect(rail.1),
-            rail: boxes.rect(rail.0),
-            agent: boxes.rect(agent).pad(under_top),
-            agent_bar: boxes.rect(agent_bar),
+            sessions,
+            feed,
+            rail: place,
+            agent: boxes.rect(agent).pad(under),
             strip: glass,
             header,
             info: boxes.rect(info),
             workspace: boxes.rect(workspace),
-            sidebar: boxes.rect(sidebar).pad(Edges::across(0.0, tokens.sm)),
+            // Inside the sidebar's box, a hairline from its border: its rows reach across it whole.
+            sidebar: boxes
+                .rect(sidebar)
+                .pad(Edges::across(tokens.hairline, tokens.hairline)),
             board: boxes.rect(board),
+            lists: boxes.rect(board).pad(under),
             work: Rect::new(
                 glass.x,
                 header.bottom(),
@@ -92,25 +99,54 @@ impl Layout {
     pub fn of(metrics: Metrics, ui: &Ui) -> Self {
         let tokens = metrics.tokens();
         let mut held = Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar());
+        // A window folds to its header; the other keeps the height it was given.
         if ui.rail.folded {
-            let row = tokens.row;
-            held.feed = Rect::new(held.feed.x, held.feed.bottom() - row, held.feed.w, row);
+            let feed = held.feed;
+            let tall = tokens.bar.min(feed.h);
+            held.feed = Rect::new(feed.x, feed.bottom() - tall, feed.w, tall);
+        }
+        if ui.rail.stowed {
+            held.sessions.h = tokens.bar.min(held.sessions.h);
         }
         let asked = ui.examining().is_some() || ui.losing() == Some(&crate::Losing::Everything);
         let stowing = ui.session.stowed && !asked;
-        let tall = match (ui.session.manual, stowing) {
-            (true, true) => f32::MAX,
-            (true, false) => (ui.split.manual * tokens.scale).floor(),
-            (false, _) => tokens.bar,
+        // The terminals keep the height they were given, the strip folded or not.
+        let tall = match ui.session.manual {
+            true => (ui.split.manual * tokens.scale).floor(),
+            false => tokens.bar,
         };
         held = held.drawer(tall, tokens.sm);
         if stowing {
             held = held.stowed(!ui.session.manual);
         }
-        match ui.session.alone {
+        held = match ui.session.alone {
             true => held.alone(),
             false => held,
+        };
+        if ui.rail.stowed && ui.rail.folded {
+            held = held.over_rail();
         }
+        held
+    }
+
+    /// The agent and the board's columns stretched left to the window's edge, between the rail's
+    /// two folded headers.
+    fn over_rail(mut self) -> Self {
+        let grow = (self.agent.x - self.window.x).max(0.0);
+        self.agent = Rect::new(
+            self.window.x,
+            self.agent.y,
+            self.agent.w + grow,
+            self.agent.h,
+        );
+        let grow = (self.lists.x - self.window.x).max(0.0);
+        self.lists = Rect::new(
+            self.window.x,
+            self.lists.y,
+            self.lists.w + grow,
+            self.lists.h,
+        );
+        self
     }
 
     /// The terminals' drawer under the strip, `tall` high, the strip ending a `gap` above it.
@@ -135,7 +171,6 @@ impl Layout {
         if wide {
             let board = self.board;
             self.agent = Rect::new(board.x, self.agent.y, board.w, self.agent.h);
-            self.agent_bar = Rect::new(board.x, self.agent_bar.y, board.w, self.agent_bar.h);
         }
         self.strip = Rect::new(self.strip.x, self.strip.y, self.strip.w, self.header.h);
         let none = Rect::new(self.window.w, self.window.h, 0.0, 0.0);
@@ -148,12 +183,21 @@ impl Layout {
     pub fn alone(mut self) -> Self {
         let (rail, window) = (self.rail.w, self.window);
         self.agent = Rect::new(rail, self.agent.y, (window.w - rail).max(0.0), self.agent.h);
-        self.agent_bar = Rect::new(rail, self.agent_bar.y, self.agent.w, self.agent_bar.h);
         let none = Rect::new(window.w, window.h, 0.0, 0.0);
         (self.header, self.workspace, self.sidebar) = (none, none, none);
         (self.manual, self.work) = (none, none);
         (self.strip, self.info) = (none, none);
         self
+    }
+
+    /// Where the agent's grid starts inside its pane, under the bar.
+    pub fn agent_origin(&self, tokens: &Tokens) -> (f32, f32) {
+        (self.agent.x + tokens.sm, self.agent.y + tokens.sm)
+    }
+
+    /// The columns and rows the agent pane holds at this cell size.
+    pub fn agent_grid(&self, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
+        grid_in(self.agent, tokens, cell)
     }
 
     /// The manual section's grids under its bar: `count` side by side, a hairline between.
@@ -175,16 +219,21 @@ impl Layout {
     }
 }
 
-/// The rail's column and its feed.
-fn rail(boxes: &mut Boxes, tokens: &Tokens, split: Split, height: f32) -> (Node, Node) {
-    let tall = |h: f32| Spec::default().height(h);
-    let sessions = boxes.leaf(Spec::default().grow(1.0));
-    let band = ((split.feed * tokens.scale).floor().min(height) - tokens.bar).max(tokens.row);
-    let feed = boxes.leaf(tall(band));
-    let footer = boxes.leaf(tall(tokens.bar));
-    let rail = Spec::default().width((split.rail * tokens.scale).floor());
-    let rail = rail.pad(Edges::xy(tokens.sm, tokens.sm * 2.0));
-    (boxes.column(rail, &[sessions, feed, footer]), feed)
+/// The rail's place: a column as wide as the user has dragged it.
+fn rail(boxes: &mut Boxes, tokens: &Tokens, split: Split) -> Node {
+    boxes.leaf(Spec::default().width((split.rail * tokens.scale).floor()))
+}
+
+/// The two windows inside the rail's place, a small gap from its edges and from each other:
+/// the feed's top at the line the user dragged, `feed` from the window's foot.
+fn rail_windows(place: Rect, tokens: &Tokens, feed: f32) -> (Rect, Rect) {
+    let (sm, row) = (tokens.sm, tokens.row);
+    let column = place.pad(Edges::all(sm));
+    let lowest = column.y + row * 2.0 + sm;
+    let top = (place.bottom() - feed).clamp(lowest.min(column.bottom()), column.bottom());
+    let feed = Rect::new(column.x, top, column.w, (column.bottom() - top).max(0.0));
+    let sessions = Rect::new(column.x, column.y, column.w, (top - sm - column.y).max(0.0));
+    (sessions, feed)
 }
 
 /// The columns and rows a terminal holds in `rect`, its padding kept, at this cell size.

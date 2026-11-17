@@ -35,7 +35,7 @@ pub(crate) fn push_grid(
             None => text.push_glyph(
                 layer,
                 fonts,
-                c.ch,
+                boxdraw::plain(c.ch),
                 c.bold,
                 grid.font_size,
                 cell,

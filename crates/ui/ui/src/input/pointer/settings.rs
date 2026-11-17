@@ -40,7 +40,6 @@ pub(super) fn acted(
         Target::SettingsUnbind(action) => {
             config::Command::Rebind(keymap::reset(app.config.config.as_ref(), *action))
         }
-        Target::SettingsOpen => return Some(ui.open_settings()),
         Target::SettingsBack => return Some(ui.close_settings()),
         Target::SettingsCheck => config::Command::CheckEnvironment,
         Target::SettingsLogin => {

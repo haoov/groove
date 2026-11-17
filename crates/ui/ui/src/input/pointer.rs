@@ -5,7 +5,6 @@ mod board;
 mod clusters;
 mod drag;
 mod focus;
-mod followed;
 mod menu;
 mod rail;
 mod resources;
@@ -15,7 +14,6 @@ mod sidebar;
 mod skilled;
 mod surface;
 
-pub(super) use agent::read_out;
 pub(super) use menu::asked;
 pub(super) use sidebar::act_on;
 pub(super) use surface::{at, middle};
@@ -59,7 +57,6 @@ pub(super) fn press(
         Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
         Some(target) if mods.ctrl && board::opens(&target) => opened_from_board(target, ui, false),
         Some(Target::Code) if mods.ctrl => defined(ui, app, hits, metrics, (x, y)),
-        Some(Target::Chat) if mods.ctrl => followed::followed(ui, app, hits, (x, y)),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
@@ -82,7 +79,6 @@ pub(super) fn moved(
         }
         Some(Held::Text) => return extended((x, y), ui, app, hits, metrics),
         Some(Held::Column(_)) => resources::dragged(ui, x, metrics),
-        Some(Held::Reading | Held::Prompt) => agent::dragged(ui, hits, (x, y), metrics),
         None => {}
     }
     Vec::new()
@@ -155,7 +151,6 @@ fn acted(
 /// What the task and its MR are asked from the pages that show them.
 fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     match target {
-        Some(Target::LogHours(id)) => logging(id),
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
@@ -175,12 +170,6 @@ fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> 
         Some(Target::Block(line)) => surface::fold(ui, app, line),
         _ => Vec::new(),
     }
-}
-
-/// The hours the clock measured, handed to the source.
-fn logging(external_id: groove_types::ExternalId) -> Vec<Command> {
-    let log = groove_controllers::task::Command::LogHours { external_id };
-    vec![Command::Task(log)]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {
@@ -260,9 +249,9 @@ fn elsewhere(
     metrics: Metrics,
 ) -> Option<Vec<Command>> {
     let target = target?;
-    board::acted(target, ui, app)
+    board::acted(target, ui)
         .or_else(|| rail::acted(target, ui, app))
-        .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
+        .or_else(|| agent::acted(target, point, ui, app, metrics))
         .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))
         .or_else(|| settings::acted(target, ui, app, hits))
         .or_else(|| resources::acted(target, ui, app, hits))

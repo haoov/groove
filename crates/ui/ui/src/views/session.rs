@@ -14,9 +14,7 @@ mod sheet;
 mod state;
 mod tab;
 
-pub use state::{
-    Asked, Bar, Face, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
-};
+pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Showing, Tab, Term, Writing};
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -30,39 +28,37 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, glass_pane, ground_under};
+use groove_ui_kit::widgets::{Button, ground_under, solid_pane};
 
 /// The session: the agent on its ground, the workspace in a strip of glass beside it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ground_under(ctx, ctx.app.layout.board, Ground::Deep);
+    groove_ui_kit::widgets::ground_grid(ctx, ctx.app.layout.board);
     if ui.session.alone && app.session.selected().is_some() {
-        return agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
+        agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
+        return crate::views::focus::draw(ctx, app, ui);
     }
     if !ctx.app.layout.work.is_empty() {
-        glass_pane(ctx, ctx.app.layout.strip);
+        solid_pane(ctx, ctx.app.layout.strip);
     }
     let on = |focus: crate::Focus| ui.focus == focus;
     if app.session.selected().is_none() {
-        ctx.region(on(crate::Focus::Workspace), |ctx| {
-            header::draw(ctx, app, ui)
-        });
-        return empty(ctx, app);
+        header::draw(ctx, app, ui);
+        empty(ctx, app);
+        return crate::views::focus::draw(ctx, app, ui);
     }
     if !ctx.app.layout.workspace.is_empty() {
-        ctx.region(on(crate::Focus::Workspace), |ctx| {
-            header::info(ctx, app, ui);
-            workspace(ctx, app, ui);
-        });
-        ctx.region(on(crate::Focus::Sidebar), |ctx| sidebar(ctx, app, ui));
+        header::info(ctx, app, ui);
+        workspace(ctx, app, ui);
+        sidebar(ctx, app, ui);
     }
-    agent_pane::draw(ctx, app, ui, ui.focus == crate::Focus::Agent);
-    ctx.region(on(crate::Focus::Workspace), |ctx| {
-        header::draw(ctx, app, ui)
-    });
+    // After the agent: the header, folded or not, and the drawer float over its screen.
+    agent_pane::draw(ctx, app, on(crate::Focus::Agent));
+    header::draw(ctx, app, ui);
     if let Some(session) = app.session.selected.as_ref() {
-        let terminal = on(crate::Focus::Terminal);
-        ctx.region(terminal, |ctx| manual::draw(ctx, app, ui, session));
+        manual::draw(ctx, app, ui, session);
     }
+    crate::views::focus::draw(ctx, app, ui);
     sheet::draw(ctx, app, ui);
 }
 
@@ -78,13 +74,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             open_files::draw(ctx, strip, app, ui);
             diff::draw(ctx, app, ui, body)
         }
-        Tab::Resources => {
-            let [line, body] = column_in(body, [band, Spec::fill()]);
-            if let Some(open) = app.session.selected() {
-                header::scope(ctx, line, app, open, &ui.session.resources);
-            }
-            resources::draw(ctx, app, ui, body)
-        }
+        Tab::Resources => resources::draw(ctx, app, ui, body),
     }
 }
 

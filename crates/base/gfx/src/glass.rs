@@ -1,4 +1,4 @@
-//! The glass pipeline: each pane refracts the backdrop under it through a curved rim.
+//! The glass pipeline: each pane shows the blurred backdrop under it through its tint.
 
 use std::ops::Range;
 
@@ -11,8 +11,8 @@ struct Vertex {
     tint: [f32; 4],
     local: [f32; 2],
     half: [f32; 2],
-    /// The corners' radius, then the rim's width.
-    shape: [f32; 2],
+    /// The corners' radius.
+    radius: f32,
     screen: [f32; 2],
 }
 
@@ -50,7 +50,7 @@ impl GlassPass {
     }
 
     pub fn push(&mut self, layer: usize, glass: &Glass, size: Size) {
-        let rect = glass.rect.inset(-glass.bezel).intersect(glass.clip);
+        let rect = glass.rect.intersect(glass.clip);
         if rect.is_empty() {
             return;
         }
@@ -98,7 +98,7 @@ impl GlassPass {
     }
 }
 
-/// The part `r` of the pane and its shadow, in pixels, as two triangles in clip space.
+/// The part `r` of the pane, in pixels, as two triangles in clip space.
 fn push_vertices(verts: &mut Vec<Vertex>, (r, glass): (Rect, &Glass), size: Size) {
     let screen = [size.width as f32, size.height as f32];
     let ndc = |x: f32, y: f32| [x / screen[0] * 2.0 - 1.0, 1.0 - y / screen[1] * 2.0];
@@ -113,7 +113,7 @@ fn push_vertices(verts: &mut Vec<Vertex>, (r, glass): (Rect, &Glass), size: Size
             tint,
             local: [x - centre.0, y - centre.1],
             half,
-            shape: [glass.radius, glass.bezel],
+            radius: glass.radius,
             screen,
         });
     }
@@ -153,7 +153,7 @@ fn pipeline(
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: &wgpu::vertex_attr_array![
                     0 => Float32x2, 1 => Float32x4, 2 => Float32x2,
-                    3 => Float32x2, 4 => Float32x2, 5 => Float32x2
+                    3 => Float32x2, 4 => Float32, 5 => Float32x2
                 ],
             })],
             compilation_options: Default::default(),

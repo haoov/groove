@@ -29,8 +29,16 @@ pub(super) fn fed() -> groove_controllers::AppState {
     app
 }
 
-/// Every text the rail drew.
+/// The rail wide enough for a whole line of the log; at its default width long lines are cut.
+fn wide(ui: &Ui) -> Ui {
+    let mut ui = ui.clone();
+    ui.split.rail = 420.0;
+    ui
+}
+
+/// Every text the rail drew, the rail wide.
 fn in_rail(app: &groove_controllers::AppState, ui: &Ui) -> Vec<String> {
+    let ui = &wide(ui);
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
     let rail = crate::layout::Layout::of(window(), ui).rail;
     frame.layers()[0]
@@ -46,10 +54,9 @@ fn the_feed_says_what_each_session_did() {
     let drawn = in_rail(&fed(), &Ui::default());
     assert!(drawn.iter().any(|one| one == "FEED"), "{drawn:?}");
     for one in [
-        "commit",
-        "Alpha \u{b7} fix: one",
-        "push",
-        "Beta \u{b7} fix/two",
+        "Alpha \u{b7} commit fix: one",
+        "Beta \u{b7} push fix/two",
+        "git",
     ] {
         assert!(drawn.iter().any(|drawn| drawn == one), "{one}: {drawn:?}");
     }
@@ -72,7 +79,9 @@ fn the_heading_folds_the_feed_away() {
     let drawn = in_rail(&app, &ui);
     assert!(drawn.iter().any(|one| one == "FEED"), "its own row stays");
     assert!(
-        !drawn.iter().any(|one| one == "fix: one"),
+        !drawn
+            .iter()
+            .any(|one| one == "Alpha \u{b7} commit fix: one"),
         "and the lines go: {drawn:?}"
     );
 }
@@ -87,11 +96,11 @@ fn the_feed_narrows_to_the_session_in_hand() {
     assert!(ui.rail.mine);
     let drawn = in_rail(&app, &ui);
     assert!(
-        drawn.iter().any(|one| one == "fix: one"),
+        drawn.iter().any(|one| one == "commit fix: one"),
         "the selected session's own: {drawn:?}"
     );
     assert!(
-        !drawn.iter().any(|one| one == "fix/two"),
+        !drawn.iter().any(|one| one.contains("fix/two")),
         "and no other's: {drawn:?}"
     );
 }
@@ -153,11 +162,24 @@ fn the_feed_keeps_its_own_minimum() {
 }
 
 #[test]
-fn a_folded_feed_is_its_heading_alone() {
+fn a_folded_feed_is_its_heading_alone_and_the_sessions_keep_their_height() {
     let mut ui = Ui::default();
+    let open = crate::layout::Layout::of(window(), &ui);
     ui.rail.folded = true;
-    let band = crate::layout::Layout::of(window(), &ui).feed;
-    assert_eq!(band.h, crate::Tokens::new(1.0).row);
+    let layout = crate::layout::Layout::of(window(), &ui);
+    let tokens = crate::Tokens::new(1.0);
+    assert_eq!(layout.feed.h, tokens.bar, "the header alone");
+    assert_eq!(layout.feed.bottom(), open.feed.bottom(), "at the foot");
+    assert_eq!(layout.sessions, open.sessions, "the sessions as they stood");
+    let app = crate::tests::full_app();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let edge = hits
+        .rect_of(&crate::hit::Target::Split(crate::layout::Edge::Feed))
+        .expect("the sessions' foot is dragged");
+    assert!(
+        edge.y < layout.sessions.bottom() + tokens.sm && edge.bottom() > layout.sessions.bottom(),
+        "under the sessions' window"
+    );
 }
 
 #[test]
@@ -166,8 +188,11 @@ fn a_job_in_flight_stands_at_the_top_of_the_feed() {
     app.begin("committing");
     let drawn = in_rail(&app, &Ui::default());
     let job = drawn.iter().position(|one| one == "committing");
-    let done = drawn.iter().position(|one| one == "push");
+    let done = drawn
+        .iter()
+        .position(|one| one == "Beta \u{b7} push fix/two");
     assert!(job.is_some(), "{drawn:?}");
+    assert!(drawn.iter().any(|one| one == "job"), "its code: {drawn:?}");
     assert!(job < done, "what runs stands above what is over: {drawn:?}");
 }
 
@@ -177,9 +202,11 @@ fn an_error_is_a_line_of_the_feed() {
     app.failed(groove_types::Error::internal("no such branch"));
     let drawn = in_rail(&app, &Ui::default());
     let bad = drawn.iter().position(|one| one == "no such branch");
-    let old = drawn.iter().position(|one| one == "push");
+    let old = drawn
+        .iter()
+        .position(|one| one == "Beta \u{b7} push fix/two");
     assert!(bad.is_some(), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "error"), "{drawn:?}");
+    assert!(drawn.iter().any(|one| one == "err"), "{drawn:?}");
     assert!(bad < old, "the newest first: {drawn:?}");
 }
 
@@ -188,18 +215,18 @@ fn an_error_is_drawn_in_the_colour_of_a_failure() {
     let mut app = fed();
     app.failed(groove_types::Error::internal("no such branch"));
     let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
-    let bad = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| run.text == "error")
-        .expect("the error");
     let tokens = crate::Tokens::new(1.0);
     let styles =
         groove_ui_kit::base::style::Styles::new(groove_types::ThemeName::default(), tokens);
-    assert_eq!(
-        bad.style.color,
-        styles.color(groove_ui_kit::base::style::Role::Bad)
-    );
+    for text in ["err", "no such branch"] {
+        let bad = frame.layers()[0].texts.iter().find(|run| run.text == text);
+        let bad = bad.expect("the error");
+        assert_eq!(
+            bad.style.color,
+            styles.color(groove_ui_kit::base::style::Role::Bad),
+            "{text}"
+        );
+    }
 }
 
 #[test]
@@ -221,8 +248,8 @@ fn a_job_and_an_error_are_said_in_the_feed_and_nowhere_else() {
     let ui = Ui::default();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let feed = crate::layout::Layout::of(window(), &ui).feed;
-    let body = feed.y + crate::Tokens::new(1.0).row;
-    for text in ["committing", "error", "no such branch"] {
+    let body = feed.y + crate::Tokens::new(1.0).bar;
+    for text in ["committing", "err", "no such branch"] {
         let drawn: Vec<&groove_gfx::TextRun> = frame.layers()[0]
             .texts
             .iter()
@@ -275,59 +302,39 @@ fn an_error_and_a_job_take_the_pointer_nowhere() {
 }
 
 #[test]
-fn the_act_is_bolder_than_its_subject() {
+fn a_line_is_its_age_its_code_and_its_text_in_three_mono_columns() {
     let app = fed();
-    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
-    let style = |text: &str| {
-        frame.layers()[0]
-            .texts
-            .iter()
-            .find(|run| run.text == text)
-            .map(|run| run.style)
-            .expect(text)
-    };
-    let act = style("commit");
-    let subject = style("Alpha \u{b7} fix: one");
-    assert_eq!(act.weight, groove_gfx::Weight::Bold);
-    assert_eq!(subject.weight, groove_gfx::Weight::Regular);
-    assert_ne!(act.color, subject.color);
-}
-
-#[test]
-fn every_act_starts_at_the_same_column() {
-    let mut app = fed();
-    app.session.feed[0].at = Timestamp::new(0);
-    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
-    let at = |text: &str| {
-        frame.layers()[0]
-            .texts
-            .iter()
-            .find(|run| run.text == text)
-            .map(|run| run.x)
-            .expect(text)
-    };
-    assert_eq!(at("push"), at("commit"), "the age's column is fixed");
-    assert_eq!(
-        at("push"),
-        at("Beta \u{b7} fix/two"),
-        "and the subject stands under it"
+    let (frame, _) = view(
+        &app,
+        &wide(&Ui::default()),
+        window(),
+        &mut Fonts::embedded(),
     );
-}
-
-#[test]
-fn the_age_stands_right_of_the_act_and_the_kind_s_mark_left_of_it() {
-    let app = fed();
-    let (frame, _) = view(&app, &Ui::default(), window(), &mut Fonts::embedded());
-    let layer = &frame.layers()[0];
-    let run = |text: &str| layer.texts.iter().find(|run| run.text == text).expect(text);
-    let (commit, age) = (run("commit"), run("now"));
-    assert!(age.x > commit.x, "the age at the right");
-    let mark = layer
-        .icons
+    let run = |text: &str| {
+        let found = frame.layers()[0].texts.iter().find(|run| run.text == text);
+        found.cloned().expect(text)
+    };
+    let (push, commit) = (
+        run("Beta \u{b7} push fix/two"),
+        run("Alpha \u{b7} commit fix: one"),
+    );
+    assert_eq!(push.x, commit.x, "the text's column is fixed");
+    let codes: Vec<_> = frame.layers()[0]
+        .texts
         .iter()
-        .find(|one| one.icon == groove_gfx::Icon::Check && one.rect.y <= commit.y + commit.height)
-        .expect("the commit's mark");
-    assert!(mark.rect.right() <= commit.x, "the mark before the act");
+        .filter(|run| run.text == "git")
+        .collect();
+    assert_eq!(codes.len(), 2, "a code a line");
+    assert_eq!(codes[0].x, codes[1].x, "and so is the code's");
+    assert!(codes[0].x < push.x, "the code before the text");
+    let ages = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.y == push.y && run.x < codes[0].x);
+    assert_eq!(ages.count(), 1, "the age first");
+    for one in [&push, codes[0]] {
+        assert_eq!(one.style.font, groove_gfx::Font::Mono, "{}", one.text);
+    }
 }
 
 #[test]
@@ -336,7 +343,10 @@ fn this_session_s_feed_leaves_the_title_out() {
     let mut ui = Ui::default();
     ui.rail.mine = true;
     let drawn = in_rail(&app, &ui);
-    assert!(drawn.iter().any(|one| one == "fix: one"), "{drawn:?}");
+    assert!(
+        drawn.iter().any(|one| one == "commit fix: one"),
+        "{drawn:?}"
+    );
     let titled = |one: &String| {
         ["Alpha", "Beta"]
             .iter()
@@ -366,14 +376,15 @@ fn back_to_back_events_of_one_kind_fold_into_one_row() {
     let drawn = in_rail(&runs(), &ui);
     let count = |text: &str| drawn.iter().filter(|one| *one == text).count();
     assert_eq!(
-        count("commit"),
-        3,
-        "a's three, then b's two apart: {drawn:?}"
+        count("commit \u{d7}3 \u{25b8}"),
+        1,
+        "a's three as one: {drawn:?}"
     );
-    assert!(drawn.iter().any(|one| one == "3"), "the count: {drawn:?}");
-    let subjects = ["Alpha \u{b7} c3", "Alpha \u{b7} c2", "Alpha \u{b7} c1"];
-    let said = drawn.iter().any(|one| subjects.contains(&one.as_str()));
-    assert!(!said, "a folded row has no second line: {drawn:?}");
+    assert_eq!(count("git"), 4, "then b's three apart: {drawn:?}");
+    let said = drawn
+        .iter()
+        .any(|one| one.ends_with("c3") || one.ends_with("c2"));
+    assert!(!said, "a folded run shows none of its own: {drawn:?}");
 }
 
 #[test]
@@ -390,14 +401,21 @@ fn a_folded_run_opens_on_a_click_and_its_lines_lead_to_the_session() {
         .expect("the folded commits");
     click(row, &mut ui, &app, &hits);
     let drawn = in_rail(&app, &ui);
-    for one in ["c3", "c2", "c1"] {
-        assert!(drawn.iter().any(|drawn| drawn == one), "{one}: {drawn:?}");
+    let has = |text: &str| drawn.iter().filter(|one| *one == text).count();
+    assert_eq!(has("commit \u{d7}3 \u{25be}"), 1, "open: {drawn:?}");
+    for one in ["commit c3", "commit c2", "commit c1"] {
+        assert_eq!(has(one), 1, "{one}: {drawn:?}");
     }
+    assert_eq!(
+        (has("\u{2502}"), has("\u{2514}")),
+        (2, 1),
+        "hung on a tree: {drawn:?}"
+    );
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let c2 = frame.layers()[0]
         .texts
         .iter()
-        .find(|run| run.text == "c2")
+        .find(|run| run.text == "commit c2")
         .expect("c2");
     let under = hits.at(c2.x + 1.0, c2.y + 1.0);
     assert_eq!(
@@ -409,7 +427,7 @@ fn a_folded_run_opens_on_a_click_and_its_lines_lead_to_the_session() {
     click(row, &mut ui, &app, &hits);
     let drawn = in_rail(&app, &ui);
     assert!(
-        !drawn.iter().any(|one| one == "c2"),
+        !drawn.iter().any(|one| one == "commit c2"),
         "folded again: {drawn:?}"
     );
 }
@@ -422,12 +440,12 @@ fn a_turn_s_start_and_end_fold_as_one_turn() {
         line("a", 80, TimelineKind::TurnStart, "pair the runs"),
     ];
     let drawn = in_rail(&app, &Ui::default());
+    let turn = "turn \u{d7}2 \u{25b8}";
     assert_eq!(
-        drawn.iter().filter(|one| *one == "turn").count(),
+        drawn.iter().filter(|one| *one == turn).count(),
         1,
         "{drawn:?}"
     );
-    assert!(drawn.iter().any(|one| one == "2"), "{drawn:?}");
 }
 
 #[test]
@@ -455,7 +473,14 @@ fn the_feed_is_monochrome_but_for_its_errors() {
     let error = layer
         .texts
         .iter()
-        .find(|run| run.text == "error")
+        .find(|run| run.text == "err")
         .expect("the error");
     assert_eq!(error.style.color, bad);
+    let faint = styles.color(groove_ui_kit::base::style::Role::Faint);
+    let code = layer
+        .texts
+        .iter()
+        .find(|run| run.text == "git")
+        .expect("a code");
+    assert_eq!(code.style.color, faint, "any other code is faint");
 }

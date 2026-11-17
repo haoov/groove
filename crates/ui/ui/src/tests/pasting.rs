@@ -54,21 +54,13 @@ fn a_pasted_line_break_never_reaches_a_field() {
 }
 
 #[test]
-fn the_search_bar_and_the_board_filter_take_it_too() {
+fn the_search_bar_takes_it_too() {
     let app = full_app();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     ui.session.bar.open(Term::Path);
     paste("src/one", &mut ui, &app);
     assert_eq!(ui.session.bar.path.text(), "src/one");
-
-    let mut board = Ui {
-        surface: Surface::Board,
-        ..Ui::default()
-    };
-    board.board.focus();
-    paste("priority:high", &mut board, &app);
-    assert_eq!(board.board.filter.text(), "priority:high");
 }
 
 #[test]
@@ -103,11 +95,13 @@ fn the_agent_takes_what_is_pasted_when_it_has_the_keyboard() {
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     let asked = paste("one\ntwo", &mut ui, &app);
-    assert!(asked.is_empty(), "nothing is sent yet");
     assert_eq!(
-        ui.agent.prompt.text(),
-        "one\ntwo",
-        "the prompt takes it, not the buffer"
+        asked,
+        vec![Command::Agent(groove_controllers::agent::Command::Paste {
+            session: groove_types::SessionId::new("a"),
+            text: "one\ntwo".into(),
+        })],
+        "the program types it, not the buffer"
     );
 }
 

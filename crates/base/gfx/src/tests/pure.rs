@@ -120,6 +120,12 @@ fn box_glyphs_tile_the_cell() {
 }
 
 #[test]
+fn a_record_bullet_draws_as_a_plain_dot_not_an_emoji() {
+    assert_eq!(boxdraw::plain('\u{23FA}'), '\u{25CF}');
+    assert_eq!(boxdraw::plain('a'), 'a');
+}
+
+#[test]
 fn grid_write_stops_at_the_edge() {
     let mut grid = CellGrid::new(0.0, 0.0, 3, 1, 12.0);
     grid.set(

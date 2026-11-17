@@ -76,14 +76,17 @@ pub enum ThemeName {
     Frappe,
     Macchiato,
     Mocha,
+    /// Cyber defense: teal-black and steel, cyan for what is live.
+    Defense,
 }
 
 impl ThemeName {
-    pub const ALL: [ThemeName; 4] = [
+    pub const ALL: [ThemeName; 5] = [
         ThemeName::Latte,
         ThemeName::Frappe,
         ThemeName::Macchiato,
         ThemeName::Mocha,
+        ThemeName::Defense,
     ];
 
     pub fn label(self) -> &'static str {
@@ -92,6 +95,7 @@ impl ThemeName {
             ThemeName::Frappe => "frappé",
             ThemeName::Macchiato => "macchiato",
             ThemeName::Mocha => "mocha",
+            ThemeName::Defense => "defense",
         }
     }
 }

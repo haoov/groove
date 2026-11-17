@@ -3,7 +3,7 @@
 use groove_controllers::{AppState, Command, cluster, session, shell, workspace};
 
 use super::super::Key;
-use super::panes::in_rail;
+use super::panes::{in_rail, rail};
 use crate::hit::Picks;
 use crate::keymap::Action;
 use crate::palette::{Action as FlowAction, Flow, Palette};
@@ -38,7 +38,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         {
             on_board(action, ui);
         }
-        Action::FocusRail => ui.focus = Focus::Rail,
+        Action::FocusRail => rail(ui),
         Action::FocusAgent => ui.focus = Focus::Agent,
         Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
@@ -70,7 +70,7 @@ fn on_board(action: Action, ui: &mut Ui) {
         Action::FocusSidebar => Some(List::Review),
         _ => None,
     };
-    ui.board.list = list;
+    (ui.board.list, ui.rail.stowed) = (list, ui.rail.stowed && list.is_some());
     ui.focus = match list {
         Some(_) => Focus::Workspace,
         None => Focus::Rail,
@@ -247,7 +247,7 @@ pub(super) fn copied(focus: Focus, app: &AppState) -> Vec<Command> {
             .as_ref()
             .and_then(|session| app.shell.shells(session)?.focused())
             .map(Grid::Shell),
-        _ => None,
+        _ => Some(Grid::Agent),
     };
     grid.map_or_else(Vec::new, |grid| crate::input::selection::copied(app, grid))
 }

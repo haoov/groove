@@ -24,12 +24,7 @@ pub(super) fn draw(
     if total == 0 {
         return;
     }
-    let rect = rect.pad(Edges {
-        top: ctx.tokens.sm,
-        bottom: ctx.tokens.sm,
-        ..Edges::all(0.0)
-    });
-    let round = rect.w / 2.0;
+    let round = ctx.tokens.round;
     let ground = ctx.styles.glass_hover();
     Panel::default()
         .ground(ground)
@@ -122,7 +117,7 @@ fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: Line
 
 /// `rect` on `ground`, its corners as round as its narrow side allows.
 fn rounded(ctx: &mut Ctx, rect: Rect, ground: Ground) {
-    let round = (rect.w.min(rect.h) / 2.0).min(ctx.tokens.xs);
+    let round = (rect.w.min(rect.h) / 2.0).min(ctx.tokens.round);
     let color = ground.color(&ctx.styles);
     Panel::default().ground(color).radius(round).draw(ctx, rect);
 }
@@ -155,7 +150,7 @@ fn lens(ctx: &mut Ctx, rect: Rect, per: f32, body: Rect, ui: &Ui) {
     let high = (body.h / line * per).min(rect.h).max(ctx.tokens.xs);
     let top = ui.session.scroll() / line * per;
     let held = groove_ui_kit::shape::band(rect, top.min(rect.h - high), high);
-    let round = (held.w / 2.0).min(held.h / 2.0);
+    let round = ctx.tokens.round.min(held.h / 2.0);
     Panel::default()
         .border(ctx.styles.lens())
         .radius(round)

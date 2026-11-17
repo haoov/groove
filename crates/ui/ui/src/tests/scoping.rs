@@ -291,3 +291,54 @@ fn the_panel_stands_on_glass() {
     picker(&app, &mut ui, Picks::Namespaces);
     assert_eq!(panes(&ui), shut + 1);
 }
+
+#[test]
+fn the_scope_panel_stands_as_the_palette_does_on_its_band_with_headings_in_capitals() {
+    let app = holding(vec![on("staging", None)]);
+    let mut ui = Ui::default();
+    picker(&app, &mut ui, Picks::Contexts);
+    let fonts = &mut groove_gfx::Fonts::embedded();
+    let (frame, hits) = crate::view(&app, &ui, crate::tests::window(), fonts);
+    let panel = hits.rect_of(&Target::ScopePanel).expect("the panel");
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let quads = frame.layers().iter().flat_map(|one| one.quads.iter());
+    let band = quads
+        .clone()
+        .any(|q| q.color == styles.panel_head() && (q.rect.y - panel.y).abs() <= 1.0);
+    assert!(band, "the search line on the panel's band");
+    let texts = crate::tests::all_texts(&frame);
+    assert!(
+        texts.iter().any(|one| one == "IN THIS SESSION \u{b7} 1"),
+        "{texts:?}"
+    );
+}
+
+#[test]
+fn on_the_kubernetes_tab_the_info_line_holds_the_scope_in_the_worktree_s_place() {
+    let app = holding(vec![on("staging", None)]);
+    let ui = on_kubernetes();
+    let fonts = &mut groove_gfx::Fonts::embedded();
+    let (frame, _) = crate::view(&app, &ui, crate::tests::window(), fonts);
+    let info = crate::layout::Layout::of(crate::tests::window(), &ui).info;
+    let texts: Vec<_> = frame
+        .layers()
+        .iter()
+        .flat_map(|one| one.texts.iter())
+        .collect();
+    let scope = texts
+        .iter()
+        .find(|one| one.text == "staging")
+        .expect("the scope");
+    assert!(
+        scope.y >= info.y && scope.y < info.bottom(),
+        "on the info line"
+    );
+    let open = app.session.selected().expect("the session");
+    let branch = open.selected_worktree().map(|one| one.branch.clone());
+    let branch = branch.expect("the fixture's worktree");
+    assert!(
+        !texts.iter().any(|one| one.text == branch),
+        "no worktree line"
+    );
+}

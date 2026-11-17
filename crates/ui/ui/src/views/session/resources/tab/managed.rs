@@ -8,7 +8,7 @@ use groove_types::{AppPart, AppResource, SyncedResource};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Cell, Shown, Tab, Text};
+use groove_ui_kit::widgets::{Cell, Shown, Tab};
 
 use super::super::Filter;
 use super::super::opened::Opened;
@@ -80,7 +80,7 @@ pub(super) fn draw(
 /// A tab a filter, each in its colour and with its count.
 fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
     let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
-    for filter in Filter::OFFERED {
+    let said = Filter::OFFERED.map(|filter| {
         let count = match filter {
             Filter::Syncing => stages::remaining(part),
             _ => part
@@ -95,12 +95,17 @@ fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
             Filter::Syncing => Role::Working,
             Filter::All => Role::Muted,
         };
-        let said = format!("{} · {count}", filter.label());
-        Tab::new(&said, Target::ArgoFilter(filter), filter == on)
-            .text(Text::Small)
-            .quiet(role)
-            .left(ctx, &mut room, ctx.tokens.xs);
-    }
+        (format!("{} · {count}", filter.label()), role)
+    });
+    let tabs: Vec<_> = Filter::OFFERED
+        .iter()
+        .zip(&said)
+        .map(|(filter, (label, role))| {
+            Tab::new(label, Target::ArgoFilter(*filter), *filter == on).quiet(*role)
+        })
+        .collect();
+    let side = groove_ui_kit::widgets::Side::Left;
+    groove_ui_kit::widgets::tab_group(ctx, &mut room, tabs, (side, ctx.tokens.xs));
 }
 
 fn groups(part: &AppPart, filter: Filter) -> Vec<Group<'_>> {

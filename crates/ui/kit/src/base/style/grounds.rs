@@ -4,7 +4,7 @@ use groove_gfx::Color;
 
 use super::Styles;
 use crate::base::tokens::{
-    GLASS_ACTIVE_ALPHA, GLASS_ALPHA, GLASS_CARD_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA,
+    FOCUS_ALPHA, GLASS_ALPHA, GLASS_CARD_ALPHA, GLASS_CHOSEN_ALPHA, GLASS_CODE_ALPHA,
     GLASS_DIM_ALPHA, GLASS_HOVER_ALPHA, SCRIM_ALPHA,
 };
 
@@ -62,6 +62,11 @@ impl Styles {
         self.palette.surface0
     }
 
+    /// A panel's, a card's and the sidebar's own edge: a step past the lines inside them.
+    pub fn panel_edge(&self) -> Color {
+        self.palette.surface1
+    }
+
     /// A lighter edge, for a panel that stands over a band.
     pub fn border(&self) -> Color {
         self.palette.surface1
@@ -107,10 +112,20 @@ impl Styles {
         self.palette.text.with_alpha(self.alpha(GLASS_CHOSEN_ALPHA))
     }
 
-    /// What is chosen in the region that has the keys, in the accent.
-    pub fn glass_active(&self) -> Color {
-        self.palette
-            .rosewater
-            .with_alpha(self.alpha(GLASS_ACTIVE_ALPHA))
+    /// The grid's lines on the deepest ground, for a theme that lays one; none for the others.
+    pub fn grid(&self) -> Option<Color> {
+        let alpha = crate::base::tokens::GRID_ALPHA;
+        self.grid.then(|| self.palette.sky.with_alpha(alpha))
+    }
+
+    /// A panel's header band: a step from its base toward the first surface, ruled off under it.
+    pub fn panel_head(&self) -> Color {
+        let p = &self.palette;
+        p.base.mix(p.surface0, crate::base::tokens::PANEL_HEAD)
+    }
+
+    /// The ring around the region that has the keys: the accent, light and thin.
+    pub fn focus(&self) -> Color {
+        self.palette.rosewater.with_alpha(self.alpha(FOCUS_ALPHA))
     }
 }

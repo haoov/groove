@@ -13,14 +13,17 @@ pub const SPINNER_MS: u64 = 120;
 /// How far a text may overrun its width and still stand whole.
 pub const ELIDE_SLACK: f32 = 0.5;
 pub const SCRIM_ALPHA: u8 = 120;
-pub const GLASS_ALPHA: (u8, u8) = (140, 95);
+pub const GLASS_ALPHA: (u8, u8) = (242, 175);
 pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
-pub const ROW_TINT_ALPHA: (u8, u8) = (28, 64);
-pub const GLASS_HOVER_ALPHA: (u8, u8) = (18, 22);
-pub const GLASS_CARD_ALPHA: (u8, u8) = (12, 16);
-pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (38, 46);
-pub const GLASS_ACTIVE_ALPHA: (u8, u8) = (51, 64);
+/// A row's tint in a state's colour, dark then light; the dark one reads as about a tenth.
+pub const ROW_TINT_ALPHA: (u8, u8) = (6, 64);
+/// Grounds on glass, dark then light; the dark ones set for what they read as in linear blending.
+pub const GLASS_HOVER_ALPHA: (u8, u8) = (3, 22);
+pub const GLASS_CARD_ALPHA: (u8, u8) = (2, 16);
+pub const GLASS_CHOSEN_ALPHA: (u8, u8) = (7, 46);
+/// The focus ring in the accent, dark then light: each reads as half the accent on its glass.
+pub const FOCUS_ALPHA: (u8, u8) = (63, 144);
 /// A diff row's ground, under its text: on a dark theme, then on a light one.
 pub const GROUND_ALPHA: (u8, u8) = (12, 28);
 pub const NUMBER_TINT: f32 = 0.4;
@@ -84,15 +87,14 @@ pub const CODE_MIN: f32 = 160.0;
 pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
-/// How much of the conversation's width one side's rows take.
-pub const SPEAKER_SHARE: f32 = 0.9;
-/// How much of a running agent's row in the dock its current step takes.
-pub const DOING_SHARE: f32 = 0.3;
-/// How wide a gauge ring's dot is against the ring.
-pub const GAUGE_DOT: f32 = 0.18;
 
 /// How much of the raised ground stands under a selection and under the word at the caret.
 pub const HELD: f32 = 0.8;
+/// How far a panel's header band stands from its base toward the theme's first surface.
+pub const PANEL_HEAD: f32 = 0.45;
+/// The grid a theme lays on its deepest ground: a hairline every this many logical pixels, and its alpha.
+pub const GRID: f32 = 32.0;
+pub const GRID_ALPHA: u8 = 2;
 pub const OCCURS: f32 = 0.4;
 /// How much of the comment colour a scope's guide takes.
 pub const GUIDE: f32 = 0.55;
@@ -121,7 +123,6 @@ pub struct Tokens {
     pub code_line: f32,
     /// One line of the feed, which holds two texts, and its own age column.
     pub feed_row: f32,
-    pub feed_age: f32,
     /// The agent's own row, under its screen.
     pub bar: f32,
     pub hairline: f32,
@@ -131,7 +132,6 @@ pub struct Tokens {
     pub round: f32,
     /// A glass panel's corners, the width of its curved rim, and one line of a list on it.
     pub glass_round: f32,
-    pub bezel: f32,
     pub glass_row: f32,
     pub edge: f32,
     /// How wide a splitter is to grab.
@@ -156,7 +156,7 @@ pub struct Tokens {
     pub aside_near: f32,
     pub aside_mid: f32,
     pub aside_far: f32,
-    /// The palette's box; `palette` is also the agent's prompt at its widest.
+    /// The palette's box.
     pub modal: f32,
     pub palette: f32,
     pub modal_top: f32,
@@ -181,7 +181,6 @@ const LINE: f32 = LOGICAL.line / LOGICAL.code;
 const CODE_LINE: f32 = LOGICAL.code_line / LOGICAL.code;
 const FEED_ROW: f32 = LOGICAL.feed_row / LOGICAL.text;
 const BAR: f32 = LOGICAL.bar / LOGICAL.text;
-const FEED_AGE: f32 = LOGICAL.feed_age / LOGICAL.text;
 
 /// The design's numbers, at scale 1.
 const LOGICAL: Tokens = Tokens {
@@ -198,14 +197,12 @@ const LOGICAL: Tokens = Tokens {
     sidebar: 260.0,
     line: 18.0,
     code_line: 21.0,
-    feed_row: 50.0,
-    feed_age: 30.0,
+    feed_row: 20.0,
     bar: 36.0,
     hairline: 1.0,
     corner: 4.0,
     round: 2.0,
-    glass_round: 16.0,
-    bezel: 24.0,
+    glass_round: 3.0,
     glass_row: 32.0,
     edge: 0.5,
     grab: 8.0,
@@ -257,12 +254,10 @@ impl Tokens {
             code_line: row(CODE_LINE, code),
             feed_row: row(FEED_ROW, text),
             bar: row(BAR, text),
-            feed_age: of_text(FEED_AGE),
             hairline: s(LOGICAL.hairline),
             corner: s(LOGICAL.corner),
             round: s(LOGICAL.round),
             glass_round: s(LOGICAL.glass_round),
-            bezel: s(LOGICAL.bezel),
             glass_row: row(GLASS_ROW, text),
             edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),

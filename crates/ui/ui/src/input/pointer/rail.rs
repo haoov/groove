@@ -1,4 +1,4 @@
-//! A click on the rail's own parts: a session opened on its ask, the feed folded or narrowed.
+//! A click on the rail's own parts: a session opened on its ask, a window folded, the feed narrowed.
 
 use groove_controllers::{AppState, Command, agent};
 
@@ -9,6 +9,10 @@ use crate::hit::Target;
 pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
     match target {
         Target::Feed => Some(folded_feed(ui)),
+        Target::SessionsFold => {
+            ui.rail.stowed = !ui.rail.stowed;
+            Some(Vec::new())
+        }
         Target::FeedScope(mine) => Some(narrowed_feed(ui, *mine)),
         Target::FeedRun(key) => {
             ui.rail.open = (ui.rail.open != Some(*key)).then_some(*key);

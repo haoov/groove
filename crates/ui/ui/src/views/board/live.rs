@@ -12,24 +12,17 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
 
-/// Every session the filter lets through.
-pub(super) fn living<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Living> {
-    let query = ui.board.query();
+/// Every session but a routine's.
+pub(super) fn living(app: &AppState) -> Vec<&Living> {
     app.session
         .living
         .iter()
         .filter(|living| living.session.kind.routine().is_none())
-        .filter(|living| query.lets_session(living, app.task.worked(&living.session)))
         .collect()
 }
 
 /// What the column says when it holds nothing.
-pub(super) fn empty(ui: &Ui) -> &'static str {
-    match ui.board.query().is_empty() {
-        true => "nothing here. + starts an explorer",
-        false => "nothing the filter lets through",
-    }
-}
+pub(super) const EMPTY: &str = "nothing here";
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &[&Living]) {
     let columns = [Column::plain("title", Width::Fill)];
@@ -42,6 +35,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
             under: super::row::lines(&tokens) - first,
             ruled: false,
             carded: true,
+            gridded: false,
         },
         count: living.len(),
         offset: ui.board.live,

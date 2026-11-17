@@ -145,12 +145,19 @@ fn the_sidebar_stands_beside_the_workspace_only_where_a_tab_wants_it() {
     assert_eq!(folded.workspace.right(), folded.strip.right());
 
     let open = Layout::new(size, &tokens, Split::default(), true);
-    assert_eq!(open.sidebar.w, Split::default().sidebar - tokens.sm);
-    assert_eq!(open.sidebar.x, open.workspace.right());
+    assert_eq!(
+        open.sidebar.w,
+        Split::default().sidebar - tokens.hairline - tokens.hairline
+    );
+    assert_eq!(
+        open.sidebar.x,
+        open.workspace.right() + tokens.hairline,
+        "inside its box's border"
+    );
     assert_eq!(
         open.sidebar.right(),
-        open.strip.right() - tokens.sm,
-        "a padding at its right"
+        open.strip.right() - tokens.hairline,
+        "inside the panel's edge, its box's right border"
     );
     assert!(
         open.workspace.w < folded.workspace.w,
@@ -290,8 +297,11 @@ fn folding_the_sidebar_gives_its_room_to_the_workspace_and_no_one_else() {
     assert!(folded.sidebar.is_empty());
     assert_eq!(folded.rail, open.rail);
     assert_eq!(folded.agent, open.agent, "the agent pane never moves");
-    let sm = window().tokens().sm;
-    assert_eq!(folded.workspace.w, open.workspace.w + open.sidebar.w + sm);
+    let edge = window().tokens().hairline;
+    assert_eq!(
+        folded.workspace.w,
+        open.workspace.w + open.sidebar.w + edge + edge
+    );
 
     press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     assert!(!ui.session.folded, "the chord brings it back");
@@ -370,7 +380,7 @@ fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
 fn the_strip_names_the_three_tabs_the_workspace_has() {
     let app = with_files(&["src/one/alpha.rs"]);
     let (texts, _) = render(&app, &on_diff(), window());
-    for tab in ["Overview", "Diff", "Files"] {
+    for tab in ["OVERVIEW", "DIFF", "FILES"] {
         assert!(texts.iter().any(|one| one == tab), "{tab}: {texts:?}");
     }
 }
@@ -383,7 +393,7 @@ fn the_band_says_what_the_change_is_read_against_and_picks_one() {
     let (drawn, hits) = render(&app, &ui, window());
     for mode in groove_types::DiffMode::ALL {
         assert!(
-            drawn.iter().any(|one| one == mode.label()),
+            drawn.iter().any(|one| *one == mode.label().to_uppercase()),
             "{mode:?}: {drawn:?}"
         );
         assert!(hits.rect_of(&Target::Mode(mode)).is_some(), "{mode:?}");
