@@ -9,6 +9,7 @@ pub struct Services {
     pub task: groove_task_service::Service,
     pub delivery: groove_delivery_service::Service,
     pub config: groove_config_service::Keeper,
+    pub alert: groove_alert_service::Service,
     /// What the open file copies through.
     pub clipboard: Clipboard,
 }
@@ -22,6 +23,7 @@ impl Services {
             session,
             task: groove_task_service::Service::in_memory().await?,
             config: groove_config_service::Keeper::default(),
+            alert: groove_alert_service::Service::held(Vec::new()),
             clipboard: Clipboard::memory(),
         })
     }

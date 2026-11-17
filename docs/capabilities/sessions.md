@@ -58,6 +58,20 @@ why when it is not plain, the MR. The agent writes it with `log_work` when it la
 and when it closes; a child's entry goes to its parent's log, named after the child. Groove
 keeps the log. Enforced by `a_child_logs_to_its_parent_and_the_parent_to_its_own_log`.
 
+**A maintenance task reads incident.io's firing alerts** through the `inc` CLI the user logged
+in with, at the interval Settings gives. Groove holds no token, and the agent never runs `inc`.
+The config names the attributes read as cluster, namespace and priority, and may keep only the
+alerts whose attribute holds given values. Enforced by
+`a_task_marked_as_maintenance_reads_the_firing_alerts` and
+`a_filter_keeps_only_the_alerts_whose_attribute_it_names`.
+
+**An alert has one child.** Investigate opens the child the alert already has, or spawns one:
+the alert as its brief, `groove:investigate` started, the alert's cluster and namespace attached
+when Settings knows the cluster. Enforced by
+`investigate_spawns_one_child_per_alert_on_the_alert_s_cluster`,
+`an_alert_on_a_cluster_groove_does_not_know_attaches_none` and
+`a_task_remembers_one_child_per_alert`.
+
 ## Overview
 
 One overview for task, explorer and review sessions: the task's properties, the repos

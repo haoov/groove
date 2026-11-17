@@ -20,6 +20,8 @@ pub struct Open {
     pub children: Vec<Session>,
     /// What it and its children did, the newest first.
     pub log: Vec<groove_types::LogEntry>,
+    /// The children it spawned for alerts, by the alert as it stood then.
+    pub alerted: Vec<groove_types::AlertChild>,
 }
 
 impl Open {

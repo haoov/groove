@@ -62,6 +62,8 @@ pub enum Scroller {
     Kinds,
     /// One of the board's columns.
     Column(u8),
+    /// A maintenance task's alerts.
+    Alerts,
 }
 
 impl Scroller {
@@ -77,13 +79,14 @@ impl Scroller {
             Scroller::Across => 6,
             Scroller::Resources => 7,
             Scroller::Kinds => 8,
+            Scroller::Alerts => 9,
             Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
 
 /// The scrollers ahead of the board's columns.
-const OWN: usize = 9;
+const OWN: usize = 10;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]

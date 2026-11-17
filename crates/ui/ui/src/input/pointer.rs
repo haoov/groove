@@ -1,6 +1,7 @@
 //! What a press, a drag and a click do, through what the last frame drew.
 
 mod agent;
+mod alerts;
 mod board;
 mod clusters;
 mod drag;
@@ -251,6 +252,7 @@ fn elsewhere(
     let target = target?;
     board::acted(target, ui)
         .or_else(|| rail::acted(target, ui, app))
+        .or_else(|| alerts::acted(target, ui, app))
         .or_else(|| agent::acted(target, point, ui, app, metrics))
         .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))
         .or_else(|| settings::acted(target, ui, app, hits))

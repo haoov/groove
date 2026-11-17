@@ -1,0 +1,14 @@
+[package]
+name = "groove-alert-service"
+description = "The alerts capability: the firing alerts as last read, and when to read them again"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-alerts = { path = "../../modules/alerts" }
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true

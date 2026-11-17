@@ -236,7 +236,11 @@ fn each_section_stands_in_its_own_card_inset_from_the_panel() {
                 && quad.shape.stroke == 0.0
         })
         .collect();
-    assert_eq!(cards.len(), 4, "the properties, the repos, the log, the body");
+    assert_eq!(
+        cards.len(),
+        4,
+        "the properties, the repos, the log, the body"
+    );
     for card in cards {
         assert_eq!(
             card.rect.x,

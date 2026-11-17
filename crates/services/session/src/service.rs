@@ -31,6 +31,7 @@ pub struct Contents {
     pub clusters: Vec<groove_types::Attached>,
     pub children: Vec<Session>,
     pub log: Vec<groove_types::LogEntry>,
+    pub alerted: Vec<groove_types::AlertChild>,
 }
 
 /// A worktree just made, with what the user should hear about it.
@@ -210,6 +211,7 @@ impl Service {
             clusters: self.store.clusters_of(id).await?,
             children: self.store.children(id).await?,
             log: self.store.log_of(id).await?,
+            alerted: self.store.alert_children(id).await?,
             repos,
             worktrees,
             status,

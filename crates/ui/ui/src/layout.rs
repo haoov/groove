@@ -4,7 +4,7 @@ use groove_gfx::{CellSize, Edges, Rect, Size};
 
 use crate::Ui;
 use groove_ui_kit::base::ctx::Metrics;
-use groove_ui_kit::base::tokens::Tokens;
+use groove_ui_kit::base::tokens::{ALERTS_SHARE, Tokens};
 use groove_ui_kit::layout::{Boxes, Node, Spec};
 
 mod split;
@@ -42,6 +42,8 @@ pub struct Layout {
     /// The board's columns: right of the rail, clear of the bar's room above and below as the
     /// agent is.
     pub lists: Rect,
+    /// A maintenance task's alerts: their header in the bar over the agent, the agent's top open.
+    pub alerts: Rect,
 }
 
 impl Layout {
@@ -86,13 +88,9 @@ impl Layout {
                 .pad(Edges::across(tokens.hairline, tokens.hairline)),
             board: boxes.rect(board),
             lists: boxes.rect(board).pad(under),
-            work: Rect::new(
-                glass.x,
-                header.bottom(),
-                glass.w,
-                glass.bottom() - header.bottom(),
-            ),
+            work: opened(glass, header),
             manual: Rect::new(glass.x, window.h, glass.w, 0.0),
+            alerts: Rect::new(window.w, window.h, 0.0, 0.0),
         }
     }
 
@@ -123,10 +121,39 @@ impl Layout {
             true => held.alone(),
             false => held,
         };
-        if ui.rail.stowed && ui.rail.folded {
+        let over_rail = ui.rail.stowed && ui.rail.folded;
+        if over_rail {
             held = held.over_rail();
         }
+        if ui.alerts.shown {
+            held = held.alerts(&tokens, ui.alerts.open, (over_rail, stowing));
+        }
         held
+    }
+
+    /// The alerts across the bar's free room over the agent, from the rail's header to the strip:
+    /// their header alone while folded, else a share of the agent's height over it.
+    fn alerts(mut self, tokens: &Tokens, open: bool, (over_rail, stowed): (bool, bool)) -> Self {
+        let left = match over_rail {
+            true => self.sessions.right() + tokens.sm,
+            false => self.agent.x,
+        };
+        let right = match stowed {
+            true => self.strip.x - tokens.sm,
+            false => self.agent.right(),
+        };
+        let (top, wide) = (self.sessions.y, (right - left).max(0.0));
+        if !open {
+            let wide = wide.min(tokens.alerts);
+            self.alerts = Rect::new(left, top, wide, tokens.bar);
+            return self;
+        }
+        let bottom = self.agent.bottom();
+        let tall = ((bottom - top) * ALERTS_SHARE).floor().max(tokens.bar);
+        self.alerts = Rect::new(left, top, wide, tall);
+        let y = self.alerts.bottom() + tokens.sm;
+        self.agent = Rect::new(self.agent.x, y, self.agent.w, (bottom - y).max(0.0));
+        self
     }
 
     /// The agent and the board's columns stretched left to the window's edge, between the rail's
@@ -217,6 +244,12 @@ impl Layout {
         panes.push(body);
         panes
     }
+}
+
+/// The strip open under its header.
+fn opened(glass: Rect, header: Rect) -> Rect {
+    let top = header.bottom();
+    Rect::new(glass.x, top, glass.w, glass.bottom() - top)
 }
 
 /// The rail's place: a column as wide as the user has dragged it.

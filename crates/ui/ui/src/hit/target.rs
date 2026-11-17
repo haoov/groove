@@ -148,6 +148,10 @@ pub enum Target {
     Feed,
     /// The sessions' window's header, which folds it to itself.
     SessionsFold,
+    /// The alerts' header, which folds their window to it.
+    AlertsFold,
+    /// A firing alert's row: its child opened, or one spawned on it.
+    Investigate(String),
     /// The rail's Routines heading, which folds their sessions away.
     Routines,
     /// A line of the feed, and the session it belongs to.

@@ -32,6 +32,10 @@ pub(super) fn scroll(
     if ui.overlay.is_some() {
         return Vec::new();
     }
+    if ui.showing(app) == Surface::Session && layout.alerts.contains(x, y) {
+        ui.wheeled(Scroller::Alerts, pixels(tokens.row), hits);
+        return Vec::new();
+    }
     // The agent or the board first: with the rail folded, they run across the rail's column.
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
         return agent(ui, app, delta, point, &layout, metrics);

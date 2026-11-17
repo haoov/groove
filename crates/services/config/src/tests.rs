@@ -21,6 +21,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
         routines: Default::default(),
         clusters: Vec::new(),
         language_servers: None,
+        alerts: None,
     };
     State {
         config: Some(config),

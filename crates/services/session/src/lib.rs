@@ -146,6 +146,7 @@ impl State {
         open.clusters = contents.clusters;
         open.children = contents.children;
         open.log = contents.log;
+        open.alerted = contents.alerted;
         for (worktree, path) in contents.read {
             open.mark(&worktree, &path, true);
         }
@@ -208,6 +209,7 @@ impl State {
             clusters: Vec::new(),
             children: Vec::new(),
             log: Vec::new(),
+            alerted: Vec::new(),
         });
     }
 

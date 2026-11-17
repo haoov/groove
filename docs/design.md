@@ -259,6 +259,7 @@ The rail, then one ground for the agent with the workspace's strip standing on i
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
+| **Alerts** | a maintenance task's firing alerts, over the agent: their header alone while folded |
 
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
@@ -275,6 +276,17 @@ never under its text. Enforced by
 screen runs left across the rail's column to the window's edge, its two headers in the rooms over
 and under it; the wheel there scrolls the agent and the rail's edge is not dragged. Enforced by
 `with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
+
+**A maintenance task's alerts stand over the agent.** Open, they take the bar's free room over
+the agent and a share of its height, the agent under them. Folded, they are their header alone in
+the bar over the agent; with everything folded, that header stands after the sessions' header
+and before the strip's capsule. The header counts the alerts by rank; a row says where the alert
+fires, how long ago, and its child's state, or offers to investigate. A resolved alert stays,
+greyed, while its child is on the rail. Enforced by
+`open_the_alerts_stand_over_the_agent_which_keeps_the_rest_of_its_height`,
+`folded_the_alerts_are_their_header_in_the_bar_over_the_agent`,
+`with_everything_folded_the_alerts_take_the_bar_between_the_sessions_header_and_the_strip`,
+`the_alerts_count_by_rank_and_offer_to_investigate` and `a_session_not_marked_has_no_alerts`.
 
 **The terminals rise from the foot.** Their drawer is an opaque panel under the strip.
 Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the

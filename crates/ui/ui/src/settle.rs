@@ -11,6 +11,11 @@ impl Ui {
     pub fn settle(&mut self, app: &AppState) {
         let selected = app.session.selected().map(|open| &open.session.kind);
         self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
+        let maintained = app
+            .session
+            .selected()
+            .is_some_and(|open| open.state.maintenance);
+        self.alerts.shown = maintained && !self.session.alone;
         self.session.reading = app.workspace.commit.is_some();
         self.kept_resources(app);
         self.moved(app);

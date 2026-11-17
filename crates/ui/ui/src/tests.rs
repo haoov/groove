@@ -1,4 +1,5 @@
 mod agent;
+mod alerts;
 mod appearance;
 mod asks;
 mod attaching;
@@ -305,6 +306,7 @@ fn open(id: &str, title: &str) -> Open {
         clusters: vec![],
         children: vec![],
         log: vec![],
+        alerted: vec![],
     }
 }
 

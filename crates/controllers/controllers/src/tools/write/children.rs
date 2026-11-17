@@ -19,6 +19,7 @@ pub(super) fn spawn(
         title: write.text("title").map(str::to_string),
         brief: Some(brief),
         beside: true,
+        ..Child::default()
     };
     let (parent, asker) = (write.session, Asker::Agent(write.reply));
     crate::session::spawn_child(state, services, spawner, &parent, child, asker);

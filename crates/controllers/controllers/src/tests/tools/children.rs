@@ -10,16 +10,16 @@ use crate::{AppState, Command, Services, SyncSpawner, dispatch, session};
 
 const PARENT: &str = "MAINT-47";
 
-struct Maintaining {
-    _home: tempfile::TempDir,
-    state: AppState,
-    services: Services,
-    spawner: SyncSpawner,
-    parent: SessionId,
+pub(crate) struct Maintaining {
+    pub _home: tempfile::TempDir,
+    pub state: AppState,
+    pub services: Services,
+    pub spawner: SyncSpawner,
+    pub parent: SessionId,
 }
 
 /// A task on the rail, in the store, its writes let through; marked when `marked`.
-fn maintaining(marked: bool) -> Maintaining {
+pub(crate) fn maintaining(marked: bool) -> Maintaining {
     let (home, spawner, services, mut state) = fixture::fresh();
     let task = groove_types::Task {
         external_id: groove_types::ExternalId::new(format!("notion:{PARENT}")),

@@ -2,6 +2,7 @@
 
 mod activity;
 mod aging;
+mod alert;
 mod annotation;
 mod approval;
 mod argo;
@@ -47,6 +48,7 @@ mod tests;
 
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
 pub use aging::{Aging, agings, human_age, tells_time};
+pub use alert::{Alert, AlertChild, AlertFilter, AlertsConfig};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{

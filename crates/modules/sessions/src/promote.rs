@@ -5,7 +5,7 @@ use groove_types::{Session, SessionId, SessionKind, Task, WorktreeId};
 use crate::{Error, Result, Store};
 
 /// What every table that names a session is told: the task's row holds it now.
-pub(crate) const MOVES: [&str; 11] = [
+pub(crate) const MOVES: [&str; 12] = [
     "UPDATE session_repos SET session_id = ? WHERE session_id = ?",
     "UPDATE session_clusters SET session_id = ? WHERE session_id = ?",
     "UPDATE worktrees SET session_id = ? WHERE session_id = ?",
@@ -17,6 +17,7 @@ pub(crate) const MOVES: [&str; 11] = [
     "UPDATE read_files SET session_id = ? WHERE session_id = ?",
     "UPDATE session_state SET session_id = ? WHERE session_id = ?",
     "UPDATE session_log SET session_id = ? WHERE session_id = ?",
+    "UPDATE alert_sessions SET session_id = ? WHERE session_id = ?",
 ];
 
 /// Where one worktree went: its new branch and its new path.

@@ -1,6 +1,7 @@
 //! A maintenance task: marked by the user, spawning children.
 
-use groove_types::{SessionId, SessionKind, Timestamp};
+use groove_session_service::ClusterWrite;
+use groove_types::{Alert, AlertChild, Attached, SessionId, SessionKind, Timestamp};
 
 use super::Command;
 use super::open::{Start, begun_with};
@@ -17,6 +18,10 @@ pub(crate) struct Child {
     pub title: Option<String>,
     pub brief: Option<String>,
     pub beside: bool,
+    /// The skill its first message invokes, with the brief as its arguments.
+    pub skill: Option<&'static str>,
+    pub alert: Option<Alert>,
+    pub attached: Option<Attached>,
 }
 
 /// The maintenance actions, then the clusters.
@@ -32,7 +37,7 @@ pub(super) fn dispatch(
         }
         Command::SpawnChild { parent } => {
             let child = Child::default();
-            spawn_child(state, services, spawner, &parent, child, Asker::Ui)
+            spawn_child(state, services, spawner, &parent, child, Asker::Ui);
         }
         other => super::clusters::dispatch(other, state, services, spawner),
     }
@@ -55,6 +60,7 @@ pub fn set_maintenance(
         ));
     }
     open.state.maintenance = on;
+    crate::alert::poll(state, services, spawner, Timestamp::now());
     let (service, id) = (services.session.clone(), id.clone());
     record(
         spawner,
@@ -62,7 +68,7 @@ pub fn set_maintenance(
     );
 }
 
-/// An explorer spawned from a maintenance task, its agent started on the brief.
+/// An explorer spawned from a maintenance task, its agent started on the brief; its id.
 pub(crate) fn spawn_child(
     state: &mut AppState,
     services: &Services,
@@ -70,30 +76,82 @@ pub(crate) fn spawn_child(
     parent: &SessionId,
     child: Child,
     asker: Asker,
-) {
+) -> Option<SessionId> {
     let Some(title) = maintained(state, parent) else {
-        return asker.refused(state, NOT_MAINTENANCE);
+        asker.refused(state, NOT_MAINTENANCE);
+        return None;
     };
     let now = Timestamp::now();
     let session = groove_session_service::explorer(child.title.as_deref(), now);
+    let prompt = child.brief.as_deref().map(|brief| briefed(&title, brief));
+    let prompt = match child.skill {
+        Some(skill) => prompt.map(|said| format!("/{skill} {said}")),
+        None => prompt,
+    };
     let start = Start {
-        prompt: child.brief.as_deref().map(|brief| briefed(&title, brief)),
+        prompt,
         beside: child.beside,
     };
     let auto = begun_with(state, spawner, session.clone(), now, start);
-    if let Some(open) = state.session.get_mut(&session.id) {
-        open.state.parent = Some(parent.clone());
-    }
-    if let Some(open) = state.session.get_mut(parent) {
-        open.children.push(session.clone());
-    }
+    let alerted = child
+        .alert
+        .as_ref()
+        .map(|one| alert_child(one, &session.id, parent));
+    let writes = held(
+        state,
+        &session.id,
+        parent,
+        (&session, &alerted),
+        child.attached,
+    );
     let said = format!("spawned {} as {}", session.title, session.id);
-    let (service, parent) = (services.session.clone(), parent.clone());
+    let (service, parent, id) = (services.session.clone(), parent.clone(), session.id.clone());
     listed(spawner, async move {
-        service.create_child(&session, &parent, now).await?;
+        service
+            .create_child(&session, &parent, alerted.as_ref(), now)
+            .await?;
+        service.hold_clusters(&session.id, writes);
+        service.flush_clusters().await?;
         service.set_auto_approve(&session.id, auto).await
     });
     asker.done(|| said);
+    Some(id)
+}
+
+/// The child under its parent on the rail, the cluster it holds; the writes that cluster needs.
+fn held(
+    state: &mut AppState,
+    id: &SessionId,
+    parent: &SessionId,
+    (session, alerted): (&groove_types::Session, &Option<AlertChild>),
+    attached: Option<Attached>,
+) -> Vec<ClusterWrite> {
+    let mut writes = Vec::new();
+    if let Some(open) = state.session.get_mut(id) {
+        open.state.parent = Some(parent.clone());
+        if let Some(attached) = attached {
+            open.attach(attached.clone());
+            writes.push(ClusterWrite::Attach(attached, Timestamp::now()));
+        }
+    }
+    if let Some(open) = state.session.get_mut(parent) {
+        open.children.push(session.clone());
+        open.alerted.extend(alerted.clone());
+    }
+    writes
+}
+
+/// The alert a child is spawned for, as the parent remembers it.
+fn alert_child(one: &Alert, session: &SessionId, parent: &SessionId) -> AlertChild {
+    AlertChild {
+        session: session.clone(),
+        parent: parent.clone(),
+        dedup_key: one.dedup_key.clone(),
+        title: one.title.clone(),
+        priority: one.priority.clone(),
+        cluster: one.cluster.clone(),
+        namespace: one.namespace.clone(),
+    }
 }
 
 /// The parent's title, when it is on the rail and marked as maintenance.

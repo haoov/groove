@@ -39,6 +39,7 @@ pub enum Preference {
     CiFailedMinutes(u32),
     PollIntervalSecs(u64),
     StaleAfterSecs(u64),
+    AlertsPollSecs(u64),
     RoutineCap(u32),
     RoutinesPaused(bool),
     WrapCode(bool),
@@ -124,6 +125,17 @@ impl State {
         self.preferences().poll_interval_secs.max(POLL_MIN) as i64
     }
 
+    /// How long the alerts wait between two reads of incident.io, in seconds.
+    pub fn alerts_poll(&self) -> i64 {
+        self.preferences().alerts_poll_secs.max(POLL_MIN) as i64
+    }
+
+    /// Which incident.io attributes the alerts read, and the alerts they keep.
+    pub fn alerts(&self) -> groove_types::AlertsConfig {
+        let held = self.config.as_ref().and_then(|c| c.alerts.clone());
+        held.unwrap_or_default()
+    }
+
     /// How old an MR's last read may be before its row says so, in seconds.
     pub fn stale_after(&self) -> i64 {
         self.preferences().stale_after_secs as i64
@@ -163,6 +175,7 @@ impl State {
             Preference::CiFailedMinutes(minutes) => held.thresholds.ci_failed_minutes = minutes,
             Preference::PollIntervalSecs(secs) => held.poll_interval_secs = secs.max(POLL_MIN),
             Preference::StaleAfterSecs(secs) => held.stale_after_secs = secs,
+            Preference::AlertsPollSecs(secs) => held.alerts_poll_secs = secs.max(POLL_MIN),
             Preference::RoutineCap(agents) => held.routine_cap = agents.max(1),
             Preference::RoutinesPaused(paused) => held.routines_paused = paused,
             Preference::WrapCode(on) => ui.wrap_code = on,

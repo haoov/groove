@@ -101,3 +101,30 @@ async fn the_log_reads_back_newest_first_and_goes_with_its_session() {
     store.remove(&parent.id).await.unwrap();
     assert!(store.log_of(&parent.id).await.unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn a_task_remembers_one_child_per_alert() {
+    let store = Store::in_memory().await.unwrap();
+    let parent = promoted();
+    store.create_task(&parent, &task()).await.unwrap();
+    let child = explorer("explorer-child", 2);
+    store.create_explorer(&child).await.unwrap();
+    let alerted = groove_types::AlertChild {
+        session: child.id.clone(),
+        parent: parent.id.clone(),
+        dedup_key: "key-velero".into(),
+        title: "VeleroBackupFailed".into(),
+        priority: Some("Critical".into()),
+        cluster: Some("prod-eu".into()),
+        namespace: Some("velero".into()),
+    };
+    store.remember_alert(&alerted).await.unwrap();
+    let kept = store.alert_children(&parent.id).await.unwrap();
+    assert_eq!(kept, std::slice::from_ref(&alerted));
+    assert!(
+        store.remember_alert(&alerted).await.is_err(),
+        "one child per alert"
+    );
+    store.remove(&child.id).await.unwrap();
+    assert!(store.alert_children(&parent.id).await.unwrap().is_empty());
+}
