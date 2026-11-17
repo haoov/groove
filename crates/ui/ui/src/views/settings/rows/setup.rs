@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use groove_controllers::AppState;
+use groove_controllers::config_service::SignIn;
 use groove_types::Tool;
 use groove_ui_kit::base::style::Role;
 
@@ -10,7 +11,9 @@ use super::{Row, Section, Value, grouped};
 use crate::hit::Target;
 
 pub(super) fn setup(app: &AppState) -> Vec<Row> {
-    let signing_in = app.config.login.is_some() || app.config.signing_in;
+    let config = &app.config;
+    let running = config.login.is_some() || config.signing_in;
+    let signing_in = running && config.signing == SignIn::Claude;
     let (login, tools): (Vec<&Tool>, Vec<&Tool>) = app
         .config
         .tools

@@ -161,7 +161,13 @@ fn the_clipboard_is_read_off_the_loop_and_held_for_the_surface() {
 fn a_sign_in_ended_and_asked_again_keeps_only_the_last_terminal() {
     let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let held = crate::tests::fixture::Held::over(&spawner);
-    let login = || Cmd::Config(Command::Login { cols: 80, rows: 24 });
+    let login = || {
+        Cmd::Config(Command::Login {
+            to: groove_config_service::SignIn::Claude,
+            cols: 80,
+            rows: 24,
+        })
+    };
     dispatch(login(), &mut state, &services, &held);
     assert!(state.config.signing_in, "the spawn is out");
     dispatch(

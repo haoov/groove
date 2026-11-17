@@ -597,8 +597,8 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
 the user was. Reached from its chord, `alt+,`, and the palette. A section list on the left,
-on a floating pane of glass as the rail's — Setup, Providers, Clusters, Agent, Appearance,
-Preferences, Keymap — under the title, *back* and a search field: typing filters every
+on a floating pane of glass as the rail's — Setup, Providers, Clusters, Alerts, Agent,
+Appearance, Preferences, Keymap — under the title, *back* and a search field: typing filters every
 section to the matching rows, each shown with its section. The selected section's form on
 the right: labels left, controls right as glass buttons, one row per setting, each group a
 rounded card under its name, paths and ids in mono. Clusters alone is a table on its card,
@@ -614,6 +614,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Setup | environment check — git, gh, glab, curl, kubectl, jq — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths · next, Providers, while no task source stands |
 | Providers | each task source, Notion or GitHub: its toggle with its gaps counted, where it is read from, then its fields, its status values and its priority values under their own headings, each a picker with what its gap costs beside it · forge tokens, gh and glab, present or missing |
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
+| Alerts | incident.io: the `inc` login as the last alerts read found it, with *log in*, which runs `inc auth login` on Settings' terminal · the poll interval |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha, Defense (teal-black and steel, cyan for what is live and for focus, amber for what asks, coral for what fails; its terminals in the same colours) · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |

@@ -63,12 +63,14 @@ Enforced by `a_closed_child_hands_its_newest_entry_to_its_parent`,
 `a_log_entry_removed_leaves_the_log_and_the_store` and `an_entry_s_button_removes_it_from_the_log`.
 
 **A maintenance task reads the Platform team's firing alerts** from incident.io's API, at the
-interval Settings gives. incident.io filters them on the `Team` attribute's Platform entry, whose
+interval Settings › Alerts gives. incident.io filters them on the `Team` attribute's Platform entry, whose
 ids Groove holds. The key is the one `inc auth login` left: Groove asks `inc` for it and stores
-none, and the agent never runs `inc`. The config names the attributes read as cluster,
+none, and the agent never runs `inc`. Settings › Alerts shows that login as the last read found
+it, and its *log in* runs `inc auth login` on Settings' terminal. The config names the attributes read as cluster,
 namespace, priority and environment. Enforced by
 `a_task_marked_as_maintenance_reads_the_firing_alerts`,
-`incident_io_is_asked_for_the_platform_team_s_firing_alerts_alone` and `a_read_follows_every_page`.
+`incident_io_is_asked_for_the_platform_team_s_firing_alerts_alone`, `a_read_follows_every_page` and
+`alerts_show_the_inc_login_and_its_poll_and_log_in_runs_inc_auth_login`.
 
 **An alert has one child.** Investigate opens the child the alert already has, or spawns one:
 the alert as its brief, `groove:investigate` started, the alert's cluster and namespace attached

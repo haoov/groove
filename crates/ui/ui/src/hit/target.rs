@@ -44,6 +44,8 @@ pub enum Target {
     SettingsCheck,
     SettingsLogin,
     SettingsLoginEnd,
+    /// The alerts' `inc auth login`.
+    SettingsIncLogin,
     /// The sign-in's terminal, which takes the keys while it runs.
     Login,
     /// A task source: its fields opened to turn it on, one of them given the keys, sent.

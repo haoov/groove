@@ -106,6 +106,18 @@ pub async fn login(home: &Path, cols: u16, rows: u16) -> PtySpec {
     }
 }
 
+/// `inc auth login` in `home`, for the incident.io login the alerts read with.
+pub fn inc_login(home: &Path, cols: u16, rows: u16) -> PtySpec {
+    PtySpec {
+        program: "inc".into(),
+        args: vec!["auth".into(), "login".into()],
+        cwd: home.to_path_buf(),
+        env: Vec::new(),
+        rows,
+        cols,
+    }
+}
+
 /// `~/.local/bin/claude`, then the system paths, then whatever `PATH` finds.
 pub async fn claude_bin(home: &Path) -> String {
     let local = home.join(".local/bin/claude");

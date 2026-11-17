@@ -7,6 +7,7 @@ use groove_types::{Found, ProviderId, Secret, Tool};
 use super::*;
 use crate::hit::Target;
 
+mod alerts;
 mod servers;
 
 /// The same, a lit label read back whole.
@@ -122,7 +123,11 @@ fn setup_shows_each_program_in_its_state_and_offers_the_claude_sign_in() {
         .rect_of(&Target::SettingsLogin)
         .expect("claude's sign in");
     let asked = click(sign_in, &mut ui, &app, &hits);
-    let login = config::Command::Login { cols: 80, rows: 24 };
+    let login = config::Command::Login {
+        to: groove_controllers::config_service::SignIn::Claude,
+        cols: 80,
+        rows: 24,
+    };
     assert_eq!(asked, [Command::Config(login)]);
 
     app.config.signing_in = true;

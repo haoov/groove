@@ -89,12 +89,5 @@ fn poll(held: &Preferences) -> Vec<Row> {
             "seconds",
             Preference::StaleAfterSecs,
         ),
-        count(
-            "alerts poll",
-            "incident.io inc alerts maintenance poll",
-            (held.alerts_poll_secs, 10, 10),
-            "seconds",
-            Preference::AlertsPollSecs,
-        ),
     ]
 }
