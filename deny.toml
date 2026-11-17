@@ -10,6 +10,7 @@ ignore = [
     { id = "RUSTSEC-2017-0008", reason = "serial is unmaintained; portable-pty pulls it, no maintained pty crate replaces it yet" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; the font stack (cosmic-text) pulls it" },
     { id = "RUSTSEC-2026-0441", reason = "pin-utils is unmaintained; portable-pty pulls it through nix, no safe upgrade yet" },
+    { id = "RUSTSEC-2026-0459", reason = "bundled SQLite before 3.54; Groove opens only its own state database; sqlx-sqlite 0.9 caps libsqlite3-sys below the fix" },
 ]
 
 [licenses]
