@@ -6,7 +6,12 @@ use crate::session::Child;
 use crate::{AppState, Services, Spawner};
 
 /// An explorer spawned from the write's own session, started on the brief.
-pub(super) fn spawn(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: Write) {
+pub(super) fn spawn(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    write: Write,
+) {
     let Some(brief) = write.text("brief").map(str::to_string) else {
         return write.reply.failed("spawn_session needs a brief");
     };

@@ -169,7 +169,11 @@ pub(crate) fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Open> {
 /// The rail's entries in order: a heading over each state, children under their parent.
 fn entries<'a>(app: &'a AppState, ui: &Ui) -> Vec<Entry<'a>> {
     let (sessions, routines) = order::split(app);
-    let tops: Vec<&Open> = sessions.iter().filter(|one| !one.1).map(|one| one.0).collect();
+    let tops: Vec<&Open> = sessions
+        .iter()
+        .filter(|one| !one.1)
+        .map(|one| one.0)
+        .collect();
     let mut entries: Vec<Entry> = Vec::new();
     let mut last = None;
     for (open, child) in sessions {

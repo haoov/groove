@@ -31,10 +31,10 @@ fn a_maintenance_task_lists_its_children_and_the_log_shows_who_wrote_each_entry(
     let said = texts(&app);
     for one in [
         "MAINTENANCE",
-        "CHILDREN",
+        "CHILDREN · 1",
         "VeleroBackupFailed",
         "closed",
-        "LOG",
+        "LOG · 1",
         "Raised the backup job's limit to 2Gi.",
         "It ran out of memory.",
         "from KubeJobFailed",
@@ -46,6 +46,9 @@ fn a_maintenance_task_lists_its_children_and_the_log_shows_who_wrote_each_entry(
 #[test]
 fn a_task_not_marked_shows_no_children_and_an_empty_log() {
     let said = texts(&super::working_a_task());
-    assert!(!said.iter().any(|text| text == "CHILDREN"), "{said:?}");
-    assert!(said.iter().any(|text| text == "Nothing logged yet."), "{said:?}");
+    assert!(!said.iter().any(|text| text.starts_with("CHILDREN")), "{said:?}");
+    assert!(
+        said.iter().any(|text| text == "Nothing logged yet."),
+        "{said:?}"
+    );
 }

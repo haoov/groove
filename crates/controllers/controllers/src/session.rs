@@ -5,8 +5,8 @@ mod clusters;
 
 pub(crate) use clusters::{attach as attach_cluster, detach as detach_cluster};
 mod delete;
-mod log;
 pub(crate) mod feed;
+mod log;
 mod open;
 mod rail;
 mod repos;
@@ -16,11 +16,11 @@ use groove_types::{Attached, RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::asker::Asker;
 
-pub(crate) use children::{Child, spawn_child};
-pub(crate) use log::{Logged, log_work};
 pub use children::set_maintenance;
+pub(crate) use children::{Child, spawn_child};
 pub(crate) use delete::delete_then;
 pub use delete::{delete, delete_local, force_delete};
+pub(crate) use log::{Logged, log_work};
 pub(crate) use open::{Start, begun, begun_with};
 pub use open::{close, open, open_explorer, restore, select};
 pub use rail::{list, refresh_status, rename_explorer};

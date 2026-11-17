@@ -93,7 +93,10 @@ async fn the_log_reads_back_newest_first_and_goes_with_its_session() {
     let log = store.log_of(&parent.id).await.unwrap();
     assert_eq!(
         log,
-        [entry("Rotated the token", 20), entry("Raised the job's limit to 2Gi", 10)]
+        [
+            entry("Rotated the token", 20),
+            entry("Raised the job's limit to 2Gi", 10)
+        ]
     );
     store.remove(&parent.id).await.unwrap();
     assert!(store.log_of(&parent.id).await.unwrap().is_empty());

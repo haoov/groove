@@ -11,8 +11,7 @@ pub(crate) type Placed<'a> = (&'a Open, bool);
 /// The open sessions by state with their children, then the routines' own, in the order opened.
 pub(super) fn split(app: &AppState) -> (Vec<Placed<'_>>, Vec<&Open>) {
     let routine = |open: &&Open| open.session.kind.routine().is_none();
-    let (sessions, routines): (Vec<&Open>, Vec<&Open>) =
-        app.session.open.iter().partition(routine);
+    let (sessions, routines): (Vec<&Open>, Vec<&Open>) = app.session.open.iter().partition(routine);
     let under = |open: &&Open| {
         let parent = open.state.parent.as_ref();
         parent.is_some_and(|one| app.session.get(one).is_some())
@@ -23,7 +22,9 @@ pub(super) fn split(app: &AppState) -> (Vec<Placed<'_>>, Vec<&Open>) {
     for top in tops {
         out.push((top, false));
         let id = Some(&top.session.id);
-        let own = children.iter().filter(|one| one.state.parent.as_ref() == id);
+        let own = children
+            .iter()
+            .filter(|one| one.state.parent.as_ref() == id);
         out.extend(own.map(|one| (*one, true)));
     }
     (out, routines)

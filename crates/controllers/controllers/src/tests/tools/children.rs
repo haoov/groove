@@ -61,7 +61,12 @@ fn maintaining(marked: bool) -> Maintaining {
     }
 }
 
-fn called(at: &mut Maintaining, from: &SessionId, tool: &str, arguments: serde_json::Value) -> Answer {
+fn called(
+    at: &mut Maintaining,
+    from: &SessionId,
+    tool: &str,
+    arguments: serde_json::Value,
+) -> Answer {
     let (reply, mut answered) = Reply::new();
     let call = Call {
         session: from.as_str().to_string(),
@@ -96,15 +101,29 @@ fn a_maintenance_task_spawns_a_child_beside_it_and_remembers_it() {
     let child = parent.children[0].clone();
     assert_eq!(child.title, "VeleroBackupFailed");
     assert_eq!(at.state.session.selected.as_ref(), Some(&at.parent));
-    let open = at.state.session.get(&child.id).expect("the child on the rail");
+    let open = at
+        .state
+        .session
+        .get(&child.id)
+        .expect("the child on the rail");
     assert_eq!(open.state.parent.as_ref(), Some(&at.parent));
 
     let store = at.services.session.store();
-    until(&at.spawner, &at.services, &mut at.state, |_| at.spawner.idle());
+    until(&at.spawner, &at.services, &mut at.state, |_| {
+        at.spawner.idle()
+    });
     let state = at.spawner.block_on(store.state(&child.id)).expect("a read");
     assert_eq!(state.parent.as_ref(), Some(&at.parent));
-    assert!(at.spawner.block_on(store.state(&at.parent)).expect("a read").maintenance);
-    let children = at.spawner.block_on(store.children(&at.parent)).expect("a read");
+    assert!(
+        at.spawner
+            .block_on(store.state(&at.parent))
+            .expect("a read")
+            .maintenance
+    );
+    let children = at
+        .spawner
+        .block_on(store.children(&at.parent))
+        .expect("a read");
     assert_eq!(children, [child]);
 }
 
@@ -112,7 +131,14 @@ fn a_maintenance_task_spawns_a_child_beside_it_and_remembers_it() {
 fn a_child_logs_to_its_parent_and_the_parent_to_its_own_log() {
     let mut at = maintaining(true);
     spawned(&mut at);
-    let child = at.state.session.get(&at.parent).expect("the parent").children[0].id.clone();
+    let child = at
+        .state
+        .session
+        .get(&at.parent)
+        .expect("the parent")
+        .children[0]
+        .id
+        .clone();
     auto_approve(&mut at.state, &child);
     let entry = json!({
         "what": "Pruned the snapshots older than the TTL.",
@@ -126,14 +152,23 @@ fn a_child_logs_to_its_parent_and_the_parent_to_its_own_log() {
     let answer = called(&mut at, &parent, "log_work", own);
     assert!(!answer.failed, "{}", answer.text);
 
-    let log = at.state.session.get(&at.parent).expect("the parent").log.clone();
+    let log = at
+        .state
+        .session
+        .get(&at.parent)
+        .expect("the parent")
+        .log
+        .clone();
     assert_eq!(log[0].from, None, "the parent's own entry, newest first");
     assert_eq!(log[1].from.as_deref(), Some("VeleroBackupFailed"));
     assert_eq!(log[1].why.as_deref(), Some("The snapshot quota was full."));
     let child_log = &at.state.session.get(&child).expect("the child").log;
     assert!(child_log.is_empty(), "a child keeps no log of its own");
     let store = at.services.session.store();
-    let kept = at.spawner.block_on(store.log_of(&at.parent)).expect("a read");
+    let kept = at
+        .spawner
+        .block_on(store.log_of(&at.parent))
+        .expect("a read");
     assert_eq!(kept, log);
 }
 
@@ -146,6 +181,13 @@ fn only_a_task_is_marked_as_maintenance() {
         on: true,
     };
     dispatch(Command::Session(mark), &mut state, &services, &spawner);
-    assert!(!state.session.get(&explorer).expect("open").state.maintenance);
+    assert!(
+        !state
+            .session
+            .get(&explorer)
+            .expect("open")
+            .state
+            .maintenance
+    );
     assert!(!state.errors.is_empty(), "the user hears why");
 }

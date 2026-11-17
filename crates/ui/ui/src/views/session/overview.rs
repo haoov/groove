@@ -61,7 +61,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         for (part, rect) in parts.iter().zip(rects) {
             let row = matches!(
                 part,
-                Part::Repo(_) | Part::Worktree(_) | Part::Cluster(..) | Part::Child(_) | Part::Entry(_) | Part::NoLog
+                Part::Repo(_)
+                    | Part::Worktree(_)
+                    | Part::Cluster(..)
+                    | Part::Child(_)
+                    | Part::Entry(_)
+                    | Part::NoLog
             );
             if row && ruled {
                 top_rule(ctx, inset(ctx, rect), ctx.styles.line());
@@ -128,7 +133,10 @@ fn maintained<'a>(ctx: &Ctx, out: &mut Vec<Part<'a>>, open: &'a Open) {
 
 /// The log of a task or an explorer, the newest entry first.
 fn logged<'a>(ctx: &Ctx, out: &mut Vec<Part<'a>>, open: &'a Open) {
-    if !matches!(open.session.kind, SessionKind::Task { .. } | SessionKind::Explorer) {
+    if !matches!(
+        open.session.kind,
+        SessionKind::Task { .. } | SessionKind::Explorer
+    ) {
         return;
     }
     let mut entries: Vec<Part> = open.log.iter().map(Part::Entry).collect();
@@ -162,9 +170,12 @@ fn height(ctx: &Ctx, part: &Part) -> f32 {
         Part::Properties(..) => row * 2.0 + ctx.tokens.sm * 2.0,
         Part::Entry(one) => log::height(ctx, one),
         Part::Cluster(..) => row + ctx.tokens.sm,
-        Part::Head(..) | Part::NoRepos | Part::Repo(_) | Part::Worktree(_) | Part::Child(_) | Part::NoLog => {
-            row + ctx.tokens.xs
-        }
+        Part::Head(..)
+        | Part::NoRepos
+        | Part::Repo(_)
+        | Part::Worktree(_)
+        | Part::Child(_)
+        | Part::NoLog => row + ctx.tokens.xs,
     }
 }
 

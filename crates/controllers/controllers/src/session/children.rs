@@ -9,8 +9,7 @@ use crate::asker::Asker;
 use crate::spawn::record;
 use crate::{AppState, Services, Spawner};
 
-const NOT_MAINTENANCE: &str =
-    "only a task marked as maintenance spawns child sessions";
+const NOT_MAINTENANCE: &str = "only a task marked as maintenance spawns child sessions";
 
 /// What a new child is: its title, its brief, and whether it takes the selection.
 #[derive(Debug, Default)]
@@ -100,9 +99,7 @@ pub(crate) fn spawn_child(
 /// The parent's title, when it is on the rail and marked as maintenance.
 fn maintained(state: &AppState, parent: &SessionId) -> Option<String> {
     let open = state.session.get(parent)?;
-    open.state
-        .maintenance
-        .then(|| open.session.title.clone())
+    open.state.maintenance.then(|| open.session.title.clone())
 }
 
 /// The child's first message: the brief, and what it does once the work is done.

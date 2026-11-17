@@ -4,8 +4,8 @@ use groove_types::{AgentStatus, ExternalId, SessionActivity, SessionId, SessionK
 
 use groove_controllers::agent_service::Agent;
 
-use crate::tests::{app, open};
 use crate::Ui;
+use crate::tests::{app, open};
 
 #[test]
 fn a_working_child_stands_under_its_idle_parent() {

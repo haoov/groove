@@ -67,7 +67,11 @@ fn said(task: &Task, maintenance: bool) -> Vec<(&'static str, String, Role)> {
         ("priority", priority, Role::Text),
         ("dates", dates, Role::Text),
         ("hours", task.logged.map(hours), Role::Text),
-        ("maintenance", maintenance.then(|| "on".to_string()), Role::Accent),
+        (
+            "maintenance",
+            maintenance.then(|| "on".to_string()),
+            Role::Accent,
+        ),
     ]
     .into_iter()
     .filter_map(|(name, one, role)| one.map(|one| (name, one, role)))
