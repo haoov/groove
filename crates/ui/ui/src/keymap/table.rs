@@ -125,7 +125,11 @@ pub const TABLE: [Spec; 57] = [
     pane(A::BoardNext, ("board.next", "board up next"), &["alt+2"]),
     pane(A::BoardReview, ("board.review", "board review"), &["alt+3"]),
     pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+a"]),
-    pane(A::FocusAlerts, ("pane.alerts", "the alerts: open, focus, fold"), &["alt+i"]),
+    pane(
+        A::FocusAlerts,
+        ("pane.alerts", "the alerts: open, focus, fold"),
+        &["alt+i"],
+    ),
     pane(
         A::FocusWorkspace,
         ("pane.workspace", "the workspace: open, focus, fold"),

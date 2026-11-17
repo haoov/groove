@@ -2,11 +2,11 @@
 
 use groove_gfx::{Edges, Rect};
 use groove_types::LogEntry;
-use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::band;
-use groove_ui_kit::widgets::Button;
 use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::widgets::Button;
 
 use crate::ctx::Ctx;
 use crate::hit::Target;

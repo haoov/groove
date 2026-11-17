@@ -144,7 +144,12 @@ fn a_closed_child_hands_its_newest_entry_to_its_parent() {
         "what": "Pruned the snapshots older than the TTL.",
         "why": "The snapshot quota was full.",
     });
-    let answer = called(&mut at, &child, "log_work", json!({ "what": "Read the job's logs." }));
+    let answer = called(
+        &mut at,
+        &child,
+        "log_work",
+        json!({ "what": "Read the job's logs." }),
+    );
     assert!(!answer.failed, "{}", answer.text);
     let answer = called(&mut at, &child, "log_work", entry);
     assert!(!answer.failed, "{}", answer.text);
@@ -152,7 +157,14 @@ fn a_closed_child_hands_its_newest_entry_to_its_parent() {
     let own = json!({ "what": "Spawned a child for the Velero alert." });
     let answer = called(&mut at, &parent, "log_work", own);
     assert!(!answer.failed, "{}", answer.text);
-    let log = |at: &Maintaining| at.state.session.get(&at.parent).expect("the parent").log.clone();
+    let log = |at: &Maintaining| {
+        at.state
+            .session
+            .get(&at.parent)
+            .expect("the parent")
+            .log
+            .clone()
+    };
     assert_eq!(log(&at).len(), 1, "the child keeps its log while it lives");
     let child_log = &at.state.session.get(&child).expect("the child").log;
     assert_eq!(child_log[0].from, None);
@@ -163,9 +175,15 @@ fn a_closed_child_hands_its_newest_entry_to_its_parent() {
     });
     let handed = log(&at);
     assert_eq!(handed.len(), 2, "one entry per child: {handed:?}");
-    let from_child = handed.iter().find(|one| one.from.is_some()).expect("handed");
+    let from_child = handed
+        .iter()
+        .find(|one| one.from.is_some())
+        .expect("handed");
     assert_eq!(from_child.from.as_deref(), Some("VeleroBackupFailed"));
-    assert_eq!(from_child.why.as_deref(), Some("The snapshot quota was full."));
+    assert_eq!(
+        from_child.why.as_deref(),
+        Some("The snapshot quota was full.")
+    );
     let store = at.services.session.store();
     let kept = at
         .spawner
@@ -208,11 +226,22 @@ fn a_log_entry_removed_leaves_the_log_and_the_store() {
         session: parent.clone(),
         entry: wrong,
     };
-    dispatch(Command::Session(remove), &mut at.state, &at.services, &at.spawner);
+    dispatch(
+        Command::Session(remove),
+        &mut at.state,
+        &at.services,
+        &at.spawner,
+    );
     until(&at.spawner, &at.services, &mut at.state, |_| {
         at.spawner.idle()
     });
-    let log = at.state.session.get(&parent).expect("the parent").log.clone();
+    let log = at
+        .state
+        .session
+        .get(&parent)
+        .expect("the parent")
+        .log
+        .clone();
     assert_eq!(log.len(), 1);
     assert_eq!(log[0].what, "Rotated the token.");
     let store = at.services.session.store();
