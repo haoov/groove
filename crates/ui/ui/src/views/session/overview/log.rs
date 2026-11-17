@@ -3,18 +3,22 @@
 use groove_gfx::{Edges, Rect};
 use groove_types::LogEntry;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::shape::band;
+use groove_ui_kit::widgets::Button;
 use groove_ui_kit::text::{Label, ago};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
-/// What was done and how long ago; why under it; the child that sent it and the MR last.
+/// What was done, its age and remove button; why under it; the child and the MR last.
 pub(super) fn entry(ctx: &mut Ctx, rect: Rect, one: &LogEntry) {
     let (md, row) = (ctx.tokens.md, ctx.tokens.row);
     let inner = rect.pad(Edges::across(md * 2.0, md * 2.0));
     let mut at = ctx.tokens.xs;
     let mut head = band(inner, at, row);
+    let remove = Button::icon(Mark::Close, 0, Target::LogRemove(one.id), Role::Faint);
+    remove.right(ctx, &mut head, ctx.tokens.sm);
     let age = ago(one.at.age_at(ctx.now));
     Label::new(&age, ctx.styles.small(Role::Ghost)).right(ctx, &mut head, md);
     Label::new(&one.what, ctx.styles.label(Role::Text)).draw(ctx, head);

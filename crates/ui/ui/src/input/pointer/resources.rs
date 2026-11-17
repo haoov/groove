@@ -4,7 +4,7 @@ use groove_controllers::{AppState, Command, workspace};
 
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
-use crate::views::session::resources::{self, Dragged, How, Opens, ResourcesUi};
+use crate::views::session::resources::{self, Columns, Dragged, How, Opens, ResourcesUi};
 use crate::{Corner, Menu, Of};
 use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -158,21 +158,26 @@ pub(super) fn held(
 ) -> Vec<Command> {
     let open = app.session.selected();
     let held = &ui.session.resources;
-    let kind = match held.tab() {
-        Some(_) => Some(None),
-        None => open.and_then(|open| resources::kind(app, open, held).map(|one| Some(one.plural))),
+    let table = match held.tab() {
+        Some(_) => Some(Columns::Tab),
+        None => open
+            .and_then(|open| resources::kind(app, open, held).map(|one| Columns::Kind(one.plural))),
     };
     let header = hits.rect_of(&Target::ResourceSort(label.clone()));
-    if let (Some(kind), Some(header)) = (kind, header) {
-        let width = header.w;
-        ui.held = Some(Held::Column(Dragged {
-            kind,
-            label,
-            from: x,
-            width,
-        }));
+    if let (Some(table), Some(header)) = (table, header) {
+        hold(ui, table, label, (x, header.w));
     }
     Vec::new()
+}
+
+/// The column's edge held, at the width its header was drawn.
+pub(super) fn hold(ui: &mut Ui, table: Columns, label: String, (from, width): (f32, f32)) {
+    ui.held = Some(Held::Column(Dragged {
+        table,
+        label,
+        from,
+        width,
+    }));
 }
 
 /// The held column follows the pointer, never narrower than a mark.
@@ -183,9 +188,10 @@ pub(super) fn dragged(ui: &mut Ui, x: f32, metrics: Metrics) {
     let least = metrics.tokens().icon * 2.0;
     let width = (drag.width + x - drag.from).max(least);
     let held = &mut ui.session.resources;
-    let widths = match drag.kind {
-        Some(kind) => held.widths.entry(kind).or_default(),
-        None => &mut held.tab_widths,
+    let widths = match drag.table {
+        Columns::Kind(kind) => held.widths.entry(kind).or_default(),
+        Columns::Tab => &mut held.tab_widths,
+        Columns::Alerts => &mut ui.alerts.widths,
     };
     widths.insert(drag.label, width);
 }

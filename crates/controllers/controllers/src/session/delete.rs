@@ -65,6 +65,7 @@ pub(crate) fn delete_then(
 
 /// The session off the rail, with its launch files and its lines.
 fn gone(state: &mut AppState, spawner: &dyn Spawner, id: &SessionId) {
+    super::log::hand_over(state, id);
     agent::forget(state, spawner, id);
     state.routine.runs.drop_session(id);
     if let Some(closed) = state.session.close(id) {

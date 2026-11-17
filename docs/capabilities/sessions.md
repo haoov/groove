@@ -54,16 +54,20 @@ one. Enforced by `a_child_adopted_as_a_task_keeps_its_parent` and
 `a_deleted_parent_leaves_its_children_without_one`.
 
 **A session keeps a log of what it did**, which the user reads when they come back: what,
-why when it is not plain, the MR. The agent writes it with `log_work` when it lands the work
-and when it closes; a child's entry goes to its parent's log, named after the child. Groove
-keeps the log. Enforced by `a_child_logs_to_its_parent_and_the_parent_to_its_own_log`.
+why when it is not plain, and the MR when that work opened it. The agent writes it with
+`log_work` when it lands the work and when it closes. A child keeps its own log; when it closes,
+its newest entry goes to its parent's log, named after the child: one entry per child. Groove
+keeps the log, and each entry's button on the overview takes a wrong one off it.
+Enforced by `a_closed_child_hands_its_newest_entry_to_its_parent`,
+`a_log_entry_removed_leaves_the_log_and_the_store` and `an_entry_s_button_removes_it_from_the_log`.
 
-**A maintenance task reads incident.io's firing alerts** through the `inc` CLI the user logged
-in with, at the interval Settings gives. Groove holds no token, and the agent never runs `inc`.
-The config names the attributes read as cluster, namespace and priority, and may keep only the
-alerts whose attribute holds given values. Enforced by
-`a_task_marked_as_maintenance_reads_the_firing_alerts` and
-`a_filter_keeps_only_the_alerts_whose_attribute_it_names`.
+**A maintenance task reads the Platform team's firing alerts** from incident.io's API, at the
+interval Settings gives. incident.io filters them on the `Team` attribute's Platform entry, whose
+ids Groove holds. The key is the one `inc auth login` left: Groove asks `inc` for it and stores
+none, and the agent never runs `inc`. The config names the attributes read as cluster,
+namespace, priority and environment. Enforced by
+`a_task_marked_as_maintenance_reads_the_firing_alerts`,
+`incident_io_is_asked_for_the_platform_team_s_firing_alerts_alone` and `a_read_follows_every_page`.
 
 **An alert has one child.** Investigate opens the child the alert already has, or spawns one:
 the alert as its brief, `groove:investigate` started, the alert's cluster and namespace attached

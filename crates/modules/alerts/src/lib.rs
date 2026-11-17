@@ -1,64 +1,113 @@
-//! The firing alerts incident.io holds, read through the `inc` CLI the user logged in with.
+//! The Platform team's firing alerts, asked of incident.io with the key the `inc` CLI holds.
 
-use groove_exec::run::Run;
-use groove_types::{Alert, AlertsConfig, Error, ErrorKind, Result, Timestamp};
-use serde_json::Value;
+mod parse;
 
 #[cfg(test)]
 mod tests;
 
-/// Every firing alert the config keeps, the most urgent first, the newest first within a rank.
-pub async fn firing(config: &AlertsConfig) -> Result<Vec<Alert>> {
-    let run = Run::new("inc").args(["alerts", "list", "--status", "firing"]);
-    let printed = run
-        .args(["--output", "json", "--limit", "0"])
-        .text()
-        .await
-        .map_err(|e| Error::new(ErrorKind::Provider, e.to_string()))?;
-    parsed(&printed, config)
+use groove_http::{Client, Method};
+use groove_token::{Cli, CliToken, Token};
+use groove_types::{Alert, AlertsConfig, Error, ErrorKind, Result};
+use serde_json::Value;
+
+const API: &str = "https://api.incident.io";
+/// The most alerts one page holds.
+const PAGE: &str = "50";
+/// The most pages one read follows.
+const PAGES: usize = 40;
+/// The `Team` alert attribute, and the value it holds for Platform.
+pub const TEAM: &str = "01KBCK0ZK7PVJY42HRMRY1PWF7";
+pub const PLATFORM: &str = "platform";
+
+/// incident.io's API, its key asked of `inc` and held until it is refused.
+pub struct Incident {
+    base: String,
+    client: Client,
+    token: Token,
 }
 
-/// The alerts in what `inc alerts list` printed.
-pub fn parsed(printed: &str, config: &AlertsConfig) -> Result<Vec<Alert>> {
-    let listed: Vec<Value> = serde_json::from_str(printed)
-        .map_err(|e| Error::new(ErrorKind::Provider, format!("inc printed no alerts: {e}")))?;
-    let mut alerts: Vec<Alert> = listed
+impl Incident {
+    /// The API the user logged `inc` in to.
+    pub fn logged_in() -> Result<Self> {
+        Self::at(API, Token::Cli(CliToken::new(Cli::Inc, "api.incident.io")))
+    }
+
+    pub fn at(base: impl Into<String>, token: Token) -> Result<Self> {
+        Ok(Self {
+            base: base.into().trim_end_matches('/').to_string(),
+            client: Client::new().map_err(failed)?,
+            token,
+        })
+    }
+
+    /// Every firing alert of the Platform team, the most urgent first, the newest first within a rank.
+    pub async fn firing(&self, config: &AlertsConfig) -> Result<Vec<Alert>> {
+        let query = vec![
+            ("status[one_of]".to_string(), "firing".to_string()),
+            ("page_size".to_string(), PAGE.to_string()),
+            (format!("attributes[{TEAM}][one_of]"), PLATFORM.to_string()),
+        ];
+        let mut alerts = Vec::new();
+        for page in self.pages("/v2/alerts", query).await? {
+            let listed = page["alerts"].as_array().cloned().unwrap_or_default();
+            alerts.extend(listed.iter().filter_map(|one| parse::alert(one, config)));
+        }
+        alerts.sort_by_key(|one| (one.rank(), std::cmp::Reverse(one.created_at)));
+        Ok(alerts)
+    }
+
+    /// Every page of a list, following its `after` cursor.
+    async fn pages(&self, path: &str, query: Vec<(String, String)>) -> Result<Vec<Value>> {
+        let mut out = Vec::new();
+        let mut after: Option<String> = None;
+        for _ in 0..PAGES {
+            let mut asked = query.clone();
+            asked.extend(after.take().map(|cursor| ("after".to_string(), cursor)));
+            let page = self.get(path, &asked).await?;
+            after = page["pagination_meta"]["after"]
+                .as_str()
+                .filter(|cursor| !cursor.is_empty())
+                .map(str::to_string);
+            out.push(page);
+            if after.is_none() {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    async fn get(&self, path: &str, query: &[(String, String)]) -> Result<Value> {
+        let url = format!("{}{path}{}", self.base, encoded(query));
+        let request = self.client.request(Method::GET, url);
+        request.send_authed_json(&self.token).await.map_err(failed)
+    }
+}
+
+/// `?a=b&c=d`, each name and value percent-encoded; nothing when there is no pair.
+fn encoded(query: &[(String, String)]) -> String {
+    let pairs: Vec<String> = query
         .iter()
-        .filter(|one| kept(one, config))
-        .filter_map(|one| alert(one, config))
+        .map(|(name, value)| format!("{}={}", escaped(name), escaped(value)))
         .collect();
-    alerts.sort_by_key(|one| (one.rank(), std::cmp::Reverse(one.created_at)));
-    Ok(alerts)
+    match pairs.is_empty() {
+        true => String::new(),
+        false => format!("?{}", pairs.join("&")),
+    }
 }
 
-fn alert(one: &Value, config: &AlertsConfig) -> Option<Alert> {
-    let text = |name: &str| one[name].as_str().map(str::to_string);
-    Some(Alert {
-        id: text("id")?,
-        title: text("title")?,
-        description: text("description").unwrap_or_default(),
-        dedup_key: text("deduplication_key").or_else(|| text("id"))?,
-        source_url: text("source_url").filter(|url| !url.is_empty()),
-        priority: attribute(one, &config.priority),
-        cluster: attribute(one, &config.cluster),
-        namespace: attribute(one, &config.namespace),
-        created_at: Timestamp::parse(one["created_at"].as_str()?).ok()?,
-    })
+fn escaped(text: &str) -> String {
+    let mut out = String::new();
+    for byte in text.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(char::from(byte))
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
 }
 
-/// Whether the config's filter, when it has one, keeps the alert.
-fn kept(one: &Value, config: &AlertsConfig) -> bool {
-    let Some(only) = &config.only else {
-        return true;
-    };
-    attribute(one, &only.attribute).is_some_and(|value| only.values.contains(&value))
-}
-
-/// The label of the attribute of that name, or its literal when it has no label.
-fn attribute(one: &Value, name: &str) -> Option<String> {
-    let all = one["attributes"].as_array()?;
-    let found = all.iter().find(|at| at["attribute"]["name"] == name)?;
-    let value = &found["value"];
-    let said = value["label"].as_str().or(value["literal"].as_str())?;
-    (!said.is_empty()).then(|| said.to_string())
+fn failed(e: groove_http::Error) -> Error {
+    Error::new(ErrorKind::Provider, format!("incident.io: {e}"))
 }

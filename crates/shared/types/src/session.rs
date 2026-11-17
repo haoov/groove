@@ -79,6 +79,8 @@ pub struct SessionState {
 /// One entry of a session's log: what was done, why, and the MR that carries it.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct LogEntry {
+    /// Its row in the store.
+    pub id: i64,
     /// The child that wrote it, by its title then; none when the session wrote it itself.
     pub from: Option<String>,
     pub what: String,

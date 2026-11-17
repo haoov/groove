@@ -6,9 +6,13 @@ use super::Service;
 use crate::FEED_MAX;
 
 impl Service {
-    /// One entry on the session's own log.
-    pub async fn append_log(&self, id: &SessionId, entry: &LogEntry) -> Result<(), Error> {
+    /// One entry on the session's own log; its id.
+    pub async fn append_log(&self, id: &SessionId, entry: &LogEntry) -> Result<i64, Error> {
         Ok(self.store.append_log(id, entry).await?)
+    }
+
+    pub async fn remove_log(&self, id: &SessionId, entry: i64) -> Result<(), Error> {
+        Ok(self.store.remove_log(id, entry).await?)
     }
 
     /// One line written down.

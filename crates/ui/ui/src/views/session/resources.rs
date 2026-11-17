@@ -17,8 +17,8 @@ pub use list::{draw, uids as row_uids};
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
 pub use opened::{Link, Opens, Section};
 pub use scope::{
-    Dragged, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered, shown_contexts,
-    shows, wants,
+    Columns, Dragged, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered,
+    shown_contexts, shows, wants,
 };
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, served, shown};

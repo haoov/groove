@@ -24,7 +24,7 @@ pub(crate) struct Child {
     pub attached: Option<Attached>,
 }
 
-/// The maintenance actions, then the clusters.
+/// The maintenance and log actions, then the clusters.
 pub(super) fn dispatch(
     command: Command,
     state: &mut AppState,
@@ -38,6 +38,9 @@ pub(super) fn dispatch(
         Command::SpawnChild { parent } => {
             let child = Child::default();
             spawn_child(state, services, spawner, &parent, child, Asker::Ui);
+        }
+        Command::RemoveLogEntry { session, entry } => {
+            super::log::remove(state, services, spawner, &session, entry)
         }
         other => super::clusters::dispatch(other, state, services, spawner),
     }
@@ -164,6 +167,6 @@ fn maintained(state: &AppState, parent: &SessionId) -> Option<String> {
 fn briefed(parent: &str, brief: &str) -> String {
     format!(
         "Brief from {parent}:\n\n{brief}\n\nWhen the work is done, call log_work with what \
-         you did, why, and the MR link, before the session closes."
+         you did and why, and the MR link if you opened one, before the session closes."
     )
 }

@@ -12,6 +12,7 @@ fn alert(key: &str, priority: &str) -> Alert {
         priority: Some(priority.into()),
         cluster: None,
         namespace: None,
+        environment: None,
         created_at: Timestamp::new(0),
     }
 }

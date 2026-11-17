@@ -36,14 +36,16 @@ the rail only as its attention count.
   `the_agent_has_no_ring_and_its_caret_takes_the_accent` and
   `a_selection_stays_neutral_in_the_region_that_has_the_keys`.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
-  rail, the agent, the workspace and the sidebar; the terminals keep their own chord. The
-  workspace and the sidebar unfold first, and a press while they hold the keys folds them
+  rail, the agent, the workspace and the sidebar; `alt+i` hands them to a maintenance task's
+  alerts; the terminals keep their own chord. The
+  workspace, the sidebar and the alerts unfold first, and a press while they hold the keys folds them
   away. `ctrl+alt` with `h`, `j`, `k` or `l` moves the boundary of the region that holds the keys
   that way.
   Enforced by `alt_and_a_region_s_letter_hand_it_the_keys`,
   `a_second_press_folds_the_sidebar_away`,
   `alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it` and
-  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way`.
+  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way` and
+  `alt_i_unfolds_the_alerts_gives_them_the_keys_then_folds_them`.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
@@ -278,15 +280,22 @@ and under it; the wheel there scrolls the agent and the rail's edge is not dragg
 `with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
 
 **A maintenance task's alerts stand over the agent.** Open, they take the bar's free room over
-the agent and a share of its height, the agent under them. Folded, they are their header alone in
+the agent, down to the foot the user drags, the agent under them. Folded, they are their header alone in
 the bar over the agent; with everything folded, that header stands after the sessions' header
-and before the strip's capsule. The header counts the alerts by rank; a row says where the alert
-fires, how long ago, and its child's state, or offers to investigate. A resolved alert stays,
+and before the strip's capsule. The header counts the alerts by rank. They list on the kit's grid, one
+line each: the priority in its colour, the alert, its environment, its cluster in its hue, its
+namespace, its age, its child's state, then an Investigate or Open button. A header orders the
+rows and its edge drags the column's width. A click on a row selects it and gives the alerts the
+keys: the arrows step through the rows and Enter investigates; only the button or Enter spawns or
+opens a child. A resolved alert stays,
 greyed, while its child is on the rail. Enforced by
 `open_the_alerts_stand_over_the_agent_which_keeps_the_rest_of_its_height`,
 `folded_the_alerts_are_their_header_in_the_bar_over_the_agent`,
 `with_everything_folded_the_alerts_take_the_bar_between_the_sessions_header_and_the_strip`,
-`the_alerts_count_by_rank_and_offer_to_investigate` and `a_session_not_marked_has_no_alerts`.
+`the_alerts_count_by_rank_and_list_on_one_line_of_a_grid_with_a_button_to_investigate`,
+`an_alerts_column_drags_its_width_and_its_header_orders_the_rows`,
+`a_row_takes_the_keys_and_only_its_button_or_enter_investigates`,
+`the_alerts_foot_is_dragged_and_the_agent_follows` and `a_session_not_marked_has_no_alerts`.
 
 **The terminals rise from the foot.** Their drawer is an opaque panel under the strip.
 Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the

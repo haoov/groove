@@ -74,6 +74,8 @@ pub struct Button<'a, T> {
     pub inert: bool,
     /// On a pill of glass, its hover laid over the ground.
     pub glass: bool,
+    /// Its glass squared, as a grid's cells are.
+    pub square: bool,
 }
 
 impl<'a, T: Clone + PartialEq> Button<'a, T> {
@@ -96,6 +98,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             caret: None,
             inert: false,
             glass: false,
+            square: false,
         }
     }
 
@@ -111,6 +114,12 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             hover: Some(styles.glass_hover()),
             ..Self::new(label, target, role, styles.glass_card())
         }
+    }
+
+    /// The glass squared to the window's corners.
+    pub fn squared(mut self) -> Self {
+        self.square = true;
+        self
     }
 
     /// A mark alone, flat until `ground` gives it one.
@@ -215,6 +224,18 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
         }
     }
 
+    /// Its glass, a pill or squared, and its hover over it under the pointer.
+    fn glazed<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>, box_: Rect) {
+        let lit = self.lit_now(ctx).then_some(self.hover).flatten();
+        let radius = match self.square {
+            true => ctx.tokens.glass_round,
+            false => box_.h / 2.0,
+        };
+        for ground in [self.ground, lit].into_iter().flatten() {
+            ctx.rounded(box_, ground, radius);
+        }
+    }
+
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {
         let style = self.style(ctx);
         let content = self.content(ctx, &style);
@@ -233,10 +254,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             }
             None if self.glass => {
                 let box_ = slot_at(ctx, line, x, content, None);
-                let lit = self.lit_now(ctx).then_some(self.hover).flatten();
-                for ground in [self.ground, lit].into_iter().flatten() {
-                    ctx.rounded(box_, ground, box_.h / 2.0);
-                }
+                self.glazed(ctx, box_);
                 box_
             }
             None if self.ground.is_none() => {

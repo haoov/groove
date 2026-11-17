@@ -174,6 +174,7 @@ async fn what_is_held_reaches_the_disk_on_a_flush_with_no_job_left() {
         sidebar: 380.0,
         feed: 200.0,
         manual: 220.0,
+        alerts: 280.0,
     };
     keeper.hold(dir.path(), with(15.0, 13.0).config.unwrap(), 1);
     keeper.hold_panes(dir.path(), panes);

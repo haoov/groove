@@ -4,7 +4,7 @@ use groove_gfx::{CellSize, Edges, Rect, Size};
 
 use crate::Ui;
 use groove_ui_kit::base::ctx::Metrics;
-use groove_ui_kit::base::tokens::{ALERTS_SHARE, Tokens};
+use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Boxes, Node, Spec};
 
 mod split;
@@ -126,14 +126,20 @@ impl Layout {
             held = held.over_rail();
         }
         if ui.alerts.shown {
-            held = held.alerts(&tokens, ui.alerts.open, (over_rail, stowing));
+            let reach = (ui.split.alerts * tokens.scale).floor();
+            held = held.alerts(&tokens, (ui.alerts.open, reach), (over_rail, stowing));
         }
         held
     }
 
     /// The alerts across the bar's free room over the agent, from the rail's header to the strip:
-    /// their header alone while folded, else a share of the agent's height over it.
-    fn alerts(mut self, tokens: &Tokens, open: bool, (over_rail, stowed): (bool, bool)) -> Self {
+    /// their header alone while folded, else down to where the user dragged their foot.
+    fn alerts(
+        mut self,
+        tokens: &Tokens,
+        (open, reach): (bool, f32),
+        (over_rail, stowed): (bool, bool),
+    ) -> Self {
         let left = match over_rail {
             true => self.sessions.right() + tokens.sm,
             false => self.agent.x,
@@ -149,7 +155,8 @@ impl Layout {
             return self;
         }
         let bottom = self.agent.bottom();
-        let tall = ((bottom - top) * ALERTS_SHARE).floor().max(tokens.bar);
+        let least = top + tokens.bar;
+        let tall = reach.clamp(least, (bottom - tokens.bar).max(least)) - top;
         self.alerts = Rect::new(left, top, wide, tall);
         let y = self.alerts.bottom() + tokens.sm;
         self.agent = Rect::new(self.agent.x, y, self.agent.w, (bottom - y).max(0.0));

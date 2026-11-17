@@ -50,7 +50,7 @@ pub const MESSAGE_LINES: usize = 10;
 pub const PINNED_DEEP: usize = 3;
 pub const PINNED_SHARE: f32 = 4.0;
 
-pub const ALERTS_SHARE: f32 = 0.4;
+pub const ALERTS_TALL: f32 = 280.0;
 
 /// How many rows a search keeps above the match it lands on.
 pub const ABOVE_MATCH: usize = 4;

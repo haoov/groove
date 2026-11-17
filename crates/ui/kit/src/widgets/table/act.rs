@@ -19,7 +19,7 @@ impl<T: Clone + PartialEq> Act<'_, T> {
         let mut room = rect;
         match self {
             Act::Button(label, target) => {
-                let button = Button::glass(label, target, Role::Muted, &ctx.styles);
+                let button = Button::glass(label, target, Role::Muted, &ctx.styles).squared();
                 button.left(ctx, &mut room, 0.0);
             }
             Act::Toggle(on, target) => {

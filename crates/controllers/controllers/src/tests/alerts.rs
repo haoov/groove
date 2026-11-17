@@ -16,6 +16,7 @@ fn firing(key: &str, cluster: &str) -> Alert {
         priority: Some("Critical".into()),
         cluster: Some(cluster.into()),
         namespace: Some("velero".into()),
+        environment: Some("Production".into()),
         created_at: Timestamp::new(0),
     }
 }

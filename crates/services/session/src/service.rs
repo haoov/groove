@@ -124,7 +124,7 @@ impl Service {
         Ok(self.store.rename_explorer(id, title).await?)
     }
 
-    /// The session gone: its worktrees, its row. Unforced, work not yet landed stops it.
+    /// The session gone: worktrees, log to its parent, row. Unforced, lost work stops it.
     pub async fn remove(
         &self,
         id: &SessionId,
@@ -132,6 +132,7 @@ impl Service {
         landed: &std::collections::BTreeSet<WorktreeId>,
     ) -> Result<(), Error> {
         self.pool.cleanup_session(id, force, landed).await?;
+        self.store.hand_log_over(id).await?;
         Ok(self.store.remove(id).await?)
     }
 

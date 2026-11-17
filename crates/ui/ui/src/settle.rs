@@ -16,6 +16,9 @@ impl Ui {
             .selected()
             .is_some_and(|open| open.state.maintenance);
         self.alerts.shown = maintained && !self.session.alone;
+        if self.focus == crate::Focus::Alerts && !self.alerts.shown {
+            self.focus = crate::Focus::Agent;
+        }
         self.session.reading = app.workspace.commit.is_some();
         self.kept_resources(app);
         self.moved(app);

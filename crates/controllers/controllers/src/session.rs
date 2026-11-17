@@ -127,6 +127,8 @@ pub enum Command {
     SetMaintenance { session: SessionId, on: bool },
     /// `session.spawn_child`: an explorer spawned from a maintenance task, selected.
     SpawnChild { parent: SessionId },
+    /// `session.remove_log_entry`: one entry off the session's log.
+    RemoveLogEntry { session: SessionId, entry: i64 },
 }
 
 impl Command {
@@ -154,6 +156,7 @@ impl Command {
             Command::DetachCluster { .. } => "session.detach_cluster",
             Command::SetMaintenance { .. } => "session.set_maintenance",
             Command::SpawnChild { .. } => "session.spawn_child",
+            Command::RemoveLogEntry { .. } => "session.remove_log_entry",
         }
     }
 }

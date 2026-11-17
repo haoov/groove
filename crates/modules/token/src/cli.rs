@@ -10,6 +10,8 @@ use groove_http::{Error, Result, TokenSource};
 pub enum Cli {
     Gh,
     Glab,
+    /// incident.io's CLI; it holds one key, whatever the host.
+    Inc,
 }
 
 /// The stream a tool prints its answer on.
@@ -24,6 +26,7 @@ impl Cli {
         match self {
             Cli::Gh => "gh",
             Cli::Glab => "glab",
+            Cli::Inc => "inc",
         }
     }
 
@@ -32,6 +35,7 @@ impl Cli {
         let host = host.to_string();
         match self {
             Cli::Gh => vec!["auth".into(), "token".into(), "--hostname".into(), host],
+            Cli::Inc => vec!["auth".into(), "token".into()],
             Cli::Glab => vec![
                 "auth".into(),
                 "status".into(),
@@ -45,7 +49,7 @@ impl Cli {
     /// `glab` writes its report to the error stream.
     fn stream(self) -> Stream {
         match self {
-            Cli::Gh => Stream::Out,
+            Cli::Gh | Cli::Inc => Stream::Out,
             Cli::Glab => Stream::Err,
         }
     }
@@ -53,13 +57,16 @@ impl Cli {
     /// The token in what the tool printed: `gh` prints it alone, `glab` in a report.
     pub(crate) fn read(self, printed: &str) -> Option<String> {
         let found = match self {
-            Cli::Gh => printed.trim().to_string(),
+            Cli::Gh | Cli::Inc => printed.trim().to_string(),
             Cli::Glab => reported(printed)?,
         };
         (!found.is_empty()).then_some(found)
     }
 
     fn login(self, host: &str) -> String {
+        if self == Cli::Inc {
+            return "run `inc auth login`".to_string();
+        }
         format!("run `{} auth login --hostname {host}`", self.program())
     }
 }

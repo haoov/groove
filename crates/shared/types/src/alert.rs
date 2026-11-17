@@ -14,6 +14,7 @@ pub struct Alert {
     pub priority: Option<String>,
     pub cluster: Option<String>,
     pub namespace: Option<String>,
+    pub environment: Option<String>,
     pub created_at: Timestamp,
 }
 
@@ -50,7 +51,7 @@ pub struct AlertChild {
     pub namespace: Option<String>,
 }
 
-/// Which incident.io attributes Groove reads, and the alerts it keeps.
+/// Which incident.io attributes Groove reads.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct AlertsConfig {
     #[serde(default = "cluster")]
@@ -59,9 +60,8 @@ pub struct AlertsConfig {
     pub namespace: String,
     #[serde(default = "priority")]
     pub priority: String,
-    /// Only the alerts whose attribute of this name holds one of these values.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub only: Option<AlertFilter>,
+    #[serde(default = "environment")]
+    pub environment: String,
 }
 
 impl Default for AlertsConfig {
@@ -70,15 +70,9 @@ impl Default for AlertsConfig {
             cluster: cluster(),
             namespace: namespace(),
             priority: priority(),
-            only: None,
+            environment: environment(),
         }
     }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-pub struct AlertFilter {
-    pub attribute: String,
-    pub values: Vec<String>,
 }
 
 fn cluster() -> String {
@@ -91,4 +85,8 @@ fn namespace() -> String {
 
 fn priority() -> String {
     "Priority".into()
+}
+
+fn environment() -> String {
+    "Environment Kind".into()
 }

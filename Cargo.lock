@@ -1342,9 +1342,12 @@ dependencies = [
 name = "groove-alerts"
 version = "1.0.0-beta.2"
 dependencies = [
- "groove-exec",
+ "groove-http",
+ "groove-token",
  "groove-types",
  "serde_json",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]

@@ -1,5 +1,7 @@
 //! A maintenance task's alerts: a window over the agent, folding to its header in the bar above it.
 
+mod table;
+
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
@@ -7,21 +9,26 @@ use groove_types::{Alert, AlertChild};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::band;
-use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{flat_row, panel_head, solid_pane};
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Column, Rows, Table, Width, flat_row, panel_head, solid_pane};
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
-use crate::offsets::listed;
 
 /// What the alerts' window remembers between frames.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlertsUi {
     /// The selected session is a maintenance task: the window stands.
     pub shown: bool,
     pub open: bool,
     pub scroll: f32,
+    /// The row picked, by its alert's key.
+    pub selected: Option<String>,
+    /// The column the rows are ordered by, and whether downward.
+    pub sort: Option<(String, bool)>,
+    /// Each column's width as the user dragged it.
+    pub widths: std::collections::BTreeMap<String, f32>,
 }
 
 impl Default for AlertsUi {
@@ -30,12 +37,15 @@ impl Default for AlertsUi {
             shown: false,
             open: true,
             scroll: 0.0,
+            selected: None,
+            sort: None,
+            widths: Default::default(),
         }
     }
 }
 
 /// One row: a firing alert, or one that resolved while its child is still on the rail.
-enum Row<'a> {
+pub(super) enum Row<'a> {
     Firing(&'a Alert, Option<&'a AlertChild>),
     Resolved(&'a AlertChild),
 }
@@ -53,7 +63,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     panel_head(ctx, head, !ui.alerts.open);
     heading(ctx, head, app, ui);
     if ui.alerts.open {
-        rows(ctx, body.pad(Edges::xy(0.0, ctx.tokens.xs)), app, ui, open);
+        rows(ctx, body, app, ui, open);
     }
 }
 
@@ -84,87 +94,85 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
         .within(ctx, row, room);
 }
 
+/// The firing alerts, then the resolved ones whose child is on the rail, on the kit's grid.
 fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, open: &Open) {
-    let child = |key: &str| open.alerted.iter().find(|one| one.dedup_key == key);
-    let mut all: Vec<Row> = app
-        .alert
-        .firing
+    let (sorted, all) = table::ordered(app, gathered(app, open), ui.alerts.sort.as_ref());
+    let columns: Vec<Column<'_, Target>> = COLUMNS
         .iter()
+        .map(|(label, width)| {
+            let width = match ui.alerts.widths.get(*label) {
+                Some(wide) => Width::Fixed(*wide),
+                None => *width,
+            };
+            Column {
+                end: *label == "age",
+                sort: Some(Target::AlertColumn(label.to_string())),
+                edge: Some(Target::AlertEdge(label.to_string())),
+                ..Column::plain(label, width)
+            }
+        })
+        .collect();
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: ctx.tokens.row,
+            under: 0.0,
+            ruled: false,
+            carded: false,
+            gridded: true,
+        },
+        count: all.len(),
+        offset: ui.alerts.scroll,
+        selected: all
+            .iter()
+            .position(|row| Some(row.key()) == ui.alerts.selected.as_ref()),
+        sorted: Some(sorted),
+    };
+    let now = ctx.now;
+    let laid = table.draw(ctx, body, |at| table::shown(app, &all[at], now));
+    ctx.app.hits.scrolls(Scroller::Alerts, laid.extent);
+}
+
+/// The firing alerts with their child, then the resolved ones whose child is on the rail.
+fn gathered<'a>(app: &'a AppState, open: &'a Open) -> Vec<Row<'a>> {
+    let child = |key: &str| open.alerted.iter().find(|one| one.dedup_key == key);
+    let firing = app.alert.firing.iter();
+    let mut all: Vec<Row> = firing
         .map(|one| Row::Firing(one, child(&one.dedup_key)))
         .collect();
     let resolved = open.alerted.iter().filter(|one| {
         app.alert.find(&one.dedup_key).is_none() && app.session.get(&one.session).is_some()
     });
     all.extend(resolved.map(Row::Resolved));
-    let tall = ctx.tokens.row + ctx.tokens.xs;
-    let at = (Scroller::Alerts, ui.alerts.scroll);
-    listed(
-        ctx,
-        body,
-        at,
-        &all,
-        |_| tall,
-        |ctx, rect, row| drawn(ctx, app, rect, row),
-    );
+    all
 }
 
-/// The rank's mark and the title; where it fires, how long, and its child or the way to one.
-fn drawn(ctx: &mut Ctx, app: &AppState, rect: Rect, row: &Row) {
-    let (key, title, place) = match row {
-        Row::Firing(one, _) => (
-            &one.dedup_key,
-            &one.title,
-            scope(&one.cluster, &one.namespace),
-        ),
-        Row::Resolved(one) => (
-            &one.dedup_key,
-            &one.title,
-            scope(&one.cluster, &one.namespace),
-        ),
+/// The alerts' keys in the order the rows stand, for the keys to step through.
+pub fn listed(app: &AppState, ui: &Ui) -> Vec<String> {
+    let Some(open) = app.session.selected() else {
+        return Vec::new();
     };
-    let line = flat_row(ctx, rect, Target::Investigate(key.clone()), false);
-    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = line.pad(Edges::across(md, md));
-    let (state, role) = match row {
-        Row::Firing(_, Some(child)) | Row::Resolved(child) => child_state(app, child),
-        Row::Firing(_, None) => ("investigate".to_string(), Role::Accent),
-    };
-    Label::new(&state, ctx.styles.small(role)).right(ctx, &mut room, md);
-    let resolved = matches!(row, Row::Resolved(_));
-    if let Row::Firing(one, _) = row {
-        let age = ago(one.created_at.age_at(ctx.now));
-        Label::new(&age, ctx.styles.small(Role::Ghost)).right(ctx, &mut room, md);
-    }
-    Label::new(&place, ctx.styles.code(Role::Muted)).right(ctx, &mut room, md);
-    let (mark, text) = match row {
-        Row::Firing(one, _) => (rank_role(one), Role::Text),
-        Row::Resolved(_) => (Role::Ghost, Role::Ghost),
-    };
-    Label::new(if resolved { "○" } else { "●" }, ctx.styles.small(mark)).left(ctx, &mut room, sm);
-    Label::new(title, ctx.styles.body(text)).draw(ctx, room);
+    let (_, all) = table::ordered(app, gathered(app, open), ui.alerts.sort.as_ref());
+    all.iter().map(|row| row.key().clone()).collect()
 }
 
-fn scope(cluster: &Option<String>, namespace: &Option<String>) -> String {
-    match (cluster, namespace) {
-        (Some(cluster), Some(namespace)) => format!("{cluster}/{namespace}"),
-        (Some(cluster), None) => cluster.clone(),
-        _ => String::new(),
+impl Row<'_> {
+    pub(super) fn key(&self) -> &String {
+        match self {
+            Row::Firing(one, _) => &one.dedup_key,
+            Row::Resolved(one) => &one.dedup_key,
+        }
     }
 }
 
-fn rank_role(one: &Alert) -> Role {
-    match one.rank() {
-        0 => Role::Bad,
-        1 => Role::Attention,
-        2 => Role::Warn,
-        _ => Role::Faint,
-    }
-}
-
-/// What the child's agent does, or `closed` once it left the rail.
-fn child_state(app: &AppState, child: &AlertChild) -> (String, Role) {
-    match app.session.get(&child.session) {
-        Some(open) => crate::views::rail::state_of(app, open),
-        None => ("closed".to_string(), Role::Ghost),
-    }
-}
+/// Every column: its label, and its width until the user drags it.
+pub(super) const COLUMNS: [(&str, Width<'static>); 8] = [
+    ("priority", Width::Fit("Critical")),
+    ("alert", Width::Fill),
+    ("environment", Width::Fit("Production")),
+    ("cluster", Width::Fit("ovh-main-gra11-prod")),
+    ("namespace", Width::Fit("cert-manager")),
+    ("age", Width::Fit("12mo")),
+    ("child", Width::Fit("working")),
+    ("", Width::Fit("Investigate")),
+];

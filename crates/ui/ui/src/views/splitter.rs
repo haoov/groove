@@ -31,6 +31,7 @@ fn shown(surface: Surface) -> &'static [Edge] {
             Edge::Sidebar,
             Edge::Manual,
             Edge::Feed,
+            Edge::Alerts,
         ],
         Surface::Board => &[Edge::Rail, Edge::Feed],
     }
@@ -53,6 +54,11 @@ fn band(ctx: &Ctx, edge: Edge, feed_folded: bool) -> Option<Rect> {
         }
         // The sidebar's room starts a hairline past its separator, where the edge is grabbed.
         Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x - ctx.tokens.hairline)),
+        Edge::Alerts => {
+            let alerts = ctx.app.layout.alerts;
+            let open = alerts.h > ctx.tokens.bar;
+            open.then(|| groove_ui_kit::shape::band(alerts, alerts.h - grab / 2.0, grab))
+        }
         Edge::Manual => {
             let manual = ctx.app.layout.manual;
             let open = manual.h > ctx.tokens.bar;

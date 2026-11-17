@@ -6,6 +6,7 @@ use crate::Store;
 
 fn entry(what: &str, at: i64) -> LogEntry {
     LogEntry {
+        id: 0,
         from: Some("KubeJobFailed".into()),
         what: what.into(),
         why: Some("the backup job ran out of memory".into()),
@@ -77,27 +78,19 @@ async fn a_deleted_parent_leaves_its_children_without_one() {
 }
 
 #[tokio::test]
-async fn the_log_reads_back_newest_first_and_goes_with_its_session() {
+async fn the_log_reads_back_newest_first_drops_an_entry_and_goes_with_its_session() {
     let store = Store::in_memory().await.unwrap();
     let parent = promoted();
     store.create_task(&parent, &task()).await.unwrap();
-    store
-        .append_log(&parent.id, &entry("Raised the job's limit to 2Gi", 10))
-        .await
-        .unwrap();
-    store
-        .append_log(&parent.id, &entry("Rotated the token", 20))
-        .await
-        .unwrap();
+    let mut raised = entry("Raised the job's limit to 2Gi", 10);
+    raised.id = store.append_log(&parent.id, &raised).await.unwrap();
+    let mut rotated = entry("Rotated the token", 20);
+    rotated.id = store.append_log(&parent.id, &rotated).await.unwrap();
 
     let log = store.log_of(&parent.id).await.unwrap();
-    assert_eq!(
-        log,
-        [
-            entry("Rotated the token", 20),
-            entry("Raised the job's limit to 2Gi", 10)
-        ]
-    );
+    assert_eq!(log, [rotated.clone(), raised]);
+    store.remove_log(&parent.id, log[1].id).await.unwrap();
+    assert_eq!(store.log_of(&parent.id).await.unwrap(), [rotated]);
     store.remove(&parent.id).await.unwrap();
     assert!(store.log_of(&parent.id).await.unwrap().is_empty());
 }
@@ -127,4 +120,27 @@ async fn a_task_remembers_one_child_per_alert() {
     );
     store.remove(&child.id).await.unwrap();
     assert!(store.alert_children(&parent.id).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_removed_child_hands_its_newest_entry_to_its_parent() {
+    let store = Store::in_memory().await.unwrap();
+    let parent = promoted();
+    store.create_task(&parent, &task()).await.unwrap();
+    let child = explorer("explorer-child", 2);
+    store.create_explorer(&child).await.unwrap();
+    store.set_parent(&child.id, &parent.id).await.unwrap();
+    let mut own = entry("Pruned the snapshots", 10);
+    own.from = None;
+    store.append_log(&child.id, &own).await.unwrap();
+    let mut first = entry("Read the job's logs", 5);
+    first.from = None;
+    store.append_log(&child.id, &first).await.unwrap();
+
+    store.hand_log_over(&child.id).await.unwrap();
+    store.remove(&child.id).await.unwrap();
+    let log = store.log_of(&parent.id).await.unwrap();
+    assert_eq!(log.len(), 1);
+    assert_eq!(log[0].what, "Pruned the snapshots");
+    assert_eq!(log[0].from.as_deref(), Some(child.title.as_str()));
 }

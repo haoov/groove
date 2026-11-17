@@ -35,7 +35,7 @@ fn listing(ui: &Ui, app: &AppState) -> bool {
         return true;
     }
     match ui.focus {
-        Focus::Rail | Focus::Sidebar => true,
+        Focus::Rail | Focus::Sidebar | Focus::Alerts => true,
         Focus::Workspace => {
             ui.session.tab == Tab::Resources && ui.session.resources.tab().is_none()
         }

@@ -209,13 +209,13 @@ fn children() -> Vec<Tool> {
         write(
             does("log_work", "log the work", &["what"]),
             "Add what this session did to its log, which the user reads when they come back. \
-             A child's entry goes to its parent's log.",
+             A child's newest entry goes to its parent's log when the child closes.",
             takes(
                 &["what"],
                 vec![
                     ("what", text("What was done, one or two sentences.")),
                     ("why", text("Why, when what alone leaves it unclear.")),
-                    ("mr_url", text("The MR that carries it, when there is one.")),
+                    ("mr_url", text("The MR this work opened, only then.")),
                 ],
             ),
         ),

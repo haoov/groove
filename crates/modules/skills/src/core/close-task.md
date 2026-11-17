@@ -24,8 +24,8 @@ on a check you have not run.
    the source — the Notion MCP on Notion, `gh issue edit` on GitHub — saying what
    shipped. Then `log_task_hours`.
 6. `log_work`, unless `groove:save-task` just logged it: what the task delivered,
-   why when it is not plain, the MR link.
-   A child's entry goes to its parent's log.
+   why when it is not plain.
+   A child's newest entry goes to its parent's log when the child closes.
 7. `finish_task`. It sets the status done at the source itself, so no
    property update for that.
 

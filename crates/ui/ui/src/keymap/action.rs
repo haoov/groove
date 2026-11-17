@@ -15,6 +15,7 @@ pub enum Action {
     FocusAgent,
     FocusWorkspace,
     FocusSidebar,
+    FocusAlerts,
     BoardLive,
     BoardNext,
     BoardReview,

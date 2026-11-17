@@ -70,8 +70,9 @@ A task the user marked as maintenance (`maintenance` in `get_active_task`) holds
 unrelated actions. Hand each one to a child with `spawn_session`: the brief is all
 the child gets. A child has a `parent`.
 
-`log_work` keeps the session's log: what was done, why, the MR. The user reads it
-when they come back to the task. A child's entry goes to its parent's log.
+`log_work` keeps the session's log: what was done, why, and the MR when the work
+opened it. The user reads it when they come back to the task. A child's newest
+entry goes to its parent's log when the child closes.
 
 ## The skills are the procedures
 

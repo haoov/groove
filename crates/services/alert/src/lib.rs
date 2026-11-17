@@ -59,36 +59,46 @@ impl State {
     }
 }
 
-/// Where the alerts are read: incident.io through `inc`, or a list held for tests.
-#[derive(Clone, Debug, Default)]
+/// Where the alerts are read: incident.io, or a list held for tests.
+#[derive(Clone)]
 pub struct Service {
-    held: Option<Arc<Mutex<Vec<Alert>>>>,
+    source: Source,
+}
+
+#[derive(Clone)]
+enum Source {
+    Incident(Arc<groove_alerts::Incident>),
+    Held(Arc<Mutex<Vec<Alert>>>),
 }
 
 impl Service {
-    pub fn incident_io() -> Self {
-        Self::default()
+    /// incident.io, with the key `inc` holds.
+    pub fn incident_io() -> Result<Self> {
+        let incident = groove_alerts::Incident::logged_in()?;
+        Ok(Self {
+            source: Source::Incident(Arc::new(incident)),
+        })
     }
 
-    /// Reads that answer `alerts`, which `hold` changes; no process runs.
+    /// Reads that answer `alerts`, which `hold` changes; nothing is asked of incident.io.
     pub fn held(alerts: Vec<Alert>) -> Self {
         Self {
-            held: Some(Arc::new(Mutex::new(alerts))),
+            source: Source::Held(Arc::new(Mutex::new(alerts))),
         }
     }
 
     /// What the held reads answer from now on.
     pub fn hold(&self, alerts: Vec<Alert>) {
-        if let Some(held) = &self.held {
+        if let Source::Held(held) = &self.source {
             *held.lock().unwrap_or_else(|e| e.into_inner()) = alerts;
         }
     }
 
-    /// The firing alerts, read off the main thread.
+    /// The firing alerts of the config's teams, read off the main thread.
     pub async fn read(&self, config: &AlertsConfig) -> Result<Vec<Alert>> {
-        match &self.held {
-            Some(held) => Ok(held.lock().unwrap_or_else(|e| e.into_inner()).clone()),
-            None => groove_alerts::firing(config).await,
+        match &self.source {
+            Source::Incident(incident) => incident.firing(config).await,
+            Source::Held(held) => Ok(held.lock().unwrap_or_else(|e| e.into_inner()).clone()),
         }
     }
 }
