@@ -12,6 +12,8 @@ pub enum Cli {
     Glab,
     /// incident.io's CLI; it holds one key, whatever the host.
     Inc,
+    /// Argo CD's CLI; its SSO token is read from its config, see `crate::argocd`.
+    Argocd,
 }
 
 /// The stream a tool prints its answer on.
@@ -27,6 +29,7 @@ impl Cli {
             Cli::Gh => "gh",
             Cli::Glab => "glab",
             Cli::Inc => "inc",
+            Cli::Argocd => "argocd",
         }
     }
 
@@ -36,6 +39,7 @@ impl Cli {
         match self {
             Cli::Gh => vec!["auth".into(), "token".into(), "--hostname".into(), host],
             Cli::Inc => vec!["auth".into(), "token".into()],
+            Cli::Argocd => groove_argocd::REFRESH.map(String::from).to_vec(),
             Cli::Glab => vec![
                 "auth".into(),
                 "status".into(),
@@ -49,7 +53,7 @@ impl Cli {
     /// `glab` writes its report to the error stream.
     fn stream(self) -> Stream {
         match self {
-            Cli::Gh | Cli::Inc => Stream::Out,
+            Cli::Gh | Cli::Inc | Cli::Argocd => Stream::Out,
             Cli::Glab => Stream::Err,
         }
     }
@@ -57,15 +61,17 @@ impl Cli {
     /// The token in what the tool printed: `gh` prints it alone, `glab` in a report.
     pub(crate) fn read(self, printed: &str) -> Option<String> {
         let found = match self {
-            Cli::Gh | Cli::Inc => printed.trim().to_string(),
+            Cli::Gh | Cli::Inc | Cli::Argocd => printed.trim().to_string(),
             Cli::Glab => reported(printed)?,
         };
         (!found.is_empty()).then_some(found)
     }
 
-    fn login(self, host: &str) -> String {
-        if self == Cli::Inc {
-            return "run `inc auth login`".to_string();
+    pub(crate) fn login(self, host: &str) -> String {
+        match self {
+            Cli::Inc => return "run `inc auth login`".to_string(),
+            Cli::Argocd => return format!("run `argocd login {host} --sso`"),
+            _ => {}
         }
         format!("run `{} auth login --hostname {host}`", self.program())
     }

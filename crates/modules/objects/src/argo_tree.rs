@@ -93,7 +93,9 @@ impl Opened {
         (paths, home): (&[PathBuf], &Path),
         app: &ArgoApp,
     ) -> Result<Self, String> {
-        let (server, token) = token(home).await?;
+        let (server, token) = groove_token::argocd(home)
+            .await
+            .map_err(|e| e.to_string())?;
         let client = Client::shared(paths, &app.hub).await;
         let client = client.map_err(|e| e.to_string())?;
         let to = reach(&client).await?;
@@ -138,14 +140,6 @@ impl Opened {
         let body = self.get(&path).await?;
         groove_argocd::health(&body).map_err(|why| refused(&self.server, &why))
     }
-}
-
-/// The CLI's server and token, read again each time so a new login is picked up.
-async fn token(home: &Path) -> Result<(String, groove_argocd::Token), String> {
-    let path = groove_argocd::config_path(home);
-    let config = tokio::fs::read_to_string(&path).await.unwrap_or_default();
-    groove_argocd::token_of(&config)
-        .ok_or_else(|| "no Argo CD login: run argocd login <server> --sso".to_string())
 }
 
 /// What Argo CD said, with how to sign in again when it refused the session.

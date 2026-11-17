@@ -109,12 +109,27 @@ fn revision(part: &groove_types::AppPart) -> Option<(String, Role)> {
     Some((groove_types::short_sha(sha), Role::Muted))
 }
 
+/// Why an Application on `context` cannot be read from Argo CD: no hub marked, or another one.
+pub(super) fn off_hub(app: &AppState, context: &str) -> Option<String> {
+    let hub = app.config.clusters().iter().find(|one| one.argo_hub);
+    match hub {
+        Some(one) if one.context == context => None,
+        Some(one) => Some(format!(
+            "{context} is not the Argo CD hub; {} is",
+            one.context
+        )),
+        None => Some("no context is the Argo CD hub: mark one in Settings › Clusters".into()),
+    }
+}
+
 /// The Application's drift as the diff draws a change, once read for this Application.
 fn drifted(ctx: &mut Ctx, body: Rect, (app, ui): (&AppState, &crate::Ui), tab: &Opened) {
     let workspace = &app.workspace;
     let key = tab.link.pod();
     let failed = workspace.drift_read.failed.as_ref();
+    let off = off_hub(app, &tab.link.context);
     let (said, role) = match workspace.drift.as_ref().filter(|one| one.app == key) {
+        _ if off.is_some() => (off.unwrap_or_default(), Role::Warn),
         Some(drift) if !groove_controllers::workspace_service::in_sync(drift) => {
             return crate::views::session::diff::draw(ctx, app, ui, body);
         }

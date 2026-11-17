@@ -119,7 +119,7 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
                 { "kind": "ConfigMap", "namespace": "billing-eu-acc", "name": "billing-old", "status": "OutOfSync",
                   "requiresPruning": true },
                 { "group": "batch", "kind": "Job", "namespace": "billing-eu-acc", "name": "billing-migrate",
-                  "status": "OutOfSync", "hook": true }
+                  "status": "OutOfSync", "hook": true, "requiresPruning": true }
             ],
             "conditions": [{ "type": "SyncError", "message": "one or more synchronization tasks completed unsuccessfully",
                              "lastTransitionTime": "2026-10-10T09:00:00Z" }],
@@ -179,8 +179,8 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
     let old = &part.resources[1];
     assert!(old.prune && old.out_of_sync());
     assert!(
-        part.resources[2].hook && !part.resources[2].out_of_sync(),
-        "a hook's status counts for nothing"
+        part.resources[2].hook && !part.resources[2].out_of_sync() && !part.resources[2].prune,
+        "a hook's status and pruning count for nothing"
     );
     assert_eq!(part.conditions[0].kind, "SyncError");
     let other = serde_json::json!({ "apiVersion": "app.k8s.io/v1beta1", "kind": "Application" });

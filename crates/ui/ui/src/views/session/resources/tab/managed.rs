@@ -54,7 +54,8 @@ pub(super) fn draw(
         _ => &[],
     };
     let filter = tab.argo.filter(part, health);
-    filters(ctx, strip, ((part, health), read), filter);
+    let off = super::off_hub(app, &tab.link.context);
+    filters(ctx, strip, ((part, health), (read, off.as_deref())), filter);
     if filter == Filter::Syncing {
         return syncing::draw(ctx, rest, (tab, part), dragged);
     }
@@ -99,7 +100,12 @@ fn opens(filter: Filter, one: &AppResource, link: Option<Link>) -> Option<Target
 }
 
 /// A tab a filter, each in its colour and with its count; at the right, a refused health read.
-fn filters(ctx: &mut Ctx, strip: Rect, (held, read): (Held, Option<&Treed>), on: Filter) {
+fn filters(
+    ctx: &mut Ctx,
+    strip: Rect,
+    (held, read): (Held, (Option<&Treed>, Option<&str>)),
+    on: Filter,
+) {
     let (part, health) = held;
     let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     if let Some((said, role)) = health_read(read) {
@@ -133,8 +139,11 @@ fn filters(ctx: &mut Ctx, strip: Rect, (held, read): (Held, Option<&Treed>), on:
     groove_ui_kit::widgets::tab_group(ctx, &mut room, tabs, (side, ctx.tokens.xs));
 }
 
-/// The first line of what argocd said when it refused the health read.
-fn health_read(read: Option<&Treed>) -> Option<(String, Role)> {
+/// Why no health shows: the Application is off the hub, or the first line Argo CD refused it with.
+fn health_read((read, off): (Option<&Treed>, Option<&str>)) -> Option<(String, Role)> {
+    if let Some(off) = off {
+        return Some((format!("no health: {off}"), Role::Warn));
+    }
     let Err(why) = read? else {
         return None;
     };

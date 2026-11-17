@@ -576,10 +576,11 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   kind, the kinds with something to see first (degraded, out of sync, to prune or failed); under all, a kind with nothing to see stands
   folded. Each resource stands with its health from Argo CD's resource tree, when the
   Application stands on the hub context: Argo CD's API, reached through the hub's API
-  server on the token `argocd login --sso` left, read once when the view opens, then
+  server on the token `argocd login --sso` left, which `argocd account get-user-info` refreshes
+  first when it ends within 30 seconds, read once when the view opens, then
   followed on Argo CD's stream while it shows; a kind's heading counts the degraded and
   the progressing. When Argo CD refuses the read, a line over the filters' right end says
-  what it answered, and how to sign in again. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
+  what it answered, and how to sign in again; off the hub, it says so, and the diff view too. Syncing shows the sync's line on its colour, over a square bar that
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.

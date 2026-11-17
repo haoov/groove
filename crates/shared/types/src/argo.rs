@@ -126,7 +126,7 @@ pub struct AppResource {
     /// `Synced` or `OutOfSync`.
     pub sync: String,
     pub wave: i64,
-    /// Gone from the sources, kept until a sync prunes it.
+    /// Gone from the sources, kept until a sync prunes it; never a hook.
     pub prune: bool,
     /// Run by a sync's phase; its sync status counts for nothing.
     pub hook: bool,

@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Sorted, Table, Width};
 
 use super::super::opened::Opened;
@@ -57,6 +57,7 @@ pub(super) fn draw<'a>(
         selected: None,
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
+    let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     let laid = table.draw(ctx, body, shown);
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }

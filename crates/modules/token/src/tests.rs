@@ -51,3 +51,34 @@ fn a_configured_token_wins_over_the_cli() {
     let asked = Token::configured(None, Cli::Gh, "github.com");
     assert!(matches!(asked, Token::Cli(_)));
 }
+
+/// A home whose argocd config holds `token` for the CLI's current context.
+fn argocd_home(token: &str) -> tempfile::TempDir {
+    let home = tempfile::tempdir().unwrap();
+    let dir = home.path().join(".config/argocd");
+    std::fs::create_dir_all(&dir).unwrap();
+    let config = format!(
+        "contexts:\n- name: argo.example.com\n  server: argo.example.com\n  user: argo.example.com\n\
+         current-context: argo.example.com\nusers:\n- auth-token: {token}\n  name: argo.example.com\n"
+    );
+    std::fs::write(dir.join("config"), config).unwrap();
+    home
+}
+
+#[tokio::test]
+async fn a_lasting_argocd_token_is_read_from_its_config_without_the_cli() {
+    let lasting = "e30.eyJleHAiOjk5OTk5OTk5OTl9.c2ln";
+    let home = argocd_home(lasting);
+    let (server, token) = crate::argocd(home.path()).await.unwrap();
+    assert_eq!(server, "argo.example.com");
+    assert_eq!(token.secret(), lasting);
+    let source = Token::Argocd(crate::ArgocdToken::new(home.path()));
+    assert_eq!(source.token().await.unwrap(), lasting);
+}
+
+#[tokio::test]
+async fn no_argocd_login_says_how_to_log_in() {
+    let home = tempfile::tempdir().unwrap();
+    let refused = crate::argocd(home.path()).await.unwrap_err().to_string();
+    assert!(refused.contains("argocd login"), "{refused}");
+}
