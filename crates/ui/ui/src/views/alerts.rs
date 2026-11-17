@@ -129,6 +129,7 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, open: &Open) {
         sorted: Some(sorted),
     };
     let now = ctx.now;
+    let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     let laid = table.draw(ctx, body, |at| table::shown(app, &all[at], now));
     ctx.app.hits.scrolls(Scroller::Alerts, laid.extent);
 }

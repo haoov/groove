@@ -45,11 +45,10 @@ pub(super) fn tint(app: &AppPart) -> Option<Role> {
     }
 }
 
-/// A row of the operation, on its colour, rounded.
+/// A row of the operation, on its colour.
 pub(super) fn ground(ctx: &mut Ctx, line: Rect, role: Role) {
     Panel::default()
         .ground(ctx.styles.tint(role))
-        .radius(ctx.tokens.sm)
         .draw(ctx, line);
 }
 
