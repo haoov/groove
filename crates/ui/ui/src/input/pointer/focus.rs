@@ -61,6 +61,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ContainerUsage(..)
             | Target::ResourceSection(_)
             | Target::ResourceOpen(_)
+            | Target::ResourceDrift(..)
             | Target::ResourceCopy(..)
             | Target::LogSource(_)
             | Target::LogPrevious(_)

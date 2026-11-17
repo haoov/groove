@@ -1,6 +1,6 @@
-//! What the resource tabs read: whole objects followed while read, a pod's usage, a Helm revision.
+//! What the resource tabs read: followed objects, a pod's usage, a Helm revision, Argo CD health.
 
-use groove_cluster_service::{Event as ClusterEvent, Named};
+use groove_cluster_service::{ArgoApp, Event as ClusterEvent, Named};
 use groove_types::{FollowKey, Timestamp};
 
 use super::objects::{IDLE, known};
@@ -64,6 +64,40 @@ pub(super) fn helm(state: &mut AppState, spawner: &dyn Spawner, release: Named) 
             },
         ) as Continuation
     }));
+}
+
+/// The tree stream of an Application on the Argo CD hub, opened with its first reader.
+pub(super) fn argo(state: &mut AppState, spawner: &dyn Spawner, reader: &str, app: Named) {
+    let hub = state
+        .config
+        .clusters()
+        .iter()
+        .any(|one| one.argo_hub && one.context == app.0);
+    if !hub {
+        return;
+    }
+    let paths = (state.env.kubeconfig.clone(), state.env.home.clone());
+    let Some(stop) = state.cluster.store.trees.lease(&app, reader) else {
+        return;
+    };
+    let (sink, held) = (spawner.sink(), app.clone());
+    let send = move |read| {
+        let app = Box::new(held.clone());
+        sink.deliver(Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                apply(Event::Cluster(ClusterEvent::Treed { app, read }), state)
+            },
+        ));
+    };
+    let (hub, namespace, name) = app;
+    let app = ArgoApp {
+        hub,
+        namespace,
+        name,
+    };
+    spawner.detach(Box::pin(groove_cluster_service::argo_tree(
+        paths, app, stop, send,
+    )));
 }
 
 /// A failed read stays begun for `IDLE`, then may be asked again.

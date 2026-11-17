@@ -44,6 +44,10 @@ impl State {
     /// One setting of an added context; a context not added changes nothing.
     pub fn change_cluster(&mut self, context: &str, change: ClusterChange) -> Option<&Config> {
         let held = &mut self.config.as_mut()?.clusters;
+        held.iter().find(|one| one.context == context)?;
+        if change == ClusterChange::ArgoHub(true) {
+            held.iter_mut().for_each(|one| one.argo_hub = false);
+        }
         let one = held.iter_mut().find(|one| one.context == context)?;
         one.change(change);
         self.config.as_ref()

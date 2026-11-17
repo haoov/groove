@@ -66,6 +66,11 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
             return Some(vec![Command::Cluster(copy)]);
         }
         Target::ResourceList => held.showing = None,
+        Target::ResourceDrift(path, _) => {
+            let tab = held.tab_mut()?;
+            (tab.view, tab.scroll) = (resources::View::Diff, 0.0);
+            tab.argo.landing = Some(path.clone());
+        }
         Target::ResourceRow(uid) => {
             let open = app.session.selected()?;
             let link = resources::row_link(app, open, &ui.session.resources, uid)?;

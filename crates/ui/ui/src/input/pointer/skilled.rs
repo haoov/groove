@@ -114,6 +114,7 @@ fn linked(ui: &Ui, app: &AppState, target: &crate::hit::Target) -> Option<Link> 
             crate::views::session::resources::row_link(app, open, held, uid)
         }
         crate::hit::Target::ResourceOpen(link) => Some((**link).clone()),
+        crate::hit::Target::ResourceDrift(_, link) => link.as_deref().cloned(),
         _ => None,
     }
 }

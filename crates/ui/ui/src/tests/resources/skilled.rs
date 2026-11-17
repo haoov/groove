@@ -6,7 +6,7 @@ use crate::input::Input;
 use crate::tests::click;
 use crate::{Losing, Of};
 
-fn skill(name: &str, resources: &[&str]) -> groove_types::Skill {
+pub(super) fn skill(name: &str, resources: &[&str]) -> groove_types::Skill {
     groove_types::Skill {
         id: format!("groove:{name}"),
         plugin: "groove".into(),

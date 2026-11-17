@@ -4,6 +4,8 @@ use crate::Timestamp;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppPart {
+    /// When Argo CD last compared it with its sources, and to what: it moves when the drift may.
+    pub compared: String,
     pub project: String,
     pub sync: String,
     pub health: String,
@@ -131,15 +133,27 @@ pub struct AppResource {
 }
 
 impl AppPart {
+    /// The commit the first git source on a branch synced to.
+    pub fn synced_commit(&self) -> Option<&str> {
+        let on_branch = |one: &&AppSource| one.chart.is_none() && !crate::is_sha(&one.target);
+        let synced = self
+            .sources
+            .iter()
+            .filter(on_branch)
+            .filter_map(|one| one.synced.as_deref());
+        synced.into_iter().find(|one| crate::is_sha(one))
+    }
+
     /// The last sync's result for `one`, hooks aside.
     pub fn result(&self, one: &AppResource) -> Option<&SyncedResource> {
         let applied = &self.operation.as_ref()?.applied;
         applied.iter().find(|done| !done.hook && one.is(done))
     }
 
-    /// Out of sync, waiting to be pruned, or failed in the last sync.
-    pub fn attention(&self, one: &AppResource) -> bool {
-        one.out_of_sync() || one.prune || self.result(one).is_some_and(SyncedResource::broke)
+    /// Out of sync, to prune, failed in the last sync, or degraded: anything to see.
+    pub fn notable(&self, one: &AppResource, health: &[ResourceHealth]) -> bool {
+        let broke = self.result(one).is_some_and(SyncedResource::broke);
+        one.out_of_sync() || one.prune || broke || health_of(health, one) == "Degraded"
     }
 }
 
@@ -157,12 +171,46 @@ impl AppResource {
     }
 }
 
+/// A resource's health as Argo CD's resource tree holds it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceHealth {
+    pub group: String,
+    pub kind: String,
+    pub namespace: Option<String>,
+    pub name: String,
+    /// `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Missing` or `Unknown`; empty for none.
+    pub status: String,
+    pub reason: String,
+}
+
+/// What Argo CD says of `one`'s health; empty where it says nothing.
+pub fn health_of<'a>(health: &'a [ResourceHealth], one: &AppResource) -> &'a str {
+    let found = health.iter().find(|held| held.of(one));
+    found.map_or("", |held| held.status.as_str())
+}
+
+impl ResourceHealth {
+    pub fn of(&self, one: &AppResource) -> bool {
+        self.kind == one.kind
+            && self.name == one.name
+            && self.group == one.group
+            && self.namespace.as_deref().unwrap_or_default()
+                == one.namespace.as_deref().unwrap_or_default()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppCondition {
     /// `SyncError`, `ComparisonError`, `OrphanedResourceWarning`.
     pub kind: String,
     pub message: String,
     pub at: Option<Timestamp>,
+}
+
+/// Where a resource's drift stands in the diff: `argo/Deployment/shop/web.yaml`.
+pub fn drift_path(kind: &str, namespace: Option<&str>, name: &str) -> String {
+    let namespace = namespace.unwrap_or("cluster");
+    format!("argo/{kind}/{namespace}/{name}.yaml")
 }
 
 /// `auto · prune · heal` for an automated sync policy, `manual` without one.

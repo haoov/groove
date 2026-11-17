@@ -252,6 +252,7 @@ async fn the_agent_is_refused_the_cluster_tools_and_told_to_read_through_groove(
         denied.contains(&"Bash(inc:*)".to_string()),
         "nor the incident.io CLI"
     );
+    assert!(denied.contains(&"Bash(argocd:*)".to_string()));
     let ends = denied.iter().position(|one| one.starts_with("--"));
     assert!(
         ends.is_some(),

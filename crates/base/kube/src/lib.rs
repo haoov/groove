@@ -9,6 +9,7 @@ mod logs;
 mod objects;
 mod patch;
 mod pool;
+mod proxy;
 mod table;
 mod watch;
 
@@ -23,5 +24,6 @@ pub use kubeconfig::{Auth, Context, contexts};
 pub use logs::{LogQuery, Start};
 pub use objects::{Listed, Narrowed, Seen};
 pub use patch::Patch;
+pub use proxy::{Found, Proxied};
 pub use table::{Column, Page, Query, Row};
 pub use watch::Change;
