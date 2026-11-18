@@ -20,6 +20,7 @@ impl Ui {
             self.focus = crate::Focus::Agent;
         }
         self.session.reading = app.workspace.commit.is_some();
+        self.review(app);
         self.kept_resources(app);
         self.moved(app);
         self.left(app);
@@ -41,6 +42,23 @@ impl Ui {
         self.unfound();
         self.refound(app);
         crate::views::session::diff::blocks::follow(self, app);
+    }
+
+    /// A session waiting on a cluster write stands on the Diff tab, the write's change in it, no sheet over it.
+    fn review(&mut self, app: &AppState) {
+        let selected = app.session.selected.as_ref();
+        let activity = selected.and_then(|session| app.agent.activity(session));
+        let asks = activity.map(|one| one.asks.as_slice()).unwrap_or_default();
+        let waiting = asks
+            .iter()
+            .find(|one| one.reviewed)
+            .map(|one| one.id.clone());
+        self.session.reviewing = waiting.is_some();
+        let Some(id) = waiting else {
+            return;
+        };
+        (self.session.tab, self.session.stowed) = (Tab::Diff, false);
+        self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
     }
 
     /// The find bar lets go of the keys on a tab change, and while no bar is drawn.

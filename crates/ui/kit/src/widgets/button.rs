@@ -8,51 +8,9 @@ use crate::base::style::Role;
 use crate::shape::{Panel, box_in};
 use crate::text::row;
 
-/// Room of `content` plus the padding either side, from `x`, on a bordered `ground`.
-pub fn slot_at<A: App>(
-    ctx: &mut Ctx<'_, A>,
-    line: Rect,
-    x: f32,
-    content: f32,
-    ground: Option<Color>,
-) -> Rect {
-    let pad = ctx.tokens.sm;
-    let height = (ctx.tokens.row - ctx.tokens.xs).min(line.h - ctx.tokens.xs);
-    let box_ = Rect::new(
-        x,
-        line.y + (line.h - height) / 2.0,
-        content + pad * 2.0,
-        height,
-    );
-    if let Some(ground) = ground {
-        let line = ctx.styles.line();
-        Panel::default()
-            .ground(ground)
-            .border(line)
-            .radius(ctx.tokens.round)
-            .draw(ctx, box_);
-    }
-    box_
-}
+mod slot;
 
-/// The size a button's text is drawn at.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Text {
-    Small,
-    Label,
-    Body,
-}
-
-impl Text {
-    /// The style this size draws in, in `role`.
-    pub fn style(self, styles: &crate::base::style::Styles, role: Role) -> TextStyle {
-        match self {
-            Text::Small => styles.small(role),
-            Text::Label => styles.label(role),
-            Text::Body => styles.body(role),
-        }
-    }
-}
+pub use slot::{Text, slot_at};
 
 /// A word or a mark on a bordered ground that a click acts on, in `lit` under the pointer.
 pub struct Button<'a, T> {
@@ -76,6 +34,8 @@ pub struct Button<'a, T> {
     pub glass: bool,
     /// Its glass squared, as a grid's cells are.
     pub square: bool,
+    /// Its border in a colour of its own, over the line every bordered ground takes.
+    pub edge: Option<Color>,
 }
 
 impl<'a, T: Clone + PartialEq> Button<'a, T> {
@@ -99,6 +59,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             inert: false,
             glass: false,
             square: false,
+            edge: None,
         }
     }
 
@@ -114,6 +75,12 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             hover: Some(styles.glass_hover()),
             ..Self::new(label, target, role, styles.glass_card())
         }
+    }
+
+    /// Its border drawn in `color`.
+    pub fn edged(mut self, color: Color) -> Self {
+        self.edge = Some(color);
+        self
     }
 
     /// The glass squared to the window's corners.
@@ -236,6 +203,22 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
         }
     }
 
+    /// Its bordered ground, the border in its own colour when it has one.
+    fn edged_slot<A: App<Target = T>>(
+        &self,
+        ctx: &mut Ctx<'_, A>,
+        (line, x): (Rect, f32),
+        content: f32,
+        ground: Option<Color>,
+    ) -> Rect {
+        let box_ = slot_at(ctx, line, x, content, ground);
+        if let Some(edge) = self.edge {
+            let round = ctx.tokens.round;
+            Panel::default().border(edge).radius(round).draw(ctx, box_);
+        }
+        box_
+    }
+
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {
         let style = self.style(ctx);
         let content = self.content(ctx, &style);
@@ -264,7 +247,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
                 }
                 box_
             }
-            None => slot_at(ctx, line, x, content, ground),
+            None => self.edged_slot(ctx, (line, x), content, ground),
         };
         match self.mark {
             Some((mark, turn)) => {

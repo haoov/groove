@@ -35,6 +35,8 @@ pub struct SessionUi {
     pub alone: bool,
     /// A commit is shown in place of the working tree.
     pub reading: bool,
+    /// The selected session waits on a cluster write, its change on the Diff tab under the ask.
+    pub reviewing: bool,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.

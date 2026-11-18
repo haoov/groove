@@ -70,7 +70,7 @@ pub(super) fn mark_read(
 }
 
 /// The changed files and the open file, read at once.
-pub(super) fn reread(state: &mut AppState, spawner: &dyn Spawner) {
+pub(crate) fn reread(state: &mut AppState, spawner: &dyn Spawner) {
     if state.workspace.readonly() {
         return;
     }
@@ -196,7 +196,9 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
         state.workspace.undrift();
         let kind = state.session.selected().map(|open| &open.session.kind);
         state.workspace.mode = opens_in(kind);
-        load(state, spawner);
+        if !super::review::show(state, spawner) {
+            load(state, spawner);
+        }
     }
     let asked = state.workspace.watch_asked.as_ref() == Some(&worktree);
     if state.workspace.watching.as_ref() != Some(&worktree) && !asked {

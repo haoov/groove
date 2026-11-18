@@ -106,23 +106,27 @@ pub fn allow(state: &mut AppState, services: &Services, spawner: &dyn Spawner, i
     let Some((approval, reply)) = state.agent.resolved(id) else {
         return;
     };
-    state.workspace.reviews.remove(id);
+    if state.workspace.decided(id) {
+        crate::workspace::diff::reread(state, spawner);
+    }
     run(state, services, spawner, Write::approved(approval, reply));
 }
 
 /// The write the user refused, which its agent hears about.
-pub fn refuse(state: &mut AppState, id: &ApprovalId) {
+pub fn refuse(state: &mut AppState, spawner: &dyn Spawner, id: &ApprovalId) {
     let Some((approval, reply)) = state.agent.resolved(id) else {
         return;
     };
-    state.workspace.reviews.remove(id);
+    if state.workspace.decided(id) {
+        crate::workspace::diff::reread(state, spawner);
+    }
     reply.failed(format!("the user refused {}", approval.op));
 }
 
 /// Every write of a session that ends, refused.
 pub fn drop_asks(state: &mut AppState, session: &SessionId) {
     for (approval, reply) in state.agent.forget_asks(session) {
-        state.workspace.reviews.remove(&approval.id);
+        state.workspace.decided(&approval.id);
         reply.failed(format!("the session closed before {} ran", approval.op));
     }
 }

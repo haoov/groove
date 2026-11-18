@@ -9,6 +9,7 @@ pub(crate) mod diff;
 mod editor;
 pub(crate) mod git;
 mod paths;
+pub(crate) mod review;
 mod search;
 mod servers;
 

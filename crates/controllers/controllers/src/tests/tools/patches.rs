@@ -146,16 +146,16 @@ fn a_patch_waits_with_its_diff_under_auto_approve_and_lands_once_approved() {
         ask.text
     );
 
-    assert!(ask.reviewed, "approved only from the sheet");
-    let review = state
-        .workspace
-        .reviews
-        .get(&ask.id)
-        .expect("the change held");
-    assert!(review.aligned.path.ends_with("deployments/api.yaml"));
+    assert!(ask.reviewed, "approved only from the band");
+    fixture::until(&spawner, &services, &mut state, |s| {
+        s.workspace.reviewed() == Some(ask.id.as_str())
+    });
+    let file = &state.workspace.files[0];
+    assert_eq!(file.path, "kind/paxone/deployments/api.yaml");
+    assert_eq!((file.added, file.deleted), (1, 1));
 
     crate::tools::allow(&mut state, &services, &spawner, &ask.id);
-    assert!(state.workspace.reviews.is_empty(), "let go once decided");
+    assert_eq!(state.workspace.reviewed(), None, "let go once decided");
     let answer = settled(&spawner, &services, &mut state, &mut answered);
     assert!(!answer.failed, "{}", answer.text);
     fixture::until(&spawner, &services, &mut state, |s| {
@@ -218,4 +218,23 @@ fn a_read_only_context_refuses_the_patch_before_it_is_tried() {
         "nothing was tried"
     );
     assert!(waiting(&state, &id).is_empty());
+}
+
+#[test]
+fn a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered() {
+    let (home, spawner, services, mut state) = fixture::fresh();
+    let server = server(&spawner, 200);
+    let id = session(home.path(), &server, (&mut state, &services, &spawner));
+    let _answered = queued(&mut state, &services, &spawner, &id);
+    let session = groove_types::SessionId::new(&id);
+    let close = crate::session::Command::Close {
+        session: session.clone(),
+    };
+    dispatch(Cmd::Session(close), &mut state, &services, &spawner);
+    assert!(state.session.get(&session).is_some(), "still open");
+    let told = state
+        .errors
+        .iter()
+        .any(|one| one.what.message.contains("approve or refuse"));
+    assert!(told, "{:?}", state.errors);
 }

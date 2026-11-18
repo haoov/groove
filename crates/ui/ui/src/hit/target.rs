@@ -240,8 +240,6 @@ pub enum Target {
     Finding,
     /// One of the three views of the open file.
     View(DiffView),
-    /// One of the views of the change the review sheet shows.
-    SheetView(DiffView),
     /// The agent's pane.
     Agent,
     /// One button of a note's own row.

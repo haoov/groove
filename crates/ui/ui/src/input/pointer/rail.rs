@@ -38,12 +38,6 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         Target::Approve(id) => Some(answered(ui, agent::Command::Approve { id: id.clone() })),
         Target::Refuse(id) => Some(answered(ui, agent::Command::Refuse { id: id.clone() })),
         Target::Sheet => Some(Vec::new()),
-        Target::SheetView(view) => {
-            if let Some(sheet) = ui.sheet_mut() {
-                (sheet.view, sheet.scroll, sheet.across) = (*view, 0.0, 0.0);
-            }
-            Some(Vec::new())
-        }
         _ => None,
     }
 }

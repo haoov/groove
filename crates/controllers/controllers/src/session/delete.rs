@@ -29,6 +29,9 @@ pub(crate) fn delete_then(
     (id, force): (&SessionId, bool),
     then: Continuation,
 ) {
+    if crate::workspace::review::answer_first(state, id) {
+        return;
+    }
     let running = state.agent.agent(id).is_some();
     agent::end(state, id);
     crate::shell::end(state, id);
