@@ -9,7 +9,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{
-    Cell, Column, Laid, Rows, Search, Shown, Sorted, Tab, Table, Width, glass_field,
+    Cell, Column, Laid, Rows, Search, Shown, Sorted, Steps, Tab, Table, Width, glass_field,
 };
 
 mod cells;
@@ -21,6 +21,7 @@ pub(super) mod plan;
 use self::cells::{column, one};
 use self::plan::plan;
 use super::scope::{self, ResourcesUi};
+use super::{Write, Written};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -82,7 +83,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     }
     let kind = kind.map(|one| one.plural).unwrap_or_default();
     let asked = match ui.losing() {
-        Some(crate::Losing::Restart { uid, .. }) => Some(uid.as_str()),
+        Some(crate::Losing::Row(written)) => Some(&**written),
         _ => None,
     };
     listed(ctx, body, app, (&keys, rows), (held, &kind, asked));
@@ -194,7 +195,7 @@ fn listed(
     body: Rect,
     app: &AppState,
     (keys, rows): (&[WatchKey], Vec<(&WatchKey, &ObjectRow)>),
-    (held, kind, asked): (&ResourcesUi, &str, Option<&str>),
+    (held, kind, asked): (&ResourcesUi, &str, Option<&Written>),
 ) {
     let plan = plan(app, keys, &rows);
     let sorted = order::mark(&plan, held.sort.as_ref());
@@ -232,11 +233,11 @@ fn listed(
     };
     let (_, names) = scope::search(held);
     let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
-    let asked = asked.and_then(|uid| rows.iter().position(|(_, row)| row.uid == uid));
-    let laid = table.draw(ctx, body, |at| {
-        shown(app, rows[at], (&plan, &names), Some(at) == asked)
+    let at = asked.and_then(|one| rows.iter().position(|(_, row)| row.uid == one.uid));
+    let laid = table.draw(ctx, body, |row| {
+        shown(app, rows[row], (&plan, &names), Some(row) == at)
     });
-    restarting(ctx, &laid, asked.map(|at| (at, rows[at].1.name.as_str())));
+    asking(ctx, &laid, at.zip(asked));
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
 }
 
@@ -253,17 +254,26 @@ fn shown<'a>(
     }
 }
 
-/// The restart asked across the row's whole width.
-fn restarting(ctx: &mut Ctx, laid: &Laid, asked: Option<(usize, &str)>) {
-    let Some((at, name)) = asked else {
+/// The write asked across the row's whole width, a scale's count stepped before the answers.
+fn asking(ctx: &mut Ctx, laid: &Laid, asked: Option<(usize, &Written)>) {
+    let Some((at, written)) = asked else {
         return;
     };
-    let (line, room) = (laid.from(at, 0), laid.body);
+    let (line, room) = (laid.across(at), laid.body);
     if line.y < room.y || line.y + line.h > room.y + room.h {
         return;
     }
-    let line = Rect::new(room.x, line.y, room.w, line.h);
-    let answers = [("restart", Target::Discard), ("keep", Target::Keep)];
-    let question = format!("restart {name}?");
-    groove_ui_kit::widgets::question(ctx, line, &question, answers);
+    let count = match written.write {
+        Write::Scale(count) => Some(count),
+        Write::Restart => None,
+    };
+    let shown = count.map(|count| count.to_string()).unwrap_or_default();
+    let steps = count.map(|count| Steps {
+        shown: &shown,
+        less: (count > 0).then_some(Target::Step(-1)),
+        more: Target::Step(1),
+    });
+    let (yes, question) = (written.write.act(), written.question());
+    let answers = [(yes, Target::Discard), ("keep", Target::Keep)];
+    groove_ui_kit::widgets::question(ctx, line, (&question, steps), answers);
 }

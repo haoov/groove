@@ -63,6 +63,21 @@ pub fn restartable(kind: &KubeKind) -> bool {
     kind.group == "apps" && rolled.contains(&kind.kind.as_str())
 }
 
+/// Whether `kind` scales through its `scale` subresource from a row.
+pub fn scalable(kind: &KubeKind) -> bool {
+    kind.group == "apps" && ["Deployment", "StatefulSet"].contains(&kind.kind.as_str())
+}
+
+/// The patch `kubectl scale` sends to `target`'s `scale` subresource.
+pub fn scale(target: &mut Target, replicas: u32) -> Result<Value> {
+    if !scalable(&target.kind) {
+        let why = format!("a {} does not scale", target.kind.kind);
+        return Err(Error::invalid(why));
+    }
+    target.subresource = Some("scale".into());
+    Ok(json!({ "spec": { "replicas": replicas } }))
+}
+
 /// The patch `kubectl rollout restart` sends: the pod template stamped with `at`.
 pub fn restart(kind: &KubeKind, at: Timestamp) -> Result<Value> {
     if !restartable(kind) {

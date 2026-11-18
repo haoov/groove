@@ -79,7 +79,7 @@ fn a_resource_no_skill_acts_on_opens_no_menu() {
     assert!(menu_on(&app, &mut ui, &row).is_none());
 }
 
-/// The listing turned to the deployments of `shop`: `api` alone.
+/// The listing turned to the deployments of `shop`: `api` alone, ready on one of two.
 fn deployments() -> (AppState, Ui) {
     let (mut app, mut ui) = listing();
     let deployments = kind("apps", "Deployment", "deployments", true);
@@ -88,9 +88,14 @@ fn deployments() -> (AppState, Ui) {
         ..key("staging", Some("shop"))
     };
     app.cluster.store.lease(&key, "resources");
-    let mut api = row("api", "shop", "1/1");
-    api.uid = "shop/api".into();
-    let (columns, rows) = (Vec::new(), vec![api]);
+    let mut api = row("api", "shop", "Running");
+    (api.uid, api.cells[1]) = ("shop/api".into(), "1/2".into());
+    let column = |name: &str| TableColumn {
+        name: name.into(),
+        priority: 0,
+        date: false,
+    };
+    let (columns, rows) = (vec![column("Name"), column("Ready")], vec![api]);
     app.cluster
         .store
         .apply(&key, Batch::Reset { columns, rows });
@@ -112,9 +117,10 @@ fn a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it() {
     let Some(of) = menu_on(&app, &mut ui, &row) else {
         panic!("a menu on the deployment");
     };
-    assert_eq!(crate::views::overlays::actions::rows(&of), ["restart"]);
-    assert!(picked(&app, &mut ui, 0).is_empty(), "nothing written yet");
-    assert!(matches!(ui.losing(), Some(Losing::Restart { .. })));
+    let rows = crate::views::overlays::actions::rows(&of);
+    assert_eq!(rows, ["scale", "restart"]);
+    assert!(picked(&app, &mut ui, 1).is_empty(), "nothing written yet");
+    assert!(matches!(ui.losing(), Some(Losing::Row(_))));
     let (texts, hits) = drawn(&app, &ui);
     assert!(texts.iter().any(|one| one == "restart api?"), "{texts:?}");
     let yes = hits.rect_of(&Target::Discard).expect("the restart answer");
@@ -140,4 +146,42 @@ fn keep_leaves_the_deployment_as_it_is_and_a_pod_offers_no_restart() {
     let pod = Target::ResourceRow("shop/api-0".into());
     let none = menu_on(&app, &mut ui, &pod);
     assert!(none.is_none(), "no skill, no restart");
+}
+
+#[test]
+fn a_scale_starts_from_the_count_the_row_wants_and_steps_before_it_is_sent() {
+    let (app, mut ui) = deployments();
+    menu_on(&app, &mut ui, &Target::ResourceRow("shop/api".into()));
+    picked(&app, &mut ui, 0);
+    let (texts, _) = drawn(&app, &ui);
+    for shown in ["scale api to", "2"] {
+        assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
+    }
+    for by in [1, 1, -1] {
+        let (_, hits) = drawn(&app, &ui);
+        let step = hits.rect_of(&Target::Step(by)).expect("the step");
+        assert!(click(step, &mut ui, &app, &hits).is_empty());
+    }
+    let (_, hits) = drawn(&app, &ui);
+    let yes = hits.rect_of(&Target::Discard).expect("the scale answer");
+    let sent = click(yes, &mut ui, &app, &hits);
+    let [Command::Cluster(cluster::Command::Scale { replicas, .. })] = sent.as_slice() else {
+        panic!("one scale: {sent:?}");
+    };
+    assert_eq!(*replicas, 3);
+}
+
+#[test]
+fn a_scale_to_none_offers_no_step_down() {
+    let (app, mut ui) = deployments();
+    menu_on(&app, &mut ui, &Target::ResourceRow("shop/api".into()));
+    picked(&app, &mut ui, 0);
+    for _ in 0..2 {
+        let (_, hits) = drawn(&app, &ui);
+        let step = hits.rect_of(&Target::Step(-1)).expect("a step down");
+        click(step, &mut ui, &app, &hits);
+    }
+    let (texts, hits) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "0"), "{texts:?}");
+    assert!(hits.rect_of(&Target::Step(-1)).is_none());
 }

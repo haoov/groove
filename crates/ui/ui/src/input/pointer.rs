@@ -170,6 +170,7 @@ fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> 
         Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
         Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => kept(ui),
+        Some(Target::Step(by)) => stepped(ui, by),
         Some(Target::Block(line)) => surface::fold(ui, app, line),
         _ => Vec::new(),
     }
@@ -243,6 +244,16 @@ fn shut(ui: &mut Ui, path: String) -> Vec<Command> {
 fn mapping(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Vec<Command> {
     ui.held = Some(Held::Lens);
     lensed(y, ui, app, hits, metrics);
+    Vec::new()
+}
+
+/// The scale a row asks, one step down or up.
+fn stepped(ui: &mut Ui, by: i32) -> Vec<Command> {
+    if let Some(Overlay::Losing(crate::Losing::Row(written))) = &mut ui.overlay
+        && let crate::views::session::resources::Write::Scale(count) = &mut written.write
+    {
+        *count = count.saturating_add_signed(by);
+    }
     Vec::new()
 }
 

@@ -202,6 +202,8 @@ pub enum Target {
     /// The two answers to what is asked before a change is thrown away.
     Discard,
     Keep,
+    /// The count a row's question sets, one step down or up.
+    Step(i32),
     /// What the commit box offers beyond committing.
     Actions,
     /// A row of the menu the right button opens.

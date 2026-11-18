@@ -1,11 +1,10 @@
 //! The menus a click opens, and what picking a row of one does.
 
-use groove_controllers::{AppState, Command, cluster, session, workspace};
+use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::WorktreeId;
 
 use crate::hit::{Hits, Target};
 use crate::input::Key;
-use crate::views::session::resources::Link;
 use crate::{Corner, Focus, Losing, Menu, Of, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -95,23 +94,10 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
         Some(Losing::Path(path)) => {
             workspace::Command::Path(groove_controllers::workspace_service::PathOp::Delete { path })
         }
-        Some(Losing::Restart { session, link, .. }) => return restarted(session, *link),
+        Some(Losing::Row(written)) => return vec![written.command()],
         None => return Vec::new(),
     };
     vec![Command::Workspace(command)]
-}
-
-fn restarted(session: groove_types::SessionId, link: Link) -> Vec<Command> {
-    let target = groove_types::Target {
-        context: link.context,
-        kind: link.kind,
-        namespace: link.namespace,
-        name: link.name,
-        subresource: None,
-    };
-    let target = Box::new(target);
-    let restart = cluster::Command::Restart { session, target };
-    vec![Command::Cluster(restart)]
 }
 
 /// A click while a menu is open: a row of it, or anywhere to close it.

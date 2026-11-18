@@ -621,14 +621,19 @@ selected meanwhile; back on this one, the change shows again. Enforced by
 `a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
 `a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
 
-**A workload restarts from its row.** A Deployment's, StatefulSet's or DaemonSet's row in
-the list offers **restart** on its right-click, above the skills of its kind. Picking it
-turns the row into the question, followed by **restart** and **keep**. Restart stamps the pod template, as `kubectl rollout restart` does, and the
-session's timeline says it. An object's tab offers no menu. Enforced by
+**A workload scales and restarts from its row.** A Deployment's or StatefulSet's row in the
+list offers **scale** on its right-click; a Deployment's, StatefulSet's or DaemonSet's offers
+**restart**; both stand above the skills of its kind. Picking one turns the row into the
+question. A scale shows the count the row wants between **−** and **+**, no **−** at none,
+and sends the count set to the `scale` subresource. A restart stamps the pod template, as
+`kubectl rollout restart` does. **keep** sends nothing; the timeline says what landed. An
+object's tab offers no menu. Enforced by
 `a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it`,
 `keep_leaves_the_deployment_as_it_is_and_a_pod_offers_no_restart`,
-`an_object_tab_opens_no_menu` and
-`a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod`.
+`a_scale_starts_from_the_count_the_row_wants_and_steps_before_it_is_sent`,
+`a_scale_to_none_offers_no_step_down`, `an_object_tab_opens_no_menu`,
+`a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod` and
+`a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset`.
 
 ## Settings
 

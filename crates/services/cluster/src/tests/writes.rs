@@ -119,3 +119,14 @@ fn a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod() {
     let pod = kind("", "pods", "Pod", true);
     assert!(crate::restart(&pod, at).is_err());
 }
+
+#[test]
+fn a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset() {
+    let mut api = api(Some("paxone"));
+    let body = crate::scale(&mut api, 3).expect("a deployment scales");
+    assert_eq!(body.pointer("/spec/replicas"), Some(&serde_json::json!(3)));
+    assert_eq!(api.subresource.as_deref(), Some("scale"));
+    let mut daemons = api.clone();
+    daemons.kind = kind("apps", "daemonsets", "DaemonSet", true);
+    assert!(crate::scale(&mut daemons, 3).is_err());
+}

@@ -10,6 +10,7 @@ mod scope;
 mod scoping;
 mod sidebar;
 mod tab;
+mod written;
 
 pub use argo::{ArgoUi, Filter};
 pub use around::row_link;
@@ -23,6 +24,7 @@ pub use scope::{
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, served, shown};
 pub use tab::{due as tab_due, wants as tab_wants};
+pub use written::{Write, Written, desired};
 
 use groove_controllers::{Command, cluster};
 

@@ -46,6 +46,26 @@ pub(crate) fn restart(
     stored((state, spawner), said, patched, Asker::Ui);
 }
 
+/// The workload's replicas set to `replicas`, as `kubectl scale` does.
+pub(crate) fn scale(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    (session, mut target): (SessionId, Target),
+    replicas: u32,
+) {
+    let body = match groove_cluster_service::scale(&mut target, replicas) {
+        Ok(body) => body,
+        Err(e) => return Asker::Ui.failed(state, e),
+    };
+    let patched = Patched {
+        target,
+        body,
+        version: None,
+    };
+    let said = (session, format!("scale to {replicas}"));
+    stored((state, spawner), said, patched, Asker::Ui);
+}
+
 /// The patch stored once the session may write there, `said` on its timeline.
 fn stored(
     (state, spawner): (&mut AppState, &dyn Spawner),

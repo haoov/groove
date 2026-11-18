@@ -2,12 +2,14 @@
 
 use groove_controllers::AppState;
 
-use crate::views::session::resources::Link;
-use groove_controllers::cluster_service::restartable;
+use groove_controllers::cluster_service::{restartable, scalable};
+use groove_types::SessionId;
+
+use crate::views::session::resources::{Link, Write, Written, desired};
 
 use crate::{Corner, Losing, Menu, Of, Offer, Ui};
 
-/// What a list row or an Application's row offers: a restart when it rolls out pods, then the skills of its kind.
+/// What a list row or an Application's row offers: a list row's writes, then the skills of its kind.
 pub(super) fn menu(
     ui: &Ui,
     app: &AppState,
@@ -25,12 +27,8 @@ pub(super) fn menu(
             label: one.label.clone(),
         })
         .collect();
-    let writes: Vec<Losing> = match target {
-        crate::hit::Target::ResourceRow(uid) if restartable(&link.kind) => vec![Losing::Restart {
-            session: session.clone(),
-            uid: uid.clone(),
-            link: Box::new(link),
-        }],
+    let writes = match target {
+        crate::hit::Target::ResourceRow(uid) => writes(ui, app, (&session, uid), &link),
         _ => Vec::new(),
     };
     if writes.is_empty() && offered.is_empty() {
@@ -45,6 +43,29 @@ pub(super) fn menu(
             offered,
         },
     })
+}
+
+/// What a list row asks before it writes: a scale for a workload with replicas, a restart for one with pods.
+fn writes(ui: &Ui, app: &AppState, (session, uid): (&SessionId, &str), link: &Link) -> Vec<Losing> {
+    let mut writes = Vec::new();
+    if scalable(&link.kind) {
+        let open = app.session.selected();
+        let held = &ui.session.resources;
+        let now = open.and_then(|open| desired(app, open, held, uid));
+        writes.push(Write::Scale(now.unwrap_or(1)));
+    }
+    if restartable(&link.kind) {
+        writes.push(Write::Restart);
+    }
+    let asked = |write| {
+        Losing::Row(Box::new(Written {
+            session: session.clone(),
+            uid: uid.to_string(),
+            link: link.clone(),
+            write,
+        }))
+    };
+    writes.into_iter().map(asked).collect()
 }
 
 /// The resource a target stands for.

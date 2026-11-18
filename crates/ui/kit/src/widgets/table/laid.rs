@@ -28,6 +28,12 @@ impl Laid {
         Rect::new(x, self.line(row).y + self.inset, w, self.first)
     }
 
+    /// The first line of row `row`, across every column.
+    pub fn across(&self, row: usize) -> Rect {
+        let line = self.line(row);
+        Rect::new(line.x, line.y + self.inset, line.w, self.first)
+    }
+
     /// The first line of row `row` from column `column`'s left edge to the end.
     pub fn from(&self, row: usize, column: usize) -> Rect {
         let (x, _) = self.spans[column];

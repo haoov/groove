@@ -98,19 +98,15 @@ pub enum Losing {
     Tab(String),
     /// One path of the explorer, with everything under it.
     Path(String),
-    /// The workload on the list's row `uid`, its pods replaced.
-    Restart {
-        session: groove_types::SessionId,
-        uid: String,
-        link: Box<views::session::resources::Link>,
-    },
+    /// A write on the object of a list row.
+    Row(Box<views::session::resources::Written>),
 }
 
 impl Losing {
     /// The menu row that asks it.
     pub fn act(&self) -> &'static str {
         match self {
-            Losing::Restart { .. } => "restart",
+            Losing::Row(written) => written.write.act(),
             _ => "discard",
         }
     }

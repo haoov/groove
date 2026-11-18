@@ -54,6 +54,12 @@ pub enum Command {
         session: SessionId,
         patched: Box<Patched>,
     },
+    /// `cluster.scale`: a workload's replicas set, on a cluster the session may write to.
+    Scale {
+        session: SessionId,
+        target: Box<groove_types::Target>,
+        replicas: u32,
+    },
     /// `cluster.restart`: a workload's pods replaced, on a cluster the session may write to.
     Restart {
         session: SessionId,
@@ -83,6 +89,7 @@ impl Command {
             Command::LogCopy { .. } => "cluster.log_copy",
             Command::Patch { .. } => "cluster.patch",
             Command::Restart { .. } => "cluster.restart",
+            Command::Scale { .. } => "cluster.scale",
         }
     }
 }
@@ -129,6 +136,11 @@ pub fn dispatch(
             writes::patch(state, spawner, session, *patched, asker)
         }
         Command::Restart { session, target } => writes::restart(state, spawner, session, *target),
+        Command::Scale {
+            session,
+            target,
+            replicas,
+        } => writes::scale(state, spawner, (session, *target), replicas),
     }
 }
 
