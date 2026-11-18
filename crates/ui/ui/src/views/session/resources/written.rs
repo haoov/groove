@@ -1,4 +1,4 @@
-//! A write a list row asks before it lands: a restart, or a scale to a count.
+//! A write a list row asks before it lands: a scale to a count, a restart or a delete.
 
 use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command, cluster};
@@ -19,6 +19,7 @@ pub struct Written {
 pub enum Write {
     Restart,
     Scale(u32),
+    Delete,
 }
 
 impl Write {
@@ -27,6 +28,7 @@ impl Write {
         match self {
             Write::Restart => "restart",
             Write::Scale(_) => "scale",
+            Write::Delete => "delete",
         }
     }
 }
@@ -37,6 +39,7 @@ impl Written {
         match self.write {
             Write::Restart => format!("restart {}?", self.link.name),
             Write::Scale(_) => format!("scale {} to", self.link.name),
+            Write::Delete => format!("delete {}?", self.link.name),
         }
     }
 
@@ -57,6 +60,7 @@ impl Written {
                 target,
                 replicas,
             },
+            Write::Delete => cluster::Command::Delete { session, target },
         };
         Command::Cluster(asked)
     }

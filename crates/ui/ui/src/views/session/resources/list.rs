@@ -265,7 +265,7 @@ fn asking(ctx: &mut Ctx, laid: &Laid, asked: Option<(usize, &Written)>) {
     }
     let count = match written.write {
         Write::Scale(count) => Some(count),
-        Write::Restart => None,
+        Write::Restart | Write::Delete => None,
     };
     let shown = count.map(|count| count.to_string()).unwrap_or_default();
     let steps = count.map(|count| Steps {

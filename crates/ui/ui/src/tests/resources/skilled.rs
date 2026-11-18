@@ -72,11 +72,24 @@ fn an_object_tab_opens_no_menu() {
 }
 
 #[test]
-fn a_resource_no_skill_acts_on_opens_no_menu() {
+fn a_pod_s_row_offers_only_its_delete_asked_in_its_place() {
     let (mut app, mut ui) = listing();
     app.skill.skills = vec![skill("save-task", &[])];
     let row = Target::ResourceRow("shop/api-0".into());
-    assert!(menu_on(&app, &mut ui, &row).is_none());
+    let Some(of) = menu_on(&app, &mut ui, &row) else {
+        panic!("a menu on the pod");
+    };
+    let rows = crate::views::overlays::actions::rows(&of);
+    assert_eq!(rows, ["delete"], "no scale, no restart, no skill");
+    picked(&app, &mut ui, 0);
+    let (texts, hits) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "delete api-0?"), "{texts:?}");
+    let yes = hits.rect_of(&Target::Discard).expect("the delete answer");
+    let sent = click(yes, &mut ui, &app, &hits);
+    let [Command::Cluster(cluster::Command::Delete { target, .. })] = sent.as_slice() else {
+        panic!("one delete: {sent:?}");
+    };
+    assert_eq!(target.label(), "staging · shop/pods/api-0");
 }
 
 /// The listing turned to the deployments of `shop`: `api` alone, ready on one of two.
@@ -118,7 +131,7 @@ fn a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it() {
         panic!("a menu on the deployment");
     };
     let rows = crate::views::overlays::actions::rows(&of);
-    assert_eq!(rows, ["scale", "restart"]);
+    assert_eq!(rows, ["scale", "restart", "delete"]);
     assert!(picked(&app, &mut ui, 1).is_empty(), "nothing written yet");
     assert!(matches!(ui.losing(), Some(Losing::Row(_))));
     let (texts, hits) = drawn(&app, &ui);
@@ -134,7 +147,7 @@ fn a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it() {
 }
 
 #[test]
-fn keep_leaves_the_deployment_as_it_is_and_a_pod_offers_no_restart() {
+fn keep_leaves_the_deployment_as_it_is() {
     let (app, mut ui) = deployments();
     menu_on(&app, &mut ui, &Target::ResourceRow("shop/api".into()));
     picked(&app, &mut ui, 0);
@@ -142,10 +155,6 @@ fn keep_leaves_the_deployment_as_it_is_and_a_pod_offers_no_restart() {
     let keep = hits.rect_of(&Target::Keep).expect("the keep answer");
     assert!(click(keep, &mut ui, &app, &hits).is_empty());
     assert!(ui.losing().is_none());
-    let (app, mut ui) = listing();
-    let pod = Target::ResourceRow("shop/api-0".into());
-    let none = menu_on(&app, &mut ui, &pod);
-    assert!(none.is_none(), "no skill, no restart");
 }
 
 #[test]

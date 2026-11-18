@@ -14,7 +14,9 @@ pub use groove_kubectl::{Answer, Checked, check as checked};
 pub use groove_objects::Preview;
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
 pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls};
-pub use writes::{Allowed, Asked, patch, preview, restart, restartable, scalable, scale, writable};
+pub use writes::{
+    Allowed, Asked, delete, doomed, patch, preview, restart, restartable, scalable, scale, writable,
+};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]

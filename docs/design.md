@@ -621,19 +621,21 @@ selected meanwhile; back on this one, the change shows again. Enforced by
 `a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
 `a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
 
-**A workload scales and restarts from its row.** A Deployment's or StatefulSet's row in the
-list offers **scale** on its right-click; a Deployment's, StatefulSet's or DaemonSet's offers
-**restart**; both stand above the skills of its kind. Picking one turns the row into the
+**An object scales, restarts and goes from its row.** A list row's right-click offers
+**scale** on a Deployment or a StatefulSet, **restart** on those and a DaemonSet, and
+**delete** on every object, above the skills of its kind. Picking one turns the row into the
 question. A scale shows the count the row wants between **−** and **+**, no **−** at none,
 and sends the count set to the `scale` subresource. A restart stamps the pod template, as
-`kubectl rollout restart` does. **keep** sends nothing; the timeline says what landed. An
-object's tab offers no menu. Enforced by
+`kubectl rollout restart` does. A delete takes the object's dependents after it. **keep**
+sends nothing; the timeline says what landed. An object's tab offers no menu. Enforced by
 `a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it`,
-`keep_leaves_the_deployment_as_it_is_and_a_pod_offers_no_restart`,
+`keep_leaves_the_deployment_as_it_is`,
 `a_scale_starts_from_the_count_the_row_wants_and_steps_before_it_is_sent`,
-`a_scale_to_none_offers_no_step_down`, `an_object_tab_opens_no_menu`,
-`a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod` and
-`a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset`.
+`a_scale_to_none_offers_no_step_down`,
+`a_pod_s_row_offers_only_its_delete_asked_in_its_place`, `an_object_tab_opens_no_menu`,
+`a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod`,
+`a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset` and
+`a_dry_run_delete_says_so_in_its_body_on_the_version_seen`.
 
 ## Settings
 

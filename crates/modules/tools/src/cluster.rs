@@ -42,6 +42,18 @@ fn kube() -> Tool {
 
 /// A merge patch on one object, shown to the user as a diff before it lands.
 fn kube_patch() -> Tool {
+    let mut named = object();
+    named.push((
+        "subresource",
+        text("A part of the object to patch instead, as `scale`."),
+    ));
+    named.push((
+        "patch",
+        serde_json::json!({
+            "type": "object",
+            "description": "The JSON merge patch: {\"spec\": {\"replicas\": 3}}.",
+        }),
+    ));
     Tool {
         name: "kube_patch",
         description: "Patch one object of a cluster this session holds, with a JSON merge \
@@ -50,41 +62,49 @@ fn kube_patch() -> Tool {
              read-only refuses it. If the object changes before the user approves, the \
              patch is refused: read it again and ask again."
             .to_string(),
-        schema: takes(
-            &["context", "kind", "name", "patch"],
-            vec![
-                (
-                    "context",
-                    text("The kubeconfig context, one the session holds."),
-                ),
-                (
-                    "kind",
-                    text(
-                        "The kind: `deployments`, `Deployment`, or `deployments.apps` where two groups serve it.",
-                    ),
-                ),
-                (
-                    "namespace",
-                    text("The object's namespace; leave it out for a kind no namespace holds."),
-                ),
-                ("name", text("The object's name.")),
-                (
-                    "subresource",
-                    text("A part of the object to patch instead, as `scale`."),
-                ),
-                (
-                    "patch",
-                    serde_json::json!({
-                        "type": "object",
-                        "description": "The JSON merge patch: {\"spec\": {\"replicas\": 3}}.",
-                    }),
-                ),
-            ],
-        ),
+        schema: takes(&["context", "kind", "name", "patch"], named),
         writes: true,
         verb: "patch a cluster object",
         subject: &["target"],
     }
+}
+
+/// One object deleted, shown to the user as its whole YAML going before it does.
+fn kube_delete() -> Tool {
+    Tool {
+        name: "kube_delete",
+        description: "Delete one object of a cluster this session holds. Groove tries the \
+             delete on the server first and shows the user the object's YAML going away; it \
+             lands only once the user approves, even with auto-approve on. A context set \
+             read-only refuses it. If the object changes before the user approves, the \
+             delete is refused: read it again and ask again."
+            .to_string(),
+        schema: takes(&["context", "kind", "name"], object()),
+        writes: true,
+        verb: "delete a cluster object",
+        subject: &["target"],
+    }
+}
+
+/// What names one object: its context, its kind, its namespace and its name.
+fn object() -> Vec<(&'static str, serde_json::Value)> {
+    vec![
+        (
+            "context",
+            text("The kubeconfig context, one the session holds."),
+        ),
+        (
+            "kind",
+            text(
+                "The kind: `deployments`, `Deployment`, or `deployments.apps` where two groups serve it.",
+            ),
+        ),
+        (
+            "namespace",
+            text("The object's namespace; leave it out for a kind no namespace holds."),
+        ),
+        ("name", text("The object's name.")),
+    ]
 }
 
 /// A change to the clusters the session holds, which the user decides on.
@@ -115,6 +135,7 @@ pub(crate) fn all() -> Vec<Tool> {
     vec![
         kube(),
         kube_patch(),
+        kube_delete(),
         attaching(
             "attach_cluster",
             "attach a cluster",

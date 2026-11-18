@@ -1,4 +1,4 @@
-//! The agent's patches on the session's clusters: tried on the server, queued with their diff, stored once approved.
+//! The agent's patches and deletes on the session's clusters: tried on the server, queued with their diff, made once approved.
 
 use groove_cluster_service::{Asked, Preview};
 use groove_types::{KubeKind, Target};
@@ -10,7 +10,7 @@ use crate::cluster::Patched;
 use crate::cluster::writes::allowed;
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// A patch tried on the server, then queued with what it changes, whatever auto-approve says.
+/// A patch or a delete tried on the server, then queued with what it changes, whatever auto-approve says.
 pub(super) fn asked(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
     let (asked, body) = match named(&write) {
         Ok(named) => named,
@@ -23,7 +23,10 @@ pub(super) fn asked(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
     let paths = state.env.kubeconfig.clone();
     let cache = state.env.cache_dir.join("kube");
     spawner.spawn(Box::pin(async move {
-        let tried = groove_cluster_service::preview(paths, cache, asked, allowed, body).await;
+        let tried = match body {
+            Some(body) => groove_cluster_service::preview(paths, cache, asked, allowed, body).await,
+            None => groove_cluster_service::doomed(paths, cache, asked, allowed).await,
+        };
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match tried {
                 Ok((target, preview)) => queued((state, spawner), write, &target, preview),
@@ -31,6 +34,19 @@ pub(super) fn asked(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
             },
         ) as Continuation
     }));
+}
+
+/// The delete the user approved, made on the version it was shown on.
+pub(super) fn delete(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
+    let Some(target) = target(&write) else {
+        return write
+            .reply
+            .failed("kube_delete was approved without the object it was shown on");
+    };
+    let version = write.text("resource_version").map(str::to_string);
+    let asker = Asker::Agent(write.reply);
+    let session = write.session;
+    crate::cluster::writes::delete((state, spawner), (session, target), version, asker);
 }
 
 /// The patch the user approved, stored on the version it was shown on.
@@ -49,12 +65,14 @@ pub(super) fn patch(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
     crate::cluster::writes::patch(state, spawner, write.session, patched, asker);
 }
 
-fn named(write: &Write) -> Result<(Asked, Value), String> {
+/// The object the write names, and the patch it makes; none for a delete.
+fn named(write: &Write) -> Result<(Asked, Option<Value>), String> {
+    let tool = &write.tool;
     let needs = |name: &str| {
         write
             .text(name)
             .map(str::to_string)
-            .ok_or(format!("kube_patch needs the {name}"))
+            .ok_or(format!("{tool} needs the {name}"))
     };
     let asked = Asked {
         context: needs("context")?,
@@ -63,8 +81,9 @@ fn named(write: &Write) -> Result<(Asked, Value), String> {
         name: needs("name")?,
         subresource: write.text("subresource").map(str::to_string),
     };
-    match &write.arguments["patch"] {
-        body @ Value::Object(_) => Ok((asked, body.clone())),
+    match (tool.as_str(), &write.arguments["patch"]) {
+        ("kube_delete", _) => Ok((asked, None)),
+        (_, body @ Value::Object(_)) => Ok((asked, Some(body.clone()))),
         _ => Err("kube_patch needs the patch, a JSON object".to_string()),
     }
 }
@@ -77,7 +96,7 @@ fn queued(
     preview: Preview,
 ) {
     if preview.diff.is_empty() {
-        let said = format!("the patch changes nothing on {}", target.label());
+        let said = format!("the write changes nothing on {}", target.label());
         return write.reply.said(said);
     }
     let kind = &target.kind;
@@ -91,7 +110,7 @@ fn queued(
     if state.agent.agent(&write.session).is_none() {
         return write
             .reply
-            .failed("the session closed before kube_patch ran");
+            .failed(format!("the session closed before {} ran", write.tool));
     }
     super::queued(state, write);
     crate::workspace::review::show(state, spawner);

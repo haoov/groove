@@ -5,10 +5,12 @@ use serde_json::Value;
 
 /// The YAML of both sides, as the diff shows an object.
 pub(crate) fn sides(before: &Value, after: &Value) -> (String, String) {
-    (
-        crate::yaml::yaml(&shown(before)),
-        crate::yaml::yaml(&shown(after)),
-    )
+    (side(before), side(after))
+}
+
+/// One object's YAML, as the diff shows it.
+pub(crate) fn side(object: &Value) -> String {
+    crate::yaml::yaml(&shown(object))
 }
 
 /// The unified diff from `before` to `after`, empty when they are the same.

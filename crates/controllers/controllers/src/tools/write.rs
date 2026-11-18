@@ -167,6 +167,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "attach_cluster" => clusters::attach(state, services, spawner, write),
         "detach_cluster" => clusters::detach(state, services, spawner, write),
         "kube_patch" => patches::patch(state, spawner, write),
+        "kube_delete" => patches::delete(state, spawner, write),
         _ => write
             .reply
             .failed(format!("groove runs no {} yet", write.tool)),

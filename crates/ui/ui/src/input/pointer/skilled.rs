@@ -45,7 +45,7 @@ pub(super) fn menu(
     })
 }
 
-/// What a list row asks before it writes: a scale for a workload with replicas, a restart for one with pods.
+/// What a list row asks before it writes: a scale and a restart for a workload, then a delete.
 fn writes(ui: &Ui, app: &AppState, (session, uid): (&SessionId, &str), link: &Link) -> Vec<Losing> {
     let mut writes = Vec::new();
     if scalable(&link.kind) {
@@ -57,6 +57,7 @@ fn writes(ui: &Ui, app: &AppState, (session, uid): (&SessionId, &str), link: &Li
     if restartable(&link.kind) {
         writes.push(Write::Restart);
     }
+    writes.push(Write::Delete);
     let asked = |write| {
         Losing::Row(Box::new(Written {
             session: session.clone(),

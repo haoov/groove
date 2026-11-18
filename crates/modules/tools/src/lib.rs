@@ -55,7 +55,7 @@ pub fn named(name: &str) -> Option<Tool> {
 
 /// Whether the tool's write is approved only from the review sheet, whatever auto-approve says.
 pub fn reviewed(name: &str) -> bool {
-    name == "kube_patch"
+    matches!(name, "kube_patch" | "kube_delete")
 }
 
 /// Whether the tool acts on a worktree it may name.

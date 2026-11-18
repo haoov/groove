@@ -79,6 +79,11 @@ fn server(spawner: &SyncSpawner, stored: u16) -> MockServer {
             .respond_with(answer)
             .mount(&server)
             .await;
+        Mock::given(method("DELETE"))
+            .and(path(API))
+            .respond_with(plain(json!({ "kind": "Status", "status": "Success" })))
+            .mount(&server)
+            .await;
         server
     })
 }
@@ -120,11 +125,20 @@ fn queued(
     spawner: &SyncSpawner,
     id: &str,
 ) -> tokio::sync::oneshot::Receiver<groove_agent_service::Answer> {
+    asking((state, services, spawner), id, ("kube_patch", scaled()))
+}
+
+/// `tool` asked with `arguments`, left waiting on the user.
+fn asking(
+    (state, services, spawner): (&mut AppState, &Services, &SyncSpawner),
+    id: &str,
+    (tool, arguments): (&str, Value),
+) -> tokio::sync::oneshot::Receiver<groove_agent_service::Answer> {
     let (reply, answered) = Reply::new();
     let call = Call {
         session: id.to_string(),
-        tool: "kube_patch".into(),
-        arguments: scaled(),
+        tool: tool.into(),
+        arguments,
         reply,
     };
     crate::tools::answer(state, services, spawner, call);
@@ -237,4 +251,33 @@ fn a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered() {
         .iter()
         .any(|one| one.what.message.contains("approve or refuse"));
     assert!(told, "{:?}", state.errors);
+}
+
+#[test]
+fn a_delete_waits_with_the_object_going_and_lands_on_the_version_shown() {
+    let (home, spawner, services, mut state) = fixture::fresh();
+    let server = server(&spawner, 200);
+    let id = session(home.path(), &server, (&mut state, &services, &spawner));
+    let named = json!({ "context": "kind", "kind": "deployments", "namespace": "paxone",
+        "name": "api" });
+    let asked = (&mut state, &services, &spawner);
+    let mut answered = asking(asked, &id, ("kube_delete", named));
+    let ask = waiting(&state, &id)[0].clone();
+    let going = ask.text.contains("-  replicas: 1");
+    assert!(ask.reviewed && going, "{}", ask.text);
+    fixture::until(&spawner, &services, &mut state, |s| {
+        s.workspace.reviewed() == Some(ask.id.as_str())
+    });
+    assert_eq!(state.workspace.files[0].added, 0, "the whole object goes");
+    crate::tools::allow(&mut state, &services, &spawner, &ask.id);
+    let answer = settled(&spawner, &services, &mut state, &mut answered);
+    assert!(!answer.failed, "{}", answer.text);
+    let tried = spawner
+        .block_on(server.received_requests())
+        .unwrap_or_default();
+    let done = tried.iter().find(|one| {
+        one.method.as_str() == "DELETE" && one.url.query().is_none_or(|q| !q.contains("dryRun"))
+    });
+    let body: Value = serde_json::from_slice(&done.expect("the delete").body).unwrap();
+    assert_eq!(body["preconditions"]["resourceVersion"], "7");
 }

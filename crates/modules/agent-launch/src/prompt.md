@@ -54,8 +54,8 @@ cluster the session does not hold, attach it first with `attach_cluster`.
 
 Never run `inc` either: Groove reads incident.io alerts itself.
 
-Change an object with `kube_patch`, a JSON merge patch. The user sees its diff and
-approves it first, even with auto-approve on. A refusal because the object changed
+Change an object with `kube_patch`, a JSON merge patch, and delete one with
+`kube_delete`. The user sees the diff and approves it first, even with auto-approve on. A refusal because the object changed
 means: read it again, then ask again.
 
 ## The user already sees your work

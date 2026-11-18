@@ -130,3 +130,13 @@ fn a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset
     daemons.kind = kind("apps", "daemonsets", "DaemonSet", true);
     assert!(crate::scale(&mut daemons, 3).is_err());
 }
+
+#[test]
+fn a_kind_the_core_group_serves_wins_over_another_group_s() {
+    let kinds = [
+        kind("", "pods", "Pod", true),
+        kind("metrics.k8s.io", "pods", "PodMetrics", true),
+    ];
+    let pod = target(&kinds, asked("pods", Some("paxone"))).expect("the core pod");
+    assert_eq!(pod.kind.kind, "Pod");
+}

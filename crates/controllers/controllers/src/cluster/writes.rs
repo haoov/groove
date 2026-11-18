@@ -23,7 +23,7 @@ pub(crate) fn patch(
     asker: Asker,
 ) {
     let said = format!("patch {}", patched.body);
-    stored((state, spawner), (session, said), patched, asker);
+    stored((state, spawner), (session, said), changed(patched), asker);
 }
 
 /// The workload's pods replaced, as `kubectl rollout restart` does.
@@ -43,7 +43,7 @@ pub(crate) fn restart(
         version: None,
     };
     let said = (session, "restart".to_string());
-    stored((state, spawner), said, patched, Asker::Ui);
+    stored((state, spawner), said, changed(patched), Asker::Ui);
 }
 
 /// The workload's replicas set to `replicas`, as `kubectl scale` does.
@@ -63,37 +63,65 @@ pub(crate) fn scale(
         version: None,
     };
     let said = (session, format!("scale to {replicas}"));
-    stored((state, spawner), said, patched, Asker::Ui);
+    stored((state, spawner), said, changed(patched), Asker::Ui);
 }
 
-/// The patch stored once the session may write there, `said` on its timeline.
+fn changed(patched: Patched) -> (Target, Change, Option<String>) {
+    let Patched {
+        target,
+        body,
+        version,
+    } = patched;
+    (target, Change::Patch(body), version)
+}
+
+/// What a write does to its object.
+enum Change {
+    Patch(Value),
+    Delete,
+}
+
+/// The object deleted, on `version` when one is given.
+pub(crate) fn delete(
+    (state, spawner): (&mut AppState, &dyn Spawner),
+    (session, target): (SessionId, Target),
+    version: Option<String>,
+    asker: Asker,
+) {
+    let said = (session, "delete".to_string());
+    let change = (target, Change::Delete, version);
+    stored((state, spawner), said, change, asker);
+}
+
+/// The change made once the session may write there, `said` on its timeline.
 fn stored(
     (state, spawner): (&mut AppState, &dyn Spawner),
     (session, said): (SessionId, String),
-    patched: Patched,
+    (target, change, version): (Target, Change, Option<String>),
     asker: Asker,
 ) {
-    let checked = allowed(state, &session, &patched.target.context).and_then(|allowed| {
-        groove_cluster_service::writable(&patched.target, allowed.read_only, &allowed.held)
+    let checked = allowed(state, &session, &target.context).and_then(|allowed| {
+        groove_cluster_service::writable(&target, allowed.read_only, &allowed.held)
     });
     if let Err(e) = checked {
         return asker.failed(state, e);
     }
     let paths = state.env.kubeconfig.clone();
     spawner.spawn(Box::pin(async move {
-        let Patched {
-            target,
-            body,
-            version,
-        } = patched;
         let subject = format!("{} · {said}", target.label());
-        let stored = groove_cluster_service::patch(paths, target, body, version, false).await;
+        let done = match change {
+            Change::Patch(body) => {
+                let patched = groove_cluster_service::patch(paths, target, body, version, false);
+                patched.await.map(drop)
+            }
+            Change::Delete => groove_cluster_service::delete(paths, target, version).await,
+        };
         Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match stored {
-                Ok(_) => {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match done {
+                Ok(()) => {
                     let kind = TimelineKind::ClusterWrite;
                     crate::timeline::said(services, spawner, &session, kind, subject.clone());
-                    asker.done(|| format!("patched {subject}"));
+                    asker.done(|| format!("done: {subject}"));
                 }
                 Err(e) => asker.failed(state, e),
             },

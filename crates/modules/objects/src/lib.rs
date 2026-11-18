@@ -21,7 +21,7 @@ pub use follow::{Change, Followed, follow};
 pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};
 pub use watch::{Batch, Delta, Stop, watch};
-pub use writes::{Preview, patch, preview};
+pub use writes::{Preview, delete, doomed, patch, preview};
 
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp};
 

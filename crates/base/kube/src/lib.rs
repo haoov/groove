@@ -1,6 +1,7 @@
 //! One way out of the process: the Kubernetes API, one client per kubeconfig context.
 
 mod client;
+mod delete;
 mod discovery;
 mod error;
 mod kubeconfig;
@@ -15,6 +16,7 @@ mod watch;
 mod tests;
 
 pub use client::Client;
+pub use delete::Delete;
 pub use discovery::Kind;
 pub use error::{Error, Result};
 pub use kubeconfig::{Auth, Context, contexts};

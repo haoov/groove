@@ -1,8 +1,8 @@
-//! Writes to one object: a merge patch, tried on the server or stored.
+//! Writes to one object: a merge patch or a delete, tried on the server or done.
 
 use std::path::PathBuf;
 
-use groove_kube::{Client, Patch};
+use groove_kube::{Client, Delete, Patch};
 use groove_types::{Error, ErrorKind, Result, Target};
 use serde_json::Value;
 
@@ -49,11 +49,7 @@ pub async fn preview(paths: &[PathBuf], target: &Target, body: &Value) -> Result
         .await
         .map_err(failed)?;
     let live = client.get_object(&path(target)).await.map_err(failed)?;
-    let version = live
-        .pointer("/metadata/resourceVersion")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string();
+    let version = version_of(&live);
     let tried = patch(paths, target, body, Some(&version), true).await?;
     let (before, after) = crate::changed::sides(&live, &tried);
     let diff = crate::changed::unified(&before, &after);
@@ -63,6 +59,54 @@ pub async fn preview(paths: &[PathBuf], target: &Target, body: &Value) -> Result
         after,
         diff,
     })
+}
+
+/// The object deleted on `version` when one is given; a version it moved past is a `Conflict`.
+pub async fn delete(
+    paths: &[PathBuf],
+    target: &Target,
+    version: Option<&str>,
+    dry_run: bool,
+) -> Result<()> {
+    let client = Client::shared(paths, &target.context)
+        .await
+        .map_err(failed)?;
+    let path = path(target);
+    let delete = Delete {
+        path: &path,
+        version,
+        dry_run,
+    };
+    client
+        .delete_object(delete)
+        .await
+        .map_err(|e| moved(target, e))
+}
+
+/// The object read now, then its delete tried on that version: its YAML, going to nothing.
+pub async fn doomed(paths: &[PathBuf], target: &Target) -> Result<Preview> {
+    let client = Client::shared(paths, &target.context)
+        .await
+        .map_err(failed)?;
+    let live = client.get_object(&path(target)).await.map_err(failed)?;
+    let version = version_of(&live);
+    delete(paths, target, Some(&version), true).await?;
+    let before = crate::changed::side(&live);
+    let diff = crate::changed::unified(&before, "");
+    Ok(Preview {
+        version,
+        before,
+        after: String::new(),
+        diff,
+    })
+}
+
+fn version_of(object: &Value) -> String {
+    object
+        .pointer("/metadata/resourceVersion")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
 }
 
 fn moved(target: &Target, error: groove_kube::Error) -> Error {

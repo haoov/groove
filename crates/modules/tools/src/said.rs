@@ -22,7 +22,7 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "spawn_session" => joined(&said("title"), &said("brief")),
         "log_work" => joined(&said("what"), &said("why")),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
-        "kube_patch" => joined(&said("target"), &said("diff")),
+        "kube_patch" | "kube_delete" => joined(&said("target"), &said("diff")),
         _ => shown(arguments),
     }
 }

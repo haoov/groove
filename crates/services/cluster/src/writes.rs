@@ -98,6 +98,10 @@ pub async fn patch(
     groove_objects::patch(&paths, &target, &body, version.as_deref(), dry_run).await
 }
 
+pub async fn delete(paths: Vec<PathBuf>, target: Target, version: Option<String>) -> Result<()> {
+    groove_objects::delete(&paths, &target, version.as_deref(), false).await
+}
+
 /// The object `asked` names among the kinds under `cache`, checked, then the patch tried on it.
 pub async fn preview(
     paths: Vec<PathBuf>,
@@ -106,11 +110,34 @@ pub async fn preview(
     allowed: Allowed,
     body: Value,
 ) -> Result<(Target, Preview)> {
-    let kinds = groove_objects::kinds(&paths, &asked.context, &cache, false).await?;
-    let target = target(&kinds, asked)?;
-    writable(&target, allowed.read_only, &allowed.held)?;
+    let target = resolved(&paths, &cache, asked, &allowed).await?;
     let preview = groove_objects::preview(&paths, &target, &body).await?;
     Ok((target, preview))
+}
+
+/// The object `asked` names, checked, then its delete tried on it.
+pub async fn doomed(
+    paths: Vec<PathBuf>,
+    cache: PathBuf,
+    asked: Asked,
+    allowed: Allowed,
+) -> Result<(Target, Preview)> {
+    let target = resolved(&paths, &cache, asked, &allowed).await?;
+    let preview = groove_objects::doomed(&paths, &target).await?;
+    Ok((target, preview))
+}
+
+/// The object `asked` names among the kinds under `cache`, where the session may write.
+async fn resolved(
+    paths: &[PathBuf],
+    cache: &std::path::Path,
+    asked: Asked,
+    allowed: &Allowed,
+) -> Result<Target> {
+    let kinds = groove_objects::kinds(paths, &asked.context, cache, false).await?;
+    let target = target(&kinds, asked)?;
+    writable(&target, allowed.read_only, &allowed.held)?;
+    Ok(target)
 }
 
 /// The object `asked` names, on the one kind its words name.
@@ -148,12 +175,13 @@ fn kind_named(kinds: &[KubeKind], named: &str) -> Result<KubeKind> {
         words && group.is_none_or(|group| one.group == group)
     };
     let found: Vec<&KubeKind> = kinds.iter().filter(matches).collect();
-    match found.as_slice() {
-        [one] => Ok((*one).clone()),
-        [] => Err(Error::invalid(format!(
+    let core = found.iter().find(|one| one.group.is_empty());
+    match (found.as_slice(), core) {
+        ([one], _) | ([_, _, ..], Some(one)) => Ok((*one).clone()),
+        ([], _) => Err(Error::invalid(format!(
             "the cluster serves no kind {named}"
         ))),
-        many => {
+        (many, None) => {
             let named: Vec<String> = many
                 .iter()
                 .map(|one| format!("{}.{}", one.plural, one.group))

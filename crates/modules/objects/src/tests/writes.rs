@@ -4,7 +4,7 @@ use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::watch::kubeconfig;
-use crate::{patch, preview};
+use crate::{doomed, patch, preview};
 
 fn scale() -> Target {
     Target {
@@ -105,4 +105,35 @@ async fn a_preview_tries_the_patch_on_the_version_read_and_diffs_what_it_changes
     assert!(!tried.diff.contains("resourceVersion"), "{}", tried.diff);
     assert!(!tried.before.contains("managedFields"), "{}", tried.before);
     assert!(tried.after.contains("replicas: 3") && !tried.after.contains("generation"));
+}
+
+#[tokio::test]
+async fn a_delete_is_tried_on_the_version_read_and_diffs_the_whole_object_away() {
+    let server = MockServer::start().await;
+    let at = "/apis/apps/v1/namespaces/paxone/deployments/api";
+    let object = json!({ "metadata": { "name": "api", "resourceVersion": "7",
+        "managedFields": [{ "manager": "kubectl" }] }, "spec": { "replicas": 2 } });
+    Mock::given(method("GET"))
+        .and(path(at))
+        .respond_with(ResponseTemplate::new(200).set_body_json(object))
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path(at))
+        .and(query_param("dryRun", "All"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "kind": "Status" })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let dir = tempfile::tempdir().expect("a temp dir");
+    let paths = [kubeconfig(dir.path(), &server.uri())];
+    let target = Target {
+        subresource: None,
+        ..scale()
+    };
+    let tried = doomed(&paths, &target).await.expect("a delete tried");
+    assert_eq!(tried.version, "7");
+    assert!(tried.after.is_empty());
+    assert!(tried.diff.contains("-  replicas: 2"), "{}", tried.diff);
+    assert!(!tried.before.contains("managedFields"), "{}", tried.before);
 }
