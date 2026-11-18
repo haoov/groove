@@ -1,6 +1,7 @@
 mod argo;
 mod describe;
 mod discovery;
+mod edited;
 mod follow;
 mod logs;
 mod retry;

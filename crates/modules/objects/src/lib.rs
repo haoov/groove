@@ -1,9 +1,10 @@
-//! A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched, and patched.
+//! A cluster's kinds, cached on disk, and its objects as Table rows: listed, watched, edited, patched and deleted.
 
 mod argo;
 mod changed;
 mod describe;
 mod discovery;
+mod edited;
 mod follow;
 mod logs;
 mod reads;
@@ -17,6 +18,7 @@ mod tests;
 
 pub use describe::describe;
 pub use discovery::{FRESH, kinds, namespaces};
+pub use edited::edited;
 pub use follow::{Change, Followed, follow};
 pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};
