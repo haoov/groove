@@ -18,6 +18,10 @@ pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
 /// A row's tint in a state's colour, dark then light; the dark one reads as about a tenth.
 pub const ROW_TINT_ALPHA: (u8, u8) = (6, 64);
+/// A band's tint over a pane, dark then light.
+pub const BAND_TINT_ALPHA: (u8, u8) = (8, 32);
+/// The edge of a band, and of what stands in its colour, over a pane.
+pub const BAND_EDGE_ALPHA: u8 = 140;
 /// Grounds on glass, dark then light; the dark ones set for what they read as in linear blending.
 pub const GLASS_HOVER_ALPHA: (u8, u8) = (3, 22);
 pub const GLASS_CARD_ALPHA: (u8, u8) = (2, 16);

@@ -59,7 +59,11 @@ impl Link {
     async fn asked(&self, id: i64, method: &str, params: Value) -> Result<Value> {
         let (sender, answer) = oneshot::channel();
         lock(&self.pending).insert(id, sender);
-        self.send(json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params }))?;
+        let asked = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
+        if let Err(e) = self.send(asked) {
+            lock(&self.pending).remove(&id);
+            return Err(e);
+        }
         match tokio::time::timeout(WAIT, answer).await {
             Ok(Ok(Ok(result))) => Ok(result),
             Ok(Ok(Err(message))) => Err(Error::invalid(format!("{method}: {message}"))),
@@ -95,6 +99,11 @@ impl Link {
         if let Some(sender) = lock(&self.pending).remove(&id) {
             let _ = sender.send(answer);
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn waiting(&self) -> usize {
+        lock(&self.pending).len()
     }
 
     /// Fails every request still waiting: the server is gone.

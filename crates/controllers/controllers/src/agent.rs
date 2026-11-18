@@ -128,7 +128,11 @@ pub fn dispatch(
             cols,
             rows,
         } => start(state, spawner, session, (cols, rows)),
-        Command::End { session } => end(state, &session),
+        Command::End { session } => {
+            if !crate::workspace::review::answer_first(state, &session) {
+                end(state, &session);
+            }
+        }
         Command::Send { session, bytes } => send(state, &session, &bytes),
         Command::Resize {
             session,
@@ -136,7 +140,7 @@ pub fn dispatch(
             rows,
         } => resize(state, &session, cols, rows),
         Command::Approve { id } => crate::tools::allow(state, services, spawner, &id),
-        Command::Refuse { id } => crate::tools::refuse(state, &id),
+        Command::Refuse { id } => crate::tools::refuse(state, spawner, &id),
         Command::AutoApprove { session, on } => {
             auto_approve(state, services, spawner, &session, on)
         }
@@ -158,6 +162,9 @@ pub fn dispatch(
 
 /// The agent ended and started again. The launch resumes its own thread by itself.
 fn reload(state: &mut AppState, spawner: &dyn Spawner, session: SessionId, size: (u16, u16)) {
+    if crate::workspace::review::answer_first(state, &session) {
+        return;
+    }
     end(state, &session);
     start(state, spawner, session, size);
 }

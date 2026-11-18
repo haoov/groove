@@ -19,6 +19,7 @@ fn said(one: &Approval) -> groove_types::Ask {
         subject: one.payload["message"].as_str().unwrap_or_default().into(),
         text: String::new(),
         worktree: None,
+        reviewed: false,
     }
 }
 

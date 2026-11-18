@@ -5,6 +5,7 @@ mod containers;
 mod copy;
 mod describe;
 mod destined;
+mod found;
 mod grouped;
 mod logs;
 mod managed;

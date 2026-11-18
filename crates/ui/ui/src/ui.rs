@@ -157,6 +157,11 @@ impl Ui {
         }
     }
 
+    /// The review sheet opened on one write.
+    pub(crate) fn examine(&mut self, id: groove_types::ApprovalId) {
+        self.overlay = Some(Overlay::Examining(id));
+    }
+
     /// What a palette key did, applied: the palette down, Settings up; its commands returned.
     pub(crate) fn closed_palette(
         &mut self,

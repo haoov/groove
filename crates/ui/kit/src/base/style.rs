@@ -219,6 +219,18 @@ impl Styles {
         self.color(role).with_alpha(alpha)
     }
 
+    /// A role's colour dimmed to the ground of a band across a pane.
+    pub fn band_tint(&self, role: Role) -> Color {
+        let alpha = self.alpha(crate::base::tokens::BAND_TINT_ALPHA);
+        self.color(role).with_alpha(alpha)
+    }
+
+    /// A role's colour as the edge of a band, and of the pane a band asks over.
+    pub fn band_edge(&self, role: Role) -> Color {
+        self.color(role)
+            .with_alpha(crate::base::tokens::BAND_EDGE_ALPHA)
+    }
+
     /// The rules above and below a list's selected row.
     pub fn chosen(&self) -> Color {
         self.palette.rosewater

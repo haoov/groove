@@ -150,6 +150,9 @@ pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
 }
 
 pub fn close(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
+    if crate::workspace::review::answer_first(state, id) {
+        return;
+    }
     agent::end(state, id);
     crate::shell::end(state, id);
     state.session.close(id);

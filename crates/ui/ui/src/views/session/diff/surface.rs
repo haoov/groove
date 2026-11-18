@@ -279,7 +279,7 @@ pub(super) fn numbers(app: &AppState, ui: &Ui, view: Face) -> Gutters {
             _ => 1,
         },
         digits,
-        marks: app.workspace.commit.is_none(),
+        marks: !app.workspace.readonly(),
         folds: view == Face::File,
     }
 }

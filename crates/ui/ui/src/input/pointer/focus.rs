@@ -47,6 +47,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
+            | Target::ArgoSearch
             | Target::ResourceKind(_)
             | Target::ResourceGroup(_)
             | Target::ResourceSort(_)

@@ -2,6 +2,7 @@ mod discovery;
 mod follows;
 mod logs;
 mod objects;
+mod writes;
 
 use groove_types::{KubeAuth, KubeContext, Login};
 

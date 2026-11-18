@@ -64,10 +64,9 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     let follows = &app.cluster.store.follows;
     let mut out = Vec::new();
     let pod = link.pod();
-    let stale = match follows.usage(&pod) {
-        Some((_, at)) => now.seconds() - at.seconds() >= USAGE_EVERY,
-        None => true,
-    };
+    let stale = follows
+        .usage(&pod)
+        .is_none_or(|(_, at)| due_at(*at, USAGE_EVERY, now));
     let described = tab.view == View::Describe;
     if object.pod.is_some() && described && stale && !follows.asking(&pod) {
         out.push(Command::Cluster(cluster::Command::Usage { pod }));
@@ -104,6 +103,10 @@ fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Co
     });
     let reads = wanted.into_iter().map(follow).chain(stream);
     super::super::leases(READER, same, reads)
+}
+
+fn due_at(at: Timestamp, every: i64, now: Timestamp) -> bool {
+    now.seconds() - at.seconds() >= every
 }
 
 /// When the tab shown next wants a pod's usage read.

@@ -125,6 +125,13 @@ impl State {
         approval
     }
 
+    /// The cluster write that session waits on, which it answers before anything else.
+    pub fn reviewed(&self, session: &SessionId) -> Option<&Approval> {
+        self.asks
+            .waiting(session)
+            .find(|one| groove_tools::reviewed(&one.op))
+    }
+
     /// The write one id names, taken off the queue and off the row.
     pub fn resolved(&mut self, id: &ApprovalId) -> Option<(Approval, Reply)> {
         let taken = self.asks.resolve(id)?;
@@ -257,5 +264,6 @@ fn ask_of(one: &groove_types::Approval) -> groove_types::Ask {
         subject: groove_tools::subject(&one.op, &one.payload),
         text: groove_tools::said(&one.op, &one.payload),
         worktree: groove_tools::acts_in(&one.payload).map(groove_types::WorktreeId::new),
+        reviewed: groove_tools::reviewed(&one.op),
     }
 }

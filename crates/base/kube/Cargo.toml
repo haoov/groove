@@ -1,6 +1,6 @@
 [package]
 name = "groove-kube"
-description = "One Kubernetes client per kubeconfig context: the contexts, discovery, Table lists and watches, its errors sorted"
+description = "One Kubernetes client per kubeconfig context: the contexts, discovery, Table lists and watches, merge patches, its errors sorted"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

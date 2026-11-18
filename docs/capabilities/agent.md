@@ -25,7 +25,7 @@ you look — done unseen; moving — working; quiet — idle. Colour and motion 
 **Every write the agent sends waits as an [ask](../glossary.md#ask)**, shown on its rail
 row: the op and its subject, Approve and Review. With
 [auto-approve](../glossary.md#auto-approve) on, the write is approved as it arrives and
-recorded. The switch is per session; a new session takes the default from
+recorded, except a cluster write, which always waits. The switch is per session; a new session takes the default from
 Settings › Agent.
 
 ## MCP tools
@@ -45,12 +45,20 @@ runs the binary as an argument list, never through a shell. A read names a conte
 session holds and a namespace it holds, takes only read verbs and flags, and never prints
 a secret's data. Attaching or letting go of a cluster is a write, through the queue.
 
+**The agent patches a cluster only through `kube_patch`.** Groove reads the object, tries
+the patch on that version with a server dry run, and queues it with the diff of the object's
+YAML. It waits for the user even with auto-approve on. Once approved, it lands on the version
+shown, and an object that moved since is refused. Enforced by
+`a_patch_waits_with_its_diff_under_auto_approve_and_lands_once_approved` and
+`an_object_that_moved_before_the_approval_is_not_overwritten`.
+
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
 forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
-repos and worktrees; the agent's cluster reads; and the agent's turns, so the feed can say
-when it worked.
+repos and worktrees; the agent's cluster reads; each cluster write that lands, the user's or
+the agent's, as its target and its change; and the agent's turns, so the feed can say when
+it worked.
 
 **It does not hold the tools the agent ran on files.** A write or a shell command is the
 agent's status, which the rail shows live, not its history.

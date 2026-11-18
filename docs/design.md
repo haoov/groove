@@ -211,7 +211,7 @@ rows' padding. A row that asks shows it in its icon and its peach state line. En
 A row carries no button. An ask's text is peach, and a click on its row opens the session
 with the review sheet on the first ask. Enforced by
 `a_click_on_a_row_that_asks_opens_the_session_on_its_review`. With auto-approve on for the
-session, nothing asks. A working status is blue and its glyph moves.
+session, nothing asks but a cluster write. A working status is blue and its glyph moves.
 
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
@@ -554,7 +554,9 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
-  resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
+  resource's row opens its tab there. A row's right-click offers the skills of its kind, as
+  a list row's does. The find key opens a find bar under its filters, as over the list: its
+  words narrow the rows by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
   the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
   a commit of the list does, fetched first when the clone lacks it. Its `resources` view
@@ -564,7 +566,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   are the list's table, its headers sorting each group's rows and its edges dragging widths
   kept for both; a group's heading stands on a band, ruled off as each row is. Resources stand by
   kind, the kinds needing attention first; under all, a kind with nothing to see stands
-  folded. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
+  folded. Syncing shows the sync's line on its colour, over a square bar that
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
@@ -592,6 +594,23 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 | discard | the files |
 
 **Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
+
+### Cluster write
+
+**A session waiting on a cluster write answers it first, in its Diff tab.** The workspace
+stands on the Diff tab, ringed in peach, whatever tab is asked. A band on a dim attention
+tint holds what the write asks, in capitals, then the object, with **Refuse** and
+**Approve** at its right, bordered words in capitals, Approve edged in peach. Under it, the
+diff itself, read-only, over the object's YAML before → after: the change stands in place
+of the worktree's until the write is decided, then the worktree's is read again. No sheet
+stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
+deleting or reloading the session is refused until it is answered. Another session can be
+selected meanwhile; back on this one, the change shows again. Enforced by
+`the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked`,
+`a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask`,
+`only_the_band_s_approve_button_lets_a_cluster_write_through`,
+`a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
+`a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
 
 ## Settings
 
