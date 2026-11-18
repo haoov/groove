@@ -107,3 +107,15 @@ fn a_kind_two_groups_serve_must_name_its_group() {
     let one = target(&kinds, asked("ingresses.extensions", Some("paxone")));
     assert!(one.is_ok());
 }
+
+#[test]
+fn a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod() {
+    let at = groove_types::Timestamp::new(1_788_886_029);
+    let deployment = kind("apps", "deployments", "Deployment", true);
+    let body = crate::restart(&deployment, at).expect("a deployment restarts");
+    let stamp = "/spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt";
+    let stamped = body.pointer(stamp).and_then(|one| one.as_str());
+    assert_eq!(stamped, Some("2026-09-08T16:47:09Z"));
+    let pod = kind("", "pods", "Pod", true);
+    assert!(crate::restart(&pod, at).is_err());
+}

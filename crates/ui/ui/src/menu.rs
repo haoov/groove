@@ -16,8 +16,6 @@ pub struct Menu {
 /// What a menu offers.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Of {
-    /// One file of the list.
-    File(String),
     /// One open file's tab, whether it owes the disk, and the other tabs that do not.
     Tab {
         path: String,
@@ -30,9 +28,10 @@ pub enum Of {
     Path { path: String, dir: bool },
     /// What one slot of a source's mapping can take, from its Settings row.
     Mapping(views::settings::rows::Choices),
-    /// The skills this session can be sent, from the agent's own bar.
-    Skills {
+    /// A resource's writes, each asked on its row first, then the skills of its kind.
+    Resource {
         session: groove_types::SessionId,
+        writes: Vec<crate::Losing>,
         offered: Vec<Offer>,
     },
     /// The hues a context can take, from its dot in Settings.

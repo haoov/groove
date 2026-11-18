@@ -169,7 +169,7 @@ adopting the session ends its terminals.
 ## Git
 
 **A commit takes the index**; stage and unstage are per file. The agent commits; the
-palette holds push, pull and discard all.
+palette holds push and pull.
 
 **A push goes to the branch's own name on origin**, and nowhere else. A pull is
 fast-forward only. [../trace.md](../trace.md) follows a push end to end.

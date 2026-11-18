@@ -119,7 +119,6 @@ fn nothing_writes_before_the_worktree_selected_is_read() {
     let pick = select(&mut state, "other");
     dispatch(pick, &mut state, &services, &spawner);
     for one in [
-        workspace::Command::DiscardAll,
         workspace::Command::Edit(Edit::Insert("x".into())),
         workspace::Command::SaveFile,
     ] {

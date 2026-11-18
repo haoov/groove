@@ -4,6 +4,7 @@ use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
+use crate::shape::Panel;
 use crate::text::Label;
 use crate::widgets::Button;
 
@@ -13,19 +14,25 @@ pub fn offer<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, label: &str, target:
     word.right(ctx, room, ctx.tokens.sm);
 }
 
-/// The question across `line`, its answers at its end, the last of them rightmost.
+/// The question across the whole of `line`, square, its answers right after it.
 pub fn question<A: App>(
     ctx: &mut Ctx<'_, A>,
     line: Rect,
     question: &str,
     answers: [(&str, A::Target); 2],
 ) {
-    let card = line.pad(Edges::xy(ctx.tokens.sm, ctx.tokens.xs / 2.0));
-    ctx.rounded(card, ctx.styles.glass_card(), ctx.tokens.glass_round);
-    let mut room = card.pad(Edges::across(0.0, ctx.tokens.xs));
-    for (label, target) in answers.into_iter().rev() {
-        offer(ctx, &mut room, label, target);
-    }
-    let asked = room.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    Label::new(question, ctx.styles.small(Role::Bad)).draw(ctx, asked);
+    let ground = ctx.styles.glass_card();
+    Panel::default().ground(ground).draw(ctx, line);
+    let mut room = line.pad(Edges::xy(ctx.tokens.md, ctx.tokens.xs / 2.0));
+    let asked = Label::new(question, ctx.styles.small(Role::Bad));
+    asked.left(ctx, &mut room, ctx.tokens.md);
+    let [(yes, said), (no, kept)] = answers;
+    let tint = ctx.styles.band_tint(Role::Bad);
+    let edge = ctx.styles.band_edge(Role::Bad);
+    let gap = ctx.tokens.sm;
+    Button::new(yes, said, Role::Bad, tint)
+        .edged(edge)
+        .left(ctx, &mut room, gap);
+    let raised = ctx.styles.panel_head();
+    Button::new(no, kept, Role::Muted, raised).left(ctx, &mut room, gap);
 }

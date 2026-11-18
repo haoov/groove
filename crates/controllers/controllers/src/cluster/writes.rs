@@ -1,7 +1,7 @@
 //! Writes to a session's clusters: checked against the session and the context, said on the timeline once stored.
 
 use groove_cluster_service::Allowed;
-use groove_types::{Result, SessionId, Target, TimelineKind};
+use groove_types::{Result, SessionId, Target, TimelineKind, Timestamp};
 use serde_json::Value;
 
 use crate::asker::Asker;
@@ -22,6 +22,37 @@ pub(crate) fn patch(
     patched: Patched,
     asker: Asker,
 ) {
+    let said = format!("patch {}", patched.body);
+    stored((state, spawner), (session, said), patched, asker);
+}
+
+/// The workload's pods replaced, as `kubectl rollout restart` does.
+pub(crate) fn restart(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    session: SessionId,
+    target: Target,
+) {
+    let body = match groove_cluster_service::restart(&target.kind, Timestamp::now()) {
+        Ok(body) => body,
+        Err(e) => return Asker::Ui.failed(state, e),
+    };
+    let patched = Patched {
+        target,
+        body,
+        version: None,
+    };
+    let said = (session, "restart".to_string());
+    stored((state, spawner), said, patched, Asker::Ui);
+}
+
+/// The patch stored once the session may write there, `said` on its timeline.
+fn stored(
+    (state, spawner): (&mut AppState, &dyn Spawner),
+    (session, said): (SessionId, String),
+    patched: Patched,
+    asker: Asker,
+) {
     let checked = allowed(state, &session, &patched.target.context).and_then(|allowed| {
         groove_cluster_service::writable(&patched.target, allowed.read_only, &allowed.held)
     });
@@ -35,7 +66,7 @@ pub(crate) fn patch(
             body,
             version,
         } = patched;
-        let subject = format!("{} · patch {body}", target.label());
+        let subject = format!("{} · {said}", target.label());
         let stored = groove_cluster_service::patch(paths, target, body, version, false).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match stored {

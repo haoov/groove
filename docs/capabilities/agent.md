@@ -79,8 +79,8 @@ button sends that skill.
 
 **A skill can act on a Kubernetes resource.** Its `groove-resources` lists the kinds it acts
 on, `*` for every one. It then leaves the session's menus and stands on the right-click of a
-resource of those kinds, in the list and on its tab, sent with the resource's context,
-namespace, kind and name.
+resource's row of those kinds, in the list or in an Application, sent with the resource's
+context, namespace, kind and name.
 
 ## Shared skills, knowledge, routines
 

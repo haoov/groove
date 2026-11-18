@@ -58,7 +58,7 @@ fn a_menu_is_glass() {
     let menu = Menu {
         at: (200.0, 200.0),
         corner: Corner::TopLeft,
-        of: Of::File("a.txt".into()),
+        of: Of::LogRanges,
     };
     let ui = Ui {
         overlay: Some(Overlay::Menu(menu)),

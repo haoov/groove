@@ -54,6 +54,11 @@ pub enum Command {
         session: SessionId,
         patched: Box<Patched>,
     },
+    /// `cluster.restart`: a workload's pods replaced, on a cluster the session may write to.
+    Restart {
+        session: SessionId,
+        target: Box<groove_types::Target>,
+    },
 }
 
 impl Command {
@@ -77,6 +82,7 @@ impl Command {
             Command::LogCaret { .. } => "cluster.log_caret",
             Command::LogCopy { .. } => "cluster.log_copy",
             Command::Patch { .. } => "cluster.patch",
+            Command::Restart { .. } => "cluster.restart",
         }
     }
 }
@@ -122,6 +128,7 @@ pub fn dispatch(
             let asker = crate::asker::Asker::Ui;
             writes::patch(state, spawner, session, *patched, asker)
         }
+        Command::Restart { session, target } => writes::restart(state, spawner, session, *target),
     }
 }
 

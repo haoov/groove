@@ -3,8 +3,8 @@
 use std::path::PathBuf;
 
 use groove_objects::Preview;
-use groove_types::{Attached, Error, KubeKind, Result, Target};
-use serde_json::Value;
+use groove_types::{Attached, Error, KubeKind, Result, Target, Timestamp};
+use serde_json::{Value, json};
 
 /// An object as a human names it: its kind as `deployments`, `Deployment`, `deploy` or `deployments.apps`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +55,22 @@ pub fn writable(target: &Target, read_only: bool, held: &[Attached]) -> Result<(
         ),
     };
     Err(Error::invalid(why))
+}
+
+/// Whether a restart replaces the pods of `kind`: a workload rolling out a pod template.
+pub fn restartable(kind: &KubeKind) -> bool {
+    let rolled = ["Deployment", "StatefulSet", "DaemonSet"];
+    kind.group == "apps" && rolled.contains(&kind.kind.as_str())
+}
+
+/// The patch `kubectl rollout restart` sends: the pod template stamped with `at`.
+pub fn restart(kind: &KubeKind, at: Timestamp) -> Result<Value> {
+    if !restartable(kind) {
+        let why = format!("a {} has no pods to restart", kind.kind);
+        return Err(Error::invalid(why));
+    }
+    let stamp = json!({ "kubectl.kubernetes.io/restartedAt": at.rfc3339() });
+    Ok(json!({ "spec": { "template": { "metadata": { "annotations": stamp } } } }))
 }
 
 pub async fn patch(

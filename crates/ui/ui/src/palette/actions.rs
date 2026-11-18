@@ -25,8 +25,6 @@ pub enum Act {
     Examine(ApprovalId),
     /// A file of the selected worktree, opened on the Files tab.
     Open(String),
-    /// Every change of the worktree thrown away, once confirmed.
-    Discard,
     /// The kind a choice of *Pick a kind* names, listed.
     Kind(String),
 }
@@ -43,7 +41,6 @@ impl Act {
             Act::Notes(_) => "notes.show",
             Act::Examine(_) => "agent.review",
             Act::Open(_) => "workspace.open_file",
-            Act::Discard => "workspace.discard_all",
             Act::Kind(_) => "resources.select_kind",
         }
     }
@@ -136,7 +133,6 @@ fn landing(app: &AppState, open: &Open) -> Vec<Entry> {
         git("Pull", workspace::Command::Pull),
     ];
     out.extend(super::mr::entries(app, open, worktree));
-    out.push(act("Git", "Discard every change", Act::Discard));
     out
 }
 

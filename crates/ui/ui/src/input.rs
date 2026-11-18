@@ -197,7 +197,6 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             ui.session.folded = false;
         }
         Act::Examine(id) => ui.examine(id),
-        Act::Discard => ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Everything)),
         Act::Kind(value) => {
             let open = app.session.selected();
             let kind = open.and_then(|open| crate::palette::kind_chosen(app, open, &value));

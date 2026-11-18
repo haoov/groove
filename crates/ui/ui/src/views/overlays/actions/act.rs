@@ -3,7 +3,6 @@
 /// One action a menu offers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Act {
-    DiscardChanges,
     Close,
     CloseOthers,
     CloseAll,
@@ -19,7 +18,6 @@ impl Act {
     /// The words its row shows.
     pub fn label(self) -> &'static str {
         match self {
-            Act::DiscardChanges => "discard changes",
             Act::Close => "close",
             Act::CloseOthers => "close others",
             Act::CloseAll => "close all",

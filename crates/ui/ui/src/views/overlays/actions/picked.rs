@@ -6,10 +6,17 @@ use super::{Act, TAB, acts};
 use crate::views::session::{Asked, Naming, Noting};
 use crate::{Losing, Of};
 
-/// A menu whose rows come with it: a skill sent, or a mapping slot given a value.
+/// A menu whose rows come with it: a write asked, a skill sent, or a mapping slot given a value.
 fn offered(of: &Of, at: usize) -> Option<Picked> {
     match of {
-        Of::Skills { session, offered } => Some(sent(session, offered.get(at))),
+        Of::Resource {
+            session,
+            writes,
+            offered,
+        } => Some(match writes.get(at) {
+            Some(write) => Picked::asks(write.clone()),
+            None => sent(session, offered.get(at - writes.len())),
+        }),
         Of::Hues(context) => {
             let hue = groove_types::Hue::ALL.get(at)?;
             let set = groove_controllers::config::Command::SetCluster {
@@ -127,7 +134,6 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         return picked;
     }
     match (of, acts(of).get(at)) {
-        (Of::File(path), Some(Act::DiscardChanges)) => Picked::asks(Losing::File(path.clone())),
         (Of::Line { path, lines }, Some(Act::Note)) => Picked::notes(groove_types::Anchor {
             path: path.clone(),
             start_line: lines.0,

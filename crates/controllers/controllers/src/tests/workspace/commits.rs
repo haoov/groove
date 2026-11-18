@@ -92,10 +92,6 @@ fn nothing_writes_while_a_commit_is_shown() {
         workspace::Command::Stage {
             path: "a.txt".into(),
         },
-        workspace::Command::Discard {
-            path: "a.txt".into(),
-        },
-        workspace::Command::DiscardAll,
     ] {
         send(&mut state, &services, &spawner, one);
     }

@@ -8,7 +8,9 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Column, Rows, Search, Sorted, Tab, Table, Width, glass_field};
+use groove_ui_kit::widgets::{
+    Cell, Column, Laid, Rows, Search, Shown, Sorted, Tab, Table, Width, glass_field,
+};
 
 mod cells;
 mod order;
@@ -79,7 +81,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
         body = rest;
     }
     let kind = kind.map(|one| one.plural).unwrap_or_default();
-    listed(ctx, body, app, (&keys, rows), (held, &kind));
+    let asked = match ui.losing() {
+        Some(crate::Losing::Restart { uid, .. }) => Some(uid.as_str()),
+        _ => None,
+    };
+    listed(ctx, body, app, (&keys, rows), (held, &kind, asked));
 }
 
 /// The find bar over the rows: what it narrows by, typed.
@@ -188,7 +194,7 @@ fn listed(
     body: Rect,
     app: &AppState,
     (keys, rows): (&[WatchKey], Vec<(&WatchKey, &ObjectRow)>),
-    (held, kind): (&ResourcesUi, &str),
+    (held, kind, asked): (&ResourcesUi, &str, Option<&str>),
 ) {
     let plan = plan(app, keys, &rows);
     let sorted = order::mark(&plan, held.sort.as_ref());
@@ -226,6 +232,38 @@ fn listed(
     };
     let (_, names) = scope::search(held);
     let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
-    let laid = table.draw(ctx, body, |at| one(app, rows[at], (&plan, &names)));
+    let asked = asked.and_then(|uid| rows.iter().position(|(_, row)| row.uid == uid));
+    let laid = table.draw(ctx, body, |at| {
+        shown(app, rows[at], (&plan, &names), Some(at) == asked)
+    });
+    restarting(ctx, &laid, asked.map(|at| (at, rows[at].1.name.as_str())));
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
+}
+
+/// The row's cells, or none while a question stands in its place.
+fn shown<'a>(
+    app: &AppState,
+    row: (&'a WatchKey, &'a ObjectRow),
+    read: (&self::plan::Plan, &[&str]),
+    asked: bool,
+) -> Shown<'a, Target> {
+    match asked {
+        true => Shown::row(Vec::<Cell>::new()),
+        false => one(app, row, read),
+    }
+}
+
+/// The restart asked across the row's whole width.
+fn restarting(ctx: &mut Ctx, laid: &Laid, asked: Option<(usize, &str)>) {
+    let Some((at, name)) = asked else {
+        return;
+    };
+    let (line, room) = (laid.from(at, 0), laid.body);
+    if line.y < room.y || line.y + line.h > room.y + room.h {
+        return;
+    }
+    let line = Rect::new(room.x, line.y, room.w, line.h);
+    let answers = [("restart", Target::Discard), ("keep", Target::Keep)];
+    let question = format!("restart {name}?");
+    groove_ui_kit::widgets::question(ctx, line, &question, answers);
 }

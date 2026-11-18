@@ -1,4 +1,4 @@
-//! What git is asked to do: the index, a commit, a push, a pull, a discard.
+//! What git is asked to do: the index, a commit, a push, a pull.
 
 use std::path::PathBuf;
 
@@ -109,45 +109,11 @@ pub(crate) fn remote(
     }));
 }
 
-/// Every change in the worktree, thrown away.
-pub(super) fn discard_all(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(dir) = state
-        .session
-        .selected_worktree()
-        .map(groove_types::Worktree::dir)
-    else {
-        return;
-    };
-    let paths: Vec<String> = state
-        .workspace
-        .files
-        .iter()
-        .map(|file| file.path.clone())
-        .collect();
-    if paths.is_empty() {
-        return;
-    }
-    let job = state.begin("discarding every change");
-    spawner.spawn(Box::pin(async move {
-        let done = groove_workspace_service::discard(&dir, &paths).await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
-                state.end(job);
-                match done {
-                    Ok(()) => load(state, spawner),
-                    Err(e) => state.failed(e),
-                }
-            },
-        ) as Continuation
-    }));
-}
-
 /// What one action does to the index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Act {
     Stage,
     Unstage,
-    Discard,
 }
 
 impl Act {
@@ -155,12 +121,11 @@ impl Act {
         match self {
             Act::Stage => "staging",
             Act::Unstage => "unstaging",
-            Act::Discard => "discarding",
         }
     }
 }
 
-/// One path into the index, out of it, or thrown away.
+/// One path into the index, or out of it.
 pub(super) fn index(state: &mut AppState, spawner: &dyn Spawner, act: Act, path: String) {
     let Some(dir) = state
         .session
@@ -175,7 +140,6 @@ pub(super) fn index(state: &mut AppState, spawner: &dyn Spawner, act: Act, path:
         let done = match act {
             Act::Stage => groove_workspace_service::stage(&dir, &paths).await,
             Act::Unstage => groove_workspace_service::unstage(&dir, &paths).await,
-            Act::Discard => groove_workspace_service::discard(&dir, &paths).await,
         };
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {

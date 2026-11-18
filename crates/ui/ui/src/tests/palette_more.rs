@@ -1,4 +1,4 @@
-//! The palette's reach: the MR, the skills, the discard, the diff's mode, and how its input line stands.
+//! The palette's reach: the MR, the skills, the diff's mode, and how its input line stands.
 
 use groove_controllers::AppState;
 
@@ -31,20 +31,6 @@ fn the_mr_and_the_skills_have_their_groups() {
         offered,
         "what the agent's bar offers"
     );
-}
-
-#[test]
-fn discard_every_change_asks_first() {
-    let app = full_app();
-    let mut palette = Palette::default();
-    typed_into(&mut palette, "discard every", &app);
-    let mut ui = Ui::default();
-    let commands = ui.closed_palette(palette.key(Key::Enter, &app), &app);
-    assert!(commands.is_empty(), "nothing thrown away yet");
-    assert!(matches!(
-        ui.overlay,
-        Some(crate::Overlay::Losing(crate::Losing::Everything))
-    ));
 }
 
 #[test]

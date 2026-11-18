@@ -40,7 +40,6 @@ fn acted(act: &Act) -> Option<Mark> {
         Act::Note | Act::Notes(_) => Mark::Note,
         Act::Examine(_) => Mark::Agent,
         Act::Open(_) => Mark::File,
-        Act::Discard => Mark::Close,
         Act::Kind(_) => Mark::Cluster,
     };
     Some(mark)

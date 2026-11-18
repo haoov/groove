@@ -42,36 +42,6 @@ fn a_file_is_staged_then_taken_back_out() {
 }
 
 #[test]
-fn discarding_a_file_puts_it_back_and_takes_it_off_the_list() {
-    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    pooled_clone(home.path());
-    let dir = worktree(&mut state, &services, &spawner);
-    let file = std::path::Path::new(&dir).join("a.txt");
-    let before = std::fs::read_to_string(&file).unwrap();
-    std::fs::write(&file, "changed\n").unwrap();
-    until(&spawner, &services, &mut state, |s| {
-        !s.workspace.files.is_empty()
-    });
-
-    act(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::Discard {
-            path: "a.txt".into(),
-        },
-    );
-    until(&spawner, &services, &mut state, |s| {
-        s.workspace.files.is_empty()
-    });
-    assert_eq!(
-        std::fs::read_to_string(&file).unwrap(),
-        before,
-        "the file is what HEAD has"
-    );
-}
-
-#[test]
 fn a_commit_takes_the_index() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
@@ -197,32 +167,6 @@ fn a_commit_is_pushed_and_the_branch_stops_being_ahead() {
     let pushed = sh(at, &["rev-parse", "HEAD"]);
     let upstream = sh(at, &["rev-parse", "@{upstream}"]);
     assert_eq!(pushed, upstream, "origin has what the branch has");
-}
-
-#[test]
-fn discarding_everything_leaves_the_worktree_as_head_has_it() {
-    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    pooled_clone(home.path());
-    let dir = worktree(&mut state, &services, &spawner);
-    let at = std::path::Path::new(&dir);
-    let before = std::fs::read_to_string(at.join("a.txt")).unwrap();
-    std::fs::write(at.join("a.txt"), "changed\n").unwrap();
-    std::fs::write(at.join("new.txt"), "fresh\n").unwrap();
-    until(&spawner, &services, &mut state, |s| {
-        s.workspace.files.len() == 2
-    });
-
-    act(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::DiscardAll,
-    );
-    until(&spawner, &services, &mut state, |s| {
-        s.workspace.files.is_empty()
-    });
-    assert_eq!(std::fs::read_to_string(at.join("a.txt")).unwrap(), before);
-    assert!(!at.join("new.txt").exists(), "and the untracked one goes");
 }
 
 #[test]

@@ -1,11 +1,13 @@
-//! The skills a resource's right-click offers: those that act on its kind, sent with the resource.
+//! What a resource's right-click offers: its writes, and the skills that act on its kind, sent with the resource.
 
 use groove_controllers::AppState;
 
 use crate::views::session::resources::Link;
-use crate::{Corner, Menu, Of, Offer, Ui};
+use groove_controllers::cluster_service::restartable;
 
-/// The menu of skills for the resource a list row, an object tab or an Application's row stands for.
+use crate::{Corner, Losing, Menu, Of, Offer, Ui};
+
+/// What a list row or an Application's row offers: a restart when it rolls out pods, then the skills of its kind.
 pub(super) fn menu(
     ui: &Ui,
     app: &AppState,
@@ -23,25 +25,36 @@ pub(super) fn menu(
             label: one.label.clone(),
         })
         .collect();
-    if offered.is_empty() {
+    let writes: Vec<Losing> = match target {
+        crate::hit::Target::ResourceRow(uid) if restartable(&link.kind) => vec![Losing::Restart {
+            session: session.clone(),
+            uid: uid.clone(),
+            link: Box::new(link),
+        }],
+        _ => Vec::new(),
+    };
+    if writes.is_empty() && offered.is_empty() {
         return None;
     }
     Some(Menu {
         at,
         corner: Corner::TopLeft,
-        of: Of::Skills { session, offered },
+        of: Of::Resource {
+            session,
+            writes,
+            offered,
+        },
     })
 }
 
 /// The resource a target stands for.
 fn linked(ui: &Ui, app: &AppState, target: &crate::hit::Target) -> Option<Link> {
-    let held = &ui.session.resources;
     match target {
         crate::hit::Target::ResourceRow(uid) => {
             let open = app.session.selected()?;
+            let held = &ui.session.resources;
             crate::views::session::resources::row_link(app, open, held, uid)
         }
-        crate::hit::Target::ResourceTab(at) => held.opened.get(*at).map(|one| one.link.clone()),
         crate::hit::Target::ResourceOpen(link) => Some((**link).clone()),
         _ => None,
     }

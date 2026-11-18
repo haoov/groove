@@ -15,11 +15,6 @@ pub async fn unstage(dir: &Path, paths: &[String]) -> Result<()> {
     Ok(())
 }
 
-pub async fn discard(dir: &Path, paths: &[String]) -> Result<()> {
-    groove_git::Git::at(dir).discard(paths).await?;
-    Ok(())
-}
-
 pub async fn commit(dir: &Path, message: &str) -> Result<()> {
     if !staged(dir).await? {
         return Err(groove_types::Error::invalid(NOTHING_STAGED));

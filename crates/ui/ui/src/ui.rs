@@ -48,7 +48,7 @@ pub enum Overlay {
     Palette(palette::Palette),
     /// What the right button opened, and where.
     Menu(Menu),
-    /// A change about to be thrown away, asking first.
+    /// A change about to be thrown away, or a cluster written to, asking first.
     Losing(Losing),
     /// The write the review sheet shows.
     Examining(groove_types::ApprovalId),
@@ -91,15 +91,29 @@ pub struct AgentUi {
     pub bypassed: bool,
 }
 
-/// What is asked before a change is thrown away.
+/// What is asked before a change is thrown away, or a cluster written to.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Losing {
-    File(String),
     /// One open file's tab, with the edits it owes the disk.
     Tab(String),
     /// One path of the explorer, with everything under it.
     Path(String),
-    Everything,
+    /// The workload on the list's row `uid`, its pods replaced.
+    Restart {
+        session: groove_types::SessionId,
+        uid: String,
+        link: Box<views::session::resources::Link>,
+    },
+}
+
+impl Losing {
+    /// The menu row that asks it.
+    pub fn act(&self) -> &'static str {
+        match self {
+            Losing::Restart { .. } => "restart",
+            _ => "discard",
+        }
+    }
 }
 
 /// A press, and how many the pointer has made in the same place in a row.

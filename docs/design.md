@@ -412,8 +412,8 @@ worktree's files. Enforced by `enter_and_shift_enter_step_the_matches_and_wrap` 
 Terminals for the session, opened in its own directory, splittable, resizable, collapsible;
 its bar alone when collapsed.
 
-**Git.** The palette's Git group acts on the selected worktree: push, pull, the MR's own
-actions, and discard every change. No box in the window commits: the agent or a terminal
+**Git.** The palette's Git group acts on the selected worktree: push, pull and the MR's
+own actions. No box in the window commits: the agent or a terminal
 does.
 
 **One deep ground, panels on it.** The deepest ground the theme has holds the session
@@ -500,16 +500,17 @@ Enforced by `alt_s_picks_another_open_session_by_its_title_or_its_id`,
 match in the file name first, and opens the one picked on the Files tab.
 Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
 
-**Git and the MR go through the palette.** Push, pull, discard every change, and
+**Git and the MR go through the palette.** Push, pull, and
 create, update, comment on, approve or close the MR are palette rows of the selected
 worktree. No box in the window holds them.
 
 **A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,
 or unstage — where its counts were. Everything else is behind the right button.
 
-**A question takes the place of what asked it.** Discarding one file turns its row into the
-question; discarding every change turns the info line into it. Two answers at
-the end, no modal, and nothing destructive within a click of something ordinary.
+**A question takes the place of what asked it.** Closing a tab with unsaved edits, deleting
+a path or a write on a resource's row turns that line into the question, square across its
+whole width. Its two answers follow the words, no modal, and nothing destructive within a
+click of something ordinary.
 
 ### Kubernetes tab
 
@@ -600,7 +601,6 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 | task property | the task's title, the property, before → after |
 | task body | the task's title and the body |
 | task finish | the task's title and the worktrees torn down |
-| discard | the files |
 
 **Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
 
@@ -620,6 +620,15 @@ selected meanwhile; back on this one, the change shows again. Enforced by
 `only_the_band_s_approve_button_lets_a_cluster_write_through`,
 `a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
 `a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
+
+**A workload restarts from its row.** A Deployment's, StatefulSet's or DaemonSet's row in
+the list offers **restart** on its right-click, above the skills of its kind. Picking it
+turns the row into the question, followed by **restart** and **keep**. Restart stamps the pod template, as `kubectl rollout restart` does, and the
+session's timeline says it. An object's tab offers no menu. Enforced by
+`a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it`,
+`keep_leaves_the_deployment_as_it_is_and_a_pod_offers_no_restart`,
+`an_object_tab_opens_no_menu` and
+`a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod`.
 
 ## Settings
 
