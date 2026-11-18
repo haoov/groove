@@ -1,85 +1,73 @@
-//! A cluster write under review: its change drawn as the diff draws it, approved only from the sheet.
+//! A session waiting on a cluster write: the Diff tab holds the ask on its band, then the change, until it is answered.
 
-use groove_controllers::workspace_service::review;
+use groove_controllers::workspace_service::prepare;
 use groove_controllers::{AppState, Command, agent};
 use groove_gfx::Fonts;
-use groove_types::{ApprovalId, DiffView};
+use groove_types::ApprovalId;
 
 use super::screen::{ask, asking, session_ui};
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
 use crate::tests::{all_texts, click, press, window};
+use crate::views::session::Tab;
 use crate::{Focus, Ui};
 
+fn pairs() -> Vec<(String, String, String)> {
+    let before = "spec:\n  replicas: 1\n  paused: false\n".to_string();
+    let after = "spec:\n  replicas: 3\n  paused: false\n".to_string();
+    vec![("kind/paxone/deployments/api.yaml".into(), before, after)]
+}
+
+/// A patch waiting on the selected session, its change shown in place of the worktree's.
 fn patching() -> AppState {
     let mut one = ask("ap-1", "kube_patch", "kind · paxone/deployments/api");
     one.reviewed = true;
     let mut app = asking(vec![one]);
-    let before = "spec:\n  replicas: 1\n  paused: false\n";
-    let after = "spec:\n  replicas: 3\n  paused: false\n";
-    let held = review("kind/paxone/deployments/api.yaml", before, after);
-    app.workspace.reviews.insert(ApprovalId::new("ap-1"), held);
+    app.workspace
+        .review(&ApprovalId::new("ap-1"), prepare(pairs()));
     app
 }
 
-fn examined() -> Ui {
-    let mut ui = session_ui();
-    ui.examine(ApprovalId::new("ap-1"));
+fn settled(app: &AppState, mut ui: Ui) -> Ui {
+    ui.settle(app);
     ui
 }
 
 #[test]
-fn a_on_the_rail_opens_the_sheet_of_a_cluster_write_instead_of_approving_it() {
+fn the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked() {
     let app = patching();
-    let mut ui = Ui {
-        focus: Focus::Rail,
-        ..session_ui()
-    };
-    let acted = press(Key::Char('a'), Modifiers::default(), &mut ui, &app);
-    assert!(acted.is_empty(), "nothing approved: {acted:?}");
-    assert_eq!(ui.examining(), Some(&ApprovalId::new("ap-1")));
-}
-
-fn count(drawn: &[String], word: &str) -> usize {
-    drawn.iter().filter(|one| *one == word).count()
-}
-
-#[test]
-fn the_sheet_draws_the_change_line_by_line_inline_then_split() {
-    let app = patching();
-    let mut ui = examined();
+    let mut ui = settled(&app, session_ui());
+    assert_eq!(ui.session.tab, Tab::Diff);
     let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = all_texts(&frame);
-    assert_eq!(
-        count(&drawn, "replicas"),
-        2,
-        "removed, then added: {drawn:?}"
-    );
-    assert_eq!(count(&drawn, "paused"), 1, "an unchanged line once, inline");
-    let split = hits
-        .rect_of(&Target::SheetView(DiffView::Split))
-        .expect("the split view");
-    assert!(click(split, &mut ui, &app, &hits).is_empty());
-    assert_eq!(ui.sheet().map(|one| one.view), Some(DiffView::Split));
-    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let drawn = all_texts(&frame);
-    assert_eq!(
-        count(&drawn, "paused"),
-        2,
-        "an unchanged line stands on both sides"
-    );
+    let count = |word: &str| drawn.iter().filter(|one| *one == word).count();
+    assert!(count("replicas") >= 2, "removed, then added: {drawn:?}");
+    let overview = hits.rect_of(&Target::Tab(Tab::Overview)).expect("the tab");
+    click(overview, &mut ui, &app, &hits);
+    ui.settle(&app);
+    assert_eq!(ui.session.tab, Tab::Diff, "the ask is answered first");
 }
 
 #[test]
-fn only_the_sheet_s_approve_button_lets_a_cluster_write_through() {
+fn a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask() {
     let app = patching();
-    let mut ui = examined();
-    let enter = press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    let decided = enter
-        .iter()
-        .any(|one| matches!(one, Command::Agent(agent::Command::Approve { .. })));
-    assert!(!decided, "enter decides nothing: {enter:?}");
-    assert!(ui.examining().is_some(), "and the sheet stays");
+    let mut ui = settled(
+        &app,
+        Ui {
+            focus: Focus::Rail,
+            ..session_ui()
+        },
+    );
+    let acted = press(Key::Char('a'), Modifiers::default(), &mut ui, &app);
+    assert!(acted.is_empty(), "nothing approved: {acted:?}");
+    ui.settle(&app);
+    assert_eq!(ui.examining(), None, "the Diff tab holds the ask");
+}
+
+#[test]
+fn only_the_band_s_approve_button_lets_a_cluster_write_through() {
+    let app = patching();
+    let mut ui = settled(&app, session_ui());
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let id = ApprovalId::new("ap-1");
     let rect = hits.rect_of(&Target::Approve(id.clone())).expect("approve");

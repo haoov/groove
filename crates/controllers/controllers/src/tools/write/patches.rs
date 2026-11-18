@@ -2,7 +2,6 @@
 
 use groove_cluster_service::{Asked, Preview};
 use groove_types::{KubeKind, Target};
-use groove_workspace_service::Review;
 use serde_json::{Value, json};
 
 use super::Write;
@@ -25,14 +24,9 @@ pub(super) fn asked(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
     let cache = state.env.cache_dir.join("kube");
     spawner.spawn(Box::pin(async move {
         let tried = groove_cluster_service::preview(paths, cache, asked, allowed, body).await;
-        let reviewed = tried.map(|(target, preview)| {
-            let path = path_of(&target);
-            let review = groove_workspace_service::review(&path, &preview.before, &preview.after);
-            (target, preview, review)
-        });
         Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match reviewed {
-                Ok((target, preview, review)) => queued(state, write, &target, (preview, review)),
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match tried {
+                Ok((target, preview)) => queued((state, spawner), write, &target, preview),
                 Err(e) => write.reply.failed(e.message),
             },
         ) as Continuation
@@ -77,10 +71,10 @@ fn named(write: &Write) -> Result<(Asked, Value), String> {
 
 /// The write waits with its target, its diff and the version it was tried on.
 fn queued(
-    state: &mut AppState,
+    (state, spawner): (&mut AppState, &dyn Spawner),
     mut write: Write,
     target: &Target,
-    (preview, review): (Preview, Review),
+    preview: Preview,
 ) {
     if preview.diff.is_empty() {
         let said = format!("the patch changes nothing on {}", target.label());
@@ -88,6 +82,7 @@ fn queued(
     }
     let kind = &target.kind;
     write.arguments["target"] = target.label().into();
+    write.arguments["change"] = json!([path_of(target), preview.before, preview.after]);
     write.arguments["diff"] = preview.diff.into();
     write.arguments["resource_version"] = preview.version.into();
     write.arguments["namespace"] = target.namespace.clone().into();
@@ -98,11 +93,11 @@ fn queued(
             .reply
             .failed("the session closed before kube_patch ran");
     }
-    let id = super::queued(state, write);
-    state.workspace.reviews.insert(id, review);
+    super::queued(state, write);
+    crate::workspace::review::show(state, spawner);
 }
 
-/// `kind/paxone/deployments/api.yaml`: the key of the review's colours, and its grammar.
+/// `kind/paxone/deployments/api.yaml`: the file the change stands as in the diff.
 fn path_of(target: &Target) -> String {
     let namespace = target.namespace.as_deref().unwrap_or("-");
     let name = match &target.subresource {

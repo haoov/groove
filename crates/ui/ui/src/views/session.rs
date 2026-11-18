@@ -10,6 +10,7 @@ mod manual;
 mod open_files;
 pub mod overview;
 pub mod resources;
+mod review;
 mod sheet;
 mod state;
 mod tab;
@@ -73,6 +74,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     match ui.session.tab {
         Tab::Overview => overview::draw(ctx, app, ui, body),
+        Tab::Diff if ui.session.reviewing => review::draw(ctx, app, ui, body),
         Tab::Diff => diff::draw(ctx, app, ui, body),
         Tab::Files => {
             let [strip, body] = column_in(body, [band, Spec::fill()]);

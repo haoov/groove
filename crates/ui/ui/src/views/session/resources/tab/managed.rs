@@ -10,8 +10,8 @@ use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Shown, Tab};
 
-use super::super::{ArgoUi, Filter};
 use super::super::opened::Opened;
+use super::super::{ArgoUi, Filter};
 use super::grouped::{self, Columned};
 use super::{destined, stages, syncing};
 use crate::ctx::Ctx;

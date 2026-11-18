@@ -1,17 +1,30 @@
-use groove_types::RowKind;
+use groove_types::ApprovalId;
 
-use crate::review;
+use crate::{State, prepare};
+
+fn change() -> crate::Prepared {
+    let pair = (
+        "a.yaml".to_string(),
+        "replicas: 1\n".to_string(),
+        "replicas: 2\n".to_string(),
+    );
+    prepare(vec![pair])
+}
 
 #[test]
-fn a_review_lines_up_both_sides_and_colours_them_by_the_path_s_grammar() {
-    let before = "spec:\n  replicas: 1\n";
-    let after = "spec:\n  replicas: 3\n";
-    let one = review("kind/paxone/deployments/api.yaml", before, after);
-    let kinds: Vec<RowKind> = one.aligned.rows().map(|row| row.kind).collect();
+fn a_review_takes_the_change_s_place_until_its_own_write_is_decided() {
+    let mut state = State::default();
+    state.review(&ApprovalId::new("one"), change());
+    assert_eq!(state.reviewed(), Some("one"));
+    assert!(state.readonly() && !state.changes.is_empty());
     assert!(
-        kinds.contains(&RowKind::Removed) && kinds.contains(&RowKind::Added),
-        "{kinds:?}"
+        !state.decided(&ApprovalId::new("two")),
+        "another write leaves it"
     );
-    let colours = one.new.colours(0..2);
-    assert!(!colours.of(1).is_empty(), "the YAML grammar paints the key");
+    assert!(state.decided(&ApprovalId::new("one")));
+    assert_eq!(state.reviewed(), None);
+    assert!(
+        state.changes.is_empty(),
+        "the worktree's change reads again"
+    );
 }

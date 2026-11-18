@@ -20,8 +20,6 @@ impl Ui {
             Scroller::Resources => self.session.resources.scroll(),
             Scroller::Kinds => self.session.resources.kinds,
             Scroller::Alerts => self.alerts.scroll,
-            Scroller::Sheet => self.sheet().map_or(0.0, |one| one.scroll),
-            Scroller::SheetAcross => self.sheet().map_or(0.0, |one| one.across),
             Scroller::Column(at) => self.board.scroll(List::ALL[at as usize]),
         }
     }
@@ -38,16 +36,6 @@ impl Ui {
             Scroller::Resources => *self.session.resources.scroll_mut() = to,
             Scroller::Kinds => self.session.resources.kinds = to,
             Scroller::Alerts => self.alerts.scroll = to,
-            Scroller::Sheet => {
-                if let Some(one) = self.sheet_mut() {
-                    one.scroll = to;
-                }
-            }
-            Scroller::SheetAcross => {
-                if let Some(one) = self.sheet_mut() {
-                    one.across = to;
-                }
-            }
             Scroller::Column(at) => self.board.scrolled(List::ALL[at as usize], to),
         }
     }

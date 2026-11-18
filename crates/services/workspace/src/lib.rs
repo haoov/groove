@@ -44,7 +44,6 @@ pub use read::{
     derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, revision,
     summary, summary_against,
 };
-pub use review::{Review, review};
 pub use revision::{Revision, Step};
 pub use rows::Way;
 pub use servers::{
@@ -103,8 +102,6 @@ pub struct State {
     /// The buffers a read of the colours and the rows is out for.
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     pub blames: Blames,
-    /// The change each write waiting on the user would make, by the approval it stands as.
-    pub reviews: BTreeMap<groove_types::ApprovalId, Review>,
     watch: Option<Watch>,
     /// Each worktree's language servers, and what they said of its files.
     pub servers: Servers,

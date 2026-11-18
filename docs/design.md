@@ -581,7 +581,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
 
 An ask opens a sheet over the work half — workspace and sidebar. The agent
 pane stays visible. One frame for every op: the repo and the branch, then the text of the
-write. No file list. A push goes to the worktree's own branch and nowhere else.
+write. No diff and no file list. A push goes to the worktree's own branch and nowhere else.
 
 | Op | Text shown |
 |---|---|
@@ -592,14 +592,25 @@ write. No file list. A push goes to the worktree's own branch and nowhere else.
 | task body | the task's title and the body |
 | task finish | the task's title and the worktrees torn down |
 | discard | the files |
-| cluster patch | the object, then its YAML before → after as the diff draws it: colours, words, inline or split; the sheet keeps its own scroll and view |
 
 **Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
 
-**A cluster write is approved from the sheet's Approve alone**, once its change was seen.
-The `a` key and the palette open the sheet instead; Enter decides nothing.
-Enforced by `only_the_sheet_s_approve_button_lets_a_cluster_write_through` and
-`a_on_the_rail_opens_the_sheet_of_a_cluster_write_instead_of_approving_it`.
+### Cluster write
+
+**A session waiting on a cluster write answers it first, in its Diff tab.** The workspace
+stands on the Diff tab, ringed in peach, whatever tab is asked. A band on a dim attention
+tint holds what the write asks, in capitals, then the object, with **Refuse** and
+**Approve** at its right, bordered words in capitals, Approve edged in peach. Under it, the
+diff itself, read-only, over the object's YAML before → after: the change stands in place
+of the worktree's until the write is decided, then the worktree's is read again. No sheet
+stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
+deleting or reloading the session is refused until it is answered. Another session can be
+selected meanwhile; back on this one, the change shows again. Enforced by
+`the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked`,
+`a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask`,
+`only_the_band_s_approve_button_lets_a_cluster_write_through`,
+`a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
+`a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
 
 ## Settings
 
