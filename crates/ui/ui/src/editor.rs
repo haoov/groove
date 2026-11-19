@@ -135,8 +135,8 @@ impl Editing {
     /// Text the shell already read from the clipboard, put in where the carets are.
     pub fn pasted(&self, text: &str) -> Option<Command> {
         match self {
-            Editing::File => Some(self.edit(Edit::Insert(text.to_string()))),
-            Editing::Object(_) | Editing::Log(_) => None,
+            Editing::File | Editing::Object(_) => Some(self.edit(Edit::Insert(text.to_string()))),
+            Editing::Log(_) => None,
         }
     }
 

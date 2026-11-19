@@ -15,6 +15,7 @@ mod sections;
 mod stages;
 mod syncing;
 mod wants;
+mod written;
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -41,7 +42,12 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
         return standing(ctx, rest, app, tab);
     };
     match tab.view {
-        View::Yaml => crate::views::session::diff::editor(ctx, app, ui, rest),
+        View::Yaml => {
+            let bar = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
+            let [bar, yaml] = column_in(rest, [bar, Spec::fill()]);
+            written::draw(ctx, bar, app, &tab.link.key());
+            crate::views::session::diff::editor(ctx, app, ui, yaml)
+        }
         View::Logs => logs::draw(ctx, rest, app, (ui, tab)),
         View::Describe => describe::draw(ctx, rest, app, (tab, object)),
         View::Resources => match object.app.as_deref() {

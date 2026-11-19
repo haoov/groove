@@ -637,6 +637,16 @@ sends nothing; the timeline says what landed. An object's tab offers no menu. En
 `a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset` and
 `a_dry_run_delete_says_so_in_its_body_on_the_version_seen`.
 
+**An object's YAML is edited from its bar.** A bar between the object's tabs and its YAML
+starts with **EDIT**: until it is pressed the YAML is read-only and no key changes it.
+**EDIT**, where the session may write and the context is not read-only, starts a draft from
+the YAML as it stands; every key, a paste included, then edits it. **EDIT** gives its place
+to **APPLY** and **DISCARD**, which throws the draft away; all are bordered words in capitals, **APPLY** and **EDIT** in peach as **Approve**
+is. The draft stands while the object moves on, the bar saying so. Enforced by
+`the_yaml_stands_read_only_until_edit_is_pressed`,
+`a_draft_takes_every_edit_and_stands_while_the_object_moves_on` and
+`a_read_only_context_keeps_an_object_s_yaml_read_only`.
+
 ## Settings
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where

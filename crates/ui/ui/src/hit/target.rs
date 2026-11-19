@@ -96,6 +96,9 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// An object's YAML made writable, or read-only again, its draft thrown away; and the draft applied.
+    YamlWrite(bool),
+    YamlApply,
     /// An Application's resources view: a filter picked.
     ArgoFilter(crate::views::session::resources::Filter),
     /// A group or a row of an object's tab, folded or unfolded, and whether it was drawn shut.

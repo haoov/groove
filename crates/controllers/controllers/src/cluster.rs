@@ -1,5 +1,6 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
+mod drafts;
 mod follows;
 mod logs;
 mod objects;
@@ -66,6 +67,12 @@ pub enum Command {
         session: SessionId,
         target: Box<groove_types::Target>,
     },
+    /// `cluster.write_yaml`: an object's YAML made writable, a draft started; or read-only again.
+    WriteYaml {
+        session: SessionId,
+        key: Box<FollowKey>,
+        on: bool,
+    },
     /// `cluster.restart`: a workload's pods replaced, on a cluster the session may write to.
     Restart {
         session: SessionId,
@@ -97,6 +104,7 @@ impl Command {
             Command::Restart { .. } => "cluster.restart",
             Command::Scale { .. } => "cluster.scale",
             Command::Delete { .. } => "cluster.delete",
+            Command::WriteYaml { .. } => "cluster.write_yaml",
         }
     }
 }
@@ -141,6 +149,7 @@ pub fn dispatch(
             target,
             replicas,
         } => writes::scale(state, spawner, (session, *target), replicas),
+        Command::WriteYaml { session, key, on } => drafts::write(state, &session, &key, on),
     }
 }
 

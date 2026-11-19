@@ -145,3 +145,39 @@ fn a_context_the_session_does_not_hold_refuses_the_patch() {
         .any(|one| one.what.message.contains("no context kind"));
     assert!(told, "{:?}", state.errors);
 }
+
+#[test]
+fn a_read_only_context_keeps_an_object_s_yaml_read_only() {
+    let (home, spawner, services, mut state) = fixture::fresh();
+    let server = server(&spawner, 0);
+    let parts = (&mut state, &services, &spawner);
+    let id = session(home.path(), &server.uri(), paxone(), parts);
+    let set = Config::SetCluster {
+        context: "kind".into(),
+        change: ClusterChange::ReadOnly(true),
+    };
+    dispatch(Cmd::Config(set), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let kind = KubeKind {
+        group: "apps".into(),
+        version: "v1".into(),
+        kind: "Deployment".into(),
+        plural: "deployments".into(),
+        namespaced: true,
+        watchable: true,
+        short_names: Vec::new(),
+    };
+    let key = groove_types::FollowKey::named("kind", &kind, Some("paxone"), "api");
+    let write = Command::WriteYaml {
+        session: id,
+        key: Box::new(key.clone()),
+        on: true,
+    };
+    dispatch(Cmd::Cluster(write), &mut state, &services, &spawner);
+    assert!(state.cluster.store.follows.yamls.draft(&key).is_none());
+    let told = state
+        .errors
+        .iter()
+        .any(|one| one.what.message.contains("read-only"));
+    assert!(told, "{:?}", state.errors);
+}
