@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
 pub use groove_contexts::paths;
-pub use groove_kubectl::{Answer, Checked, Exec, LONGEST, RUNS, check as checked};
+pub use groove_kubectl::{Answer, Checked, Exec, LONGEST, RUNS, SHELL, check as checked};
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
 pub use groove_objects::{Preview, edited};
 pub use store::{

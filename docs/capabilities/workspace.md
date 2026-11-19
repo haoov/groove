@@ -161,7 +161,8 @@ the diff.
 ## Terminal
 
 **A session's terminals run the user's login shell in the session's own directory**, not
-in a worktree. A tab holds one terminal, or several side by side. Closing, deleting or
+in a worktree, or `kubectl exec` in a pod a list row names. A tab holds one terminal, or
+several side by side. Closing, deleting or
 adopting the session ends its terminals.
 
 **Keys, a paste and the wheel go to the selected terminal as bytes**; nothing is parsed.

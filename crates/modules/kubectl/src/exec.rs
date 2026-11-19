@@ -12,6 +12,13 @@ use crate::run::{LIMIT, ran_error};
 pub const RUNS: Duration = Duration::from_secs(60);
 pub const LONGEST: Duration = Duration::from_secs(300);
 
+/// What a user's shell in a pod runs: bash where the container has it, sh otherwise.
+pub const SHELL: [&str; 3] = [
+    "sh",
+    "-c",
+    "command -v bash >/dev/null && exec bash || exec sh",
+];
+
 /// One command in one pod's container, the container the pod's first when none is named.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Exec {
@@ -26,6 +33,15 @@ pub struct Exec {
 impl Exec {
     /// The arguments kubectl runs it with; refused when it names nothing to run.
     pub fn argv(&self) -> Result<Vec<String>, Error> {
+        self.built(false)
+    }
+
+    /// The same, run on a terminal with the keys going to it.
+    pub fn terminal(&self) -> Result<Vec<String>, Error> {
+        self.built(true)
+    }
+
+    fn built(&self, tty: bool) -> Result<Vec<String>, Error> {
         if self.command.is_empty() {
             return Err(Error::invalid("kube_exec needs a command to run"));
         }
@@ -38,6 +54,9 @@ impl Exec {
             .map(str::to_string)
             .to_vec();
         argv.extend(["exec".to_string(), self.pod.clone()]);
+        if tty {
+            argv.extend(["--stdin".to_string(), "--tty".to_string()]);
+        }
         if let Some(container) = &self.container {
             argv.extend(["--container".to_string(), container.clone()]);
         }

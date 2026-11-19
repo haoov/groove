@@ -7,7 +7,7 @@ use groove_types::SessionId;
 
 use crate::views::session::resources::{Link, Write, Written, desired};
 
-use crate::{Corner, Losing, Menu, Of, Offer, Ui};
+use crate::{Corner, Losing, Menu, Of, Offer, Shelled, Ui};
 
 /// What a list row or an Application's row offers: a list row's writes, then the skills of its kind.
 pub(super) fn menu(
@@ -27,9 +27,11 @@ pub(super) fn menu(
             label: one.label.clone(),
         })
         .collect();
-    let writes = match target {
-        crate::hit::Target::ResourceRow(uid) => writes(ui, app, (&session, uid), &link),
-        _ => Vec::new(),
+    let (shells, writes) = match target {
+        crate::hit::Target::ResourceRow(uid) => {
+            (shells(app, &link), writes(ui, app, (&session, uid), &link))
+        }
+        _ => Default::default(),
     };
     if writes.is_empty() && offered.is_empty() {
         return None;
@@ -39,6 +41,7 @@ pub(super) fn menu(
         corner: Corner::TopLeft,
         of: Of::Resource {
             session,
+            shells,
             writes,
             offered,
         },
@@ -67,6 +70,39 @@ fn writes(ui: &Ui, app: &AppState, (session, uid): (&SessionId, &str), link: &Li
         }))
     };
     writes.into_iter().map(asked).collect()
+}
+
+/// A pod's shell: one per container once its tab has read them and it has several.
+fn shells(app: &AppState, link: &Link) -> Vec<Shelled> {
+    let kind = &link.kind;
+    if kind.kind != "Pod" || !kind.group.is_empty() {
+        return Vec::new();
+    }
+    let pod = Box::new(groove_types::Target {
+        context: link.context.clone(),
+        kind: kind.clone(),
+        namespace: link.namespace.clone(),
+        name: link.name.clone(),
+        subresource: None,
+    });
+    let read = link.read(app).and_then(|one| one.pod.clone());
+    let containers = read.map(|one| one.containers).unwrap_or_default();
+    let names: Vec<String> = containers
+        .into_iter()
+        .filter(|one| !one.init)
+        .map(|one| one.name)
+        .collect();
+    let shelled = |container: Option<String>| Shelled {
+        pod: pod.clone(),
+        label: container
+            .as_ref()
+            .map_or("shell".into(), |name| format!("shell · {name}")),
+        container,
+    };
+    match names.len() < 2 {
+        true => vec![shelled(None)],
+        false => names.into_iter().map(Some).map(shelled).collect(),
+    }
 }
 
 /// The resource a target stands for.

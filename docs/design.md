@@ -634,10 +634,20 @@ sends nothing; the timeline says what landed. An object's tab offers no menu. En
 `keep_leaves_the_deployment_as_it_is`,
 `a_scale_starts_from_the_count_the_row_wants_and_steps_before_it_is_sent`,
 `a_scale_to_none_offers_no_step_down`,
-`a_pod_s_row_offers_only_its_delete_asked_in_its_place`, `an_object_tab_opens_no_menu`,
+`a_pod_s_row_offers_its_shell_then_its_delete_asked_in_its_place`, `an_object_tab_opens_no_menu`,
 `a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod`,
 `a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset` and
 `a_dry_run_delete_says_so_in_its_body_on_the_version_seen`.
+
+**A pod's row opens a shell in it.** Its right-click offers **shell** first, one per
+container once the pod's tab has read several, kubectl's own pick otherwise. It opens the
+terminal drawer on a new tab named after the pod and its container, the keys going to it,
+running `kubectl exec` with bash where the container has it, sh otherwise. Nothing asks
+first, and a context set read-only refuses it. Enforced by
+`a_pod_s_shell_opens_the_drawer_with_the_keys_going_to_it`,
+`a_pod_s_shell_opens_in_a_tab_named_after_its_container`,
+`a_read_only_context_refuses_a_pod_s_shell` and
+`a_shell_in_a_pod_takes_the_keys_on_a_terminal`.
 
 **An object's YAML is edited from its bar.** A bar between the object's tabs and its YAML
 starts with **EDIT**: until it is pressed the YAML is read-only and no key changes it.

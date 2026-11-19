@@ -122,6 +122,10 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
         ui.session.naming = picked.naming;
         ui.focus = Focus::Sidebar;
     }
+    if picked.drawer {
+        ui.session.manual = true;
+        ui.focus = Focus::Terminal;
+    }
     if picked.noting.is_some() {
         ui.session.noting = picked.noting;
         ui.focus = Focus::Workspace;

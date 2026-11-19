@@ -23,6 +23,8 @@ pub struct Shell {
 #[derive(Debug)]
 pub struct Tab {
     pub id: u64,
+    /// What it runs when it is not a login shell: `api-0 · web`.
+    pub name: Option<String>,
     pub panes: Vec<Shell>,
     pub focused: u64,
 }
@@ -137,6 +139,7 @@ impl State {
             _ => {
                 shells.tabs.push(Tab {
                     id: tab,
+                    name: None,
                     panes: vec![shell],
                     focused: id,
                 });
@@ -157,6 +160,17 @@ impl State {
         match result {
             Ok(terminal) => shell.terminal = Some(terminal),
             Err(e) => shell.failed = Some(e.message),
+        }
+    }
+
+    /// Names the tab the terminal `id` stands in.
+    pub fn name(&mut self, session: &SessionId, id: u64, name: String) {
+        let Some(shells) = self.held_mut(session) else {
+            return;
+        };
+        let mut tabs = shells.tabs.iter_mut();
+        if let Some(tab) = tabs.find(|tab| tab.panes.iter().any(|one| one.id == id)) {
+            tab.name = Some(name);
         }
     }
 
@@ -227,6 +241,15 @@ pub fn spec(program: &str, (cwd, home): (PathBuf, &Path), (cols, rows): (u16, u1
         ],
         rows,
         cols,
+    }
+}
+
+/// `kubectl` run with `argv` on a terminal, in `cwd`.
+pub fn kubectl(argv: Vec<String>, place: (PathBuf, &Path), size: (u16, u16)) -> PtySpec {
+    PtySpec {
+        program: "kubectl".to_string(),
+        args: argv,
+        ..spec("", place, size)
     }
 }
 

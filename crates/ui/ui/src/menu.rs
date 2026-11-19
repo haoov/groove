@@ -28,9 +28,10 @@ pub enum Of {
     Path { path: String, dir: bool },
     /// What one slot of a source's mapping can take, from its Settings row.
     Mapping(views::settings::rows::Choices),
-    /// A resource's writes, each asked on its row first, then the skills of its kind.
+    /// A pod's shells, one per container when it has several; a resource's writes, each asked on its row first, then the skills of its kind.
     Resource {
         session: groove_types::SessionId,
+        shells: Vec<Shelled>,
         writes: Vec<crate::Losing>,
         offered: Vec<Offer>,
     },
@@ -45,5 +46,13 @@ pub enum Of {
 pub struct Offer {
     pub id: String,
     pub args: Option<String>,
+    pub label: String,
+}
+
+/// A shell a pod's row opens, in one container or the one kubectl picks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Shelled {
+    pub pod: Box<groove_types::Target>,
+    pub container: Option<String>,
     pub label: String,
 }

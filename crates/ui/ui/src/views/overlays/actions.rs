@@ -40,9 +40,13 @@ fn acts(of: &Of) -> &'static [Act] {
 pub fn rows(of: &Of) -> Vec<&str> {
     match of {
         Of::Resource {
-            writes, offered, ..
+            shells,
+            writes,
+            offered,
+            ..
         } => {
-            let mut rows: Vec<&str> = writes.iter().map(|one| one.act()).collect();
+            let mut rows: Vec<&str> = shells.iter().map(|one| one.label.as_str()).collect();
+            rows.extend(writes.iter().map(|one| one.act()));
             rows.extend(offered.iter().map(|one| one.label.as_str()));
             rows
         }

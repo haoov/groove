@@ -10,5 +10,5 @@ mod secrets;
 mod tests;
 
 pub use check::{Checked, check};
-pub use exec::{Exec, LONGEST, RUNS, exec};
+pub use exec::{Exec, LONGEST, RUNS, SHELL, exec};
 pub use run::{Answer, LIMIT, run};

@@ -1,4 +1,4 @@
-//! A resource's right-click: a restart asked on its row, and the skills that act on its kind.
+//! A resource's right-click: a pod's shell, a restart asked on its row, and the skills that act on its kind.
 
 use super::fixture::opened;
 use super::*;
@@ -72,7 +72,7 @@ fn an_object_tab_opens_no_menu() {
 }
 
 #[test]
-fn a_pod_s_row_offers_only_its_delete_asked_in_its_place() {
+fn a_pod_s_row_offers_its_shell_then_its_delete_asked_in_its_place() {
     let (mut app, mut ui) = listing();
     app.skill.skills = vec![skill("save-task", &[])];
     let row = Target::ResourceRow("shop/api-0".into());
@@ -80,8 +80,8 @@ fn a_pod_s_row_offers_only_its_delete_asked_in_its_place() {
         panic!("a menu on the pod");
     };
     let rows = crate::views::overlays::actions::rows(&of);
-    assert_eq!(rows, ["delete"], "no scale, no restart, no skill");
-    picked(&app, &mut ui, 0);
+    assert_eq!(rows, ["shell", "delete"], "no scale, no restart, no skill");
+    picked(&app, &mut ui, 1);
     let (texts, hits) = drawn(&app, &ui);
     assert!(texts.iter().any(|one| one == "delete api-0?"), "{texts:?}");
     let yes = hits.rect_of(&Target::Discard).expect("the delete answer");
@@ -90,6 +90,22 @@ fn a_pod_s_row_offers_only_its_delete_asked_in_its_place() {
         panic!("one delete: {sent:?}");
     };
     assert_eq!(target.label(), "staging · shop/pods/api-0");
+}
+
+#[test]
+fn a_pod_s_shell_opens_the_drawer_with_the_keys_going_to_it() {
+    let (app, mut ui) = listing();
+    menu_on(&app, &mut ui, &Target::ResourceRow("shop/api-0".into()));
+    let sent = picked(&app, &mut ui, 0);
+    let [Command::Shell(groove_controllers::shell::Command::Pod { pod, container, .. })] =
+        sent.as_slice()
+    else {
+        panic!("one shell: {sent:?}");
+    };
+    assert_eq!(pod.label(), "staging · shop/pods/api-0");
+    assert!(container.is_none(), "kubectl picks the container");
+    assert!(ui.session.manual, "the drawer is open");
+    assert_eq!(ui.focus, crate::Focus::Terminal);
 }
 
 /// The listing turned to the deployments of `shop`: `api` alone, ready on one of two.

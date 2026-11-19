@@ -38,3 +38,13 @@ async fn a_command_that_exits_non_zero_is_a_failure() {
     let answer = exec("false", &psql(&["psql"])).await.unwrap();
     assert!(answer.failed);
 }
+
+#[test]
+fn a_shell_in_a_pod_takes_the_keys_on_a_terminal() {
+    let shell = psql(&crate::SHELL);
+    let argv = shell.terminal().unwrap();
+    let said = argv.join(" ");
+    let wanted = "exec db-0 --stdin --tty --container postgres -- sh -c";
+    assert!(said.contains(wanted), "{said}");
+    assert!(!shell.argv().unwrap().contains(&"--tty".to_string()));
+}
