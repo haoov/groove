@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
 pub use groove_contexts::paths;
-pub use groove_kubectl::{Answer, Checked, check as checked};
+pub use groove_kubectl::{Answer, Checked, Exec, LONGEST, RUNS, check as checked};
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
 pub use groove_objects::{Preview, edited};
 pub use store::{
@@ -203,6 +203,11 @@ pub async fn helm_revision(paths: Vec<PathBuf>, release: Named) -> Result<Option
 /// Whether `context` signs in now.
 pub async fn check(paths: Vec<PathBuf>, context: String) -> Login {
     groove_contexts::check(&paths, &context).await
+}
+
+/// A command run in a pod, once the user approved it.
+pub async fn exec(exec: &Exec) -> Result<Answer> {
+    groove_kubectl::exec("kubectl", exec).await
 }
 
 /// A checked kubectl read run, its JSON through `filter` when one is given.

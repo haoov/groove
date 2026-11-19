@@ -54,6 +54,16 @@ object that moved since is refused. Enforced by
 `a_delete_waits_with_the_object_going_and_lands_on_the_version_shown` and
 `an_object_that_moved_before_the_approval_is_not_overwritten`.
 
+**The agent runs a command in a pod only through `kube_exec`.** It names the pod, its
+container and the command as an argument list; Groove runs `kubectl exec` with no shell,
+no terminal and no input, 60 seconds unless the agent asks up to 300. The command waits for
+the user as a cluster write does, shown on the Diff tab as a shell file, even with
+auto-approve on, and a context set read-only refuses it. The answer is its output, cut at
+32 KiB, then its stderr. Enforced by
+`a_command_waits_with_what_it_runs_under_auto_approve`,
+`a_read_only_context_refuses_a_command_before_it_waits` and
+`a_command_runs_in_its_pod_s_container_after_a_double_dash`.
+
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the

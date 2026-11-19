@@ -81,6 +81,6 @@ fn cut_before_filter() -> Answer {
     }
 }
 
-fn ran_error(e: groove_exec::Error) -> Error {
+pub(crate) fn ran_error(e: groove_exec::Error) -> Error {
     Error::new(ErrorKind::Io, e.to_string())
 }

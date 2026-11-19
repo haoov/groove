@@ -1,6 +1,6 @@
 [package]
 name = "groove-kubectl"
-description = "The kubectl reads the agent asks for: their arguments checked against the session's clusters, then run bounded"
+description = "The kubectl reads the agent asks for, checked against the session's clusters then run bounded, and the commands it runs in a pod"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

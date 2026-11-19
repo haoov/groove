@@ -1,6 +1,6 @@
-//! What the agent reads of the session's clusters, what it patches there, and the clusters it attaches or lets go.
+//! What the agent reads of the session's clusters, what it changes or runs there, and the clusters it attaches or lets go.
 
-use crate::{Tool, strings, takes, text};
+use crate::{Tool, number, strings, takes, text};
 
 /// The read that runs kubectl for the agent; it changes nothing.
 fn kube() -> Tool {
@@ -86,6 +86,48 @@ fn kube_delete() -> Tool {
     }
 }
 
+/// One command run in a pod's container, shown to the user before it runs.
+fn kube_exec() -> Tool {
+    let named = vec![
+        (
+            "context",
+            text("The kubeconfig context, one the session holds."),
+        ),
+        (
+            "namespace",
+            text("The pod's namespace, one the session holds."),
+        ),
+        ("pod", text("The pod's name.")),
+        (
+            "container",
+            text("The container; leave it out for the pod's first."),
+        ),
+        (
+            "command",
+            strings(
+                "The command and its arguments, one per item, run with no shell: \
+                 [\"psql\", \"-c\", \"select 1\"]. Ask for [\"sh\", \"-c\", \"…\"] to pipe.",
+            ),
+        ),
+        (
+            "timeout",
+            number("Seconds it may run: 60 when left out, 300 at most."),
+        ),
+    ];
+    Tool {
+        name: "kube_exec",
+        description: "Run one command in a pod's container of a cluster this session holds, \
+             with no terminal and no input. The user sees the command and runs it only once \
+             they approve, even with auto-approve on. A context set read-only refuses it. \
+             The answer is the command's output, cut at 32 KiB, then its stderr."
+            .to_string(),
+        schema: takes(&["context", "namespace", "pod", "command"], named),
+        writes: true,
+        verb: "run a command in a pod",
+        subject: &["target"],
+    }
+}
+
 /// What names one object: its context, its kind, its namespace and its name.
 fn object() -> Vec<(&'static str, serde_json::Value)> {
     vec![
@@ -136,6 +178,7 @@ pub(crate) fn all() -> Vec<Tool> {
         kube(),
         kube_patch(),
         kube_delete(),
+        kube_exec(),
         attaching(
             "attach_cluster",
             "attach a cluster",

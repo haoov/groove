@@ -13,6 +13,7 @@ mod clusters;
 mod forge;
 mod git;
 mod notes;
+mod execs;
 mod patches;
 
 pub(crate) use patches::edit_asked;
@@ -62,6 +63,9 @@ impl Write {
 
 /// A write waits for a human, unless the session approves its own; a cluster write always waits.
 pub(super) fn asked(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
+    if call.tool == "kube_exec" {
+        return execs::asked(state, spawner, Write::of(call));
+    }
     if groove_agent_service::tools::reviewed(&call.tool) {
         return patches::asked(state, spawner, Write::of(call));
     }
@@ -170,6 +174,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "detach_cluster" => clusters::detach(state, services, spawner, write),
         "kube_patch" => patches::patch(state, spawner, write),
         "kube_delete" => patches::delete(state, spawner, write),
+        "kube_exec" => execs::run(state, spawner, write),
         groove_agent_service::tools::APPLY_EDIT => patches::applied(state, spawner, write),
         _ => write
             .reply
