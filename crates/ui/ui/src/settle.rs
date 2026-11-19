@@ -44,19 +44,30 @@ impl Ui {
         crate::views::session::diff::blocks::follow(self, app);
     }
 
-    /// A session waiting on a cluster write stands on the Diff tab, the write's change in it, no sheet over it.
+    /// A session waiting on a cluster write stands on the Diff tab until it is answered, then goes back.
     fn review(&mut self, app: &AppState) {
-        let selected = app.session.selected.as_ref();
-        let activity = selected.and_then(|session| app.agent.activity(session));
+        let Some(selected) = app.session.selected.clone() else {
+            return;
+        };
+        let activity = app.agent.activity(&selected);
         let asks = activity.map(|one| one.asks.as_slice()).unwrap_or_default();
         let waiting = asks
             .iter()
             .find(|one| one.reviewed)
             .map(|one| one.id.clone());
         self.session.reviewing = waiting.is_some();
+        let held = self.session.left.as_ref();
+        let left = held.filter(|(one, _)| *one == selected);
         let Some(id) = waiting else {
+            if let Some((_, tab)) = left {
+                self.session.tab = *tab;
+                self.session.left = None;
+            }
             return;
         };
+        if left.is_none() {
+            self.session.left = Some((selected, self.session.tab));
+        }
         (self.session.tab, self.session.stowed) = (Tab::Diff, false);
         self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
     }

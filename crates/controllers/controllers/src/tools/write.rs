@@ -14,6 +14,8 @@ mod forge;
 mod git;
 mod notes;
 mod patches;
+
+pub(crate) use patches::edit_asked;
 mod repos;
 mod skills;
 mod task;
@@ -168,6 +170,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "detach_cluster" => clusters::detach(state, services, spawner, write),
         "kube_patch" => patches::patch(state, spawner, write),
         "kube_delete" => patches::delete(state, spawner, write),
+        groove_agent_service::tools::APPLY_EDIT => patches::applied(state, spawner, write),
         _ => write
             .reply
             .failed(format!("groove runs no {} yet", write.tool)),

@@ -1,7 +1,8 @@
 //! The agent's patches and deletes on the session's clusters: tried on the server, queued with their diff, made once approved.
 
+use groove_agent_service::Reply;
 use groove_cluster_service::{Asked, Preview};
-use groove_types::{KubeKind, Target};
+use groove_types::{Error, FollowKey, KubeKind, SessionId, Target};
 use serde_json::{Value, json};
 
 use super::Write;
@@ -34,6 +35,72 @@ pub(super) fn asked(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
             },
         ) as Continuation
     }));
+}
+
+/// The user's YAML edit of `key`, tried on the version its draft started from, then queued for review.
+pub(crate) fn edit_asked(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    session: SessionId,
+    key: &FollowKey,
+) {
+    let edited = match edited(state, &session, key) {
+        Ok(edited) => edited,
+        Err(e) => return state.failed(e),
+    };
+    let (target, body, version) = edited;
+    let arguments = json!({ "context": target.context, "name": target.name, "patch": body });
+    let tool = groove_agent_service::tools::APPLY_EDIT.to_string();
+    let (reply, _) = Reply::new();
+    let write = Write {
+        session,
+        tool,
+        arguments,
+        reply,
+    };
+    let paths = state.env.kubeconfig.clone();
+    spawner.spawn(Box::pin(async move {
+        let tried = groove_cluster_service::tried(paths, target.clone(), body, version).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match tried {
+                Ok(preview) => queued((state, spawner), write, &target, preview),
+                Err(e) => state.failed(e),
+            },
+        ) as Continuation
+    }));
+}
+
+/// The draft of `key` read back as a patch, where the session may write and its agent can ask.
+fn edited(
+    state: &AppState,
+    session: &SessionId,
+    key: &FollowKey,
+) -> groove_types::Result<(Target, Value, String)> {
+    let refused = |why: &str| Error::invalid(why.to_string());
+    let draft = state.cluster.store.follows.yamls.draft(key);
+    let draft = draft.ok_or_else(|| refused("the YAML is not being edited"))?;
+    let target = crate::cluster::drafts::target(key);
+    let target = target.ok_or_else(|| refused("only one object's YAML is edited"))?;
+    let (body, version) = groove_cluster_service::edited(&draft.base, &draft.buffer.text())?;
+    let allowed = allowed(state, session, &target.context)?;
+    groove_cluster_service::writable(&target, allowed.read_only, &allowed.held)?;
+    if state.agent.agent(session).is_none() {
+        return Err(refused("an edit needs the session's agent to review it"));
+    }
+    Ok((target, body, version))
+}
+
+/// The user's edit approved, made on the version it was shown on.
+pub(super) fn applied(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
+    let Some(target) = target(&write) else {
+        return state.failed(Error::invalid("the edit was approved without its object"));
+    };
+    let edited = Patched {
+        target,
+        body: write.arguments["patch"].clone(),
+        version: write.text("resource_version").map(str::to_string),
+    };
+    crate::cluster::writes::edit(state, spawner, write.session, edited);
 }
 
 /// The delete the user approved, made on the version it was shown on.

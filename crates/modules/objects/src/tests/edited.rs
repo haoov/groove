@@ -24,7 +24,8 @@ fn an_edit_patches_what_changed_and_nulls_what_went() {
     let after = before
         .replace("replicas: 1", "replicas: 3")
         .replace("    tier: web\n", "");
-    let patch = edited(&before, &after).expect("a patch");
+    let (patch, version) = edited(&before, &after).expect("a patch");
+    assert_eq!(version, "7", "on the version the edit started from");
     assert_eq!(
         patch,
         json!({ "metadata": { "labels": { "tier": null } }, "spec": { "replicas": 3 } })

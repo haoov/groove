@@ -614,8 +614,10 @@ diff itself, read-only, over the object's YAML before → after: the change stan
 of the worktree's until the write is decided, then the worktree's is read again. No sheet
 stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
 deleting or reloading the session is refused until it is answered. Another session can be
-selected meanwhile; back on this one, the change shows again. Enforced by
+selected meanwhile; back on this one, the change shows again. Once the write is answered,
+the session goes back to the tab it stood on. Enforced by
 `the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked`,
+`once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on`,
 `a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask`,
 `only_the_band_s_approve_button_lets_a_cluster_write_through`,
 `a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
@@ -642,7 +644,14 @@ starts with **EDIT**: until it is pressed the YAML is read-only and no key chang
 **EDIT**, where the session may write and the context is not read-only, starts a draft from
 the YAML as it stands; every key, a paste included, then edits it. **EDIT** gives its place
 to **APPLY** and **DISCARD**, which throws the draft away; all are bordered words in capitals, **APPLY** and **EDIT** in peach as **Approve**
-is. The draft stands while the object moves on, the bar saying so. Enforced by
+is. The draft stands while the object moves on, the bar saying so. **APPLY** reads the
+draft back as a merge patch, refused when it does not read, changes nothing or touches what
+the server writes, and tries it on the version the draft started from: an object that moved
+since is refused there. The edit then waits as a cluster write does, on the Diff tab under
+**APPLY EDIT TO A CLUSTER OBJECT**; **Approve** makes it on that version and ends the draft,
+**Refuse** keeps it. Enforced by
+`an_edit_of_the_yaml_is_reviewed_then_lands_on_its_version_and_ends_the_draft`,
+`an_edit_of_what_the_server_writes_is_refused_and_says_which`,
 `the_yaml_stands_read_only_until_edit_is_pressed`,
 `a_draft_takes_every_edit_and_stands_while_the_object_moves_on` and
 `a_read_only_context_keeps_an_object_s_yaml_read_only`.

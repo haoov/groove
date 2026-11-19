@@ -111,8 +111,18 @@ pub async fn preview(
     body: Value,
 ) -> Result<(Target, Preview)> {
     let target = resolved(&paths, &cache, asked, &allowed).await?;
-    let preview = groove_objects::preview(&paths, &target, &body).await?;
+    let preview = groove_objects::preview(&paths, &target, &body, None).await?;
     Ok((target, preview))
+}
+
+/// `body` tried on `target` at `version`, the version an edit started from; nothing stored.
+pub async fn tried(
+    paths: Vec<PathBuf>,
+    target: Target,
+    body: Value,
+    version: String,
+) -> Result<Preview> {
+    groove_objects::preview(&paths, &target, &body, Some(&version)).await
 }
 
 /// The object `asked` names, checked, then its delete tried on it.

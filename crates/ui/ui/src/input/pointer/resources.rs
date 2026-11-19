@@ -20,13 +20,17 @@ pub(super) fn acted(
         .or_else(|| listed(target, ui, app))
 }
 
-/// A click on the YAML's bar: EDIT, or DISCARD.
+/// A click on the YAML's bar: EDIT, APPLY or DISCARD.
 fn drafted(target: &Target, ui: &Ui, app: &AppState) -> Option<Vec<Command>> {
     let key = Box::new(ui.session.resources.tab()?.link.key());
     let asked = match target {
         Target::YamlWrite(on) => {
             let (session, on) = (app.session.selected.clone()?, *on);
             cluster::Command::WriteYaml { session, key, on }
+        }
+        Target::YamlApply => {
+            let session = app.session.selected.clone()?;
+            cluster::Command::ApplyYaml { session, key }
         }
         _ => return None,
     };

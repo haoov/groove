@@ -14,8 +14,8 @@ const SERVER: [&str; 6] = [
     "/metadata/managedFields",
 ];
 
-/// The merge patch from `before` to `after`, both an object's YAML.
-pub fn edited(before: &str, after: &str) -> Result<Value> {
+/// The merge patch from `before` to `after`, both an object's YAML, and the version `before` was read at.
+pub fn edited(before: &str, after: &str) -> Result<(Value, String)> {
     let (before, after) = (parsed(before)?, parsed(after)?);
     let changed = |at: &&&str| before.pointer(at) != after.pointer(at);
     let moved = SERVER.iter().find(changed);
@@ -29,7 +29,10 @@ pub fn edited(before: &str, after: &str) -> Result<Value> {
     if patch.as_object().is_some_and(Map::is_empty) {
         return Err(Error::invalid("the edit changes nothing"));
     }
-    Ok(patch)
+    let version = before.pointer("/metadata/resourceVersion");
+    let version = version.and_then(Value::as_str);
+    let version = version.ok_or_else(|| Error::invalid("the YAML names no resourceVersion"))?;
+    Ok((patch, version.to_string()))
 }
 
 /// One YAML document, as JSON values.

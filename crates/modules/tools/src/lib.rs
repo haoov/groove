@@ -55,8 +55,11 @@ pub fn named(name: &str) -> Option<Tool> {
 
 /// Whether the tool's write is approved only from the review sheet, whatever auto-approve says.
 pub fn reviewed(name: &str) -> bool {
-    matches!(name, "kube_patch" | "kube_delete")
+    matches!(name, "kube_patch" | "kube_delete" | APPLY_EDIT)
 }
+
+/// The user's own edit of an object's YAML, reviewed as the agent's cluster writes are.
+pub const APPLY_EDIT: &str = "apply_edit";
 
 /// Whether the tool acts on a worktree it may name.
 pub fn takes_worktree(name: &str) -> bool {
@@ -119,7 +122,7 @@ pub(crate) fn task() -> (&'static str, serde_json::Value) {
 /// What a write acts on, as a human reads it on the row that asks.
 pub fn subject(tool: &str, arguments: &serde_json::Value) -> String {
     let named: &[&str] = named(tool).map_or(&[], |one| one.subject);
-    let fallback = ["thread", "id", "worktree_id", "task_id"];
+    let fallback = ["thread", "id", "worktree_id", "task_id", "target"];
     let said = named
         .iter()
         .chain(fallback.iter())

@@ -281,3 +281,87 @@ fn a_delete_waits_with_the_object_going_and_lands_on_the_version_shown() {
     let body: Value = serde_json::from_slice(&done.expect("the delete").body).unwrap();
     assert_eq!(body["preconditions"]["resourceVersion"], "7");
 }
+
+/// `api`'s YAML followed in a tab, as the server read it at version 7.
+fn followed(state: &mut AppState) -> groove_types::FollowKey {
+    let kind = groove_types::KubeKind {
+        group: "apps".into(),
+        version: "v1".into(),
+        kind: "Deployment".into(),
+        plural: "deployments".into(),
+        namespaced: true,
+        watchable: true,
+        short_names: Vec::new(),
+    };
+    let key = groove_types::FollowKey::named("kind", &kind, Some("paxone"), "api");
+    let yaml = "metadata:\n  name: api\n  namespace: paxone\n  resourceVersion: \"7\"\nspec:\n  replicas: 1\n";
+    let described = groove_types::Described {
+        uid: "u1".into(),
+        name: "api".into(),
+        namespace: Some("paxone".into()),
+        labels: Vec::new(),
+        annotations: Vec::new(),
+        created: None,
+        owners: Vec::new(),
+        replicas: None,
+        selector: Vec::new(),
+        pod: None,
+        app: None,
+        event: None,
+        yaml: yaml.into(),
+    };
+    let follows = &mut state.cluster.store.follows;
+    follows.lease(&key, "tab");
+    let reset = groove_cluster_service::Followed::Reset(vec![described]);
+    follows.apply(&key, reset);
+    key
+}
+
+#[test]
+fn an_edit_of_the_yaml_is_reviewed_then_lands_on_its_version_and_ends_the_draft() {
+    use groove_types::Edit;
+    let (home, spawner, services, mut state) = fixture::fresh();
+    let server = server(&spawner, 200);
+    let id = session(home.path(), &server, (&mut state, &services, &spawner));
+    let key = followed(&mut state);
+    let session = groove_types::SessionId::new(&id);
+    let run = |command: crate::cluster::Command, state: &mut AppState| {
+        dispatch(Cmd::Cluster(command), state, &services, &spawner);
+        spawner.drain(state, &services);
+    };
+    let (boxed, on) = (Box::new(key.clone()), true);
+    let write = crate::cluster::Command::WriteYaml {
+        session: session.clone(),
+        key: boxed.clone(),
+        on,
+    };
+    run(write, &mut state);
+    let yamls = &mut state.cluster.store.follows.yamls;
+    yamls.edit(&key, &Edit::SelectAll);
+    let edited = "metadata:\n  name: api\n  namespace: paxone\n  resourceVersion: \"7\"\nspec:\n  replicas: 3\n";
+    yamls.edit(&key, &Edit::Insert(edited.into()));
+    let apply = {
+        let key = boxed;
+        crate::cluster::Command::ApplyYaml { session, key }
+    };
+    run(apply, &mut state);
+    fixture::until(&spawner, &services, &mut state, |s| {
+        !waiting(s, &id).is_empty()
+    });
+    let ask = waiting(&state, &id)[0].clone();
+    assert_eq!(ask.op, "apply_edit");
+    assert!(ask.reviewed, "{:?}", state.errors);
+    crate::tools::allow(&mut state, &services, &spawner, &ask.id);
+    fixture::until(&spawner, &services, &mut state, |s| {
+        s.cluster.store.follows.yamls.draft(&key).is_none()
+    });
+    let tried = spawner
+        .block_on(server.received_requests())
+        .unwrap_or_default();
+    let stored = tried.iter().find(|one| {
+        one.method.as_str() == "PATCH" && one.url.query().is_some_and(|q| !q.contains("dryRun"))
+    });
+    let body: Value = serde_json::from_slice(&stored.expect("the edit").body).unwrap();
+    assert_eq!(body["spec"]["replicas"], 3);
+    assert_eq!(body["metadata"]["resourceVersion"], "7");
+}

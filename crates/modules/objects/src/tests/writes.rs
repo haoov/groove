@@ -95,7 +95,9 @@ async fn a_preview_tries_the_patch_on_the_version_read_and_diffs_what_it_changes
     let dir = tempfile::tempdir().expect("a temp dir");
     let paths = [kubeconfig(dir.path(), &server.uri())];
     let body = json!({ "spec": { "replicas": 3 } });
-    let tried = preview(&paths, &scale(), &body).await.expect("a preview");
+    let tried = preview(&paths, &scale(), &body, None)
+        .await
+        .expect("a preview");
     assert_eq!(tried.version, "7");
     assert!(
         tried.diff.contains("-  replicas: 1\n+  replicas: 3"),

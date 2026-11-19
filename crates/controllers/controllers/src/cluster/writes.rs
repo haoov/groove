@@ -75,10 +75,28 @@ fn changed(patched: Patched) -> (Target, Change, Option<String>) {
     (target, Change::Patch(body), version)
 }
 
-/// What a write does to its object.
+/// What a write does to its object; an edit ends the drafts of its object once it lands.
 enum Change {
     Patch(Value),
+    Edit(Value),
     Delete,
+}
+
+/// The user's YAML edit, made on the version its draft started from.
+pub(crate) fn edit(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    session: SessionId,
+    edited: Patched,
+) {
+    let said = (session, format!("edit {}", edited.body));
+    let Patched {
+        target,
+        body,
+        version,
+    } = edited;
+    let change = (target, Change::Edit(body), version);
+    stored((state, spawner), said, change, Asker::Ui);
 }
 
 /// The object deleted, on `version` when one is given.
@@ -109,8 +127,9 @@ fn stored(
     let paths = state.env.kubeconfig.clone();
     spawner.spawn(Box::pin(async move {
         let subject = format!("{} · {said}", target.label());
+        let landed = matches!(change, Change::Edit(_)).then(|| target.clone());
         let done = match change {
-            Change::Patch(body) => {
+            Change::Patch(body) | Change::Edit(body) => {
                 let patched = groove_cluster_service::patch(paths, target, body, version, false);
                 patched.await.map(drop)
             }
@@ -119,6 +138,9 @@ fn stored(
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match done {
                 Ok(()) => {
+                    if let Some(target) = &landed {
+                        state.cluster.store.follows.yamls.landed(target);
+                    }
                     let kind = TimelineKind::ClusterWrite;
                     crate::timeline::said(services, spawner, &session, kind, subject.clone());
                     asker.done(|| format!("done: {subject}"));

@@ -56,6 +56,11 @@ impl Yamls {
         true
     }
 
+    /// Every draft of `target` thrown away, once its edit landed.
+    pub fn landed(&mut self, target: &groove_types::Target) {
+        self.drafts.retain(|key, _| !target.is(key));
+    }
+
     /// Back to the object as it stands, the draft thrown away.
     pub fn read_only(&mut self, key: &FollowKey) {
         self.drafts.remove(key);

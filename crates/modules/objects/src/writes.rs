@@ -43,13 +43,18 @@ pub async fn patch(
         .map_err(|e| moved(target, e))
 }
 
-/// The object read now, then `body` tried on that version and nothing stored.
-pub async fn preview(paths: &[PathBuf], target: &Target, body: &Value) -> Result<Preview> {
+/// The object read now, then `body` tried on `version`, else on the version read, and nothing stored.
+pub async fn preview(
+    paths: &[PathBuf],
+    target: &Target,
+    body: &Value,
+    version: Option<&str>,
+) -> Result<Preview> {
     let client = Client::shared(paths, &target.context)
         .await
         .map_err(failed)?;
     let live = client.get_object(&path(target)).await.map_err(failed)?;
-    let version = version_of(&live);
+    let version = version.map_or_else(|| version_of(&live), str::to_string);
     let tried = patch(paths, target, body, Some(&version), true).await?;
     let (before, after) = crate::changed::sides(&live, &tried);
     let diff = crate::changed::unified(&before, &after);

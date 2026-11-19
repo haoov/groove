@@ -11,13 +11,14 @@ use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usag
 
 pub use groove_contexts::paths;
 pub use groove_kubectl::{Answer, Checked, check as checked};
-pub use groove_objects::Preview;
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
+pub use groove_objects::{Preview, edited};
 pub use store::{
     CAP, Draft, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls,
 };
 pub use writes::{
-    Allowed, Asked, delete, doomed, patch, preview, restart, restartable, scalable, scale, writable,
+    Allowed, Asked, delete, doomed, patch, preview, restart, restartable, scalable, scale, tried,
+    writable,
 };
 
 /// The `cluster` slice of `AppState`.

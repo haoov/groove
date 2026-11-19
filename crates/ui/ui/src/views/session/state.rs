@@ -37,6 +37,8 @@ pub struct SessionUi {
     pub reading: bool,
     /// The selected session waits on a cluster write, its change on the Diff tab under the ask.
     pub reviewing: bool,
+    /// The tab the session stood on before a cluster write took it to the Diff tab.
+    pub left: Option<(groove_types::SessionId, Tab)>,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.

@@ -55,6 +55,13 @@ pub struct Target {
 }
 
 impl Target {
+    /// Whether `key` follows this object by name.
+    pub fn is(&self, key: &crate::FollowKey) -> bool {
+        let kind = (&key.kind.group, &key.kind.plural) == (&self.kind.group, &self.kind.plural);
+        let place = key.context == self.context && key.namespace == self.namespace;
+        kind && place && key.named_one() == Some(self.name.as_str())
+    }
+
     /// `kind · paxone/deployments/api/scale`.
     pub fn label(&self) -> String {
         let mut parts: Vec<&str> = self.namespace.as_deref().into_iter().collect();

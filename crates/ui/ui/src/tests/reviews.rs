@@ -74,3 +74,16 @@ fn only_the_band_s_approve_button_lets_a_cluster_write_through() {
     let acted = click(rect, &mut ui, &app, &hits);
     assert_eq!(acted, [Command::Agent(agent::Command::Approve { id })]);
 }
+
+#[test]
+fn once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on() {
+    let app = patching();
+    let mut ui = session_ui();
+    ui.session.tab = Tab::Overview;
+    ui.settle(&app);
+    assert_eq!(ui.session.tab, Tab::Diff);
+    let mut answered = app;
+    answered.agent = asking(Vec::new()).agent;
+    ui.settle(&answered);
+    assert_eq!(ui.session.tab, Tab::Overview);
+}

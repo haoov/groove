@@ -1,6 +1,6 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
-mod drafts;
+pub(crate) mod drafts;
 mod follows;
 mod logs;
 mod objects;
@@ -73,6 +73,11 @@ pub enum Command {
         key: Box<FollowKey>,
         on: bool,
     },
+    /// `cluster.apply_yaml`: an object's YAML draft tried on the server, then reviewed as a cluster write.
+    ApplyYaml {
+        session: SessionId,
+        key: Box<FollowKey>,
+    },
     /// `cluster.restart`: a workload's pods replaced, on a cluster the session may write to.
     Restart {
         session: SessionId,
@@ -105,6 +110,7 @@ impl Command {
             Command::Scale { .. } => "cluster.scale",
             Command::Delete { .. } => "cluster.delete",
             Command::WriteYaml { .. } => "cluster.write_yaml",
+            Command::ApplyYaml { .. } => "cluster.apply_yaml",
         }
     }
 }
@@ -150,6 +156,9 @@ pub fn dispatch(
             replicas,
         } => writes::scale(state, spawner, (session, *target), replicas),
         Command::WriteYaml { session, key, on } => drafts::write(state, &session, &key, on),
+        Command::ApplyYaml { session, key } => {
+            crate::tools::edit_asked(state, spawner, session, &key)
+        }
     }
 }
 

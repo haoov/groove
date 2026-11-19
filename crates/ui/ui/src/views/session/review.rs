@@ -44,7 +44,12 @@ fn asking(ctx: &mut Ctx, band: Rect, ask: &Ask) {
     let row = Spec::default().height(ctx.tokens.row);
     let room = band.pad(Edges::all(ctx.tokens.md));
     let [first, second] = column_in(room, [row, row]);
-    let asks = crate::views::rail::asks_to(&ask.op).to_uppercase();
+    let asks = match ask.op.as_str() {
+        groove_controllers::agent_service::tools::APPLY_EDIT => {
+            groove_controllers::agent_service::tools::verb(&ask.op).to_uppercase()
+        }
+        op => crate::views::rail::asks_to(op).to_uppercase(),
+    };
     Label::new(&asks, ctx.styles.heading(Role::Attention)).draw(ctx, first);
     let mut second = second;
     answers(ctx, &mut second, &ask.id);

@@ -44,6 +44,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     }
 }
 
+pub(crate) use write::edit_asked;
 pub use write::{allow, drop_asks, refuse};
 
 /// The session the call was made from.

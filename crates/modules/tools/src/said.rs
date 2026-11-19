@@ -4,6 +4,9 @@ use serde_json::Value;
 
 /// The verb the rail puts after "asks to".
 pub fn verb(tool: &str) -> &'static str {
+    if tool == crate::APPLY_EDIT {
+        return "apply edit to a cluster object";
+    }
     crate::named(tool).map_or("write", |one| one.verb)
 }
 
@@ -22,7 +25,7 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "spawn_session" => joined(&said("title"), &said("brief")),
         "log_work" => joined(&said("what"), &said("why")),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
-        "kube_patch" | "kube_delete" => joined(&said("target"), &said("diff")),
+        "kube_patch" | "kube_delete" | crate::APPLY_EDIT => joined(&said("target"), &said("diff")),
         _ => shown(arguments),
     }
 }
