@@ -18,6 +18,9 @@ impl App {
                 .iter()
                 .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving)
             || groove_ui::spins(&self.state, &self.ui);
+        if groove_ui::fires(&self.state, &self.ui) {
+            return Some(Duration::from_millis(groove_ui::NEURON_MS));
+        }
         if moving {
             return Some(Duration::from_millis(groove_ui::SPINNER_MS));
         }

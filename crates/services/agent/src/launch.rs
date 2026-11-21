@@ -84,5 +84,6 @@ pub fn palette(theme: ThemeName) -> AnsiPalette {
         ThemeName::Macchiato => AnsiPalette::MACCHIATO,
         ThemeName::Mocha => AnsiPalette::MOCHA,
         ThemeName::Defense => AnsiPalette::DEFENSE,
+        ThemeName::DefenseLight => AnsiPalette::DEFENSE_LIGHT,
     }
 }

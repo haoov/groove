@@ -43,7 +43,7 @@ impl List {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let (board, area) = (ctx.app.layout.board, ctx.app.layout.lists);
     groove_ui_kit::widgets::ground_under(ctx, board, Ground::Deep);
-    groove_ui_kit::widgets::ground_grid(ctx, board);
+    groove_ui_kit::widgets::ground_lattice(ctx, board);
     for list in List::ALL {
         let column = column_of(area, list);
         let column = column.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));

@@ -121,39 +121,34 @@ fn a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box() {
 }
 
 #[test]
-fn the_defense_theme_lays_a_grid_on_the_deep_ground_and_the_others_none() {
-    let grid_in = |theme: groove_types::ThemeName| {
+fn the_defense_themes_lay_a_hex_lattice_on_the_deep_ground_and_the_others_none() {
+    let lattice_in = |theme: groove_types::ThemeName| {
         let mut app = crate::tests::screen::sourced(full_app(), true, true);
         let mut config = app.config.config.clone().expect("a config");
         config.ui.theme = theme;
         app.config.config = Some(config);
         let ui = Ui::default();
         let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-        let color = Styles::new(theme, Tokens::new(1.0)).grid();
+        let color = Styles::new(theme, Tokens::new(1.0)).lattice();
         let unders = frame.layers().iter().flat_map(|one| one.under.iter());
-        let lines: Vec<Rect> = unders
-            .filter(|(_, c)| Some(*c) == color)
-            .map(|(rect, _)| *rect)
+        let laid: Vec<Rect> = unders
+            .filter(|(_, c, shape)| Some(*c) == color && shape.lattice > 0.0)
+            .map(|(rect, ..)| *rect)
             .collect();
-        (lines, Layout::of(window(), &ui))
+        (laid, Layout::of(window(), &ui))
     };
-    let (lines, layout) = grid_in(groove_types::ThemeName::Defense);
-    assert!(!lines.is_empty(), "lines on the deep ground");
-    let pitch = groove_ui_kit::base::tokens::GRID;
-    assert!(
-        lines
-            .iter()
-            .all(|one| one.x % pitch == 0.0 || one.y % pitch == 0.0),
-        "every line on the grid's pitch, from the window's corner"
-    );
-    let agent = layout.agent;
-    assert!(
-        lines
-            .iter()
-            .any(|one| one.x > agent.x && one.x < agent.right() && one.h > 0.0),
-        "faint behind the agent's screen too"
-    );
-    let (none, _) = grid_in(groove_types::ThemeName::Mocha);
+    for theme in [
+        groove_types::ThemeName::Defense,
+        groove_types::ThemeName::DefenseLight,
+    ] {
+        let (laid, layout) = lattice_in(theme);
+        assert!(
+            laid.iter()
+                .any(|one| one.intersect(layout.agent) == layout.agent),
+            "{theme:?}: the lattice runs behind the agent's screen too"
+        );
+    }
+    let (none, _) = lattice_in(groove_types::ThemeName::Mocha);
     assert!(none.is_empty(), "no other theme lays one");
 }
 
@@ -178,5 +173,57 @@ fn a_boundary_is_grabbed_on_the_border_the_user_sees() {
     assert!(
         feed.y <= layout.feed.y && feed.bottom() >= layout.feed.y,
         "the feed's top"
+    );
+}
+
+#[test]
+fn signals_fire_across_the_lattice_only_while_the_session_s_agent_works() {
+    use groove_types::{AgentStatus, SessionActivity, SessionId, ThemeName, Timestamp};
+    let lit = |theme: ThemeName, status: AgentStatus| {
+        let mut app = crate::tests::screen::sourced(full_app(), true, true);
+        let mut config = app.config.config.clone().expect("a config");
+        config.ui.theme = theme;
+        app.config.config = Some(config);
+        let id = app
+            .session
+            .selected
+            .clone()
+            .unwrap_or_else(|| SessionId::new("a"));
+        let activity = SessionActivity {
+            status,
+            tool: None,
+            asks: Vec::new(),
+            changed_at: Timestamp::new(0),
+            seen_at: None,
+        };
+        let agent = groove_controllers::agent_service::Agent {
+            terminal: None,
+            activity,
+            started_at: Timestamp::new(0),
+            launch: 0,
+        };
+        app.agent.agents.push((id, agent));
+        let ui = Ui::default();
+        let mut metrics = window();
+        metrics.tick = 1900;
+        let (frame, _) = view(&app, &ui, metrics, &mut Fonts::embedded());
+        let unders = frame.layers().iter().flat_map(|one| one.under.iter());
+        let glows = unders.filter(|(_, _, shape)| shape.lattice > 0.0 && shape.blur > 0.0);
+        (glows.count() > 0, crate::fires(&app, &ui))
+    };
+    assert_eq!(lit(ThemeName::Defense, AgentStatus::Working), (true, true));
+    assert_eq!(
+        lit(ThemeName::DefenseLight, AgentStatus::Working),
+        (true, true)
+    );
+    assert_eq!(
+        lit(ThemeName::Defense, AgentStatus::Idle),
+        (false, false),
+        "idle: still"
+    );
+    assert_eq!(
+        lit(ThemeName::Mocha, AgentStatus::Working),
+        (false, false),
+        "no lattice"
     );
 }

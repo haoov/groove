@@ -14,6 +14,8 @@ struct Vertex {
     half: [f32; 2],
     /// The corners' radius, the width of the edge alone drawn, the fade, the stripes' gap.
     shape: [f32; 4],
+    /// The hexes' corner radius when their edges are drawn.
+    lattice: f32,
 }
 
 /// Consecutive quads under one scissor.
@@ -137,6 +139,7 @@ fn push_vertices(
             local: [x - centre.0, y - centre.1],
             half,
             shape: [shape.radius, shape.stroke, shape.blur, shape.hatch],
+            lattice: shape.lattice,
         });
     }
 }
@@ -170,7 +173,8 @@ fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderP
                 array_stride: std::mem::size_of::<Vertex>() as u64,
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: &wgpu::vertex_attr_array![
-                    0 => Float32x2, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4
+                    0 => Float32x2, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x4,
+                    5 => Float32
                 ],
             })],
             compilation_options: Default::default(),

@@ -14,6 +14,7 @@ mod inset;
 mod list;
 mod menu;
 mod modal;
+mod neurons;
 mod pane;
 mod popup;
 mod question;
@@ -41,9 +42,10 @@ pub use inset::{
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};
 pub use modal::{
-    Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_grid,
+    Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_lattice,
     ground_under, modal, panel_at, panel_head, solid_pane, sunk_pane,
 };
+pub use neurons::{NEURON_MS, neurons};
 pub use pane::{Side, aside_bounds, glass_aside};
 pub use popup::{Piece, Said, popup};
 pub use question::{offer, question};

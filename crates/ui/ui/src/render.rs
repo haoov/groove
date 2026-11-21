@@ -122,6 +122,15 @@ pub fn spins(app: &AppState, ui: &Ui) -> bool {
     up && operation.is_some_and(|one| one.running())
 }
 
+/// Whether signals fire across the lattice: a defense theme, on the session whose agent works.
+pub fn fires(app: &AppState, ui: &Ui) -> bool {
+    let working = app.session.selected().is_some_and(|open| {
+        let activity = app.agent.activity(&open.session.id);
+        activity.is_some_and(|one| one.class() == groove_types::AttentionClass::Moving)
+    });
+    app.config.theme().defense() && ui.showing(app) == Surface::Session && working
+}
+
 /// Each source's properties, read once while Providers shows its mapping.
 fn schemas(app: &AppState, ui: &Ui) -> Vec<Command> {
     let shown =

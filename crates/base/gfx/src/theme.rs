@@ -180,4 +180,35 @@ impl Palette {
         blue: Color::hex(0x4fd1e0),
         lavender: Color::hex(0xa8c8ff),
     };
+
+    /// Cyber defense by day: a pale steel ground, deep cyan for what is live and for focus,
+    /// burnt amber for what asks, red for what fails; each hue dark enough to read on the base.
+    pub const DEFENSE_LIGHT: Palette = Palette {
+        crust: Color::hex(0xe4ecef),
+        mantle: Color::hex(0xedf3f5),
+        base: Color::hex(0xf6f9fa),
+        surface0: Color::hex(0xdde6e9),
+        surface1: Color::hex(0xcfdade),
+        surface2: Color::hex(0xbfcdd2),
+        overlay0: Color::hex(0x5c7279),
+        overlay1: Color::hex(0x546a71),
+        overlay2: Color::hex(0x4f656c),
+        subtext0: Color::hex(0x455b62),
+        subtext1: Color::hex(0x30454c),
+        text: Color::hex(0x0e2128),
+        rosewater: Color::hex(0x007d8f),
+        flamingo: Color::hex(0xb9463d),
+        pink: Color::hex(0xb8336f),
+        mauve: Color::hex(0x6650d6),
+        red: Color::hex(0xc8322b),
+        maroon: Color::hex(0xb9463d),
+        peach: Color::hex(0xb0530a),
+        yellow: Color::hex(0x8a6a00),
+        green: Color::hex(0x00805a),
+        teal: Color::hex(0x00806d),
+        sky: Color::hex(0x08779e),
+        sapphire: Color::hex(0x0b6f99),
+        blue: Color::hex(0x007d8f),
+        lavender: Color::hex(0x3460c4),
+    };
 }
