@@ -416,10 +416,14 @@ under the agent and the strip, the terminal widget, the board and Settings. The 
 stand beside each other on it — the rail's two windows, the strip and its folded capsule, the
 terminals' drawer, Settings' sections — are opaque: the theme's base, edged by a hairline.
 Nothing passes under a panel, so glass would only show the same ground through it.
-The defense theme lays a grid on that deepest ground: a faint hairline every 32 pixels, counted
-from the window's corner, under everything — the panels cover it, and it runs faintly behind the
-agent's screen. No other theme lays one. Enforced by
-`the_defense_theme_lays_a_grid_on_the_deep_ground_and_the_others_none`.
+The defense themes, dark and light, lay a hex lattice on that deepest ground: the faint edges of
+hexes 18 pixels from centre to corner, pointy at the top, counted from the window's corner, under
+everything — the panels cover it, and it runs faintly behind the agent's screen. No other theme
+lays one. Enforced by `the_defense_themes_lay_a_hex_lattice_on_the_deep_ground_and_the_others_none`.
+While the session's agent works, signals fire across the session's lattice: each leaves the top of
+the ground, runs the hexes' edges down, fires the corner it reaches and branches on, the edges it
+crossed glowing behind it and fading. When the agent stops, so do they. Enforced by
+`signals_fire_across_the_lattice_only_while_the_session_s_agent_works`.
 Each panel is headed by its band — a step from its base toward the theme's first surface —
 ruled off under it by a hairline; a panel folded to its header is that band alone, laid before
 what stands on it. Enforced by `every_open_panel_is_headed_by_its_band_ruled_off_under_it` and
@@ -616,7 +620,7 @@ count in the list. Enforced by `setup_opens_once_when_the_first_check_finds_some
 | Clusters | a table, not rows: each added context with its hue and name, its read-only toggle, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Alerts | incident.io: the `inc` login as the last alerts read found it, with *log in*, which runs `inc auth login` on Settings' terminal · the poll interval |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
-| Appearance | theme — Latte, Frappé, Macchiato, Mocha, Defense (teal-black and steel, cyan for what is live and for focus, amber for what asks, coral for what fails; its terminals in the same colours) · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
+| Appearance | theme — Latte, Frappé, Macchiato, Mocha, Defense (teal-black and steel, cyan for what is live and for focus, amber for what asks, coral for what fails; its terminals in the same colours), Defense light (the same by day: pale steel, deep cyan, burnt amber, red) · UI font: Inter · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Language servers | each server the config names: its switch, the languages it serves, its program and what the check found it to be |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |
 | Keymap | every action with its chords; a chord is rebound by pressing it |

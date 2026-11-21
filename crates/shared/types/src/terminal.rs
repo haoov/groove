@@ -108,6 +108,31 @@ impl AnsiPalette {
         cursor: Rgb::hex(0x4fd1e0),
     };
 
+    /// Cyber defense by day: the light theme's deep hues on its panel ground.
+    pub const DEFENSE_LIGHT: AnsiPalette = AnsiPalette {
+        colors: [
+            Rgb::hex(0x30454c),
+            Rgb::hex(0xc8322b),
+            Rgb::hex(0x00805a),
+            Rgb::hex(0x8a6a00),
+            Rgb::hex(0x0b6f99),
+            Rgb::hex(0x6650d6),
+            Rgb::hex(0x007d8f),
+            Rgb::hex(0xa9bcc2),
+            Rgb::hex(0x5c7279),
+            Rgb::hex(0xb9463d),
+            Rgb::hex(0x0f9068),
+            Rgb::hex(0xa07c00),
+            Rgb::hex(0x08779e),
+            Rgb::hex(0x7a66e0),
+            Rgb::hex(0x008ca0),
+            Rgb::hex(0xc3d1d6),
+        ],
+        foreground: Rgb::hex(0x0e2128),
+        background: Rgb::hex(0xf6f9fa),
+        cursor: Rgb::hex(0x007d8f),
+    };
+
     pub const MOCHA: AnsiPalette = AnsiPalette {
         colors: [
             Rgb::hex(0x45475a),

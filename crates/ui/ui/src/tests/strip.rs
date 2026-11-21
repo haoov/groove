@@ -61,7 +61,7 @@ fn the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground() {
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
     let base = &frame.layers()[0];
-    assert!(base.under.iter().any(|(rect, _)| *rect == layout.board));
+    assert!(base.under.iter().any(|(rect, ..)| *rect == layout.board));
     let panes = crate::tests::panes(&frame, &app);
     assert!(
         panes.iter().any(|one| one.1 == layout.strip),

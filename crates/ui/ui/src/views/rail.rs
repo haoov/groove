@@ -106,7 +106,7 @@ pub(crate) fn group_of(app: &AppState, open: &Open) -> Group {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let layout = ctx.app.layout;
     ground_under(ctx, layout.rail, Ground::Deep);
-    groove_ui_kit::widgets::ground_grid(ctx, layout.rail);
+    groove_ui_kit::widgets::ground_lattice(ctx, layout.rail);
     solid_pane(ctx, layout.sessions);
     solid_pane(ctx, layout.feed);
     let tall = |height: f32| Spec::default().height(height);

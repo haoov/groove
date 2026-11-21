@@ -137,7 +137,7 @@ fn the_rail_stands_as_two_opaque_windows_inside_its_place() {
     let under = &frame.layers()[0].under;
     assert_eq!(
         under.first(),
-        Some(&(place, deep)),
+        Some(&(place, deep, groove_gfx::Shape::default())),
         "on the agent pane's ground"
     );
 }

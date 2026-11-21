@@ -134,6 +134,10 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.under(rect, color);
     }
 
+    pub(crate) fn under_shaped(&mut self, rect: Rect, color: Color, shape: groove_gfx::Shape) {
+        self.frame.under_shaped(rect, color, shape);
+    }
+
     pub(crate) fn veil(&mut self, color: Color) {
         self.frame.veil(color);
     }

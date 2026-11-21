@@ -44,6 +44,9 @@ pub struct Shape {
     pub blur: f32,
     /// The gap between diagonal stripes, drawn instead of a fill; none fills it.
     pub hatch: f32,
+    /// The corner radius of hexes whose edges are drawn, `stroke` wide, instead of a fill,
+    /// counted from the window's corner; none fills it. A fade keeps those near the middle.
+    pub lattice: f32,
 }
 
 /// One icon, drawn in its own box.
@@ -80,7 +83,7 @@ pub struct Glass {
 /// Grounds under glass, veil, glass, quads, then text; a later layer draws over an earlier one.
 #[derive(Default)]
 pub struct Layer {
-    pub under: Vec<(Rect, Color)>,
+    pub under: Vec<(Rect, Color, Shape)>,
     pub veil: Option<Color>,
     pub glass: Vec<Glass>,
     pub quads: Vec<Quad>,
@@ -207,7 +210,12 @@ impl Frame {
     /// Dims every layer below the top one, under what the top one draws.
     /// A ground under the top layer's glass, which shows it blurred.
     pub fn under(&mut self, rect: Rect, color: Color) {
-        self.top().under.push((rect, color));
+        self.under_shaped(rect, color, Shape::default());
+    }
+
+    /// A ground cut to `shape`, laid in turn with the others.
+    pub fn under_shaped(&mut self, rect: Rect, color: Color, shape: Shape) {
+        self.top().under.push((rect, color, shape));
     }
 
     pub fn veil(&mut self, color: Color) {

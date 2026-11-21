@@ -80,15 +80,19 @@ pub enum ThemeName {
     Mocha,
     /// Cyber defense: teal-black and steel, cyan for what is live.
     Defense,
+    /// Cyber defense by day: pale steel, deep cyan for what is live.
+    #[serde(rename = "defense-light")]
+    DefenseLight,
 }
 
 impl ThemeName {
-    pub const ALL: [ThemeName; 5] = [
+    pub const ALL: [ThemeName; 6] = [
         ThemeName::Latte,
         ThemeName::Frappe,
         ThemeName::Macchiato,
         ThemeName::Mocha,
         ThemeName::Defense,
+        ThemeName::DefenseLight,
     ];
 
     pub fn label(self) -> &'static str {
@@ -98,7 +102,13 @@ impl ThemeName {
             ThemeName::Macchiato => "macchiato",
             ThemeName::Mocha => "mocha",
             ThemeName::Defense => "defense",
+            ThemeName::DefenseLight => "defense light",
         }
+    }
+
+    /// The cyber defense themes, which lay a hex lattice on their deepest ground.
+    pub fn defense(self) -> bool {
+        matches!(self, ThemeName::Defense | ThemeName::DefenseLight)
     }
 }
 

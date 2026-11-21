@@ -210,8 +210,8 @@ impl Renderer {
 /// What a layer draws before its glass: the grounds under it, then its veil.
 fn backs((unders, veils): (&mut QuadPass, &mut QuadPass), i: usize, layer: &Layer, size: Size) {
     let all = size.rect();
-    for &(rect, color) in &layer.under {
-        unders.push(i, rect, color, 1.0, all, size);
+    for &(rect, color, shape) in &layer.under {
+        unders.push_shaped(i, (rect, shape), color, 1.0, all, size);
     }
     if let Some(veil) = layer.veil {
         veils.push(i, all, veil, 1.0, all, size);
