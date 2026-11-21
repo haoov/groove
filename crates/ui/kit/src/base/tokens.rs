@@ -95,7 +95,7 @@ pub const PANEL_HEAD: f32 = 0.45;
 /// The hex lattice a defense theme lays on its deepest ground — its hexes' corner radius in logical
 /// pixels, its alpha dark then light — and the radii of a neuron's body and halo firing on it.
 pub const HEX: f32 = 18.0;
-pub const LATTICE_ALPHA: (u8, u8) = (10, 28);
+pub const LATTICE_ALPHA: (u8, u8) = (5, 44);
 pub const NEURON: (f32, f32) = (3.0, 12.0);
 pub const OCCURS: f32 = 0.4;
 /// How much of the comment colour a scope's guide takes.

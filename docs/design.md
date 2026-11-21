@@ -420,8 +420,8 @@ The defense themes, dark and light, lay a hex lattice on that deepest ground: th
 hexes 18 pixels from centre to corner, pointy at the top, counted from the window's corner, under
 everything — the panels cover it, and it runs faintly behind the agent's screen. No other theme
 lays one. Enforced by `the_defense_themes_lay_a_hex_lattice_on_the_deep_ground_and_the_others_none`.
-While the session's agent works, signals fire across the session's lattice: each leaves the top of
-the ground, runs the hexes' edges down, fires the corner it reaches and branches on, the edges it
+While the session's agent works, signals fire across the session's lattice: each starts at a corner
+anywhere on the ground, runs the hexes' edges down, fires the corner it reaches and branches on, the edges it
 crossed glowing behind it and fading. When the agent stops, so do they. Enforced by
 `signals_fire_across_the_lattice_only_while_the_session_s_agent_works`.
 Each panel is headed by its band — a step from its base toward the theme's first surface —

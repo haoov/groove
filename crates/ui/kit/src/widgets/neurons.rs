@@ -1,5 +1,5 @@
-//! Signals firing across the hex lattice while an agent works: each leaves the top of the
-//! ground, runs the lattice's edges down, fires the corner it reaches and branches on, the path
+//! Signals firing across the hex lattice while an agent works: each leaves a corner anywhere on
+//! the ground, runs the lattice's edges down, fires the corner it reaches and branches on, the path
 //! it crossed glowing behind it as it fades. The clock alone draws them, so a frame at any tick
 //! shows the same.
 
@@ -22,9 +22,10 @@ const CASCADES: u64 = 3;
 /// How many hops a cascade runs, and how many signals one level holds at most.
 const LEVELS: u64 = 4;
 const WIDEST: usize = 4;
-/// The strongest a glow, a body and a halo stand.
-const GLOW_ALPHA: u8 = 120;
-const HALO_ALPHA: u8 = 80;
+/// The strongest a glow and a halo stand, dark then light: a dark hue blended in linear light
+/// over a pale ground reads far weaker than a light one over a dark ground.
+const GLOW_ALPHA: (u8, u8) = (120, 230);
+const HALO_ALPHA: (u8, u8) = (80, 170);
 
 /// A corner of the lattice: `j` half hex widths across, `l` rows of corners down.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -67,6 +68,10 @@ impl Lattice {
         let low = (c.j + c.l).rem_euclid(2) == 0;
         let y = (3 * c.l) as f32 * self.s / 2.0 + if low { self.s / 2.0 } else { 0.0 };
         (c.j as f32 * half_width(self.s), y)
+    }
+
+    fn row(&self, l: i32) -> bool {
+        (self.down.0..=self.down.1).contains(&l)
     }
 
     fn holds(&self) -> bool {
@@ -117,12 +122,13 @@ pub fn neurons<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
     }
 }
 
-/// A cascade from a corner at the top: each level's signals branch, run on or die out.
+/// A cascade from a corner anywhere on the ground, heading down: each level's signals branch,
+/// run on or die out.
 fn grown(lattice: &Lattice, dice: &mut Dice) -> (Vec<Hop>, Vec<(Corner, u64)>) {
-    let (left, right) = lattice.across;
+    let ((left, right), (top, bottom)) = (lattice.across, lattice.down);
     let root = Corner {
         j: left + dice.roll((right - left) as u64) as i32,
-        l: lattice.down.0,
+        l: top + dice.roll((bottom - top) as u64) as i32,
     };
     let (mut hops, mut fired) = (Vec::new(), vec![(root, 0)]);
     let mut front = vec![root];
@@ -135,7 +141,7 @@ fn grown(lattice: &Lattice, dice: &mut Dice) -> (Vec<Hop>, Vec<(Corner, u64)>) {
                 [0, 1, 1, 2, 2][dice.roll(5) as usize]
             };
             for kid in 0..kids {
-                if next.len() >= WIDEST || from.l >= lattice.down.1 {
+                if next.len() >= WIDEST || !lattice.row(from.l + 1) {
                     break;
                 }
                 let dir = if kids == 2 { kid * 2 - 1 } else { dice.side() };
@@ -168,12 +174,13 @@ fn walk(lattice: &Lattice, dice: &mut Dice, from: Corner, dir: i32) -> (Vec<(f32
         path.push(lattice.at(*at));
     };
     for drop in 0..=dice.roll(2) {
-        if at.l >= lattice.down.1 {
+        if !lattice.row(at.l + 1) {
             break;
         }
         for _ in 0..dice.roll(3) + u64::from(drop == 0) {
             step(&mut at, &mut path);
         }
+        // A side runs down from a hex's bottom corner.
         if (at.j + at.l).rem_euclid(2) != 0 {
             step(&mut at, &mut path);
         }
@@ -203,7 +210,7 @@ fn glow<A: App>(ctx: &mut Ctx<'_, A>, lattice: &Lattice, hop: &Hop, age: u64) {
             lit(
                 ctx,
                 along(&hop.path, x),
-                color.with_alpha(alpha(strength, GLOW_ALPHA)),
+                color.with_alpha(alpha(strength, ctx.styles.theme_alpha(GLOW_ALPHA))),
             );
         }
         x += step;
@@ -247,7 +254,7 @@ fn fire<A: App>(ctx: &mut Ctx<'_, A>, (x, y): (f32, f32), age: u64) {
             blur: r / 2.0,
             ..Shape::default()
         };
-        let faded = alpha(1.0 - spread, HALO_ALPHA);
+        let faded = alpha(1.0 - spread, ctx.styles.theme_alpha(HALO_ALPHA));
         ctx.under_shaped(ring, color.with_alpha(faded), shape);
     }
 }

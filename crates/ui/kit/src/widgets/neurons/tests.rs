@@ -24,13 +24,12 @@ fn every_hop_runs_the_lattice_s_edges_and_never_climbs() {
 }
 
 #[test]
-fn a_cascade_starts_at_the_top_branches_and_stays_inside() {
+fn a_cascade_starts_anywhere_branches_and_stays_inside() {
     let lattice = lattice();
     let rect = Rect::new(0.0, 40.0, 900.0, 600.0);
     for seed in 0..200 {
         let (hops, fired) = grown(&lattice, &mut Dice(seed));
         assert_eq!(fired[0].1, 0, "the root fires first");
-        assert_eq!(fired[0].0.l, lattice.down.0, "on the ground's first row");
         assert!(hops.len() >= 2, "the root splits in two");
         assert!(hops.len() <= 2 + WIDEST * (LEVELS as usize - 1));
         assert!(
@@ -85,4 +84,13 @@ fn signals_light_the_lattice_on_the_ground_and_fire_its_corners() {
 fn a_tick_draws_the_same_signals_each_time() {
     assert_eq!(unders_at(5321), unders_at(5321));
     assert_ne!(unders_at(5321), unders_at(5361), "and they move");
+}
+
+#[test]
+fn cascades_start_on_many_rows_not_only_the_top() {
+    let lattice = lattice();
+    let rows: std::collections::HashSet<i32> = (0..50)
+        .map(|seed| grown(&lattice, &mut Dice(seed)).1[0].0.l)
+        .collect();
+    assert!(rows.len() > 5, "roots on {rows:?}");
 }

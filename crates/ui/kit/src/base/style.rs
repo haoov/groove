@@ -235,6 +235,10 @@ impl Styles {
     }
 
     /// The alpha a tint takes on this theme, stronger on a light ground.
+    pub(crate) fn theme_alpha(&self, pair: (u8, u8)) -> u8 {
+        self.alpha(pair)
+    }
+
     fn alpha(&self, (dark, light): (u8, u8)) -> u8 {
         if self.light() { light } else { dark }
     }
