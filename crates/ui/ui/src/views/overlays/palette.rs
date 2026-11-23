@@ -21,7 +21,8 @@ use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Lead, Material, Row, glass_list, modal, stepped_input};
 
 /// The command palette: an input line, then the entries or the prompt's options.
-pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
+/// `open` is how far it has appeared: it drops into its place as it does.
+pub fn draw(ctx: &mut Ctx, app: &AppState, (palette, open): (&Palette, f32)) {
     let prompt = palette.prompt(app);
     let rows = listed(app, palette, &prompt);
     let lines = lines(&rows, prompt.is_none());
@@ -30,12 +31,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let rows_high = ctx.tokens.glass_row * shown as f32 + ctx.tokens.sm;
     let height = rows_high + ctx.tokens.bar + ctx.tokens.xs * 2.0;
     let edge = (ctx.styles.border(), Material::Glass);
-    let rect = modal(
-        ctx,
-        (ctx.tokens.palette, height),
-        ctx.tokens.modal_top,
-        edge,
-    );
+    let top = ctx.tokens.modal_top - ctx.tokens.sm * (1.0 - open);
+    let rect = modal(ctx, (ctx.tokens.palette, height), top, edge);
     ctx.hit(rect, Target::Palette);
     // The query line on the panel's band, ruled off across its width; the ring says it has the keys.
     let band = groove_ui_kit::shape::band(rect, 0.0, ctx.tokens.bar + ctx.tokens.xs * 2.0);

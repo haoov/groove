@@ -42,11 +42,16 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
                 session::diff::completion::draw(&mut ctx, app, ui);
             }
         }
+        // What opens over the window appears: its layers fade in as it drops into place.
+        let open = ui.motion.opening(metrics.tick);
+        if open < 1.0 {
+            ctx.fading(open);
+        }
         if let Some(menu) = ui.menu() {
             overlays::actions::draw(&mut ctx, menu);
         }
         if let Some(palette) = ui.palette() {
-            overlays::palette::draw(&mut ctx, app, palette);
+            overlays::palette::draw(&mut ctx, app, (palette, open));
         }
         if let Some(crate::Overlay::Scope(scoping)) = &ui.overlay {
             overlays::scope::draw(&mut ctx, app, ui, scoping);

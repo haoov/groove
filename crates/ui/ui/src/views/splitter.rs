@@ -12,10 +12,12 @@ use crate::layout::Edge;
 /// neither the rail's edge nor the one between its windows is there.
 pub fn draw(ctx: &mut Ctx, surface: Surface, (stowed, folded): (bool, bool)) {
     for edge in shown(surface) {
-        if stowed && folded && matches!(edge, Edge::Rail | Edge::Feed) {
+        // With either rail window folded the other takes the column: nothing to drag between.
+        let rail = stowed && folded && *edge == Edge::Rail;
+        if rail || ((stowed || folded) && *edge == Edge::Feed) {
             continue;
         }
-        let Some(band) = band(ctx, *edge, folded) else {
+        let Some(band) = band(ctx, *edge) else {
             continue;
         };
         ctx.hit(band, Target::Split(*edge));
@@ -38,7 +40,7 @@ fn shown(surface: Surface) -> &'static [Edge] {
 }
 
 /// The band to grab a boundary by, or nothing when its column is folded.
-fn band(ctx: &Ctx, edge: Edge, feed_folded: bool) -> Option<Rect> {
+fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
     let (grab, window) = (ctx.tokens.grab, ctx.window);
     let upright = |x: f32| groove_ui_kit::shape::strip(window, x - grab / 2.0, grab);
     let aside = ctx.app.layout.sidebar;
@@ -61,17 +63,15 @@ fn band(ctx: &Ctx, edge: Edge, feed_folded: bool) -> Option<Rect> {
         }
         Edge::Manual => {
             let manual = ctx.app.layout.manual;
-            let open = manual.h > ctx.tokens.bar;
+            // Under a folded strip the drawer reaches its header: no line to drag.
+            let open = manual.h > ctx.tokens.bar && !ctx.app.layout.workspace.is_empty();
             open.then(|| groove_ui_kit::shape::band(manual, -grab / 2.0, grab))
         }
-        // On the feed's top; with the feed folded, on the sessions' foot, which it sizes.
+        // On the feed's top, both windows open.
         Edge::Feed => {
             let (sessions, feed) = (ctx.app.layout.sessions, ctx.app.layout.feed);
             let rail = Edges::across(0.0, ctx.tokens.hairline);
-            let at = match feed_folded {
-                true => sessions.h,
-                false => feed.y - sessions.y,
-            };
+            let at = feed.y - sessions.y;
             Some(groove_ui_kit::shape::band(sessions, at - grab / 2.0, grab).pad(rail))
         }
     }

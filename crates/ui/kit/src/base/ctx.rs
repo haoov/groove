@@ -175,6 +175,11 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.grid(grid);
     }
 
+    /// Everything after this draws over what came before, at `opacity`.
+    pub fn fading(&mut self, opacity: f32) {
+        self.frame.fading(opacity);
+    }
+
     /// Everything after this draws over what came before.
     pub fn layer(&mut self) {
         self.frame.layer();

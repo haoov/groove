@@ -174,6 +174,9 @@ pub struct UiConfig {
     /// Long lines of code wrap to the editor's width.
     #[serde(default)]
     pub wrap_code: bool,
+    /// Panels fold and what opens over the window appears at once, with no motion.
+    #[serde(default)]
+    pub reduce_motion: bool,
 }
 
 impl Default for UiConfig {
@@ -186,6 +189,7 @@ impl Default for UiConfig {
             font_family: String::new(),
             mono_font_family: String::new(),
             wrap_code: false,
+            reduce_motion: false,
         }
     }
 }

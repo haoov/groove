@@ -16,7 +16,7 @@ fn header_click(ui: &mut Ui, app: &groove_controllers::AppState) {
 }
 
 #[test]
-fn a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_keeps_its_height() {
+fn a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_takes_the_column() {
     let app = full_app();
     let mut ui = Ui::default();
     let open = Layout::of(window(), &ui);
@@ -26,17 +26,23 @@ fn a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_keeps_its_
     let tokens = window().tokens();
     assert_eq!(folded.sessions.h, tokens.bar, "the header alone");
     assert_eq!(folded.sessions.y, open.sessions.y, "where it stood");
-    assert_eq!(folded.feed, open.feed, "the feed as it stood");
+    assert_eq!(
+        folded.feed.bottom(),
+        open.feed.bottom(),
+        "the feed at the foot"
+    );
+    assert_eq!(
+        folded.feed.y,
+        folded.sessions.bottom() + tokens.sm,
+        "up to the sessions' header"
+    );
 
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(hits.rect_of(&Target::Board).is_none(), "no Board row");
     let row = Target::Session(groove_types::SessionId::new("a"));
     assert!(hits.rect_of(&row).is_none(), "no session row");
     let edge = Target::Split(Edge::Feed);
-    assert!(
-        hits.rect_of(&edge).is_some(),
-        "the feed's top still dragged"
-    );
+    assert!(hits.rect_of(&edge).is_none(), "nothing to drag between");
 
     header_click(&mut ui, &app);
     assert!(!ui.rail.stowed);

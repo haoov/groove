@@ -38,6 +38,8 @@ pub struct Ui {
     pub spoken: views::session::diff::popup::Spoken,
     pub blocked: views::session::diff::blocks::Blocked,
     pub compacted: views::session::diff::wrap::Compacted,
+    /// What the user moved and is still moving.
+    pub motion: crate::Motion,
 }
 
 /// What stands over the surface, one at a time.

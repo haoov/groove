@@ -1,7 +1,7 @@
 //! The renderer: a surface or an offscreen target, and one frame onto it.
 
 use crate::backdrop::Backdrop;
-use crate::frame::Layer;
+use crate::frame::{IconDraw, Layer, TextRun};
 use crate::glass::GlassPass;
 use crate::gpu::Gpu;
 use crate::quads::QuadPass;
@@ -168,21 +168,7 @@ impl Renderer {
         self.quads.begin(layers);
         self.text.begin(layers, device, queue, self.size);
         for (i, layer) in frame.layers.iter().enumerate() {
-            backs((&mut self.unders, &mut self.veils), i, layer, self.size);
-            for g in &layer.glass {
-                self.glass.push(i, g, self.size);
-            }
-            for q in &layer.quads {
-                let shaped = (q.rect, q.shape);
-                self.quads
-                    .push_shaped(i, shaped, q.color, 1.0, q.clip, self.size);
-            }
-            for run in &layer.texts {
-                self.text.push_run(i, &mut self.fonts, run);
-            }
-            for icon in &layer.icons {
-                self.text.push_icon(i, icon);
-            }
+            self.push_layer(i, layer);
             for g in &layer.grids {
                 let cell = self.fonts.cell_size(g.font_size);
                 grid::push_grid(
@@ -196,6 +182,7 @@ impl Renderer {
                 );
             }
         }
+        let (device, queue) = (&self.gpu.device, &self.gpu.queue);
         if frame.backdrop().is_some() {
             self.backdrop.fit(device, self.size);
         }
@@ -207,15 +194,51 @@ impl Renderer {
     }
 }
 
+impl Renderer {
+    /// A layer's grounds, glass, quads, text and icons, each at the layer's opacity.
+    fn push_layer(&mut self, i: usize, layer: &Layer) {
+        let opacity = 1.0 - layer.fade;
+        backs((&mut self.unders, &mut self.veils), i, layer, self.size);
+        for g in &layer.glass {
+            self.glass.push(i, (g, opacity), self.size);
+        }
+        for q in &layer.quads {
+            let shaped = (q.rect, q.shape);
+            self.quads
+                .push_shaped(i, shaped, q.color, opacity, q.clip, self.size);
+        }
+        for run in &layer.texts {
+            match layer.fade > 0.0 {
+                true => self
+                    .text
+                    .push_run(i, &mut self.fonts, &faded_run(run, opacity)),
+                false => self.text.push_run(i, &mut self.fonts, run),
+            }
+        }
+        for icon in &layer.icons {
+            let color = icon.color.faded(opacity);
+            self.text.push_icon(i, &IconDraw { color, ..*icon });
+        }
+    }
+}
+
 /// What a layer draws before its glass: the grounds under it, then its veil.
 fn backs((unders, veils): (&mut QuadPass, &mut QuadPass), i: usize, layer: &Layer, size: Size) {
     let all = size.rect();
+    let opacity = 1.0 - layer.fade;
     for &(rect, color, shape) in &layer.under {
-        unders.push_shaped(i, (rect, shape), color, 1.0, all, size);
+        unders.push_shaped(i, (rect, shape), color, opacity, all, size);
     }
     if let Some(veil) = layer.veil {
-        veils.push(i, all, veil, 1.0, all, size);
+        veils.push(i, all, veil, opacity, all, size);
     }
+}
+
+/// `run` with its colour taken down to `opacity`.
+fn faded_run(run: &TextRun, opacity: f32) -> TextRun {
+    let mut faded = run.clone();
+    faded.style.color = run.style.color.faded(opacity);
+    faded
 }
 
 /// The surface's own format, viewed as sRGB.

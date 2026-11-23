@@ -36,6 +36,13 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     fonts.extend(sizes(app));
     let mut out = grouped("Theme", vec![theme]);
     out.extend(grouped("Fonts", fonts));
+    out.extend(switches(&ui));
+    out
+}
+
+/// Long lines wrapping, and motion reduced.
+fn switches(ui: &groove_types::UiConfig) -> Vec<Row> {
+    let section = Section::Appearance;
     let wrap = Value::Toggle {
         on: ui.wrap_code,
         flip: Preference::WrapCode(!ui.wrap_code),
@@ -46,7 +53,18 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
         "code editor wrap soft lines",
         wrap,
     );
-    out.extend(grouped("Code", vec![wrapping]));
+    let mut out = grouped("Code", vec![wrapping]);
+    let still = Value::Toggle {
+        on: ui.reduce_motion,
+        flip: Preference::ReduceMotion(!ui.reduce_motion),
+    };
+    let motion = Row::new(
+        section,
+        "reduce motion",
+        "animation fold palette still",
+        still,
+    );
+    out.extend(grouped("Motion", vec![motion]));
     out
 }
 
