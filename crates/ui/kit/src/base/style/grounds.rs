@@ -112,10 +112,15 @@ impl Styles {
         self.palette.text.with_alpha(self.alpha(GLASS_CHOSEN_ALPHA))
     }
 
-    /// The grid's lines on the deepest ground, for a theme that lays one; none for the others.
-    pub fn grid(&self) -> Option<Color> {
-        let alpha = crate::base::tokens::GRID_ALPHA;
-        self.grid.then(|| self.palette.sky.with_alpha(alpha))
+    /// The lattice's lines on the deepest ground, for a theme that lays one; none for the others.
+    pub fn lattice(&self) -> Option<Color> {
+        let alpha = self.alpha(crate::base::tokens::LATTICE_ALPHA);
+        self.lattice.then(|| self.palette.sky.with_alpha(alpha))
+    }
+
+    /// A signal firing across the lattice: the colour of what is live.
+    pub fn neuron(&self) -> Color {
+        self.palette.rosewater
     }
 
     /// A panel's header band: a step from its base toward the first surface, ruled off under it.

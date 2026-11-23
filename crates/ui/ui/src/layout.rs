@@ -7,8 +7,10 @@ use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Boxes, Node, Spec};
 
+mod folds;
 mod split;
 
+pub use folds::Folds;
 pub use split::{Edge, Split};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -94,40 +96,34 @@ impl Layout {
         }
     }
 
-    pub fn of(metrics: Metrics, ui: &Ui) -> Self {
+    /// Where everything stands with these folds.
+    fn folded(metrics: Metrics, ui: &Ui, folds: Folds) -> Self {
         let tokens = metrics.tokens();
-        let mut held = Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar());
-        // A window folds to its header; the other keeps the height it was given.
-        if ui.rail.folded {
-            let feed = held.feed;
-            let tall = tokens.bar.min(feed.h);
-            held.feed = Rect::new(feed.x, feed.bottom() - tall, feed.w, tall);
-        }
-        if ui.rail.stowed {
-            held.sessions.h = tokens.bar.min(held.sessions.h);
-        }
-        let asked = ui.examining().is_some() || ui.losing() == Some(&crate::Losing::Everything);
-        let stowing = ui.session.stowed && !asked;
-        // The terminals keep the height they were given, the strip folded or not.
-        let tall = match ui.session.manual {
-            true => (ui.split.manual * tokens.scale).floor(),
-            false => tokens.bar,
+        let mut held = Self::new(metrics.size, &tokens, ui.split, folds.sidebar);
+        held = held.rail_folds(&tokens, folds);
+        let stowing = folds.strip;
+        // Open, the terminals keep the height they were given; under a folded strip they rise to
+        // its header.
+        let tall = match (folds.manual, stowing) {
+            (true, true) => held.strip.h,
+            (true, false) => (ui.split.manual * tokens.scale).floor(),
+            (false, _) => tokens.bar,
         };
         held = held.drawer(tall, tokens.sm);
         if stowing {
-            held = held.stowed(!ui.session.manual);
+            held = held.stowed(!folds.manual);
         }
         held = match ui.session.alone {
             true => held.alone(),
             false => held,
         };
-        let over_rail = ui.rail.stowed && ui.rail.folded;
+        let over_rail = folds.sessions && folds.feed;
         if over_rail {
             held = held.over_rail();
         }
         if ui.alerts.shown {
             let reach = (ui.split.alerts * tokens.scale).floor();
-            held = held.alerts(&tokens, (ui.alerts.open, reach), (over_rail, stowing));
+            held = held.alerts(&tokens, (folds.alerts, reach), (over_rail, stowing));
         }
         held
     }

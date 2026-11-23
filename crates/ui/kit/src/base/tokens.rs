@@ -72,13 +72,11 @@ pub const COMPLETION_ROWS: usize = 10;
 pub const RAIL_MIN: f32 = 160.0;
 /// How many lines one notch of a wheel carries the agent's screen.
 pub const NOTCH: f32 = 3.0;
-
 /// The feed and the footer under it, at their shortest.
 pub const FEED_MIN: f32 = 96.0;
 
 /// What the rail's own rows keep whatever the feed takes.
 pub const SESSIONS_MIN: f32 = 120.0;
-
 /// The smallest the commit box and the list above it may be.
 pub const COMMIT_MIN: f32 = 72.0;
 pub const FILES_MIN: f32 = 120.0;
@@ -94,9 +92,11 @@ pub const SIDEBAR_MIN: f32 = 180.0;
 pub const HELD: f32 = 0.8;
 /// How far a panel's header band stands from its base toward the theme's first surface.
 pub const PANEL_HEAD: f32 = 0.45;
-/// The grid a theme lays on its deepest ground: a hairline every this many logical pixels, and its alpha.
-pub const GRID: f32 = 32.0;
-pub const GRID_ALPHA: u8 = 2;
+/// The hex lattice a defense theme lays on its deepest ground — its hexes' corner radius in logical
+/// pixels, its alpha dark then light — and the radii of a neuron's body and halo firing on it.
+pub const HEX: f32 = 18.0;
+pub const LATTICE_ALPHA: (u8, u8) = (5, 44);
+pub const NEURON: (f32, f32) = (3.0, 12.0);
 pub const OCCURS: f32 = 0.4;
 /// How much of the comment colour a scope's guide takes.
 pub const GUIDE: f32 = 0.55;

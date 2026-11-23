@@ -41,8 +41,8 @@ pub enum Role {
 pub struct Styles {
     palette: Palette,
     tokens: Tokens,
-    /// The theme lays a grid on its deepest ground.
-    grid: bool,
+    /// The theme lays a hex lattice on its deepest ground.
+    lattice: bool,
 }
 
 impl Styles {
@@ -50,7 +50,7 @@ impl Styles {
         Self {
             palette: crate::base::palette::flavour(theme),
             tokens,
-            grid: theme == ThemeName::Defense,
+            lattice: theme.defense(),
         }
     }
 
@@ -235,6 +235,10 @@ impl Styles {
     }
 
     /// The alpha a tint takes on this theme, stronger on a light ground.
+    pub(crate) fn theme_alpha(&self, pair: (u8, u8)) -> u8 {
+        self.alpha(pair)
+    }
+
     fn alpha(&self, (dark, light): (u8, u8)) -> u8 {
         if self.light() { light } else { dark }
     }

@@ -27,23 +27,16 @@ pub struct TextStyle {
     pub color: Color,
 }
 
+mod shape;
+
+pub use shape::Shape;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Quad {
     pub rect: Rect,
     pub color: Color,
     pub clip: Rect,
     pub shape: Shape,
-}
-
-/// How a quad is cut: its corners' radius, the width of its edge when only that is drawn, its fade.
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
-pub struct Shape {
-    pub radius: f32,
-    pub stroke: f32,
-    /// How far the quad fades out inside its edge; none keeps it sharp.
-    pub blur: f32,
-    /// The gap between diagonal stripes, drawn instead of a fill; none fills it.
-    pub hatch: f32,
 }
 
 /// One icon, drawn in its own box.
@@ -80,13 +73,15 @@ pub struct Glass {
 /// Grounds under glass, veil, glass, quads, then text; a later layer draws over an earlier one.
 #[derive(Default)]
 pub struct Layer {
-    pub under: Vec<(Rect, Color)>,
+    pub under: Vec<(Rect, Color, Shape)>,
     pub veil: Option<Color>,
     pub glass: Vec<Glass>,
     pub quads: Vec<Quad>,
     pub texts: Vec<TextRun>,
     pub grids: Vec<CellGrid>,
     pub icons: Vec<IconDraw>,
+    /// How far the whole layer has faded out, a later one taking it on; none draws it whole.
+    pub fade: f32,
 }
 
 /// The display list for one frame.
@@ -109,7 +104,17 @@ impl Frame {
 
     /// Everything emitted after this draws over what came before.
     pub fn layer(&mut self) {
-        self.layers.push(Layer::default());
+        let fade = self.top().fade;
+        self.layers.push(Layer {
+            fade,
+            ..Layer::default()
+        });
+    }
+
+    /// A new layer, and every one after it, drawn at `opacity`.
+    pub fn fading(&mut self, opacity: f32) {
+        self.layer();
+        self.top().fade = 1.0 - opacity.clamp(0.0, 1.0);
     }
 
     pub fn layers(&self) -> &[Layer] {
@@ -207,7 +212,12 @@ impl Frame {
     /// Dims every layer below the top one, under what the top one draws.
     /// A ground under the top layer's glass, which shows it blurred.
     pub fn under(&mut self, rect: Rect, color: Color) {
-        self.top().under.push((rect, color));
+        self.under_shaped(rect, color, Shape::default());
+    }
+
+    /// A ground cut to `shape`, laid in turn with the others.
+    pub fn under_shaped(&mut self, rect: Rect, color: Color, shape: Shape) {
+        self.top().under.push((rect, color, shape));
     }
 
     pub fn veil(&mut self, color: Color) {
@@ -237,7 +247,8 @@ impl Frame {
 
     pub fn text(&mut self, text: impl Into<String>, x: f32, y: f32, height: f32, style: TextStyle) {
         let text = text.into();
-        if text.is_empty() {
+        // A line with no room, as a panel folding leaves for a moment, has nothing to show.
+        if text.is_empty() || height <= 0.0 || style.size <= 0.0 {
             return;
         }
         let clip = self.clip();

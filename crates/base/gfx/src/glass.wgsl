@@ -11,6 +11,7 @@ struct VsOut {
   @location(2) half: vec2<f32>,
   @location(3) radius: f32,
   @location(4) screen: vec2<f32>,
+  @location(5) opacity: f32,
 };
 
 @vertex
@@ -21,6 +22,7 @@ fn vs(
   @location(3) half: vec2<f32>,
   @location(4) radius: f32,
   @location(5) screen: vec2<f32>,
+  @location(6) opacity: f32,
 ) -> VsOut {
   var o: VsOut;
   o.pos = vec4<f32>(pos, 0.0, 1.0);
@@ -29,6 +31,7 @@ fn vs(
   o.half = half;
   o.radius = radius;
   o.screen = screen;
+  o.opacity = opacity;
   return o;
 }
 
@@ -48,5 +51,5 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
   let uv = clamp(in.pos.xy / in.screen, vec2<f32>(0.0), vec2<f32>(1.0));
   let under = textureSampleLevel(blurred, smp, uv, 0.0).rgb;
   let color = mix(under, in.tint.rgb, in.tint.a);
-  return vec4<f32>(color, cover);
+  return vec4<f32>(color, cover * in.opacity);
 }

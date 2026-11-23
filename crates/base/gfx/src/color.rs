@@ -33,6 +33,12 @@ impl Color {
         )
     }
 
+    /// This colour with its alpha taken down to `opacity` of itself.
+    pub fn faded(self, opacity: f32) -> Color {
+        let a = (f32::from(self.a) * opacity.clamp(0.0, 1.0)).round() as u8;
+        Color { a, ..self }
+    }
+
     /// `0xRRGGBB`.
     pub const fn hex(rgb: u32) -> Self {
         Self::rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)

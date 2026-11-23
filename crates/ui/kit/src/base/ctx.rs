@@ -134,6 +134,10 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.under(rect, color);
     }
 
+    pub(crate) fn under_shaped(&mut self, rect: Rect, color: Color, shape: groove_gfx::Shape) {
+        self.frame.under_shaped(rect, color, shape);
+    }
+
     pub(crate) fn veil(&mut self, color: Color) {
         self.frame.veil(color);
     }
@@ -169,6 +173,11 @@ impl<'a, A: App> Ctx<'a, A> {
 
     pub(crate) fn grid(&mut self, grid: CellGrid) {
         self.frame.grid(grid);
+    }
+
+    /// Everything after this draws over what came before, at `opacity`.
+    pub fn fading(&mut self, opacity: f32) {
+        self.frame.fading(opacity);
     }
 
     /// Everything after this draws over what came before.

@@ -14,6 +14,8 @@ struct Vertex {
     /// The corners' radius.
     radius: f32,
     screen: [f32; 2],
+    /// How much of the pane shows, its layer fading.
+    opacity: f32,
 }
 
 struct Batch {
@@ -49,13 +51,13 @@ impl GlassPass {
         self.layers.resize_with(layers, Vec::new);
     }
 
-    pub fn push(&mut self, layer: usize, glass: &Glass, size: Size) {
+    pub fn push(&mut self, layer: usize, (glass, opacity): (&Glass, f32), size: Size) {
         let rect = glass.rect.intersect(glass.clip);
         if rect.is_empty() {
             return;
         }
         let start = self.verts.len() as u32;
-        push_vertices(&mut self.verts, (rect, glass), size);
+        push_vertices(&mut self.verts, (rect, glass, opacity), size);
         self.layers[layer].push(Batch {
             clip: glass.clip,
             range: start..self.verts.len() as u32,
@@ -99,7 +101,7 @@ impl GlassPass {
 }
 
 /// The part `r` of the pane, in pixels, as two triangles in clip space.
-fn push_vertices(verts: &mut Vec<Vertex>, (r, glass): (Rect, &Glass), size: Size) {
+fn push_vertices(verts: &mut Vec<Vertex>, (r, glass, opacity): (Rect, &Glass, f32), size: Size) {
     let screen = [size.width as f32, size.height as f32];
     let ndc = |x: f32, y: f32| [x / screen[0] * 2.0 - 1.0, 1.0 - y / screen[1] * 2.0];
     let whole = glass.rect;
@@ -115,6 +117,7 @@ fn push_vertices(verts: &mut Vec<Vertex>, (r, glass): (Rect, &Glass), size: Size
             half,
             radius: glass.radius,
             screen,
+            opacity,
         });
     }
 }
@@ -153,7 +156,7 @@ fn pipeline(
                 step_mode: wgpu::VertexStepMode::Vertex,
                 attributes: &wgpu::vertex_attr_array![
                     0 => Float32x2, 1 => Float32x4, 2 => Float32x2,
-                    3 => Float32x2, 4 => Float32, 5 => Float32x2
+                    3 => Float32x2, 4 => Float32, 5 => Float32x2, 6 => Float32
                 ],
             })],
             compilation_options: Default::default(),

@@ -123,7 +123,7 @@ fn an_open_drawer_rises_its_height_and_the_strip_ends_above_it() {
 }
 
 #[test]
-fn an_open_drawer_keeps_its_height_beside_the_agent_while_the_strip_is_folded() {
+fn an_open_drawer_rises_to_the_folded_strip_s_header_beside_the_agent() {
     let mut ui = Ui::default();
     ui.session.stowed = true;
     let wide = Layout::of(window(), &ui);
@@ -144,15 +144,18 @@ fn an_open_drawer_keeps_its_height_beside_the_agent_while_the_strip_is_folded() 
     );
     assert_eq!(narrow.strip.h, narrow.header.h, "the strip still folded");
     let sm = window().tokens().sm;
-    let dragged = (ui.split.manual * window().tokens().scale).floor();
-    assert_eq!(narrow.manual.h, dragged, "the height it was given");
+    assert_eq!(
+        narrow.manual.y,
+        narrow.header.bottom() + sm,
+        "up to the header"
+    );
     assert_eq!(narrow.manual.bottom(), narrow.window.bottom() - sm);
     let app = full_app();
     let (_, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    for edge in [crate::layout::Edge::Manual, crate::layout::Edge::Agent] {
-        let target = crate::hit::Target::Split(edge);
-        assert!(hits.rect_of(&target).is_some(), "{edge:?} dragged");
-    }
+    let agent = crate::hit::Target::Split(crate::layout::Edge::Agent);
+    assert!(hits.rect_of(&agent).is_some(), "its side dragged");
+    let manual = crate::hit::Target::Split(crate::layout::Edge::Manual);
+    assert!(hits.rect_of(&manual).is_none(), "its top not");
     ui.session.manual = false;
     assert_eq!(
         Layout::of(window(), &ui).agent.w,

@@ -42,11 +42,16 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
                 session::diff::completion::draw(&mut ctx, app, ui);
             }
         }
+        // What opens over the window appears: its layers fade in as it drops into place.
+        let open = ui.motion.opening(metrics.tick);
+        if open < 1.0 {
+            ctx.fading(open);
+        }
         if let Some(menu) = ui.menu() {
             overlays::actions::draw(&mut ctx, menu);
         }
         if let Some(palette) = ui.palette() {
-            overlays::palette::draw(&mut ctx, app, palette);
+            overlays::palette::draw(&mut ctx, app, (palette, open));
         }
         if let Some(crate::Overlay::Scope(scoping)) = &ui.overlay {
             overlays::scope::draw(&mut ctx, app, ui, scoping);
@@ -120,6 +125,15 @@ pub fn spins(app: &AppState, ui: &Ui) -> bool {
         .and_then(|one| one.link.read(app));
     let operation = read.and_then(|one| one.app.as_ref()?.operation.as_ref());
     up && operation.is_some_and(|one| one.running())
+}
+
+/// Whether signals fire across the lattice: a defense theme, on the session whose agent works.
+pub fn fires(app: &AppState, ui: &Ui) -> bool {
+    let working = app.session.selected().is_some_and(|open| {
+        let activity = app.agent.activity(&open.session.id);
+        activity.is_some_and(|one| one.class() == groove_types::AttentionClass::Moving)
+    });
+    app.config.theme().defense() && ui.showing(app) == Surface::Session && working
 }
 
 /// Each source's properties, read once while Providers shows its mapping.

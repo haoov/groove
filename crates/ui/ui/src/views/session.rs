@@ -33,7 +33,10 @@ use groove_ui_kit::widgets::{Button, ground_under, solid_pane};
 /// The session: the agent on its ground, the workspace in a strip of glass beside it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ground_under(ctx, ctx.app.layout.board, Ground::Deep);
-    groove_ui_kit::widgets::ground_grid(ctx, ctx.app.layout.board);
+    groove_ui_kit::widgets::ground_lattice(ctx, ctx.app.layout.board);
+    if crate::render::fires(app, ui) {
+        groove_ui_kit::widgets::neurons(ctx, ctx.app.layout.board);
+    }
     if ui.session.alone && app.session.selected().is_some() {
         agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
         return crate::views::focus::draw(ctx, app, ui);

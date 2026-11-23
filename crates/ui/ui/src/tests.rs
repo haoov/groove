@@ -25,6 +25,7 @@ mod hover;
 mod keymap;
 mod manual;
 mod mapping;
+mod motion;
 mod mouse;
 mod overview;
 mod painted;

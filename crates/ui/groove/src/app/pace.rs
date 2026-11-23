@@ -18,10 +18,16 @@ impl App {
                 .iter()
                 .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving)
             || groove_ui::spins(&self.state, &self.ui);
+        let tick = self.started.elapsed().as_millis() as u64;
+        if self.ui.motion.moving(tick) {
+            return Some(Duration::from_millis(groove_ui::MOTION_MS));
+        }
+        if groove_ui::fires(&self.state, &self.ui) {
+            return Some(Duration::from_millis(groove_ui::NEURON_MS));
+        }
         if moving {
             return Some(Duration::from_millis(groove_ui::SPINNER_MS));
         }
-        let tick = self.started.elapsed().as_millis() as u64;
         if let Some(left) = groove_ui::input::resting(&self.ui, tick) {
             return Some(Duration::from_millis(left));
         }

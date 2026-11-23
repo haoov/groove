@@ -196,3 +196,26 @@ fn light_text_takes_lilex_s_light_face_and_regular_where_a_family_has_none() {
     assert_eq!(weight_of("Lilex"), Some(300));
     assert_eq!(weight_of("IBM Plex Mono"), Some(400));
 }
+
+#[test]
+fn a_line_with_no_room_is_not_drawn() {
+    let mut frame = Frame::new(Size::new(64, 64), Color::BLACK);
+    let style = TextStyle {
+        font: Font::Sans,
+        weight: Weight::Regular,
+        size: 13.0,
+        color: Color::WHITE,
+    };
+    frame.text("folded away", 0.0, 0.0, 0.0, style);
+    frame.text("shown", 0.0, 0.0, 16.0, style);
+    let texts: Vec<&str> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|run| run.text.as_str())
+        .collect();
+    assert_eq!(
+        texts,
+        ["shown"],
+        "a line folded to nothing would stop the frame"
+    );
+}

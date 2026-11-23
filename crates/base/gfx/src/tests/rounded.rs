@@ -56,3 +56,49 @@ fn a_hatch_draws_thin_stripes_and_leaves_the_rest() {
     assert_eq!(stripes.len(), 2, "one stripe in every six pixels: {row:?}");
     assert_eq!(stripes[1] - stripes[0], 6, "{row:?}");
 }
+
+#[test]
+fn a_lattice_draws_the_edges_of_hexes_counted_from_the_corner() {
+    let lattice = |frame: &mut Frame| {
+        let shape = crate::Shape {
+            lattice: 8.0,
+            ..crate::Shape::default()
+        };
+        frame.under_shaped(Rect::new(0.0, 0.0, 32.0, 32.0), Color::WHITE, shape);
+    };
+    let image = drawn(lattice);
+    assert!(
+        image.pixel(13, 8)[0] > 128,
+        "a hex's side, √3·8 from the corner"
+    );
+    assert!(
+        image.pixel(6, 2)[0] < 64,
+        "the top of a hex, its corner at y 0, is open"
+    );
+    assert!(image.pixel(6, 8)[0] < 16, "a hex's middle stays empty");
+    let all = (0..32).flat_map(|y| (0..32).map(move |x| (x, y)));
+    let lit = all.filter(|(x, y)| image.pixel(*x, *y)[0] > 128).count();
+    assert!(lit < 32 * 32 / 4, "only the edges: {lit}");
+}
+
+#[test]
+fn a_fading_layer_draws_what_it_holds_part_way() {
+    let image = drawn(|frame| {
+        frame.quad(Rect::new(0.0, 0.0, 16.0, 32.0), Color::WHITE);
+        frame.fading(0.5);
+        frame.quad(Rect::new(16.0, 0.0, 16.0, 16.0), Color::WHITE);
+        frame.layer();
+        frame.quad(Rect::new(16.0, 16.0, 16.0, 16.0), Color::WHITE);
+    });
+    assert!(
+        image.pixel(8, 8)[0] > 240,
+        "the layer before it stays whole"
+    );
+    let half = image.pixel(20, 8)[0];
+    assert!(half > 64 && half < 230, "half its light: {half}");
+    assert_eq!(
+        image.pixel(28, 28)[0],
+        half,
+        "a layer after it fades the same"
+    );
+}
