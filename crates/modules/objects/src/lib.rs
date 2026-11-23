@@ -1,13 +1,16 @@
-//! A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched.
+//! A cluster's kinds, cached on disk, and its objects as Table rows: listed, watched, edited, patched and deleted.
 
 mod argo;
+mod changed;
 mod describe;
 mod discovery;
+mod edited;
 mod follow;
 mod logs;
 mod reads;
 mod retry;
 mod watch;
+mod writes;
 mod yaml;
 
 #[cfg(test)]
@@ -15,10 +18,12 @@ mod tests;
 
 pub use describe::describe;
 pub use discovery::{FRESH, kinds, namespaces};
+pub use edited::edited;
 pub use follow::{Change, Followed, follow};
 pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};
 pub use watch::{Batch, Delta, Stop, watch};
+pub use writes::{Preview, delete, doomed, patch, preview};
 
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp};
 

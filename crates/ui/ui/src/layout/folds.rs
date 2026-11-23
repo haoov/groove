@@ -20,7 +20,7 @@ pub struct Folds {
 
 impl Folds {
     pub fn of(ui: &Ui) -> Self {
-        let asked = ui.examining().is_some() || ui.losing() == Some(&crate::Losing::Everything);
+        let asked = ui.examining().is_some();
         Self {
             feed: ui.rail.folded,
             sessions: ui.rail.stowed,

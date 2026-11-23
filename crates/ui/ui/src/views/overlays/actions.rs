@@ -12,9 +12,6 @@ pub use act::Act;
 use groove_ui_kit::widgets::{glass_menu, glass_size};
 pub use picked::picked;
 
-/// The actions of one file.
-pub const FILE: [Act; 1] = [Act::DiscardChanges];
-
 /// The actions of one open file's tab.
 pub const TAB: [Act; 3] = [Act::Close, Act::CloseOthers, Act::CloseAll];
 
@@ -33,17 +30,26 @@ pub const PATH: [Act; 5] = [
 /// The actions a menu of fixed rows offers; none for a menu whose rows come with it.
 fn acts(of: &Of) -> &'static [Act] {
     match of {
-        Of::File(_) => &FILE,
         Of::Tab { .. } => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
-        Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
+        Of::Resource { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
     }
 }
 
 pub fn rows(of: &Of) -> Vec<&str> {
     match of {
-        Of::Skills { offered, .. } => offered.iter().map(|one| one.label.as_str()).collect(),
+        Of::Resource {
+            shells,
+            writes,
+            offered,
+            ..
+        } => {
+            let mut rows: Vec<&str> = shells.iter().map(|one| one.label.as_str()).collect();
+            rows.extend(writes.iter().map(|one| one.act()));
+            rows.extend(offered.iter().map(|one| one.label.as_str()));
+            rows
+        }
         Of::Mapping(choices) if choices.options.is_empty() => vec![choices.empty],
         Of::Mapping(choices) => choices.options.iter().map(String::as_str).collect(),
         Of::Hues(_) => groove_types::Hue::ALL

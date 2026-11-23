@@ -47,7 +47,8 @@ pub struct Client {
 pub async fn start(launch: Launch, hooks: Hooks) -> Result<Client> {
     let mut piped = Piped::new(&launch.program)
         .args(launch.args.iter().cloned())
-        .cwd(&launch.root);
+        .cwd(&launch.root)
+        .grouped();
     for key in &launch.unset {
         piped = piped.unset(key);
     }

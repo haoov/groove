@@ -25,7 +25,7 @@ you look — done unseen; moving — working; quiet — idle. Colour and motion 
 **Every write the agent sends waits as an [ask](../glossary.md#ask)**, shown on its rail
 row: the op and its subject, Approve and Review. With
 [auto-approve](../glossary.md#auto-approve) on, the write is approved as it arrives and
-recorded. The switch is per session; a new session takes the default from
+recorded, except a cluster write, which always waits. The switch is per session; a new session takes the default from
 Settings › Agent.
 
 ## MCP tools
@@ -45,12 +45,34 @@ runs the binary as an argument list, never through a shell. A read names a conte
 session holds and a namespace it holds, takes only read verbs and flags, and never prints
 a secret's data. Attaching or letting go of a cluster is a write, through the queue.
 
+**The agent writes to a cluster only through `kube_patch` and `kube_delete`.** Groove reads
+the object, tries the patch or the delete on that version with a server dry run, and queues
+it with the diff of the object's YAML; a delete shows the whole object going. It waits for
+the user even with auto-approve on. Once approved, it lands on the version shown, and an
+object that moved since is refused. Enforced by
+`a_patch_waits_with_its_diff_under_auto_approve_and_lands_once_approved`,
+`a_delete_waits_with_the_object_going_and_lands_on_the_version_shown` and
+`an_object_that_moved_before_the_approval_is_not_overwritten`.
+
+**The agent runs a command in a pod only through `kube_exec`.** It names the pod, its
+container and the command as an argument list; Groove runs `kubectl exec` with no shell,
+no terminal and no input, 60 seconds unless the agent asks up to 300. The command waits for
+the user as a cluster write does, shown on the Diff tab as a shell file, even with
+auto-approve on, and a context set read-only refuses it. A character that does not print
+shows escaped. The answer is its output, cut at 32 KiB, then its stderr; at its timeout
+kubectl stops, and the answer says the command may still run in the pod. Enforced by
+`a_command_waits_with_what_it_runs_under_auto_approve`,
+`a_read_only_context_refuses_a_command_before_it_waits`,
+`a_command_runs_in_its_pod_s_container_after_a_double_dash` and
+`what_does_not_print_shows_escaped`.
+
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
 forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
-repos and worktrees; the agent's cluster reads; and the agent's turns, so the feed can say
-when it worked.
+repos and worktrees; the agent's cluster reads; each cluster write that lands, the user's or
+the agent's, as its target and the fields it set, never their values; and the agent's turns, so the feed can say when
+it worked.
 
 **It does not hold the tools the agent ran on files.** A write or a shell command is the
 agent's status, which the rail shows live, not its history.
@@ -71,8 +93,8 @@ button sends that skill.
 
 **A skill can act on a Kubernetes resource.** Its `groove-resources` lists the kinds it acts
 on, `*` for every one. It then leaves the session's menus and stands on the right-click of a
-resource of those kinds, in the list and on its tab, sent with the resource's context,
-namespace, kind and name.
+resource's row of those kinds, in the list or in an Application, sent with the resource's
+context, namespace, kind and name.
 
 ## Shared skills, knowledge, routines
 

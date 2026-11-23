@@ -59,6 +59,15 @@ impl<T> Queue<T> {
             .collect()
     }
 
+    /// What that session waits on, oldest first.
+    pub fn waiting(&self, session: &SessionId) -> impl Iterator<Item = &Approval> {
+        let session = session.clone();
+        self.waiting
+            .iter()
+            .map(|(one, _)| one)
+            .filter(move |one| one.session == session)
+    }
+
     pub fn len(&self) -> usize {
         self.waiting.len()
     }

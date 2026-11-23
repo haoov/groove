@@ -52,6 +52,13 @@ impl Timestamp {
         Day::from_days(self.0.div_euclid(SECONDS_PER_DAY))
     }
 
+    /// `YYYY-MM-DDTHH:MM:SSZ`.
+    pub fn rfc3339(self) -> String {
+        let into = self.0.rem_euclid(SECONDS_PER_DAY);
+        let (hours, minutes, seconds) = (into / 3600, into / 60 % 60, into % 60);
+        format!("{}T{hours:02}:{minutes:02}:{seconds:02}Z", self.day())
+    }
+
     /// `YYYY-MM-DDTHH:MM:SS`, with `Z`, an offset or neither.
     pub fn parse(text: &str) -> Result<Self> {
         let invalid = || Error::invalid(format!("not a time: {text}"));

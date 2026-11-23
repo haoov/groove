@@ -25,8 +25,6 @@ pub enum Act {
     Examine(ApprovalId),
     /// A file of the selected worktree, opened on the Files tab.
     Open(String),
-    /// Every change of the worktree thrown away, once confirmed.
-    Discard,
     /// The kind a choice of *Pick a kind* names, listed.
     Kind(String),
 }
@@ -43,7 +41,6 @@ impl Act {
             Act::Notes(_) => "notes.show",
             Act::Examine(_) => "agent.review",
             Act::Open(_) => "workspace.open_file",
-            Act::Discard => "workspace.discard_all",
             Act::Kind(_) => "resources.select_kind",
         }
     }
@@ -136,7 +133,6 @@ fn landing(app: &AppState, open: &Open) -> Vec<Entry> {
         git("Pull", workspace::Command::Pull),
     ];
     out.extend(super::mr::entries(app, open, worktree));
-    out.push(act("Git", "Discard every change", Act::Discard));
     out
 }
 
@@ -150,12 +146,14 @@ fn agent(app: &AppState, open: &Open) -> Vec<Entry> {
         .and_then(|one| one.asks.first());
     if let Some(ask) = ask {
         let asks = crate::views::rail::asks_to(&ask.op);
-        let approve = agent::Command::Approve { id: ask.id.clone() };
-        out.push(command(
-            "Agent",
-            format!("Approve: {asks}"),
-            Command::Agent(approve),
-        ));
+        if !ask.reviewed {
+            let approve = agent::Command::Approve { id: ask.id.clone() };
+            out.push(command(
+                "Agent",
+                format!("Approve: {asks}"),
+                Command::Agent(approve),
+            ));
+        }
         out.push(act(
             "Agent",
             format!("Review: {asks}"),

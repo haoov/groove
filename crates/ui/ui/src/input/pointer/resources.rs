@@ -1,6 +1,6 @@
 //! What a click on the Resources tab does: a kind is listed, an object opened.
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::{AppState, Command, cluster, workspace};
 
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
@@ -15,7 +15,26 @@ pub(super) fn acted(
     app: &AppState,
     hits: &Hits,
 ) -> Option<Vec<Command>> {
-    logs(target, ui, hits).or_else(|| listed(target, ui, app))
+    logs(target, ui, hits)
+        .or_else(|| drafted(target, ui, app))
+        .or_else(|| listed(target, ui, app))
+}
+
+/// A click on the YAML's bar: EDIT, APPLY or DISCARD.
+fn drafted(target: &Target, ui: &Ui, app: &AppState) -> Option<Vec<Command>> {
+    let key = Box::new(ui.session.resources.tab()?.link.key());
+    let asked = match target {
+        Target::YamlWrite(on) => {
+            let (session, on) = (app.session.selected.clone()?, *on);
+            cluster::Command::WriteYaml { session, key, on }
+        }
+        Target::YamlApply => {
+            let session = app.session.selected.clone()?;
+            cluster::Command::ApplyYaml { session, key }
+        }
+        _ => return None,
+    };
+    Some(vec![Command::Cluster(asked)])
 }
 
 /// A click on the sidebar, the list, or an object's tab.
@@ -120,6 +139,7 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 Target::LogSource(source) => tab.logs.source = Some(source.clone()),
                 Target::LogPrevious(previous) => tab.logs.previous = *previous,
                 Target::LogFollow => tab.logs.following = true,
+                Target::ArgoSearch => tab.argo.typing = true,
                 Target::ArgoFilter(filter) => {
                     (tab.argo.filter, tab.scroll) = (Some(*filter), 0.0);
                     tab.toggled.clear();

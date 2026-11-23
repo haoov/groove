@@ -93,18 +93,12 @@ fn progress(
     let [room, _, bar] = row_in(room, [Spec::fill(), gap, bar]);
     let thick = Spec::default().height(ctx.tokens.sm);
     let [_, track, _] = column_in(bar, [Spec::fill(), thick, Spec::fill()]);
-    let round = ctx.tokens.sm / 2.0;
-    let rail = Panel::default()
-        .ground(ctx.styles.glass_hover())
-        .radius(round);
+    let rail = Panel::default().ground(ctx.styles.glass_hover());
     rail.draw(ctx, track);
     let part = Spec::default().width(track.w * done as f32 / total as f32);
     let [filled, _] = row_in(track, [part, Spec::fill()]);
     let working = ctx.styles.color(Role::Working);
-    Panel::default()
-        .ground(working)
-        .radius(round)
-        .draw(ctx, filled);
+    Panel::default().ground(working).draw(ctx, filled);
     argo::operation(ctx, room, operation, ctx.now);
 }
 

@@ -53,3 +53,10 @@ fn what_is_not_an_instant_is_refused() {
     assert!(Timestamp::parse("2026-09-20T25:00:00Z").is_err());
     assert!(Timestamp::parse("").is_err());
 }
+
+#[test]
+fn a_timestamp_reads_back_from_its_rfc3339() {
+    let t = Timestamp::new(1_788_886_029);
+    assert_eq!(t.rfc3339(), "2026-09-08T16:47:09Z");
+    assert_eq!(Timestamp::parse(&t.rfc3339()).unwrap(), t);
+}

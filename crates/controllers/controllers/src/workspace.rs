@@ -9,6 +9,7 @@ pub(crate) mod diff;
 mod editor;
 pub(crate) mod git;
 mod paths;
+pub(crate) mod review;
 mod search;
 mod servers;
 
@@ -22,7 +23,7 @@ pub(crate) use servers::{programs as server_programs, reconfigured as servers_re
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{close_file, copy, cut, edit_file, open_file, paste, save_file};
-use self::git::{Act, Remote, discard_all, index};
+use self::git::{Act, Remote, index};
 use self::search::{grep, list_paths};
 use crate::{AppState, Services, Spawner};
 
@@ -73,14 +74,10 @@ pub enum Command {
     Stage { path: String },
     /// `workspace.unstage`: one path back out of it.
     Unstage { path: String },
-    /// `workspace.discard`: what one path holds, thrown away.
-    Discard { path: String },
     /// `workspace.push`: the branch to its own name on origin.
     Push,
     /// `workspace.pull`: origin's own head, fast-forward only.
     Pull,
-    /// `workspace.discard_all`: every change in the worktree, thrown away.
-    DiscardAll,
     /// `workspace.list_paths`: every file of the worktree, for the path term.
     ListPaths,
     /// `workspace.path`: one file or directory made, moved, copied or taken away.
@@ -137,10 +134,8 @@ impl Command {
             Command::ReadClipboard => "workspace.read_clipboard",
             Command::Stage { .. } => "workspace.stage",
             Command::Unstage { .. } => "workspace.unstage",
-            Command::Discard { .. } => "workspace.discard",
             Command::Push => "workspace.push",
             Command::Pull => "workspace.pull",
-            Command::DiscardAll => "workspace.discard_all",
             Command::ListPaths => "workspace.list_paths",
             Command::Path(_) => "workspace.path",
             Command::GetCommits => "workspace.get_commits",
@@ -168,8 +163,6 @@ impl Command {
                 | Command::Paste
                 | Command::Stage { .. }
                 | Command::Unstage { .. }
-                | Command::Discard { .. }
-                | Command::DiscardAll
                 | Command::Path(_)
         )
     }
@@ -204,10 +197,8 @@ pub fn dispatch(
         Command::ReadClipboard => editor::read_clipboard(services, spawner),
         Command::Stage { path } => index(state, spawner, Act::Stage, path),
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
-        Command::Discard { path } => index(state, spawner, Act::Discard, path),
         Command::Push => on_remote(state, services, spawner, Remote::Push),
         Command::Pull => on_remote(state, services, spawner, Remote::Pull),
-        Command::DiscardAll => discard_all(state, spawner),
         Command::ListPaths => list_paths(state, spawner),
         Command::Path(op) => paths::act(state, spawner, op),
         Command::GetCommits => commits::list(state, spawner),

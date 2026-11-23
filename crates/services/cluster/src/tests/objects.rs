@@ -48,11 +48,8 @@ fn a_followed_object_lands_changes_and_goes_with_its_last_reader() {
     assert!(store.follows.get(&key).is_none());
 }
 
-#[test]
-fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
-    use crate::Followed;
-    use groove_types::{Caret, Described, Edit, FollowKey, Motion};
-    let described = |yaml: &str| Described {
+fn described(yaml: &str) -> groove_types::Described {
+    groove_types::Described {
         uid: "u1".into(),
         name: "api-0".into(),
         namespace: Some("shop".into()),
@@ -66,7 +63,13 @@ fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
         app: None,
         event: None,
         yaml: yaml.into(),
-    };
+    }
+}
+
+#[test]
+fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
+    use crate::Followed;
+    use groove_types::{Caret, Edit, FollowKey, Motion};
     let mut store = crate::Store::default();
     let key = FollowKey::named("kind", &pods("shop").kind, Some("shop"), "api-0");
     store.follows.lease(&key, "tab");
@@ -97,4 +100,31 @@ fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
     store.follows.release("tab");
     store.follows.drop_unread(&key, 1);
     assert!(store.follows.yamls.get(&key).is_none());
+}
+
+#[test]
+fn a_draft_takes_every_edit_and_stands_while_the_object_moves_on() {
+    use crate::Followed;
+    use groove_types::{Edit, FollowKey, Motion};
+    let mut store = crate::Store::default();
+    let key = FollowKey::named("kind", &pods("shop").kind, Some("shop"), "api-0");
+    store.follows.lease(&key, "tab");
+    let first = described("spec:\n  replicas: 1\n");
+    store.follows.apply(&key, Followed::Reset(vec![first]));
+    let yamls = &mut store.follows.yamls;
+    assert!(yamls.write(&key));
+    let end = Motion::To(groove_types::Caret::new(2, 0));
+    yamls.edit(&key, &Edit::Move(end));
+    assert!(yamls.edit(&key, &Edit::Insert("  paused: true\n".into())));
+    assert!(yamls.draft(&key).is_some_and(|one| one.edited()));
+    let moved = described("spec:\n  replicas: 2\n");
+    store.follows.apply(&key, Followed::Reset(vec![moved]));
+    let yamls = &mut store.follows.yamls;
+    let text = yamls.get(&key).map(|one| one.text()).unwrap_or_default();
+    let written = "spec:\n  replicas: 1\n  paused: true\n";
+    assert_eq!(text, written, "the draft stands");
+    assert!(yamls.moved(&key));
+    yamls.read_only(&key);
+    let text = yamls.get(&key).map(|one| one.text()).unwrap_or_default();
+    assert_eq!(text, "spec:\n  replicas: 2\n", "the object as it stands");
 }

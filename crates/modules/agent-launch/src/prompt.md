@@ -54,6 +54,11 @@ cluster the session does not hold, attach it first with `attach_cluster`.
 
 Never run `inc` either: Groove reads incident.io alerts itself.
 
+Change an object with `kube_patch`, a JSON merge patch, delete one with `kube_delete`,
+and run a command in a pod with `kube_exec`. The user sees the diff or the command and
+approves it first, even with auto-approve on. A refusal because the object changed
+means: read it again, then ask again.
+
 ## The user already sees your work
 
 Groove renders the diff, your annotations in the file, and the MR. Do not paste

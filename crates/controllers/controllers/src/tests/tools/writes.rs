@@ -94,7 +94,7 @@ fn the_write_the_user_refuses_never_runs() {
         },
     );
     let ask = waiting(&state, &id)[0].id.clone();
-    crate::tools::refuse(&mut state, &ask);
+    crate::tools::refuse(&mut state, &spawner, &ask);
     let answer = answered.try_recv().expect("an answer");
     assert!(answer.failed);
     assert!(answer.text.contains("refused"), "{}", answer.text);

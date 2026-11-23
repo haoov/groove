@@ -12,7 +12,7 @@ fn a_question_about_a_session_left_behind_goes_with_it() {
     let mut app = full_app();
     let mut ui = Ui::default();
     ui.settle(&app);
-    ui.overlay = Some(Overlay::Losing(Losing::Everything));
+    ui.overlay = Some(Overlay::Losing(Losing::Tab("a.rs".into())));
     ui.session.going = Some((Tab::Diff, None));
     ui.settle(&app);
     assert!(ui.overlay.is_some(), "it stands while nothing moves");
@@ -21,7 +21,7 @@ fn a_question_about_a_session_left_behind_goes_with_it() {
     ui.settle(&app);
     assert_eq!(
         ui.overlay, None,
-        "discard all never reaches the other session"
+        "the question never reaches the other session"
     );
     assert_eq!(ui.session.going, None);
 }

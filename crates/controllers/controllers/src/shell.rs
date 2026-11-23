@@ -1,8 +1,12 @@
 //! The `shell` controller: one function per user action on a session's own terminals.
 
+mod pods;
+
+use std::path::PathBuf;
+
 use groove_agent_service::Select;
-use groove_shell_service::{Event as ShellEvent, Hooks, spawn, spec};
-use groove_types::SessionId;
+use groove_shell_service::{Event as ShellEvent, Hooks, PtySpec, spawn, spec};
+use groove_types::{SessionId, Target};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
@@ -20,6 +24,12 @@ pub enum Command {
         session: SessionId,
         cols: u16,
         rows: u16,
+    },
+    /// `shell.pod`: a shell in a pod's container, in a tab named after it; refused read-only.
+    Pod {
+        session: SessionId,
+        pod: Box<Target>,
+        container: Option<String>,
     },
     /// `shell.close`: one terminal ended and taken away; its tab goes when it was the last.
     Close { session: SessionId, id: u64 },
@@ -89,6 +99,7 @@ impl Command {
         match self {
             Command::Open { .. } => "shell.open",
             Command::Split { .. } => "shell.split",
+            Command::Pod { .. } => "shell.pod",
             Command::Close { .. } => "shell.close",
             Command::CloseTab { .. } => "shell.close_tab",
             Command::SelectTab { .. } => "shell.select_tab",
@@ -116,12 +127,17 @@ pub fn dispatch(
             session,
             cols,
             rows,
-        } => open(state, services, spawner, (session, false), (cols, rows)),
+        } => login(state, services, spawner, (session, false), (cols, rows)),
         Command::Split {
             session,
             cols,
             rows,
-        } => open(state, services, spawner, (session, true), (cols, rows)),
+        } => login(state, services, spawner, (session, true), (cols, rows)),
+        Command::Pod {
+            session,
+            pod,
+            container,
+        } => pods::shell(state, services, spawner, (session, *pod, container)),
         Command::Close { session, id } => close(state, &session, id),
         Command::CloseTab { session, tab } => ended(state.shell.close_tab(&session, tab)),
         Command::SelectTab { session, tab } => state.shell.select_tab(&session, tab),
@@ -173,22 +189,37 @@ fn to_terminal(state: &AppState, command: Command) {
     };
 }
 
-/// A new terminal's place at once, alone or `beside` the tab's; the shell spawned in a job.
-fn open(
+/// The user's login shell, alone or `beside` the tab's.
+fn login(
     state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
     (session, beside): (SessionId, bool),
     size: (u16, u16),
 ) {
+    let (program, home) = (state.env.shell.clone(), state.env.home.clone());
+    let made: Made = Box::new(move |cwd| spec(&program, (cwd, &home), size));
+    open(state, services, spawner, (session, beside), made);
+}
+
+/// What a terminal runs, once the session's directory is known.
+type Made = Box<dyn FnOnce(PathBuf) -> PtySpec + Send>;
+
+/// A new terminal's place at once, alone or `beside` the tab's; what it runs spawned in a job.
+fn open(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (session, beside): (SessionId, bool),
+    made: Made,
+) -> u64 {
     let id = state.shell.reserve(&session, beside);
     let palette = groove_agent_service::palette(state.config.theme());
-    let (program, home) = (state.env.shell.clone(), state.env.home.clone());
     let (sink, service) = (spawner.sink(), services.session.clone());
     spawner.spawn(Box::pin(async move {
         let hooks = hooks(&sink, &session, id);
         let result = match service.session_dir(&session).await {
-            Ok(cwd) => Ok(spawn(spec(&program, (cwd, &home), size), palette, hooks).await),
+            Ok(cwd) => Ok(spawn(made(cwd), palette, hooks).await),
             Err(e) => Err(e),
         };
         Box::new(
@@ -201,6 +232,7 @@ fn open(
             },
         ) as Continuation
     }));
+    id
 }
 
 pub fn close(state: &mut AppState, session: &SessionId, id: u64) {

@@ -73,24 +73,6 @@ fn the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground() {
 }
 
 #[test]
-fn discarding_every_change_asks_on_the_info_line_and_opens_the_strip() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    ui.session.stowed = true;
-    ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Everything));
-    let layout = Layout::of(window(), &ui);
-    assert!(!layout.info.is_empty(), "the strip opens for the question");
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let asked = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| run.text == "discard every change?")
-        .expect("the question");
-    assert!(layout.info.contains(asked.x, asked.y + 1.0));
-    assert!(hits.rect_of(&Target::Discard).is_some() && hits.rect_of(&Target::Keep).is_some());
-}
-
-#[test]
 fn folding_the_drawer_leaves_the_strip_folded() {
     let app = full_app();
     let mut ui = Ui::default();

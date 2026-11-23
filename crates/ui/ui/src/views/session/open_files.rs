@@ -20,7 +20,7 @@ pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
         .unwrap_or_default();
     if let Some(path) = losing(ui, open) {
         let question = format!("close {} and lose its edits?", crate::views::name_of(path));
-        return crate::views::session::files::asking(ctx, strip, &question);
+        return crate::views::session::files::asking(ctx, strip, &question, "discard");
     }
     if open.is_empty() {
         let room = strip.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));

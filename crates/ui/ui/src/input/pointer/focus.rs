@@ -47,12 +47,15 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
+            | Target::ArgoSearch
             | Target::ResourceKind(_)
             | Target::ResourceGroup(_)
             | Target::ResourceSort(_)
             | Target::ResourceTab(_)
             | Target::ResourceClose(_)
             | Target::ResourceView(_)
+            | Target::YamlWrite(_)
+            | Target::YamlApply
             | Target::ArgoFilter(_)
             | Target::ResourceFold(..)
             | Target::ContainerUsage(..)

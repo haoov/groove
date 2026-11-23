@@ -216,7 +216,7 @@ rows' padding. A row that asks shows it in its icon and its peach state line. En
 A row carries no button. An ask's text is peach, and a click on its row opens the session
 with the review sheet on the first ask. Enforced by
 `a_click_on_a_row_that_asks_opens_the_session_on_its_review`. With auto-approve on for the
-session, nothing asks. A working status is blue and its glyph moves.
+session, nothing asks but a cluster write. A working status is blue and its glyph moves.
 
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
@@ -412,8 +412,8 @@ worktree's files. Enforced by `enter_and_shift_enter_step_the_matches_and_wrap` 
 Terminals for the session, opened in its own directory, splittable, resizable, collapsible;
 its bar alone when collapsed.
 
-**Git.** The palette's Git group acts on the selected worktree: push, pull, the MR's own
-actions, and discard every change. No box in the window commits: the agent or a terminal
+**Git.** The palette's Git group acts on the selected worktree: push, pull and the MR's
+own actions. No box in the window commits: the agent or a terminal
 does.
 
 **One deep ground, panels on it.** The deepest ground the theme has holds the session
@@ -500,16 +500,17 @@ Enforced by `alt_s_picks_another_open_session_by_its_title_or_its_id`,
 match in the file name first, and opens the one picked on the Files tab.
 Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
 
-**Git and the MR go through the palette.** Push, pull, discard every change, and
+**Git and the MR go through the palette.** Push, pull, and
 create, update, comment on, approve or close the MR are palette rows of the selected
 worktree. No box in the window holds them.
 
 **A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,
 or unstage — where its counts were. Everything else is behind the right button.
 
-**A question takes the place of what asked it.** Discarding one file turns its row into the
-question; discarding every change turns the info line into it. Two answers at
-the end, no modal, and nothing destructive within a click of something ordinary.
+**A question takes the place of what asked it.** Closing a tab with unsaved edits, deleting
+a path or a write on a resource's row turns that line into the question, square across its
+whole width. Its two answers follow the words, no modal, and nothing destructive within a
+click of something ordinary.
 
 ### Kubernetes tab
 
@@ -563,7 +564,9 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
-  resource's row opens its tab there. A git source's address, ctrl+clicked, opens the
+  resource's row opens its tab there. A row's right-click offers the skills of its kind, as
+  a list row's does. The find key opens a find bar under its filters, as over the list: its
+  words narrow the rows by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
   the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
   a commit of the list does, fetched first when the clone lacks it. Its `resources` view
@@ -573,7 +576,7 @@ the end, no modal, and nothing destructive within a click of something ordinary.
   are the list's table, its headers sorting each group's rows and its edges dragging widths
   kept for both; a group's heading stands on a band, ruled off as each row is. Resources stand by
   kind, the kinds needing attention first; under all, a kind with nothing to see stands
-  folded. Syncing shows the sync's line, rounded on its colour, over a rounded bar that
+  folded. Syncing shows the sync's line on its colour, over a square bar that
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
@@ -598,9 +601,73 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 | task property | the task's title, the property, before → after |
 | task body | the task's title and the body |
 | task finish | the task's title and the worktrees torn down |
-| discard | the files |
 
 **Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
+
+### Cluster write
+
+**A session waiting on a cluster write answers it first, in its Diff tab.** The workspace
+stands on the Diff tab, ringed in peach, whatever tab is asked. A band on a dim attention
+tint holds what the write asks, in capitals, then the object, with **Refuse** and
+**Approve** at its right once the change is shown, bordered words in capitals, Approve
+edged in peach. Under it, the
+diff itself, read-only, over the object's YAML before → after: the change stands in place
+of the worktree's until the write is decided, then the worktree's is read again. No sheet
+stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
+deleting or reloading the session is refused until it is answered. Another session can be
+selected meanwhile; back on this one, the change shows again. Once the write is answered,
+the session goes back to the tab it stood on. Enforced by
+`the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked`,
+`once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on`,
+`a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask`,
+`only_the_band_s_approve_button_lets_a_cluster_write_through`,
+`a_write_is_answered_only_once_its_change_is_shown`,
+`once_one_write_is_answered_the_next_one_s_change_is_shown`,
+`a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
+`a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
+
+**An object scales, restarts and goes from its row.** A list row's right-click offers
+**scale** on a Deployment or a StatefulSet, **restart** on those and a DaemonSet, and
+**delete** on every object, above the skills of its kind. Picking one turns the row into the
+question. A scale shows the count the row wants between **−** and **+**, no **−** at none,
+and sends the count set to the `scale` subresource. A restart stamps the pod template, as
+`kubectl rollout restart` does. A delete takes the object's dependents after it. **keep**
+sends nothing; the timeline says what landed. An object's tab offers no menu. Enforced by
+`a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it`,
+`keep_leaves_the_deployment_as_it_is`,
+`a_scale_starts_from_the_count_the_row_wants_and_steps_before_it_is_sent`,
+`a_scale_to_none_offers_no_step_down`,
+`a_pod_s_row_offers_its_shell_then_its_delete_asked_in_its_place`, `an_object_tab_opens_no_menu`,
+`a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod`,
+`a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset` and
+`a_dry_run_delete_says_so_in_its_body_on_the_version_seen`.
+
+**A pod's row opens a shell in it.** Its right-click offers **shell** first, one per
+container once the pod's tab has read several, kubectl's own pick otherwise. It opens the
+terminal drawer on a new tab named after the pod and its container, the keys going to it,
+running `kubectl exec` with bash where the container has it, sh otherwise. Nothing asks
+first, and a context set read-only refuses it; a shell already open stays. Enforced by
+`a_pod_s_shell_opens_the_drawer_with_the_keys_going_to_it`,
+`a_pod_s_shell_opens_in_a_tab_named_after_its_container`,
+`a_read_only_context_refuses_a_pod_s_shell` and
+`a_shell_in_a_pod_takes_the_keys_on_a_terminal`.
+
+**An object's YAML is edited from its bar.** A bar between the object's tabs and its YAML
+starts with **EDIT**: until it is pressed the YAML is read-only and no key changes it.
+**EDIT**, where the session may write and the context is not read-only, starts a draft from
+the YAML as it stands; every key, a paste included, then edits it. **EDIT** gives its place
+to **APPLY** and **DISCARD**, which throws the draft away; all are bordered words in capitals, **APPLY** and **EDIT** in peach as **Approve**
+is. The draft stands while the object moves on, the bar saying so. **APPLY** reads the
+draft back as a merge patch, refused when it does not read, changes nothing or touches what
+the server writes, and tries it on the version the draft started from: an object that moved
+since is refused there. The edit then waits as a cluster write does, on the Diff tab under
+**APPLY EDIT TO A CLUSTER OBJECT**; **Approve** makes it on that version and ends the draft,
+**Refuse** keeps it. Enforced by
+`an_edit_of_the_yaml_is_reviewed_then_lands_on_its_version_and_ends_the_draft`,
+`an_edit_of_what_the_server_writes_is_refused_and_says_which`,
+`the_yaml_stands_read_only_until_edit_is_pressed`,
+`a_draft_takes_every_edit_and_stands_while_the_object_moves_on` and
+`a_read_only_context_keeps_an_object_s_yaml_read_only`.
 
 ## Settings
 

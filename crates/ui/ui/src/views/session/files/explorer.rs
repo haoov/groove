@@ -141,7 +141,7 @@ fn one_row(
         return naming(ctx, line, indent, ui);
     }
     if ui.losing() == Some(&crate::Losing::Path(held.path.clone())) {
-        return super::asking(ctx, line, "delete it?");
+        return super::asking(ctx, line, "delete it?", "delete");
     }
     match (held.dir, held.file) {
         (true, _) => directory(ctx, line, held, indent, ui),

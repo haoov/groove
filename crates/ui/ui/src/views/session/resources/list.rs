@@ -8,7 +8,9 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Column, Rows, Search, Sorted, Tab, Table, Width, glass_field};
+use groove_ui_kit::widgets::{
+    Cell, Column, Laid, Rows, Search, Shown, Sorted, Steps, Tab, Table, Width, glass_field,
+};
 
 mod cells;
 mod order;
@@ -19,6 +21,7 @@ pub(super) mod plan;
 use self::cells::{column, one};
 use self::plan::plan;
 use super::scope::{self, ResourcesUi};
+use super::{Write, Written};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -79,7 +82,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
         body = rest;
     }
     let kind = kind.map(|one| one.plural).unwrap_or_default();
-    listed(ctx, body, app, (&keys, rows), (held, &kind));
+    let asked = match ui.losing() {
+        Some(crate::Losing::Row(written)) => Some(&**written),
+        _ => None,
+    };
+    listed(ctx, body, app, (&keys, rows), (held, &kind, asked));
 }
 
 /// The find bar over the rows: what it narrows by, typed.
@@ -188,7 +195,7 @@ fn listed(
     body: Rect,
     app: &AppState,
     (keys, rows): (&[WatchKey], Vec<(&WatchKey, &ObjectRow)>),
-    (held, kind): (&ResourcesUi, &str),
+    (held, kind, asked): (&ResourcesUi, &str, Option<&Written>),
 ) {
     let plan = plan(app, keys, &rows);
     let sorted = order::mark(&plan, held.sort.as_ref());
@@ -225,6 +232,48 @@ fn listed(
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };
     let (_, names) = scope::search(held);
-    let laid = table.draw(ctx, body, |at| one(app, rows[at], (&plan, &names)));
+    let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
+    let at = asked.and_then(|one| rows.iter().position(|(_, row)| row.uid == one.uid));
+    let laid = table.draw(ctx, body, |row| {
+        shown(app, rows[row], (&plan, &names), Some(row) == at)
+    });
+    asking(ctx, &laid, at.zip(asked));
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
+}
+
+/// The row's cells, or none while a question stands in its place.
+fn shown<'a>(
+    app: &AppState,
+    row: (&'a WatchKey, &'a ObjectRow),
+    read: (&self::plan::Plan, &[&str]),
+    asked: bool,
+) -> Shown<'a, Target> {
+    match asked {
+        true => Shown::row(Vec::<Cell>::new()),
+        false => one(app, row, read),
+    }
+}
+
+/// The write asked across the row's whole width, a scale's count stepped before the answers.
+fn asking(ctx: &mut Ctx, laid: &Laid, asked: Option<(usize, &Written)>) {
+    let Some((at, written)) = asked else {
+        return;
+    };
+    let (line, room) = (laid.across(at), laid.body);
+    if line.y < room.y || line.y + line.h > room.y + room.h {
+        return;
+    }
+    let count = match written.write {
+        Write::Scale(count) => Some(count),
+        Write::Restart | Write::Delete => None,
+    };
+    let shown = count.map(|count| count.to_string()).unwrap_or_default();
+    let steps = count.map(|count| Steps {
+        shown: &shown,
+        less: (count > 0).then_some(Target::Step(-1)),
+        more: Target::Step(1),
+    });
+    let (yes, question) = (written.write.act(), written.question());
+    let answers = [(yes, Target::Discard), ("keep", Target::Keep)];
+    groove_ui_kit::widgets::question(ctx, line, (&question, steps), answers);
 }

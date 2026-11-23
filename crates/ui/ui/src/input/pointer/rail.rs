@@ -30,7 +30,7 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
             let opened = super::opened_session(ui, session.clone());
             let ask = app.agent.activity(session).and_then(|one| one.asks.first());
             if let Some(ask) = ask {
-                ui.overlay = Some(crate::Overlay::Examining(ask.id.clone()));
+                ui.examine(ask.id.clone());
             }
             Some(opened)
         }

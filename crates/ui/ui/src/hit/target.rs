@@ -85,6 +85,8 @@ pub enum Target {
     ResourceList,
     ResourceKind(groove_types::KubeKind),
     ResourceSearch,
+    /// An Application's find bar, which a click types in.
+    ArgoSearch,
     ResourceGroup(groove_types::KindHeading),
     ResourceRow(String),
     /// A column of the list, by its label: its header sorts by it, its edge drags its width.
@@ -94,6 +96,9 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// An object's YAML made writable, or read-only again, its draft thrown away; and the draft applied.
+    YamlWrite(bool),
+    YamlApply,
     /// An Application's resources view: a filter picked.
     ArgoFilter(crate::views::session::resources::Filter),
     /// A group or a row of an object's tab, folded or unfolded, and whether it was drawn shut.
@@ -200,6 +205,8 @@ pub enum Target {
     /// The two answers to what is asked before a change is thrown away.
     Discard,
     Keep,
+    /// The count a row's question sets, one step down or up.
+    Step(i32),
     /// What the commit box offers beyond committing.
     Actions,
     /// A row of the menu the right button opens.

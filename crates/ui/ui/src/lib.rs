@@ -27,7 +27,7 @@ pub use groove_ui_kit::widgets::Corner;
 pub use groove_ui_kit::widgets::NEURON_MS;
 pub use hit::{Cursor, Hits, Target};
 pub use layout::{Edge, Split};
-pub use menu::{Menu, Of, Offer};
+pub use menu::{Menu, Of, Offer, Shelled};
 pub use motion::{MOTION_MS, Motion};
 pub use render::{ages_due, code_size, fires, frame_commands, spins, view};
 pub use ui::{AgentUi, Click, Grid, Held, Losing, Overlay, Ui};

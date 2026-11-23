@@ -21,11 +21,6 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of: Of::Path { path, dir: false },
         }),
-        Some(Target::File(path)) => Some(Menu {
-            at: (x, y),
-            corner: Corner::TopLeft,
-            of: Of::File(path),
-        }),
         Some(Target::OpenTab(path) | Target::CloseTab(path)) => Some(Menu {
             at: (x, y),
             corner: Corner::TopLeft,
@@ -36,7 +31,7 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of,
         }),
-        Some(target @ (Target::ResourceRow(_) | Target::ResourceTab(_))) => {
+        Some(target @ (Target::ResourceRow(_) | Target::ResourceOpen(_))) => {
             super::skilled::menu(ui, app, &target, (x, y))
         }
         _ => None,
@@ -88,19 +83,18 @@ fn browsing(ui: &Ui) -> bool {
     crate::views::session::files::browsing(ui)
 }
 
-/// The answer that throws the change away: one file's, or every one.
+/// The answer that closes a tab, deletes a path or writes the cluster.
 pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
     let asked = match ui.close(|one| matches!(one, Overlay::Losing(_))) {
         Some(Overlay::Losing(one)) => Some(one),
         _ => None,
     };
     let command = match asked {
-        Some(Losing::File(path)) => workspace::Command::Discard { path },
         Some(Losing::Tab(path)) => workspace::Command::CloseFile { path },
         Some(Losing::Path(path)) => {
             workspace::Command::Path(groove_controllers::workspace_service::PathOp::Delete { path })
         }
-        Some(Losing::Everything) => workspace::Command::DiscardAll,
+        Some(Losing::Row(written)) => return vec![written.command()],
         None => return Vec::new(),
     };
     vec![Command::Workspace(command)]
@@ -127,6 +121,10 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     if picked.naming.is_some() {
         ui.session.naming = picked.naming;
         ui.focus = Focus::Sidebar;
+    }
+    if picked.drawer {
+        ui.session.manual = true;
+        ui.focus = Focus::Terminal;
     }
     if picked.noting.is_some() {
         ui.session.noting = picked.noting;

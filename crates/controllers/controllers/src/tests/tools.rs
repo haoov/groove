@@ -3,8 +3,10 @@
 mod adopt;
 pub(crate) mod children;
 mod clusters;
+mod execs;
 mod forge;
 mod owned;
+mod patches;
 mod reads;
 mod writes;
 

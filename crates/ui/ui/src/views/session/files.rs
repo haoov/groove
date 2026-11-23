@@ -240,10 +240,10 @@ fn stamp(files: &[FileDiff]) -> u64 {
     hasher.finish()
 }
 
-/// A question in the row's own place: discard, or keep.
-pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str) {
-    let answers = [("discard", Target::Discard), ("keep", Target::Keep)];
-    groove_ui_kit::widgets::question(ctx, line, question, answers);
+/// A question in the row's own place: `yes`, or keep.
+pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str, yes: &str) {
+    let answers = [(yes, Target::Discard), ("keep", Target::Keep)];
+    groove_ui_kit::widgets::question(ctx, line, (question, None), answers);
 }
 
 /// The files of the worktree the session points at, never another's.

@@ -136,7 +136,8 @@ fn tabs(shells: Option<&Shells>) -> Vec<(String, u64, bool)> {
                 .iter()
                 .map(|pane| shells.number(pane.id).to_string())
                 .collect();
-            let name = format!("term {}", numbers.join(" · "));
+            let term = || format!("term {}", numbers.join(" · "));
+            let name = one.name.clone().unwrap_or_else(term);
             (name, one.id, shells.selected == Some(one.id))
         })
         .collect()

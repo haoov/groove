@@ -1,11 +1,10 @@
-//! What a file's row offers: the index, and the question before a change is lost.
+//! What a file's row offers: the index.
 
 use groove_controllers::{AppState, Command, workspace};
 use groove_gfx::Fonts;
 use groove_types::{FileDiff, FileStatus};
 
 use crate::hit::Target;
-use crate::input::{Input, handle};
 use crate::tests::{drawn_hits, full_app, hit, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
@@ -89,74 +88,6 @@ fn clicking_the_offer_asks_for_the_index() {
             path: "a.txt".into()
         })]
     );
-}
-
-#[test]
-fn the_right_button_opens_a_row_s_actions_and_a_click_closes_them() {
-    let app = listed(&[file("a.txt", false)]);
-    let mut ui = sidebar();
-    let hits = drawn_hits(&app, &ui);
-    let row = hits
-        .rect_of(&Target::File("a.txt".into()))
-        .expect("a row is drawn");
-    let point = (row.x + row.w / 2.0, row.y + row.h / 2.0);
-    handle(
-        Input::Menu {
-            x: point.0,
-            y: point.1,
-        },
-        &mut ui,
-        &app,
-        &hits,
-        window(),
-    );
-    let menu = ui.menu().cloned().expect("the actions are open");
-    assert_eq!(menu.of, crate::Of::File("a.txt".into()));
-    assert!(
-        drawn_hits(&app, &ui).rect_of(&Target::MenuRow(0)).is_some(),
-        "and drawn"
-    );
-
-    let taken = hit(&Target::MenuRow(0), &mut ui, &app);
-    assert!(taken.is_empty(), "discard is not done on the spot");
-    assert!(ui.menu().is_none(), "the actions close");
-    assert_eq!(
-        ui.losing(),
-        Some(&crate::Losing::File("a.txt".into())),
-        "the row is asking instead"
-    );
-}
-
-#[test]
-fn the_row_asks_before_a_change_is_thrown_away() {
-    let app = listed(&[file("a.txt", false)]);
-    let mut ui = sidebar();
-    ui.overlay = Some(crate::Overlay::Losing(crate::Losing::File("a.txt".into())));
-    let hits = drawn_hits(&app, &ui);
-    assert!(
-        hits.rect_of(&Target::File("a.txt".into())).is_none(),
-        "the row is the question now, not the file"
-    );
-    assert!(hits.rect_of(&Target::Keep).is_some());
-
-    let done = hit(&Target::Discard, &mut ui, &app);
-    assert_eq!(
-        done,
-        [Command::Workspace(workspace::Command::Discard {
-            path: "a.txt".into()
-        })]
-    );
-    assert!(ui.losing().is_none(), "and the question is answered");
-}
-
-#[test]
-fn keeping_the_change_asks_nothing_of_git() {
-    let app = listed(&[file("a.txt", false)]);
-    let mut ui = sidebar();
-    ui.overlay = Some(crate::Overlay::Losing(crate::Losing::File("a.txt".into())));
-    let kept = hit(&Target::Keep, &mut ui, &app);
-    assert!(kept.is_empty(), "nothing is asked");
-    assert!(ui.losing().is_none());
 }
 
 #[test]

@@ -1,10 +1,12 @@
 mod argo;
 mod describe;
 mod discovery;
+mod edited;
 mod follow;
 mod logs;
 mod retry;
 mod watch;
+mod writes;
 mod yaml;
 
 pub(crate) fn pods() -> groove_types::KubeKind {

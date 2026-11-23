@@ -3,11 +3,11 @@
 use groove_gfx::{Edges, Rect};
 use groove_types::{FileDiff, FileStatus};
 
-use super::{Listing, asking, reads_as};
+use super::{Listing, reads_as};
+use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
-use crate::{Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{square, stand};
@@ -112,9 +112,6 @@ pub(super) fn entry(
     reading: Reading,
     ui: &Ui,
 ) {
-    if ui.losing() == Some(&Losing::File(file.path.clone())) {
-        return asking(ctx, line, "discard changes?");
-    }
     let on_row = pointed(ctx, &file.path);
     if on_row {
         groove_ui_kit::widgets::glass_lit(ctx, line);

@@ -1,14 +1,19 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
+pub(crate) mod drafts;
 mod follows;
 mod logs;
 mod objects;
+pub(crate) mod writes;
 
 use groove_cluster_service::Event as ClusterEvent;
 use groove_cluster_service::Named;
-use groove_types::{Edit, FollowKey, LogKey, Timestamp, WatchKey};
+use groove_types::{Edit, FollowKey, LogKey, SessionId, Timestamp, WatchKey};
 
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
+
+pub use writes::Patched;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -46,6 +51,38 @@ pub enum Command {
     LogCopy { key: Box<LogKey> },
     /// `cluster.age`: the time cells of every row written again for `now`.
     Age { now: Timestamp },
+    /// `cluster.patch`: a merge patch stored on an object of a cluster the session may write to.
+    Patch {
+        session: SessionId,
+        patched: Box<Patched>,
+    },
+    /// `cluster.scale`: a workload's replicas set, on a cluster the session may write to.
+    Scale {
+        session: SessionId,
+        target: Box<groove_types::Target>,
+        replicas: u32,
+    },
+    /// `cluster.delete`: an object deleted, on a cluster the session may write to.
+    Delete {
+        session: SessionId,
+        target: Box<groove_types::Target>,
+    },
+    /// `cluster.write_yaml`: an object's YAML made writable, a draft started; or read-only again.
+    WriteYaml {
+        session: SessionId,
+        key: Box<FollowKey>,
+        on: bool,
+    },
+    /// `cluster.apply_yaml`: an object's YAML draft tried on the server, then reviewed as a cluster write.
+    ApplyYaml {
+        session: SessionId,
+        key: Box<FollowKey>,
+    },
+    /// `cluster.restart`: a workload's pods replaced, on a cluster the session may write to.
+    Restart {
+        session: SessionId,
+        target: Box<groove_types::Target>,
+    },
 }
 
 impl Command {
@@ -68,6 +105,12 @@ impl Command {
             Command::FollowLogs { .. } => "cluster.follow_logs",
             Command::LogCaret { .. } => "cluster.log_caret",
             Command::LogCopy { .. } => "cluster.log_copy",
+            Command::Patch { .. } => "cluster.patch",
+            Command::Restart { .. } => "cluster.restart",
+            Command::Scale { .. } => "cluster.scale",
+            Command::Delete { .. } => "cluster.delete",
+            Command::WriteYaml { .. } => "cluster.write_yaml",
+            Command::ApplyYaml { .. } => "cluster.apply_yaml",
         }
     }
 }
@@ -89,16 +132,7 @@ pub fn dispatch(
         Command::Caret { key, edit } => {
             state.cluster.store.follows.yamls.edit(&key, &edit);
         }
-        Command::Copy { key } => {
-            let held = state
-                .cluster
-                .store
-                .follows
-                .yamls
-                .get(&key)
-                .map(|one| one.selected());
-            crate::workspace::copied(services, spawner, held.unwrap_or_default());
-        }
+        Command::Copy { key } => copy(state, services, spawner, &key),
         Command::CopyValue { text } => crate::workspace::copied(services, spawner, text),
         Command::FollowLogs { reader, key } => logs::follow(state, spawner, &reader, *key),
         Command::LogCaret { key, edit } => {
@@ -109,7 +143,30 @@ pub fn dispatch(
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
         Command::Age { now } => state.cluster.store.age(now),
+        Command::Patch { session, patched } => {
+            writes::patch(state, spawner, session, *patched, Asker::Ui)
+        }
+        Command::Restart { session, target } => writes::restart(state, spawner, session, *target),
+        Command::Delete { session, target } => {
+            writes::delete((state, spawner), (session, *target), None, Asker::Ui)
+        }
+        Command::Scale {
+            session,
+            target,
+            replicas,
+        } => writes::scale(state, spawner, (session, *target), replicas),
+        Command::WriteYaml { session, key, on } => drafts::write(state, &session, &key, on),
+        Command::ApplyYaml { session, key } => {
+            crate::tools::edit_asked(state, spawner, session, &key)
+        }
     }
+}
+
+/// What the caret holds in an object's YAML, to the clipboard.
+fn copy(state: &AppState, services: &Services, spawner: &dyn Spawner, key: &FollowKey) {
+    let yamls = &state.cluster.store.follows.yamls;
+    let held = yamls.get(key).map(|one| one.selected());
+    crate::workspace::copied(services, spawner, held.unwrap_or_default());
 }
 
 /// Every stream `reader` leaves unread ends after `IDLE`, unless read again by then.

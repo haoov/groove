@@ -1,6 +1,6 @@
 [package]
 name = "groove-objects"
-description = "A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched"
+description = "A cluster's kinds, cached on disk, and its objects as Table rows: listed, watched, edited, patched and deleted"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,9 +9,11 @@ publish.workspace = true
 [dependencies]
 groove-kube = { path = "../../base/kube" }
 groove-types = { path = "../../shared/types" }
+imara-diff.workspace = true
 futures-util.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["sync", "fs"] }
+yaml-rust2.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -6,10 +6,21 @@ use super::{Act, TAB, acts};
 use crate::views::session::{Asked, Naming, Noting};
 use crate::{Losing, Of};
 
-/// A menu whose rows come with it: a skill sent, or a mapping slot given a value.
+/// A menu whose rows come with it: a write asked, a skill sent, or a mapping slot given a value.
 fn offered(of: &Of, at: usize) -> Option<Picked> {
     match of {
-        Of::Skills { session, offered } => Some(sent(session, offered.get(at))),
+        Of::Resource {
+            session,
+            shells,
+            writes,
+            offered,
+        } => Some(match at.checked_sub(shells.len()) {
+            None => shelled(session, &shells[at]),
+            Some(at) => match writes.get(at) {
+                Some(write) => Picked::asks(write.clone()),
+                None => sent(session, offered.get(at - writes.len())),
+            },
+        }),
         Of::Hues(context) => {
             let hue = groove_types::Hue::ALL.get(at)?;
             let set = groove_controllers::config::Command::SetCluster {
@@ -60,6 +71,20 @@ fn closed(path: &str, owes: bool, others: &[String], at: usize) -> Picked {
     }
 }
 
+/// A shell in a pod, in a tab of the drawer, opened to take the keys.
+fn shelled(session: &groove_types::SessionId, one: &crate::Shelled) -> Picked {
+    let shell = groove_controllers::shell::Command::Pod {
+        session: session.clone(),
+        pod: one.pod.clone(),
+        container: one.container.clone(),
+    };
+    Picked {
+        commands: vec![Command::Shell(shell)],
+        drawer: true,
+        ..Picked::default()
+    }
+}
+
 /// One skill typed into the agent's own prompt.
 fn sent(session: &groove_types::SessionId, offer: Option<&crate::Offer>) -> Picked {
     let Some(one) = offer else {
@@ -96,6 +121,8 @@ pub struct Picked {
     pub asking: Option<Losing>,
     pub naming: Option<Naming>,
     pub noting: Option<Noting>,
+    /// The terminal drawer opens, its new tab taking the keys.
+    pub drawer: bool,
 }
 
 impl Picked {
@@ -127,7 +154,6 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         return picked;
     }
     match (of, acts(of).get(at)) {
-        (Of::File(path), Some(Act::DiscardChanges)) => Picked::asks(Losing::File(path.clone())),
         (Of::Line { path, lines }, Some(Act::Note)) => Picked::notes(groove_types::Anchor {
             path: path.clone(),
             start_line: lines.0,

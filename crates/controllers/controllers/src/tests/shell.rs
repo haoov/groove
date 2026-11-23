@@ -1,5 +1,7 @@
 //! The manual section's terminals: where they open, and that they go with their session.
 
+mod pods;
+
 use crate::session::Command as SessionCommand;
 use crate::shell::Command;
 use crate::tests::fixture::until;

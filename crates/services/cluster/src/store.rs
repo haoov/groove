@@ -9,7 +9,7 @@ mod yamls;
 pub use follows::{Follow, Follows, Named};
 pub use logs::{CAP, Log, Logs, Streaming};
 pub use related::Up;
-pub use yamls::Yamls;
+pub use yamls::{Draft, Yamls};
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 

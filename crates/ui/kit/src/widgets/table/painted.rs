@@ -20,6 +20,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             ctx.quad(line, ctx.styles.panel_head());
             hairline(ctx, line, ctx.styles.line());
             dividers(ctx, line, (spans, self.columns));
+            sides(ctx, line);
         }
         for (at, column) in self.columns.iter().enumerate() {
             let (x, w) = spans[at];
@@ -62,7 +63,10 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         match shown {
             Shown::Band(band) => {
                 let ruled = self.rows.ruled || self.rows.gridded;
-                banded(ctx, line, band, (selected, ruled))
+                banded(ctx, line, band, (selected, ruled));
+                if self.rows.gridded {
+                    sides(ctx, line);
+                }
             }
             Shown::Row(row) => self.row(ctx, line, spans, row, selected),
         }
@@ -112,6 +116,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         if self.rows.gridded {
             dividers(ctx, line, (spans, self.columns));
             hairline(ctx, line, ctx.styles.line());
+            sides(ctx, line);
         } else if self.rows.ruled && !selected && !self.rows.carded {
             hairline(ctx, line, ctx.styles.line());
         }
@@ -133,5 +138,14 @@ fn dividers<A: App, T>(
         }
         let at = (x - gap / 2.0).floor();
         ctx.quad(Rect::new(at, line.y, thick, line.h), ctx.styles.line());
+    }
+}
+
+/// A hairline down each side of `line`, closing a grid on the left and the right.
+fn sides<A: App>(ctx: &mut Ctx<'_, A>, line: Rect) {
+    let thick = ctx.tokens.hairline;
+    let right = line.right() - thick;
+    for x in [line.x, right] {
+        ctx.quad(Rect::new(x, line.y, thick, line.h), ctx.styles.line());
     }
 }

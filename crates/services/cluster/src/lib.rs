@@ -1,17 +1,25 @@
-//! The cluster part of the app: the contexts found, their sign-in, and the watched objects.
+//! The cluster part of the app: the contexts found, their sign-in, the watched objects, and the writes.
 
 mod store;
 #[cfg(test)]
 mod tests;
+mod writes;
 
 use std::path::PathBuf;
 
 use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
 pub use groove_contexts::paths;
-pub use groove_kubectl::{Answer, Checked, check as checked};
+pub use groove_kubectl::{Answer, Checked, Exec, LONGEST, RUNS, SHELL, check as checked};
 pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
-pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls};
+pub use groove_objects::{Preview, edited};
+pub use store::{
+    CAP, Draft, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls,
+};
+pub use writes::{
+    Allowed, Asked, delete, doomed, patch, preview, restart, restartable, scalable, scale, tried,
+    writable,
+};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -195,6 +203,11 @@ pub async fn helm_revision(paths: Vec<PathBuf>, release: Named) -> Result<Option
 /// Whether `context` signs in now.
 pub async fn check(paths: Vec<PathBuf>, context: String) -> Login {
     groove_contexts::check(&paths, &context).await
+}
+
+/// A command run in a pod, once the user approved it.
+pub async fn exec(exec: &Exec) -> Result<Answer> {
+    groove_kubectl::exec("kubectl", exec).await
 }
 
 /// A checked kubectl read run, its JSON through `filter` when one is given.

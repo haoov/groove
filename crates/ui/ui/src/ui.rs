@@ -48,7 +48,7 @@ pub enum Overlay {
     Palette(palette::Palette),
     /// What the right button opened, and where.
     Menu(Menu),
-    /// A change about to be thrown away, asking first.
+    /// A change about to be thrown away, or a cluster written to, asking first.
     Losing(Losing),
     /// The write the review sheet shows.
     Examining(groove_types::ApprovalId),
@@ -91,15 +91,25 @@ pub struct AgentUi {
     pub bypassed: bool,
 }
 
-/// What is asked before a change is thrown away.
+/// What is asked before a change is thrown away, or a cluster written to.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Losing {
-    File(String),
     /// One open file's tab, with the edits it owes the disk.
     Tab(String),
     /// One path of the explorer, with everything under it.
     Path(String),
-    Everything,
+    /// A write on the object of a list row.
+    Row(Box<views::session::resources::Written>),
+}
+
+impl Losing {
+    /// The menu row that asks it.
+    pub fn act(&self) -> &'static str {
+        match self {
+            Losing::Row(written) => written.write.act(),
+            _ => "discard",
+        }
+    }
 }
 
 /// A press, and how many the pointer has made in the same place in a row.
@@ -157,6 +167,11 @@ impl Ui {
             Some(Overlay::Examining(one)) => Some(one),
             _ => None,
         }
+    }
+
+    /// The review sheet opened on one write.
+    pub(crate) fn examine(&mut self, id: groove_types::ApprovalId) {
+        self.overlay = Some(Overlay::Examining(id));
     }
 
     /// What a palette key did, applied: the palette down, Settings up; its commands returned.

@@ -266,3 +266,22 @@ fn the_word_the_caret_rests_in_is_grounded_in_the_yaml_too() {
         .count();
     assert!(grounded > 0, "`{word}` grounded where it stands");
 }
+
+#[test]
+fn the_yaml_stands_read_only_until_edit_is_pressed() {
+    let (mut app, mut ui) = opened();
+    lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
+    if let Some(tab) = ui.session.resources.tab_mut() {
+        tab.view = crate::views::session::resources::View::Yaml;
+    }
+    let (texts, hits) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "EDIT"), "{texts:?}");
+    let edit = hits.rect_of(&Target::YamlWrite(true)).expect("EDIT");
+    let asked = click(edit, &mut ui, &app, &hits);
+    let [Command::Cluster(groove_controllers::cluster::Command::WriteYaml { on, .. })] =
+        asked.as_slice()
+    else {
+        panic!("one write asked: {asked:?}");
+    };
+    assert!(*on);
+}

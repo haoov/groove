@@ -56,7 +56,7 @@ fn titled_width(ctx: &mut Ctx, open: &Open, page: Option<&str>) -> f32 {
     md * 2.0 + icon + sm + words + link
 }
 
-/// The line under the header: the repo and worktree, the MR and the sidebar's fold, or a discard question.
+/// The line under the header: the repo and worktree, the MR and the sidebar's fold.
 pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
     let Some(open) = app.session.selected() else {
         return;
@@ -65,10 +65,6 @@ pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
     let line = groove_ui_kit::shape::band(info, sm, row);
     let under = groove_ui_kit::shape::band(info, sm * 2.0 + row, ctx.tokens.hairline);
     groove_ui_kit::shape::top_rule(ctx, under, ctx.styles.line());
-    if ui.losing() == Some(&crate::Losing::Everything) {
-        let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
-        return super::files::asking(ctx, room, "discard every change?");
-    }
     let line = match ui.session.tab.has_sidebar() {
         true => super::fold(ctx, line, ui),
         false => line,
