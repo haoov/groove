@@ -87,3 +87,20 @@ fn once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on() {
     ui.settle(&answered);
     assert_eq!(ui.session.tab, Tab::Overview);
 }
+
+#[test]
+fn a_write_is_answered_only_once_its_change_is_shown() {
+    let mut one = ask("ap-1", "kube_exec", "kind · paxone/pods/db-0");
+    one.reviewed = true;
+    let app = asking(vec![one]);
+    let ui = settled(&app, session_ui());
+    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let id = ApprovalId::new("ap-1");
+    assert!(hits.rect_of(&Target::Approve(id.clone())).is_none());
+    assert!(hits.rect_of(&Target::Refuse(id)).is_none());
+    let drawn = all_texts(&frame);
+    assert!(
+        drawn.iter().any(|one| one == "Reading the change…"),
+        "{drawn:?}"
+    );
+}

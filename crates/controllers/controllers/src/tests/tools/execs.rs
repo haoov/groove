@@ -67,3 +67,23 @@ fn a_read_only_context_refuses_a_command_before_it_waits() {
     assert!(refused, "{}", answer.text);
     assert!(waiting(&state, &id).is_empty());
 }
+
+#[test]
+fn once_one_write_is_answered_the_next_one_s_change_is_shown() {
+    let (home, spawner, services, mut state) = fixture::fresh();
+    let id = session(home.path(), (&mut state, &services, &spawner));
+    waited(&mut state, &services, &spawner, &id, "kube_exec", psql());
+    let mut ls = psql();
+    ls["command"] = json!(["ls"]);
+    waited(&mut state, &services, &spawner, &id, "kube_exec", ls);
+    let asks = waiting(&state, &id);
+    let (first, second) = (asks[0].id.clone(), asks[1].id.clone());
+    fixture::until(&spawner, &services, &mut state, |s| {
+        s.workspace.reviewed() == Some(first.as_str())
+    });
+    let refuse = crate::agent::Command::Refuse { id: first };
+    dispatch(Cmd::Agent(refuse), &mut state, &services, &spawner);
+    fixture::until(&spawner, &services, &mut state, |s| {
+        s.workspace.reviewed() == Some(second.as_str())
+    });
+}

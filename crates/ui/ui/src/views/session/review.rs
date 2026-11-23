@@ -20,8 +20,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     };
     let tall = Spec::default().height(ctx.tokens.row * 2.0 + ctx.tokens.md * 2.0);
     let [band, rest] = column_in(body, [tall, Spec::fill()]);
-    asking(ctx, band, &ask);
-    if app.workspace.reviewed() == Some(ask.id.as_str()) {
+    let shown = app.workspace.reviewed() == Some(ask.id.as_str());
+    asking(ctx, band, &ask, shown);
+    if shown {
         return super::diff::draw(ctx, app, ui, rest);
     }
     let room = rest.pad(Edges::all(ctx.tokens.md));
@@ -36,8 +37,9 @@ fn waiting(app: &AppState) -> Option<Ask> {
     asks.iter().find(|one| one.reviewed).cloned()
 }
 
-/// The band on the attention tint: what the write asks, then what it acts on and its answers.
-fn asking(ctx: &mut Ctx, band: Rect, ask: &Ask) {
+/// The band on the attention tint: what the write asks, then what it acts on, and its answers
+/// once the change is `shown`.
+fn asking(ctx: &mut Ctx, band: Rect, ask: &Ask, shown: bool) {
     let tint = ctx.styles.band_tint(Role::Attention);
     Panel::default().ground(tint).draw(ctx, band);
     groove_ui_kit::shape::hairline(ctx, band, ctx.styles.band_edge(Role::Attention));
@@ -52,7 +54,9 @@ fn asking(ctx: &mut Ctx, band: Rect, ask: &Ask) {
     };
     Label::new(&asks, ctx.styles.heading(Role::Attention)).draw(ctx, first);
     let mut second = second;
-    answers(ctx, &mut second, &ask.id);
+    if shown {
+        answers(ctx, &mut second, &ask.id);
+    }
     Label::new(&ask.subject, ctx.styles.code(Role::Text)).draw(ctx, second);
 }
 

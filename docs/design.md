@@ -609,7 +609,8 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 **A session waiting on a cluster write answers it first, in its Diff tab.** The workspace
 stands on the Diff tab, ringed in peach, whatever tab is asked. A band on a dim attention
 tint holds what the write asks, in capitals, then the object, with **Refuse** and
-**Approve** at its right, bordered words in capitals, Approve edged in peach. Under it, the
+**Approve** at its right once the change is shown, bordered words in capitals, Approve
+edged in peach. Under it, the
 diff itself, read-only, over the object's YAML before → after: the change stands in place
 of the worktree's until the write is decided, then the worktree's is read again. No sheet
 stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
@@ -620,6 +621,8 @@ the session goes back to the tab it stood on. Enforced by
 `once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on`,
 `a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask`,
 `only_the_band_s_approve_button_lets_a_cluster_write_through`,
+`a_write_is_answered_only_once_its_change_is_shown`,
+`once_one_write_is_answered_the_next_one_s_change_is_shown`,
 `a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
 `a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
 
@@ -643,7 +646,7 @@ sends nothing; the timeline says what landed. An object's tab offers no menu. En
 container once the pod's tab has read several, kubectl's own pick otherwise. It opens the
 terminal drawer on a new tab named after the pod and its container, the keys going to it,
 running `kubectl exec` with bash where the container has it, sh otherwise. Nothing asks
-first, and a context set read-only refuses it. Enforced by
+first, and a context set read-only refuses it; a shell already open stays. Enforced by
 `a_pod_s_shell_opens_the_drawer_with_the_keys_going_to_it`,
 `a_pod_s_shell_opens_in_a_tab_named_after_its_container`,
 `a_read_only_context_refuses_a_pod_s_shell` and

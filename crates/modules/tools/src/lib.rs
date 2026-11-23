@@ -55,7 +55,10 @@ pub fn named(name: &str) -> Option<Tool> {
 
 /// Whether the tool's write is approved only from the review sheet, whatever auto-approve says.
 pub fn reviewed(name: &str) -> bool {
-    matches!(name, "kube_patch" | "kube_delete" | "kube_exec" | APPLY_EDIT)
+    matches!(
+        name,
+        "kube_patch" | "kube_delete" | "kube_exec" | APPLY_EDIT
+    )
 }
 
 /// The user's own edit of an object's YAML, reviewed as the agent's cluster writes are.

@@ -18,9 +18,8 @@ pub const GLASS_DIM_ALPHA: (u8, u8) = (143, 59);
 pub const GLASS_CODE_ALPHA: (u8, u8) = (110, 140);
 /// A row's tint in a state's colour, dark then light; the dark one reads as about a tenth.
 pub const ROW_TINT_ALPHA: (u8, u8) = (6, 64);
-/// A band's tint over a pane, dark then light.
+/// A band's tint over a pane, dark then light, then its edge and what stands in its colour.
 pub const BAND_TINT_ALPHA: (u8, u8) = (8, 32);
-/// The edge of a band, and of what stands in its colour, over a pane.
 pub const BAND_EDGE_ALPHA: u8 = 140;
 /// Grounds on glass, dark then light; the dark ones set for what they read as in linear blending.
 pub const GLASS_HOVER_ALPHA: (u8, u8) = (3, 22);
@@ -46,16 +45,13 @@ pub const BADGE_EDGE: u8 = 90;
 
 /// A line of prose against its type size.
 pub const LEADING: f32 = 1.5;
-
 /// How many lines of a commit message the box shows.
 pub const MESSAGE_LINES: usize = 10;
 
 /// How many scopes stand over the rows, and the share of the surface they may take.
 pub const PINNED_DEEP: usize = 3;
 pub const PINNED_SHARE: f32 = 4.0;
-
 pub const ALERTS_TALL: f32 = 280.0;
-
 /// How many rows a search keeps above the match it lands on.
 pub const ABOVE_MATCH: usize = 4;
 

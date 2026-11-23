@@ -85,7 +85,7 @@ fn server(spawner: &SyncSpawner, calls: u64) -> MockServer {
 }
 
 #[test]
-fn a_patch_on_a_held_context_is_stored_and_said_on_the_timeline() {
+fn a_patch_on_a_held_context_is_stored_and_said_on_the_timeline_by_its_fields() {
     let (home, spawner, services, mut state) = fixture::fresh();
     let server = server(&spawner, 1);
     let parts = (&mut state, &services, &spawner);
@@ -107,7 +107,10 @@ fn a_patch_on_a_held_context_is_stored_and_said_on_the_timeline() {
         subject.starts_with("kind · paxone/deployments/api · patch"),
         "{subject}"
     );
-    assert!(subject.contains("\"replicas\":3"), "{subject}");
+    assert!(
+        subject.ends_with("patch spec.replicas"),
+        "the field, never its value: {subject}"
+    );
 }
 
 #[test]

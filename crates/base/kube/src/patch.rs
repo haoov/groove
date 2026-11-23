@@ -33,9 +33,10 @@ impl Patch<'_> {
     fn body(&self) -> Value {
         let mut body = self.body.clone();
         if let (Some(version), Some(object)) = (self.version, body.as_object_mut()) {
-            let metadata = object
-                .entry("metadata")
-                .or_insert_with(|| Value::Object(Default::default()));
+            let metadata = object.entry("metadata").or_insert(Value::Null);
+            if !metadata.is_object() {
+                *metadata = Value::Object(Default::default());
+            }
             if let Some(metadata) = metadata.as_object_mut() {
                 metadata.insert("resourceVersion".into(), Value::String(version.into()));
             }

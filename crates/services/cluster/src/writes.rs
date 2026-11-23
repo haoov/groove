@@ -25,6 +25,7 @@ pub struct Allowed {
 
 /// Refused on a read-only context, or where the session does not hold the object.
 pub fn writable(target: &Target, read_only: bool, held: &[Attached]) -> Result<()> {
+    named(target)?;
     let context = &target.context;
     if read_only {
         return Err(Error::invalid(format!(
@@ -55,6 +56,26 @@ pub fn writable(target: &Target, read_only: bool, held: &[Attached]) -> Result<(
         ),
     };
     Err(Error::invalid(why))
+}
+
+/// Refused when a name could step out of its own path, or the part written is not the object or its scale.
+fn named(target: &Target) -> Result<()> {
+    let bad = |one: &str| {
+        matches!(one, "" | "." | "..")
+            || one
+                .chars()
+                .any(|c| c.is_whitespace() || c.is_control() || "/\\%?#".contains(c))
+    };
+    if bad(&target.name) || target.namespace.as_deref().is_some_and(bad) {
+        let why = format!("{:?} names no object: no path, no query", target.name);
+        return Err(Error::invalid(why));
+    }
+    match target.subresource.as_deref() {
+        None | Some("scale") => Ok(()),
+        Some(part) => Err(Error::invalid(format!(
+            "{part} is not a part Groove writes"
+        ))),
+    }
 }
 
 /// Whether a restart replaces the pods of `kind`: a workload rolling out a pod template.

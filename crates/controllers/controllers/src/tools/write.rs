@@ -10,10 +10,10 @@ use groove_delivery_service::MrAct;
 
 mod children;
 mod clusters;
+mod execs;
 mod forge;
 mod git;
 mod notes;
-mod execs;
 mod patches;
 
 pub(crate) use patches::edit_asked;
@@ -113,7 +113,7 @@ pub fn allow(state: &mut AppState, services: &Services, spawner: &dyn Spawner, i
         return;
     };
     if state.workspace.decided(id) {
-        crate::workspace::diff::reread(state, spawner);
+        next(state, spawner);
     }
     run(state, services, spawner, Write::approved(approval, reply));
 }
@@ -124,9 +124,16 @@ pub fn refuse(state: &mut AppState, spawner: &dyn Spawner, id: &ApprovalId) {
         return;
     };
     if state.workspace.decided(id) {
-        crate::workspace::diff::reread(state, spawner);
+        next(state, spawner);
     }
     reply.failed(format!("the user refused {}", approval.op));
+}
+
+/// The next cluster write the session waits on, shown; the worktree's change read again when none.
+fn next(state: &mut AppState, spawner: &dyn Spawner) {
+    if !crate::workspace::review::show(state, spawner) {
+        crate::workspace::diff::reread(state, spawner);
+    }
 }
 
 /// Every write of a session that ends, refused.

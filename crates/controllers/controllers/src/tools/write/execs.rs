@@ -24,7 +24,7 @@ pub(super) fn asked(state: &mut AppState, spawner: &dyn Spawner, mut write: Writ
         let gone = "the session closed before kube_exec ran";
         return write.reply.failed(gone);
     }
-    let container = exec.container.as_deref().unwrap_or("first");
+    let container = exec.container.as_deref().unwrap_or("default");
     let (context, namespace) = (&exec.context, &exec.namespace);
     let path = format!("{context}/{namespace}/{}/{container}.sh", exec.pod);
     let shown = exec.shown();

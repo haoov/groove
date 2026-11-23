@@ -31,6 +31,17 @@ fn a_command_shows_as_a_shell_reads_it_and_an_empty_one_is_refused() {
         ..psql(&["ls"])
     };
     assert!(flagged.argv().is_err(), "a name is no flag");
+    let pathed = Exec {
+        pod: "deploy/api".into(),
+        ..psql(&["ls"])
+    };
+    assert!(pathed.argv().is_err(), "a name is no path");
+}
+
+#[test]
+fn what_does_not_print_shows_escaped() {
+    let one = psql(&["sh", "-c", "ls # \u{202E}fdp\nrm -rf /"]);
+    assert_eq!(one.shown(), r"sh -c $'ls # \u202Efdp\nrm -rf /'");
 }
 
 #[tokio::test]

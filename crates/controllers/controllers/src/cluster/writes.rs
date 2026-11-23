@@ -22,7 +22,7 @@ pub(crate) fn patch(
     patched: Patched,
     asker: Asker,
 ) {
-    let said = format!("patch {}", patched.body);
+    let said = format!("patch {}", keys(&patched.body));
     stored((state, spawner), (session, said), changed(patched), asker);
 }
 
@@ -89,7 +89,7 @@ pub(crate) fn edit(
     session: SessionId,
     edited: Patched,
 ) {
-    let said = (session, format!("edit {}", edited.body));
+    let said = (session, format!("edit {}", keys(&edited.body)));
     let Patched {
         target,
         body,
@@ -149,6 +149,29 @@ fn stored(
             },
         ) as Continuation
     }));
+}
+
+/// `spec.replicas, metadata.labels.app`: the fields a patch sets, never their values.
+fn keys(body: &Value) -> String {
+    fn leaves(value: &Value, at: String, out: &mut Vec<String>) {
+        match value {
+            Value::Object(map) if !map.is_empty() => {
+                for (key, value) in map {
+                    let path = if at.is_empty() {
+                        key.clone()
+                    } else {
+                        format!("{at}.{key}")
+                    };
+                    leaves(value, path, out);
+                }
+            }
+            _ => out.push(at),
+        }
+    }
+    let mut out = Vec::new();
+    leaves(body, String::new(), &mut out);
+    out.retain(|one| one != "metadata.resourceVersion");
+    out.join(", ")
 }
 
 /// What `session` may write on `context`: a context Groove knows, and the clusters the session holds.

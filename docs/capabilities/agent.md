@@ -58,18 +58,20 @@ object that moved since is refused. Enforced by
 container and the command as an argument list; Groove runs `kubectl exec` with no shell,
 no terminal and no input, 60 seconds unless the agent asks up to 300. The command waits for
 the user as a cluster write does, shown on the Diff tab as a shell file, even with
-auto-approve on, and a context set read-only refuses it. The answer is its output, cut at
-32 KiB, then its stderr. Enforced by
+auto-approve on, and a context set read-only refuses it. A character that does not print
+shows escaped. The answer is its output, cut at 32 KiB, then its stderr; at its timeout
+kubectl stops, and the answer says the command may still run in the pod. Enforced by
 `a_command_waits_with_what_it_runs_under_auto_approve`,
-`a_read_only_context_refuses_a_command_before_it_waits` and
-`a_command_runs_in_its_pod_s_container_after_a_double_dash`.
+`a_read_only_context_refuses_a_command_before_it_waits`,
+`a_command_runs_in_its_pod_s_container_after_a_double_dash` and
+`what_does_not_print_shows_escaped`.
 
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
 forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
 repos and worktrees; the agent's cluster reads; each cluster write that lands, the user's or
-the agent's, as its target and its change; and the agent's turns, so the feed can say when
+the agent's, as its target and the fields it set, never their values; and the agent's turns, so the feed can say when
 it worked.
 
 **It does not hold the tools the agent ran on files.** A write or a shell command is the

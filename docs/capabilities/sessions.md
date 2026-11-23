@@ -41,7 +41,10 @@ holds nothing. The pairs stay with the session across restarts and go with it.
 
 **A write lands only where the session holds.** An object in a namespace needs that
 namespace or the whole cluster; an object outside the namespaces needs the whole cluster.
-Enforced by `a_session_on_one_namespace_writes_there_and_nowhere_else`.
+A name or a namespace that holds a path or a query is refused, and a write reaches the
+object or its scale, no other part. Enforced by
+`a_session_on_one_namespace_writes_there_and_nowhere_else` and
+`a_name_that_steps_out_of_its_path_or_a_part_groove_does_not_write_is_refused`.
 
 ## Maintenance tasks
 

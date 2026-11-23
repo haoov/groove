@@ -89,3 +89,25 @@ async fn a_409_is_a_conflict_on_the_moved_object() {
     let refused = client.patch_object(patch).await.expect_err("a conflict");
     assert!(matches!(refused, Error::Conflict { context } if context == "kind"));
 }
+
+#[tokio::test]
+async fn a_patch_whose_metadata_is_no_object_still_carries_the_version_seen() {
+    let server = MockServer::start().await;
+    let sent = json!({ "spec": { "replicas": 3 }, "metadata": { "resourceVersion": "7" } });
+    Mock::given(method("PATCH"))
+        .and(path(API))
+        .and(body_json(sent))
+        .respond_with(ResponseTemplate::new(200).set_body_json(scaled()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let (_dir, client) = client(&server).await;
+    let body = json!({ "spec": { "replicas": 3 }, "metadata": null });
+    let patch = Patch {
+        path: API,
+        body: &body,
+        version: Some("7"),
+        dry_run: false,
+    };
+    client.patch_object(patch).await.expect("a patched object");
+}

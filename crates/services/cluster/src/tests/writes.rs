@@ -52,6 +52,30 @@ fn a_session_on_one_namespace_writes_there_and_nowhere_else() {
 }
 
 #[test]
+fn a_name_that_steps_out_of_its_path_or_a_part_groove_does_not_write_is_refused() {
+    let on = [held("prod", None)];
+    for name in ["api/status", "..", "a?dryRun=None", "a%2Fb", "a b", ""] {
+        let named = Target {
+            name: name.into(),
+            ..api(Some("paxone"))
+        };
+        assert!(writable(&named, false, &on).is_err(), "{name:?}");
+    }
+    let escaped = api(Some("../kube-system"));
+    assert!(writable(&escaped, false, &on).is_err());
+    let status = Target {
+        subresource: Some("status".into()),
+        ..api(Some("paxone"))
+    };
+    assert!(writable(&status, false, &on).is_err());
+    let scale = Target {
+        subresource: Some("scale".into()),
+        ..api(Some("paxone"))
+    };
+    assert!(writable(&scale, false, &on).is_ok());
+}
+
+#[test]
 fn a_session_on_the_whole_cluster_writes_in_any_namespace_and_outside_them() {
     let on = [held("prod", None)];
     assert!(writable(&api(Some("cayzn")), false, &on).is_ok());
