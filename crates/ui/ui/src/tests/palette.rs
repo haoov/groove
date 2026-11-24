@@ -29,6 +29,8 @@ fn entries_follow_what_the_session_holds() {
             "Rename explorer",
             "Delete session",
             "Close session",
+            "Pause session",
+            "Move to top",
             "Switch session"
         ]
     );

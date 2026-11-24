@@ -33,7 +33,6 @@ pub(super) fn look(state: &AppState, before: Option<&Seen>) -> Seen {
 pub(super) fn sessions(state: &AppState) -> Sessions {
     let place = |open: &groove_session_service::Open| Place {
         id: open.session.id.clone(),
-        routine: open.session.kind.routine().map(str::to_string),
         auto_approve: open.state.auto_approve,
     };
     Sessions {

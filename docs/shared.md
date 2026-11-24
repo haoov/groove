@@ -93,30 +93,22 @@ useful, opens the facts that look relevant, and checks one before it relies on i
 `routines/` for the team's, in the user's config for their own. Its `skills` are the skills
 its agent may use, and the words under its header say what to do; the agent picks the order
 and adapts. A routine with one skill and no words sends that skill alone; one with several
-skills says what to do with them, in plain words. Three kinds:
+skills says what to do with them, in plain words. Two kinds:
 
 - **Bound to a session:** the trigger is an event about one session, and the routine goes to
   that session's own agent, with what the event says as its arguments — CI failed on a
   worktree → `groove:fix-ci`; changes requested on an MR → `groove:fix-notes`; a review asked
   of the user → `groove:co-review` in its review session.
-- **Standalone:** the work belongs to no session — check that every task has its properties
-  set, say. The routine has a session of its own to run in.
 - **Action:** no agent of its own. Its `do` names an action built into Groove, which runs it
   itself. `start-due` opens each task of Up Next that must start today — its Start date
   has come, or today plus its estimate, at eight hours a day, reaches its Due date — and
   starts `groove:start-task` in the new session's agent. It opens as many
   as the cap at most, and the user's selection stays where it was.
 
-**A standalone routine runs in a routine session.** A session of the kind `routine`, one per
-standalone routine, made when the routine is switched on. It stands on the rail under its own
-folded Routines group and never on the board. It holds no repo, worktree, diff or MR: only its
-agent pane, which the user talks to as to any agent. Each run starts its agent afresh; the
-runs before stay in its history, and the user can step in while one runs.
-
 **What starts a routine:**
 
-- its button, always: Run on a standalone routine's rail item, run on an action routine's row
-  in Settings; a bound routine has none, its events run it;
+- its button, always: run on an action routine's row in Settings; a bound routine has none,
+  its events run it;
 - the first time the app opens each day;
 - an app event: CI failed, changes requested, a review commented, a review asked of the user, an agent that
   finished, the tasks read again, a task moved to a status.
@@ -126,8 +118,7 @@ and the user turns the daily one and each event on or off there.
 
 **A routine acts only where auto-approve is on.** An event about a session whose writes wait
 for the user starts nothing there: auto-approve off means no automatic action on that session,
-a routine's included. A standalone routine's session follows the same switch. The button runs a
-routine whatever the switch, and its writes then wait like any other. The tools of another server follow
+a routine's included. The button runs a routine whatever the switch, and its writes then wait like any other. The tools of another server follow
 the agent's own Claude Code permissions, as in any session.
 
 **Never on the session the user is on.** An event about the session the user has selected

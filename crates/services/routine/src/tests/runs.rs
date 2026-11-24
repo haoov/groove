@@ -128,7 +128,6 @@ fn switched(routines: &[&Routine]) -> RoutinesConfig {
 fn place(one: &str, auto_approve: bool) -> Place {
     Place {
         id: id(one),
-        routine: None,
         auto_approve,
     }
 }
@@ -198,7 +197,7 @@ fn no_more_run_together_than_the_cap_and_a_busy_agent_waits() {
     }
     let now = Timestamp::new(1000);
     let working = |one: &SessionId| (one == &id("b")).then_some(AgentStatus::Working);
-    let started = runs.due(2, |_| Some(RoutineKind::Bound), working, now);
+    let started = runs.due(2, working, now);
     let on: Vec<&SessionId> = started.iter().map(|one| &one.session).collect();
     assert_eq!(
         on,
@@ -243,12 +242,10 @@ fn a_session_that_goes_takes_its_runs_with_it() {
 }
 
 #[test]
-fn a_bound_run_is_typed_or_asked_a_standalone_one_starts_afresh_an_action_sends_nothing() {
+fn a_bound_run_is_typed_or_asked_an_action_sends_nothing() {
     use crate::runs::{Deliver, deliver};
     assert_eq!(deliver(RoutineKind::Bound, true), Deliver::Type);
     assert_eq!(deliver(RoutineKind::Bound, false), Deliver::Ask);
-    assert_eq!(deliver(RoutineKind::Standalone, true), Deliver::Fresh);
-    assert_eq!(deliver(RoutineKind::Standalone, false), Deliver::Fresh);
     assert_eq!(deliver(RoutineKind::Action, true), Deliver::Nothing);
 }
 

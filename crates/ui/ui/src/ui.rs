@@ -67,6 +67,13 @@ pub enum Held {
     Lens,
     /// A task of the plan, carried to another line.
     Task(groove_types::ExternalId),
+    /// A session of the rail, pressed at `from`, `grip` below its row's top, the pointer now at `at`.
+    Session {
+        id: groove_types::SessionId,
+        from: f32,
+        grip: f32,
+        at: f32,
+    },
     /// A selection of our own on a terminal's grid.
     Selecting(Grid),
     /// A terminal's grid, its program sent the reports.

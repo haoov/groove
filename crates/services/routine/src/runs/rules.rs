@@ -11,8 +11,6 @@ pub enum Deliver {
     Type,
     /// Asked of a new agent on the session's conversation.
     Ask,
-    /// Asked of a new agent on a new conversation.
-    Fresh,
     Nothing,
 }
 
@@ -20,7 +18,6 @@ pub fn deliver(kind: RoutineKind, alive: bool) -> Deliver {
     match (kind, alive) {
         (RoutineKind::Bound, true) => Deliver::Type,
         (RoutineKind::Bound, false) => Deliver::Ask,
-        (RoutineKind::Standalone, _) => Deliver::Fresh,
         (RoutineKind::Action, _) => Deliver::Nothing,
     }
 }
@@ -29,8 +26,6 @@ pub fn deliver(kind: RoutineKind, alive: bool) -> Deliver {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Place {
     pub id: SessionId,
-    /// The routine it runs, for a routine's own session.
-    pub routine: Option<String>,
     pub auto_approve: bool,
 }
 
@@ -91,47 +86,28 @@ fn acts(sessions: &Sessions, session: &SessionId) -> bool {
     place.is_some_and(|one| one.auto_approve) && !selected
 }
 
-/// A bound routine runs on the open session the event is about; a standalone one in its own.
+/// A bound routine runs on the open session the event is about.
 pub fn target(
     routine: &Routine,
     about: Option<&SessionId>,
     sessions: &Sessions,
 ) -> Option<SessionId> {
-    let open = sessions.open.iter();
-    let place = match routine.kind {
-        RoutineKind::Standalone => open
-            .clone()
-            .find(|one| one.routine.as_deref() == Some(&routine.id)),
-        RoutineKind::Bound => open
-            .clone()
-            .find(|one| Some(&one.id) == about && one.routine.is_none()),
-        RoutineKind::Action => None,
-    };
-    place.map(|one| one.id.clone())
-}
-
-/// What a routine's button does: an action, or a run in the session that holds it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Pressed {
-    Act(Action),
-    Run(SessionId),
-}
-
-impl Runs {
-    /// What pressing `routine`'s button does, whatever the rules; or why it does nothing.
-    pub fn pressed(&self, routine: &Routine, sessions: &Sessions) -> Result<Pressed, String> {
-        if let Some(action) = routine.action {
-            return Ok(Pressed::Act(action));
-        }
-        let why = match (routine.kind, target(routine, None, sessions)) {
-            (RoutineKind::Standalone, Some(at)) if self.holds(&routine.id, &at) => {
-                "it runs there already"
-            }
-            (RoutineKind::Standalone, Some(at)) => return Ok(Pressed::Run(at)),
-            (RoutineKind::Standalone, None) => "switch it on first: its session holds its agent",
-            (RoutineKind::Bound, _) => "it is bound: its events run it",
-            (RoutineKind::Action, _) => "it does nothing Groove knows",
-        };
-        Err(format!("`{}` cannot run: {why}", routine.id))
+    if routine.kind != RoutineKind::Bound {
+        return None;
     }
+    let mut open = sessions.open.iter();
+    open.find(|one| Some(&one.id) == about)
+        .map(|one| one.id.clone())
+}
+
+/// What pressing `routine`'s button does, whatever the rules: its action; or why it does nothing.
+pub fn pressed(routine: &Routine) -> Result<Action, String> {
+    if let Some(action) = routine.action {
+        return Ok(action);
+    }
+    let why = match routine.kind {
+        RoutineKind::Bound => "it is bound: its events run it",
+        RoutineKind::Action => "it does nothing Groove knows",
+    };
+    Err(format!("`{}` cannot run: {why}", routine.id))
 }

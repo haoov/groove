@@ -39,6 +39,11 @@ pub enum Of {
     Hues(String),
     /// Where a pod's logs start, from the logs view's range picker.
     LogRanges,
+    /// A session's row on the rail, with the section it stands in; none for a child.
+    Session {
+        session: groove_types::SessionId,
+        section: Option<groove_types::Section>,
+    },
 }
 
 /// One skill a menu row stands for, with what it is sent.

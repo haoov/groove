@@ -168,50 +168,71 @@ agent, as the workspace's chord does. Enforced by
 `both_folded_the_rail_is_its_two_headers`,
 `the_rail_s_chord_opens_the_folded_sessions_and_hands_them_the_keys` and
 `the_rail_s_chord_on_the_rail_folds_the_sessions_and_hands_the_keys_to_the_agent`.
-It holds only the sessions actually open, under three headings, each with its count: **needs you**,
-**working**, **idle**. A heading with no session is not drawn. Under a heading the sessions
-keep the order they were opened in; a session moves only when its state does. The Board row
-above them carries the board's attention count when it is not zero. Enforced by
-`each_row_stands_under_its_state_in_the_order_opened`.
+It holds only the sessions actually open, in two sections the user sorts by hand, each
+headed with its count: **active** and **paused**. A section with no session is not drawn,
+except while a row is carried. A new session lands on top of active. A row stays where the
+user put it: it never moves because its agent's state changes. The section and the rank
+persist. Enforced by `rows_keep_the_user_s_order_whatever_their_state_and_paused_ones_stand_below`
+and `a_new_session_lands_on_top_of_active`. The Board row above them carries the board's
+attention count when it is not zero. Up and down walk the rows in the order drawn. Enforced
+by `the_arrows_walk_the_rows_in_the_order_drawn`. A click on a section's heading folds the
+section to it, and a second click opens it. A folded section's rows are not walked. Enforced by
+`a_section_s_heading_folds_its_sessions_away_and_opens_them_again`.
 
-Needs you holds the agents that ask, have exited or failed. Working holds the agents at work.
-Idle holds the rest, the done ones among them: done keeps its green, and opening it moves
-nothing. Up and down walk the rows in the order
-drawn. Enforced by `the_arrows_walk_the_rows_in_the_order_drawn`.
+One action, `session.place`, puts a session at an index of a section. Drag and drop, the
+palette and the row's menu all send it. A move to the other section writes `paused` or
+`back to active` to the session's log; a move inside a section writes nothing. Enforced by
+`pausing_moves_the_session_keeps_it_on_disk_and_logs_it` and
+`a_move_within_its_section_logs_nothing`.
+
+**Drag and drop.** A row pressed and moved past the click's slop lifts on glass and follows the
+pointer, held where it was gripped; its place stays ghosted, the section under the pointer lights, and a rule marks where
+it lands. Released, it lands there. Enforced by `a_row_dropped_lower_in_its_section_lands_there`,
+`a_row_dropped_under_the_paused_heading_is_paused` and
+`a_press_that_does_not_move_places_nothing`.
+
+**Palette and menu.** The palette offers `Pause session` or `Resume session`, and `Move to top`,
+on the selected session. The row's right-click menu offers the same, and `Close`. No chord.
+Enforced by `a_row_s_menu_pauses_its_session_and_a_paused_one_s_resumes_it`.
+
+The sessions' header carries how many rows ask, `· 2 ask`, in the attention colour.
 
 Each row:
 
-1. **Type icon** — task, review, explorer, routine, in the state's colour: peach while it asks,
-   green while done and not seen, red on an error, blue while working, grey otherwise.
-2. **Title.**
+1. **Kind tag** — three mono capitals in a fixed column: `TSK`, `EXP`, `MR` or `PR` by the
+   review's forge. In the state's colour: peach while it asks, green while done and not seen,
+   red on an error, blue while working, grey otherwise.
+2. **Number, then title** — the number in the sub colour: `#148` for a GitHub issue or PR,
+   `!88` for a GitLab MR, a Notion task's own id. An explorer has none.
 3. **Agent status** — `working`, `asks to commit`, `done`, `idle`, `exited`, `error`. One
    line, truncated, never wrapped.
 4. **Relative time, right-aligned** — how long the agent has waited, or since it finished.
 
 ```
- SESSIONS · 4                              +
+ SESSIONS · 5 · 1 ASK                      +
  ───────────────────────────────────────────
  ▤  Board                                   2
  ───────────────────────────────────────────
- NEEDS YOU · 1
- ⚑  TASK-51  auth refresh                  2m
-    asks to commit
- WORKING · 1
- ◎  review-3  shop argo                   now
-    working
- IDLE · 2
- ⚑  fix/keys-50                            6m
-    done
- ⚑  TASK-48  finops export                 3h
-    idle
+ ACTIVE · 3
+ TSK #148 Improve native theme            now
+     working
+     ├ TSK #150 Agent conversation   idle · 1h
+     └ EXP flaky ci on macos         asks · 3m
+ MR  !88 shop-deploy argo sync             2m
+     asks to approve a push
+ EXP kube scope picker                    40m
+     idle
+ PAUSED · 1
+ TSK #141 Cluster writes                   2d
+     idle
 ```
 
 Nothing else: no CI, no MR state, no worktree count, no state dot. Rows run edge to edge
 across the window with no rule between them, on square, see-through grounds: the selected one
-held, the one under the pointer lighter, the rest bare; no row is tinted. Headings keep the
-rows' padding. A row that asks shows it in its icon and its peach state line. Enforced by
-`the_selected_row_stands_edge_to_edge_on_the_held_ground_and_the_hovered_one_lit` and
-`a_row_that_asks_shows_its_icon_in_the_attention_colour_on_no_tint`.
+held, the one under the pointer lighter. A row that asks lies on the attention colour's dimmed
+tint, a done one not yet seen on the done colour's; the rest are bare. Headings keep the rows'
+padding. Enforced by
+`the_selected_row_stands_edge_to_edge_on_the_held_ground_and_the_hovered_one_lit`.
 
 A row carries no button. An ask's text is peach, and a click on its row opens the session
 with the review sheet on the first ask. Enforced by
@@ -221,14 +242,10 @@ session, nothing asks but a cluster write. A working status is blue and its glyp
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
 
-**Children.** A [child session](glossary.md#child-session) stands right under its parent,
-indented, whatever its own state; only the parent counts under a state's heading. Enforced by
-`a_working_child_stands_under_its_idle_parent`.
-
-**Routines.** A standalone routine's session stands under its own heading, `Routines · N`,
-folded by default, below the other sessions. Its row offers a round glass play button, which
-runs the routine now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
-appears on the board.
+**Children.** A [child session](glossary.md#child-session) stands right under its parent on one
+line, `├` and `└` as the feed's runs, its state and age inline. It has no section of its own:
+it moves with its parent, is never dragged alone, and only the parent counts under a heading.
+Enforced by `a_working_child_stands_under_its_idle_parent`.
 
 **Feed.** In its own window under the sessions', the event log of the opened sessions, newest first, filterable to
 the selected session: commits, pushes, MR events, notes, routines, cluster reads and Groove's own

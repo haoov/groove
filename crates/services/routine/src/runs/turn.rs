@@ -1,6 +1,6 @@
 //! A run's turn on its agent: started within the cap, over once its agent stops.
 
-use groove_types::{AgentStatus, RoutineKind, SessionId, Timestamp};
+use groove_types::{AgentStatus, SessionId, Timestamp};
 
 use super::{Run, Runs};
 
@@ -36,18 +36,16 @@ impl Runs {
     pub fn due(
         &mut self,
         cap: usize,
-        kind_of: impl Fn(&str) -> Option<RoutineKind>,
         status_of: impl Fn(&SessionId) -> Option<AgentStatus>,
         now: Timestamp,
     ) -> Vec<Run> {
         let (mut kept, mut started) = (std::collections::VecDeque::new(), Vec::new());
         while let Some(run) = self.waiting.pop_front() {
-            let standalone = kind_of(&run.routine) == Some(RoutineKind::Standalone);
             let free = !matches!(
                 status_of(&run.session),
                 Some(AgentStatus::Working | AgentStatus::Asking)
             );
-            let ready = !self.busy(&run.session) && (standalone || free);
+            let ready = !self.busy(&run.session) && free;
             match self.running.len() < cap && ready {
                 true => started.push(self.start_now(run, now)),
                 false => kept.push_back(run),

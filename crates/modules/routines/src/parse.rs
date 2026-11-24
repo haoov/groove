@@ -11,9 +11,8 @@ pub fn parse(id: &str, name: &str, text: &str) -> Result<Routine, String> {
     let words = words.trim().to_string();
     let kind = match field("kind").as_deref() {
         Some("bound") => RoutineKind::Bound,
-        Some("standalone") => RoutineKind::Standalone,
         Some("action") => RoutineKind::Action,
-        _ => return Err("its `kind` is neither `bound`, `standalone` nor `action`".into()),
+        _ => return Err("its `kind` is neither `bound` nor `action`".into()),
     };
     let action = acted(kind, field("do"))?;
     if kind != RoutineKind::Action {
@@ -72,7 +71,7 @@ fn checked(kind: RoutineKind, on: &[Trigger]) -> Result<(), String> {
                 return Err(format!("`{}` is no event of a session", one.name()));
             }
         }
-        RoutineKind::Standalone | RoutineKind::Action => {
+        RoutineKind::Action => {
             if let Some(one) = on.iter().find(|one| one.of_a_session()) {
                 return Err(format!(
                     "`{}` is about a session: make it bound",

@@ -31,8 +31,6 @@ pub struct SessionUi {
     pub manual: bool,
     /// The workspace is folded into its strip, the agent wide.
     pub stowed: bool,
-    /// The session is a routine's: its agent pane alone, the window wide.
-    pub alone: bool,
     /// A commit is shown in place of the working tree.
     pub reading: bool,
     /// The selected session waits on a cluster write, its change on the Diff tab under the ask.
@@ -264,7 +262,7 @@ impl SessionUi {
 
     /// Whether the sidebar stands beside the workspace right now.
     pub fn sidebar(&self) -> bool {
-        self.tab.has_sidebar() && !self.folded && !self.alone
+        self.tab.has_sidebar() && !self.folded
     }
 }
 

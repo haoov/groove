@@ -27,12 +27,22 @@ pub const PATH: [Act; 5] = [
     Act::Delete,
 ];
 
+/// The actions of a session's row, by the section it stands in; a child only closes.
+pub const ACTIVE: [Act; 3] = [Act::Pause, Act::MoveToTop, Act::Close];
+pub const PAUSED: [Act; 3] = [Act::Resume, Act::MoveToTop, Act::Close];
+pub const CHILD: [Act; 1] = [Act::Close];
+
 /// The actions a menu of fixed rows offers; none for a menu whose rows come with it.
 fn acts(of: &Of) -> &'static [Act] {
     match of {
         Of::Tab { .. } => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
+        Of::Session { section, .. } => match section {
+            Some(groove_types::Section::Active) => &ACTIVE,
+            Some(groove_types::Section::Paused) => &PAUSED,
+            None => &CHILD,
+        },
         Of::Resource { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
     }
 }

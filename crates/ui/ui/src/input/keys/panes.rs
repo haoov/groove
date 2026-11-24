@@ -151,7 +151,7 @@ pub(super) fn in_rail(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         }
         _ => {}
     }
-    let shown = crate::views::rail::shown(app, ui);
+    let shown = crate::views::rail::shown(app, ui.rail.shut);
     let selected = app.session.selected.as_ref();
     let at = shown
         .iter()

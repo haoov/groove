@@ -1,6 +1,7 @@
 //! What picking a row of a menu does: the commands it sends, or what the surface asks next.
 
-use groove_controllers::{Command, workspace};
+use groove_controllers::{Command, session, workspace};
+use groove_types::Section;
 
 use super::{Act, TAB, acts};
 use crate::views::session::{Asked, Naming, Noting};
@@ -148,6 +149,27 @@ impl Picked {
     }
 }
 
+/// A session paused, resumed, moved to the top of its section, or closed.
+fn placed(session: &groove_types::SessionId, section: Option<Section>, act: Act) -> Picked {
+    let session = session.clone();
+    let place = |section, index| session::Command::Place {
+        session: session.clone(),
+        section,
+        index,
+    };
+    let command = match (act, section) {
+        (Act::Close, _) => session::Command::Close { session },
+        (Act::Pause, _) => place(Section::Paused, 0),
+        (Act::Resume, _) => place(Section::Active, 0),
+        (Act::MoveToTop, Some(section)) => place(section, 0),
+        _ => return Picked::default(),
+    };
+    Picked {
+        commands: vec![Command::Session(command)],
+        ..Picked::default()
+    }
+}
+
 /// What picking row `at` of this menu does: a command, a question, or words to type.
 pub fn picked(of: &Of, at: usize) -> Picked {
     if let Some(picked) = offered(of, at) {
@@ -174,6 +196,7 @@ pub fn picked(of: &Of, at: usize) -> Picked {
             Picked::names(Naming::new(Asked::Copy, path, crate::views::name_of(path)))
         }
         (Of::Path { path, .. }, Some(Act::Delete)) => Picked::asks(Losing::Path(path.clone())),
+        (Of::Session { session, section }, Some(act)) => placed(session, *section, *act),
         _ => Picked::default(),
     }
 }

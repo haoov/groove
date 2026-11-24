@@ -14,6 +14,7 @@ mod layers;
 mod loop_;
 mod objects;
 mod perf;
+mod placing;
 mod reviews;
 mod routines;
 mod runs;

@@ -38,10 +38,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if crate::render::fires(app, ui) {
         groove_ui_kit::widgets::neurons(ctx, ctx.app.layout.board);
     }
-    if ui.session.alone && app.session.selected().is_some() {
-        agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
-        return crate::views::focus::draw(ctx, app, ui);
-    }
     if !ctx.app.layout.work.is_empty() {
         solid_pane(ctx, ctx.app.layout.strip);
     }

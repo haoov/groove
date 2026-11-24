@@ -1,6 +1,6 @@
 //! The `session_state` row: what a session remembers between runs.
 
-use groove_types::{Session, SessionId, SessionState, Timestamp, WorktreeId};
+use groove_types::{Section, Session, SessionId, SessionState, Timestamp, WorktreeId};
 
 use crate::rows::SessionRow;
 use crate::{Result, Store};
@@ -14,6 +14,8 @@ struct StateRow {
     selected_worktree_id: Option<String>,
     maintenance: bool,
     parent_id: Option<String>,
+    section: String,
+    rank: Option<i64>,
 }
 
 impl From<StateRow> for SessionState {
@@ -25,6 +27,8 @@ impl From<StateRow> for SessionState {
             selected_worktree: row.selected_worktree_id.map(WorktreeId::new),
             maintenance: row.maintenance,
             parent: row.parent_id.map(SessionId::new),
+            section: Section::parse(&row.section),
+            rank: row.rank,
         }
     }
 }
@@ -32,7 +36,8 @@ impl From<StateRow> for SessionState {
 impl Store {
     pub async fn state(&self, id: &SessionId) -> Result<SessionState> {
         let row: Option<StateRow> = sqlx::query_as(
-            "SELECT opened_at, seen_at, auto_approve, selected_worktree_id, maintenance, parent_id
+            "SELECT opened_at, seen_at, auto_approve, selected_worktree_id, maintenance, parent_id,
+                    section, rank
              FROM session_state WHERE session_id = ?",
         )
         .bind(id.as_str())
@@ -41,10 +46,33 @@ impl Store {
         Ok(row.map(SessionState::from).unwrap_or_default())
     }
 
-    /// `Some(now)` puts the session on the rail; `None` takes it off.
+    /// `Some(now)` puts the session on top of the rail's active section; `None` takes it off.
     pub async fn set_opened(&self, id: &SessionId, at: Option<Timestamp>) -> Result<()> {
         self.upsert_state(Column::OpenedAt, at.map(|t| t.seconds()), id)
-            .await
+            .await?;
+        if at.is_some() {
+            self.set_places(&[(id.clone(), Section::Active, None)])
+                .await?;
+        }
+        Ok(())
+    }
+
+    /// Each session's section and rank, written together.
+    pub async fn set_places(&self, places: &[(SessionId, Section, Option<i64>)]) -> Result<()> {
+        let mut tx = self.db.pool().begin().await?;
+        for (id, section, rank) in places {
+            sqlx::query(
+                "INSERT INTO session_state (session_id, section, rank) VALUES (?, ?, ?)
+                 ON CONFLICT(session_id) DO UPDATE SET section = excluded.section, rank = excluded.rank",
+            )
+            .bind(id.as_str())
+            .bind(section.as_str())
+            .bind(rank)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
     }
 
     pub async fn set_seen(&self, id: &SessionId, at: Timestamp) -> Result<()> {
@@ -93,9 +121,8 @@ impl Store {
     pub async fn opened(&self) -> Result<Vec<(Session, SessionState)>> {
         let rows: Vec<SessionRow> = sqlx::query_as(
             "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
-                    s.created_at, r.routine
+                    s.created_at
              FROM sessions s JOIN session_state st ON st.session_id = s.id
-             LEFT JOIN routine_sessions r ON r.session_id = s.id
              WHERE st.opened_at IS NOT NULL ORDER BY st.opened_at, s.id",
         )
         .fetch_all(self.db.pool())
@@ -113,10 +140,9 @@ impl Store {
     pub async fn living(&self) -> Result<Vec<(Session, SessionState)>> {
         let rows: Vec<SessionRow> = sqlx::query_as(
             "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
-                    s.created_at, r.routine
+                    s.created_at
              FROM sessions s
              LEFT JOIN session_state st ON st.session_id = s.id
-             LEFT JOIN routine_sessions r ON r.session_id = s.id
              ORDER BY COALESCE(st.opened_at, s.created_at) DESC, s.id",
         )
         .fetch_all(self.db.pool())

@@ -67,35 +67,6 @@ fn a_click_on_a_row_that_asks_opens_the_session_on_its_review() {
 }
 
 #[test]
-fn a_row_that_asks_shows_its_icon_in_the_attention_colour_on_no_tint() {
-    use groove_ui_kit::base::style::{Role, Styles};
-    let app = committing();
-    let ui = session_ui();
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = Styles::new(
-        app.config.theme(),
-        groove_ui_kit::base::tokens::Tokens::new(1.0),
-    );
-    let row = hits
-        .rect_of(&Target::Session(SessionId::new("a")))
-        .expect("the row that asks");
-    let base = &frame.layers()[0];
-    let peach = styles.color(Role::Attention);
-    let inside = |rect: groove_gfx::Rect| row.contains(rect.x, rect.y);
-    let icon = base
-        .icons
-        .iter()
-        .find(|one| inside(one.rect))
-        .expect("its icon");
-    assert_eq!(icon.color, peach, "the icon in peach");
-    let tinted = base
-        .quads
-        .iter()
-        .any(|quad| quad.rect == row && quad.color == styles.row_tint(Role::Attention));
-    assert!(!tinted, "no tint under the row");
-}
-
-#[test]
 fn review_shows_the_whole_write_and_its_two_answers() {
     let app = committing();
     let mut ui = session_ui();

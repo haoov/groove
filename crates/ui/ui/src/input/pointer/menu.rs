@@ -31,12 +31,25 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of,
         }),
+        Some(Target::Session(session)) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: session_of(app, session),
+        }),
         Some(target @ (Target::ResourceRow(_) | Target::ResourceOpen(_))) => {
             super::skilled::menu(ui, app, &target, (x, y))
         }
         _ => None,
     };
     ui.overlay = menu.map(Overlay::Menu);
+}
+
+/// A session's row: its section, or none for a child, which follows its parent.
+fn session_of(app: &AppState, session: groove_types::SessionId) -> Of {
+    let open = app.session.get(&session);
+    let top = open.filter(|one| !app.session.under_parent(one));
+    let section = top.map(|one| one.state.section);
+    Of::Session { session, section }
 }
 
 /// What a tab's menu acts on: the tab, and the others it may close without losing edits.

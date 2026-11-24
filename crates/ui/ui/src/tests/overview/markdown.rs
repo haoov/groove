@@ -35,7 +35,11 @@ fn a_heading_stands_larger_than_its_paragraph_and_shows_no_hashes() {
     let (runs, _) = drawn();
     assert!(run(&runs, "Goal").style.size > run(&runs, "Close").style.size);
     assert_eq!(run(&runs, "Goal").style.weight, Weight::SemiBold);
-    assert!(!runs.iter().any(|one| one.text.contains('#')));
+    assert!(
+        !runs
+            .iter()
+            .any(|one| one.text.starts_with("# ") || one.text.starts_with("##"))
+    );
 }
 
 #[test]

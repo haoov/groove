@@ -155,6 +155,8 @@ pub enum Target {
     Feed,
     /// The sessions' window's header, which folds it to itself.
     SessionsFold,
+    /// A section's heading on the rail, which folds it to itself.
+    SectionFold(groove_types::Section),
     /// A log entry's remove button, by the entry's id.
     LogRemove(i64),
     /// The alerts' header, which folds their window to it.
@@ -166,8 +168,6 @@ pub enum Target {
     AlertColumn(String),
     /// The boundary after an alerts column, dragged to its width.
     AlertEdge(String),
-    /// The rail's Routines heading, which folds their sessions away.
-    Routines,
     /// A line of the feed, and the session it belongs to.
     FeedLine(SessionId),
     /// A folded run of the feed, opened or folded again.

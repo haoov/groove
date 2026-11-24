@@ -9,13 +9,11 @@ use crate::{Overlay, Surface, Ui};
 impl Ui {
     /// Reads the layout's state, drops what a move left, lands a pending tab, and leaves Kubernetes with no cluster.
     pub fn settle(&mut self, app: &AppState) {
-        let selected = app.session.selected().map(|open| &open.session.kind);
-        self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
         let maintained = app
             .session
             .selected()
             .is_some_and(|open| open.state.maintenance);
-        self.alerts.shown = maintained && !self.session.alone;
+        self.alerts.shown = maintained;
         if self.focus == crate::Focus::Alerts && !self.alerts.shown {
             self.focus = crate::Focus::Agent;
         }

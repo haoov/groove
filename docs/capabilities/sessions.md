@@ -3,10 +3,8 @@
 Keep a task's repos, worktrees and agent together. Surface: the session's overview and
 agent pane, as [../design.md](../design.md#session--small-scope) draws them.
 
-Four kinds — [task](../glossary.md#task), [explorer](../glossary.md#explorer),
-[review](../glossary.md#review) and [routine](../glossary.md#routine-session) — on one
-provisioning path. A routine session holds no repo and no worktree: its agent pane alone,
-full width, under the rail's Routines heading and never on the board.
+Three kinds — [task](../glossary.md#task), [explorer](../glossary.md#explorer) and
+[review](../glossary.md#review) — on one provisioning path.
 
 ## Repos management
 

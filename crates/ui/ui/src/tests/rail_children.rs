@@ -4,7 +4,6 @@ use groove_types::{AgentStatus, ExternalId, SessionActivity, SessionId, SessionK
 
 use groove_controllers::agent_service::Agent;
 
-use crate::Ui;
 use crate::tests::{app, open};
 
 #[test]
@@ -34,7 +33,7 @@ fn a_working_child_stands_under_its_idle_parent() {
     };
     app.agent.agents.push((SessionId::new("child"), agent));
 
-    let order: Vec<String> = crate::views::rail::shown(&app, &Ui::default())
+    let order: Vec<String> = crate::views::rail::shown(&app, Default::default())
         .into_iter()
         .map(|one| one.session.id.to_string())
         .collect();

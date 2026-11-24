@@ -41,8 +41,8 @@ impl Store {
     pub async fn get(&self, id: &SessionId) -> Result<Option<Session>> {
         let row: Option<SessionRow> = sqlx::query_as(
             "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
-                    s.created_at, r.routine
-             FROM sessions s LEFT JOIN routine_sessions r ON r.session_id = s.id
+                    s.created_at
+             FROM sessions s
              WHERE s.id = ?",
         )
         .bind(id.as_str())
@@ -64,29 +64,6 @@ impl Store {
         .bind(session.created_at.seconds())
         .execute(self.db.pool())
         .await?;
-        Ok(())
-    }
-
-    /// Inserts the session a standalone routine runs in, and names the routine beside it.
-    pub async fn create_routine(&self, session: &Session) -> Result<()> {
-        let SessionKind::Routine { routine } = &session.kind else {
-            return Err(promote::wrong("routine", &session.id));
-        };
-        let mut tx = self.db.pool().begin().await?;
-        sqlx::query(
-            "INSERT INTO sessions (id, kind, title, created_at) VALUES (?, 'explorer', ?, ?)",
-        )
-        .bind(session.id.as_str())
-        .bind(&session.title)
-        .bind(session.created_at.seconds())
-        .execute(&mut *tx)
-        .await?;
-        sqlx::query("INSERT INTO routine_sessions (session_id, routine) VALUES (?, ?)")
-            .bind(session.id.as_str())
-            .bind(routine)
-            .execute(&mut *tx)
-            .await?;
-        tx.commit().await?;
         Ok(())
     }
 
@@ -164,14 +141,11 @@ impl Store {
     }
 
     pub async fn rename_explorer(&self, id: &SessionId, title: &str) -> Result<()> {
-        let done = sqlx::query(
-            "UPDATE sessions SET title = ? WHERE id = ? AND kind = 'explorer'
-             AND id NOT IN (SELECT session_id FROM routine_sessions)",
-        )
-        .bind(title)
-        .bind(id.as_str())
-        .execute(self.db.pool())
-        .await?;
+        let done = sqlx::query("UPDATE sessions SET title = ? WHERE id = ? AND kind = 'explorer'")
+            .bind(title)
+            .bind(id.as_str())
+            .execute(self.db.pool())
+            .await?;
         found(done.rows_affected(), "explorer", id)
     }
 

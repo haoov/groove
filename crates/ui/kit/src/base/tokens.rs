@@ -88,7 +88,8 @@ pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
 
-/// How much of the raised ground stands under a selection and under the word at the caret.
+/// How much of a carried row's place still shows, and of the raised ground under a selection.
+pub const GHOST: f32 = 0.3;
 pub const HELD: f32 = 0.8;
 /// How far a panel's header band stands from its base toward the theme's first surface.
 pub const PANEL_HEAD: f32 = 0.45;
@@ -98,9 +99,8 @@ pub const HEX: f32 = 18.0;
 pub const LATTICE_ALPHA: (u8, u8) = (5, 44);
 pub const NEURON: (f32, f32) = (3.0, 12.0);
 pub const OCCURS: f32 = 0.4;
-/// How much of the comment colour a scope's guide takes.
+/// How much of the comment colour a scope's guide takes, and of the accent under a search match.
 pub const GUIDE: f32 = 0.55;
-/// How much of the accent stands under a search match.
 pub const FOUND: f32 = 0.25;
 
 /// Sizes in pixels, scaled to the window.

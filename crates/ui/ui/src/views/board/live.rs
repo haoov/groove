@@ -12,13 +12,8 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
 
-/// Every session but a routine's.
 pub(super) fn living(app: &AppState) -> Vec<&Living> {
-    app.session
-        .living
-        .iter()
-        .filter(|living| living.session.kind.routine().is_none())
-        .collect()
+    app.session.living.iter().collect()
 }
 
 /// What the column says when it holds nothing.
