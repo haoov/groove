@@ -2,7 +2,7 @@
 
 use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command, session};
-use groove_types::SessionKind;
+use groove_types::{Section, SessionKind};
 
 use super::{Action, Entry};
 
@@ -131,6 +131,7 @@ fn sessions(app: &AppState, open: &Open) -> Vec<Entry> {
             session: id.clone(),
         }),
     )];
+    out.extend(placed(app, open));
     if app.session.open.iter().any(|one| one.session.id != id) {
         out.push(Entry::flow(
             "Session",
@@ -139,4 +140,27 @@ fn sessions(app: &AppState, open: &Open) -> Vec<Entry> {
         ));
     }
     out
+}
+
+/// Pausing or resuming the session, and putting it on top of its section; a child follows its parent.
+fn placed(app: &AppState, open: &Open) -> Vec<Entry> {
+    if app.session.under_parent(open) {
+        return Vec::new();
+    }
+    let place = |section, index| {
+        Command::Session(session::Command::Place {
+            session: open.session.id.clone(),
+            section,
+            index,
+        })
+    };
+    let section = open.state.section;
+    let (label, other) = match section {
+        Section::Active => ("Pause session", Section::Paused),
+        Section::Paused => ("Resume session", Section::Active),
+    };
+    vec![
+        Entry::command("Session", label, place(other, 0)),
+        Entry::command("Session", "Move to top", place(section, 0)),
+    ]
 }

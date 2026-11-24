@@ -213,8 +213,7 @@ async fn every_table_that_names_a_session_is_moved_on_a_promotion() {
             naming.push(table);
         }
     }
-    let kept = ["routine_sessions"];
-    for table in naming.iter().filter(|one| !kept.contains(&one.as_str())) {
+    for table in &naming {
         let moved = format!("UPDATE {table} SET session_id = ?");
         assert!(
             crate::promote::MOVES
@@ -237,32 +236,6 @@ async fn only_an_explorer_is_promoted_and_a_refusal_leaves_nothing_behind() {
         store.get(&session.id).await.unwrap().is_none(),
         "no row was left"
     );
-}
-
-#[tokio::test]
-async fn a_routine_session_reads_back_as_its_routine_and_goes_with_its_row() {
-    let store = Store::in_memory().await.unwrap();
-    let session = Session {
-        id: SessionId::new("routine-tidy"),
-        title: "tidy".into(),
-        kind: SessionKind::Routine {
-            routine: "user:tidy".into(),
-        },
-        created_at: Timestamp::new(5),
-    };
-    store.create_routine(&session).await.unwrap();
-    assert_eq!(store.get(&session.id).await.unwrap(), Some(session.clone()));
-    let renamed = store.rename_explorer(&session.id, "other").await;
-    assert!(
-        renamed.is_err(),
-        "a routine's session is no explorer to rename"
-    );
-    store.remove(&session.id).await.unwrap();
-    assert!(store.get(&session.id).await.unwrap().is_none());
-    store
-        .create_routine(&session)
-        .await
-        .expect("its routine row went with it");
 }
 
 #[tokio::test]

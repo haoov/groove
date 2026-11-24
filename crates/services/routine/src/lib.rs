@@ -51,11 +51,6 @@ impl State {
         status_of: impl Fn(&SessionId) -> Option<AgentStatus>,
         now: Timestamp,
     ) -> Vec<Run> {
-        let routines = &self.routines;
-        let kind_of = |id: &str| {
-            let listed = routines.iter().find(|one| one.id == id)?;
-            listed.read.as_ref().ok().map(|one| one.kind)
-        };
-        self.runs.due(cap, kind_of, status_of, now)
+        self.runs.due(cap, status_of, now)
     }
 }

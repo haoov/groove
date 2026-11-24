@@ -1,13 +1,22 @@
+mod drag;
 mod feed;
 mod item;
+mod kind;
 mod order;
 
+pub use drag::Slot;
+pub(crate) use drag::{landing, slot_at, top_of};
 pub(crate) use item::{asks_to, state_of};
+pub(crate) use order::shown;
+pub use order::Shut;
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
+use groove_types::SessionId;
+
+use self::order::Entry;
 use groove_gfx::{Edges, Rect};
-use groove_types::AttentionClass;
+use groove_types::Section;
 
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -19,6 +28,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::top_rule;
 use groove_ui_kit::text::Label;
+use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::widgets::{Button, flat_row, ground_under, lead, panel_head, solid_pane};
 
 /// What the rail remembers between frames.
@@ -34,8 +44,9 @@ pub struct RailUi {
     pub stowed: bool,
     /// The feed shows the selected session alone.
     pub mine: bool,
-    /// The routines' sessions stand open under their heading.
-    pub routines: bool,
+    /// Where a carried session would land.
+    pub drop: Option<Slot>,
+    pub shut: Shut,
     /// The feed's folded run that stands open.
     pub open: Option<RunKey>,
 }
@@ -56,51 +67,6 @@ pub enum Fold {
     Event(groove_types::TimelineKind),
 }
 
-/// One row of the rail's list.
-enum Entry<'a> {
-    Session(&'a Open),
-    /// A session spawned by the one above it.
-    Child(&'a Open),
-    /// A state's heading and how many sessions stand under it.
-    Group(Group, usize),
-    /// The routines heading and its count.
-    Routines(usize),
-}
-
-/// The state a session stands under, the one that needs the user first.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Group {
-    NeedsYou,
-    Working,
-    Idle,
-}
-
-impl Group {
-    fn label(self) -> &'static str {
-        match self {
-            Group::NeedsYou => "needs you",
-            Group::Working => "working",
-            Group::Idle => "idle",
-        }
-    }
-
-    fn role(self) -> Role {
-        match self {
-            Group::NeedsYou => Role::Attention,
-            Group::Working | Group::Idle => Role::Faint,
-        }
-    }
-}
-
-pub(crate) fn group_of(app: &AppState, open: &Open) -> Group {
-    let class = app.agent.activity(&open.session.id).map(|one| one.class());
-    match class {
-        Some(AttentionClass::NeedsYou) => Group::NeedsYou,
-        Some(AttentionClass::Moving) => Group::Working,
-        Some(AttentionClass::ActWhenYouLook | AttentionClass::Quiet) | None => Group::Idle,
-    }
-}
-
 /// Two opaque windows in the rail's place: the sessions' header, the Board row and the
 /// sessions by state, then the feed under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -109,9 +75,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     groove_ui_kit::widgets::ground_lattice(ctx, layout.rail);
     solid_pane(ctx, layout.sessions);
     solid_pane(ctx, layout.feed);
-    let tall = |height: f32| Spec::default().height(height);
-    let parts = [tall(ctx.tokens.bar), tall(ctx.tokens.header), Spec::fill()];
-    let [head, board, rows] = column_in(layout.sessions, parts);
+    let [head, board, rows] = parts_of(&ctx.tokens, layout.sessions);
     panel_head(ctx, head, ui.rail.stowed);
     header(ctx, app, ui, head);
     feed::draw(ctx, layout.feed, app, ui);
@@ -120,7 +84,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     }
     board_row(ctx, app, ui, board);
     top_rule(ctx, rows, ctx.styles.line());
-    items(ctx, app, ui, rows.pad(Edges::xy(0.0, ctx.tokens.xs)));
+    let rows = rows_in(&ctx.tokens, rows);
+    items(ctx, app, ui, rows);
+    ctx.clipped(rows, |ctx| drag::draw(ctx, app, ui, rows));
+}
+
+/// The sessions' window cut in its header, its Board row and its list.
+fn parts_of(tokens: &Tokens, sessions: Rect) -> [Rect; 3] {
+    let tall = |height: f32| Spec::default().height(height);
+    column_in(sessions, [tall(tokens.bar), tall(tokens.header), Spec::fill()])
+}
+
+fn rows_in(tokens: &Tokens, rows: Rect) -> Rect {
+    rows.pad(Edges::xy(0.0, tokens.xs))
+}
+
+/// The room the rail's list stands in, within the sessions' window.
+pub(crate) fn rows_of(tokens: &Tokens, sessions: Rect) -> Rect {
+    let [_, _, rows] = parts_of(tokens, sessions);
+    rows_in(tokens, rows)
 }
 
 /// The window's name and how many sessions are open, a click on it folding the window to it,
@@ -131,10 +113,22 @@ fn header(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) {
     let mut room = row.pad(Edges::across(md, ctx.tokens.sm));
     let plus = Button::icon(Mark::Add, 0, Target::NewExplorer, Role::Faint);
     plus.right(ctx, &mut room, 0.0);
+    let asking = ask_count(app);
+    let asks = format!("{asking} ask");
     groove_ui_kit::widgets::Heading::new("sessions")
         .count(app.session.open.len())
+        .also((asking > 0).then_some((asks.as_str(), Role::Attention)))
         .fold(!ui.rail.stowed)
         .within(ctx, row, room);
+}
+
+/// How many of the rail's sessions ask the user.
+fn ask_count(app: &AppState) -> usize {
+    let asks = |open: &&Open| {
+        let activity = app.agent.activity(&open.session.id);
+        activity.is_some_and(|one| one.class() == groove_types::AttentionClass::NeedsYou)
+    };
+    app.session.open.iter().filter(asks).count()
 }
 
 /// The board. It carries the attention count when it is not zero.
@@ -156,90 +150,71 @@ fn asking(ctx: &mut Ctx, room: &mut Rect, count: usize) {
     }
 }
 
-/// The sessions the rail shows, in its order: the routines' only while their heading is open.
-pub(crate) fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Open> {
-    let (placed, routines) = order::split(app);
-    let mut sessions: Vec<&Open> = placed.into_iter().map(|(open, _)| open).collect();
-    if ui.rail.routines {
-        sessions.extend(routines);
-    }
-    sessions
-}
-
-/// The rail's entries in order: a heading over each state, children under their parent.
-fn entries<'a>(app: &'a AppState, ui: &Ui) -> Vec<Entry<'a>> {
-    let (sessions, routines) = order::split(app);
-    let tops: Vec<&Open> = sessions
-        .iter()
-        .filter(|one| !one.1)
-        .map(|one| one.0)
-        .collect();
-    let mut entries: Vec<Entry> = Vec::new();
-    let mut last = None;
-    for (open, child) in sessions {
-        if child {
-            entries.push(Entry::Child(open));
-            continue;
-        }
-        let group = group_of(app, open);
-        if last != Some(group) {
-            let count = tops.iter().filter(|one| group_of(app, one) == group);
-            entries.push(Entry::Group(group, count.count()));
-        }
-        last = Some(group);
-        entries.push(Entry::Session(open));
-    }
-    if !routines.is_empty() {
-        entries.push(Entry::Routines(routines.len()));
-    }
-    if ui.rail.routines {
-        entries.extend(routines.into_iter().map(Entry::Session));
-    }
-    entries
-}
-
-/// One item per open session, the routines' under their own heading, scrolled and clipped to `area`.
+/// One item per line of the rail, scrolled and clipped to `area`; the carried one ghosted.
 fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let entries = entries(app, ui);
-    let items: Vec<_> = entries
+    let tokens = ctx.tokens;
+    let dragging = ui.rail.drop.is_some();
+    let items: Vec<_> = order::entries(app, dragging, ui.rail.shut)
         .into_iter()
         .map(|entry| {
-            let tall = match &entry {
-                Entry::Session(_) | Entry::Child(_) => item::height(ctx),
-                Entry::Group(..) | Entry::Routines(_) => ctx.tokens.row,
-            };
+            let tall = drag::height_of(&tokens, &entry);
             (entry, tall)
         })
         .collect();
     let at = (Scroller::Rail, ui.offset(Scroller::Rail));
+    let carried = drag::carried(ui).filter(|_| dragging).map(|one| one.0);
     listed(
         ctx,
         area,
         at,
         &items,
         |(_, tall)| *tall,
-        |ctx, rect, (entry, _)| match entry {
-            Entry::Session(open) => item::draw(ctx, app, ui, rect, open, 0.0),
-            Entry::Child(open) => item::draw(ctx, app, ui, rect, open, ctx.tokens.lg),
-            Entry::Group(group, count) => {
-                let named = groove_ui_kit::widgets::Heading::new(group.label());
-                let room = rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-                named
-                    .count(*count)
-                    .role(group.role())
-                    .within(ctx, rect, room);
+        |ctx, rect, (entry, _)| {
+            let ghost = ghosted(entry, carried);
+            if ghost {
+                ctx.fading(GHOST);
             }
-            Entry::Routines(count) => heading(ctx, rect, *count, ui.rail.routines),
+            line(ctx, app, ui, rect, entry);
+            if ghost {
+                ctx.fading(1.0);
+            }
         },
     );
 }
 
-/// The heading that folds the routines' sessions, with how many there are.
-fn heading(ctx: &mut Ctx, rect: Rect, count: usize, open: bool) {
-    let row = flat_row(ctx, rect, Target::Routines, false);
-    let room = row.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    groove_ui_kit::widgets::Heading::new("routines")
-        .count(count)
-        .fold(open)
-        .within(ctx, row, room);
+/// How much of the carried row's own place still shows.
+const GHOST: f32 = 0.3;
+
+/// Whether `entry` is the carried session, or one of its children.
+fn ghosted(entry: &Entry, carried: Option<&SessionId>) -> bool {
+    let Some(carried) = carried else {
+        return false;
+    };
+    match entry {
+        Entry::Heading(..) => false,
+        Entry::Session(open) => &open.session.id == carried,
+        Entry::Child { open, .. } => open.state.parent.as_ref() == Some(carried),
+    }
+}
+
+fn line(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, entry: &Entry) {
+    match entry {
+        Entry::Session(open) => item::draw(ctx, app, ui, rect, open),
+        Entry::Child { open, last } => item::draw_child(ctx, app, ui, rect, open, *last),
+        Entry::Heading(section, count) => {
+            let named = groove_ui_kit::widgets::Heading::new(label_of(*section))
+                .count(*count)
+                .fold(!ui.rail.shut.holds(*section))
+                .target(Target::SectionFold(*section));
+            let room = rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+            named.within(ctx, rect, room);
+        }
+    }
+}
+
+fn label_of(section: Section) -> &'static str {
+    match section {
+        Section::Active => "active",
+        Section::Paused => "paused",
+    }
 }

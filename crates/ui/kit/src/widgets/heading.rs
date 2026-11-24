@@ -18,6 +18,7 @@ pub struct Heading<'a, T> {
     fold: Option<bool>,
     target: Option<T>,
     role: Role,
+    also: Option<(&'a str, Role)>,
 }
 
 impl<'a, T: Clone + PartialEq> Heading<'a, T> {
@@ -29,6 +30,7 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
             fold: None,
             target: None,
             role: Role::Faint,
+            also: None,
         }
     }
 
@@ -52,6 +54,12 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
     /// What a click on the heading asks for.
     pub fn target(mut self, target: T) -> Self {
         self.target = Some(target);
+        self
+    }
+
+    /// A second count after the first, in its own colour: `· 2 ask`.
+    pub fn also(mut self, also: Option<(&'a str, Role)>) -> Self {
+        self.also = also;
         self
     }
 
@@ -80,6 +88,11 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
             (_, Some(note)) if !note.is_empty() => format!("{name} · {note}"),
             _ => name,
         };
-        Label::new(&text, ctx.styles.heading(self.role)).draw(ctx, room);
+        let drawn = Label::new(&text, ctx.styles.heading(self.role)).draw(ctx, room);
+        if let Some((also, role)) = self.also {
+            room.take_left(drawn.w);
+            let text = format!(" · {}", also.to_uppercase());
+            Label::new(&text, ctx.styles.heading(role)).draw(ctx, room);
+        }
     }
 }

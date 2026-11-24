@@ -185,24 +185,17 @@ fn four_states() -> AppState {
 }
 
 #[test]
-fn each_row_stands_under_its_state_in_the_order_opened() {
-    let app = four_states();
-    let ui = Ui::default();
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let y = |id: &str| {
-        let row = hits.rect_of(&Target::Session(SessionId::new(id)));
-        row.expect("the row").y
-    };
-    assert!(y("d") < y("b"), "needs you, then working");
-    assert!(y("b") < y("a"), "then idle");
-    assert!(y("a") < y("c"), "done stands in idle, in the order opened");
-    let texts = crate::tests::all_texts(&frame);
-    for heading in ["NEEDS YOU · 1", "WORKING · 1", "IDLE · 2"] {
-        assert!(
-            texts.iter().any(|one| one == heading),
-            "{heading}: {texts:?}"
-        );
-    }
+fn rows_keep_the_user_s_order_whatever_their_state_and_paused_ones_stand_below() {
+    let mut app = four_states();
+    let paused = app.session.get_mut(&SessionId::new("b")).unwrap();
+    paused.state.section = groove_types::Section::Paused;
+    let ranked = app.session.get_mut(&SessionId::new("c")).unwrap();
+    ranked.state.rank = Some(0);
+    let order: Vec<String> = crate::views::rail::shown(&app, Default::default())
+        .into_iter()
+        .map(|one| one.session.id.to_string())
+        .collect();
+    assert_eq!(order, ["d", "a", "c", "b"], "unranked, the last opened first, then ranked");
 }
 
 #[test]

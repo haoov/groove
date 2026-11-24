@@ -12,10 +12,6 @@ pub enum SessionKind {
         project: String,
         iid: u64,
     },
-    /// Where one standalone routine runs, by the routine's id.
-    Routine {
-        routine: String,
-    },
 }
 
 impl SessionKind {
@@ -33,22 +29,13 @@ impl SessionKind {
     }
 
     /// Every kind's name, in the order the board offers them.
-    pub const NAMES: [&'static str; 4] = ["task", "explorer", "review", "routine"];
+    pub const NAMES: [&'static str; 3] = ["task", "explorer", "review"];
 
     pub fn name(&self) -> &'static str {
         match self {
             SessionKind::Task { .. } => "task",
             SessionKind::Explorer => "explorer",
             SessionKind::Review { .. } => "review",
-            SessionKind::Routine { .. } => "routine",
-        }
-    }
-
-    /// The routine this session runs, if it is a routine session.
-    pub fn routine(&self) -> Option<&str> {
-        match self {
-            SessionKind::Routine { routine } => Some(routine),
-            _ => None,
         }
     }
 }
@@ -74,6 +61,41 @@ pub struct SessionState {
     /// The maintenance task that spawned this session.
     #[serde(default)]
     pub parent: Option<SessionId>,
+    #[serde(default)]
+    pub section: Section,
+    /// Its place in that section, smallest first; none stands above every ranked one.
+    #[serde(default)]
+    pub rank: Option<i64>,
+}
+
+/// A section of the rail.
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Section {
+    #[default]
+    Active,
+    Paused,
+}
+
+impl Section {
+    pub const ALL: [Section; 2] = [Section::Active, Section::Paused];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Section::Active => "active",
+            Section::Paused => "paused",
+        }
+    }
+
+    /// The stored word; anything unknown is active.
+    pub fn parse(word: &str) -> Self {
+        match word {
+            "paused" => Section::Paused,
+            _ => Section::Active,
+        }
+    }
 }
 
 /// One entry of a session's log: what was done, why, and the MR that carries it.

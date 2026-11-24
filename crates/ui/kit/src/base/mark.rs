@@ -43,7 +43,6 @@ pub enum Mark {
     /// A directory of a file list, shut and open.
     Folder,
     FolderOpen,
-    Routine,
     /// The hue a cluster context wears.
     Context,
     /// Before the repo and worktree pickers, and before the cluster ones.
@@ -88,7 +87,6 @@ impl Mark {
             SessionKind::Task { .. } => Mark::Task,
             SessionKind::Explorer => Mark::Explorer,
             SessionKind::Review { .. } => Mark::Review,
-            SessionKind::Routine { .. } => Mark::Routine,
         }
     }
 
@@ -138,7 +136,6 @@ impl Mark {
             Mark::Ticked => Icon::Ticked,
             Mark::Folder => Icon::Folder,
             Mark::FolderOpen => Icon::FolderOpen,
-            Mark::Routine => Icon::Repeat,
             Mark::Overview => Icon::Eye,
             Mark::Add => Icon::Plus,
             Mark::Reload => Icon::Notch,

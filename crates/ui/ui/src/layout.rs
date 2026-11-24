@@ -113,10 +113,6 @@ impl Layout {
         if stowing {
             held = held.stowed(!folds.manual);
         }
-        held = match ui.session.alone {
-            true => held.alone(),
-            false => held,
-        };
         let over_rail = folds.sessions && folds.feed;
         if over_rail {
             held = held.over_rail();
@@ -206,17 +202,6 @@ impl Layout {
         let none = Rect::new(self.window.w, self.window.h, 0.0, 0.0);
         (self.info, self.workspace, self.sidebar) = (none, none, none);
         self.work = none;
-        self
-    }
-
-    /// The agent pane over everything right of the rail; the workspace's parts empty.
-    pub fn alone(mut self) -> Self {
-        let (rail, window) = (self.rail.w, self.window);
-        self.agent = Rect::new(rail, self.agent.y, (window.w - rail).max(0.0), self.agent.h);
-        let none = Rect::new(window.w, window.h, 0.0, 0.0);
-        (self.header, self.workspace, self.sidebar) = (none, none, none);
-        (self.manual, self.work) = (none, none);
-        (self.strip, self.info) = (none, none);
         self
     }
 

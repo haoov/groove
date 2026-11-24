@@ -5,7 +5,7 @@ One line a term. The other docs link here at a term's first use.
 ## The work
 
 ### Session
-One unit of work in the window: its repos, worktrees, agent, terminals and log. Its kind is task, explorer, review or routine.
+One unit of work in the window: its repos, worktrees, agent, terminals and log. Its kind is task, explorer or review.
 
 ### Task
 A session that works a ticket from a provider. It has a branch and usually ends in an MR.
@@ -21,9 +21,6 @@ A task the user marked as maintenance in Groove. It spawns children, and their e
 
 ### Child session
 An explorer a maintenance task spawned, which starts from a brief. It keeps its parent when it becomes a task.
-
-### Routine session
-The session a standalone routine runs in. It holds only its agent, and never shows on the board.
 
 ### Worktree
 A git worktree cut from a repo's clone for one session, at `<root>/worktrees/<session>/<project>/<branch>`.

@@ -23,20 +23,13 @@ fn a_routine_says_its_skill_its_triggers_and_its_words() {
 }
 
 #[test]
-fn a_standalone_routine_answers_to_the_app() {
-    let text = "---\nskills: platform:check-tasks\nkind: standalone\non: daily, tasks-read\n---\n";
-    let read = parse("shared:tasks", "tasks", text).unwrap();
-    assert_eq!(read.on, [Trigger::Daily, Trigger::TasksRead]);
-}
-
-#[test]
 fn a_file_that_mixes_the_kinds_says_why_it_is_no_routine() {
     let refused = |text: &str| parse("user:x", "x", text).unwrap_err();
     let head = "---\nskills: groove:fix-ci\n";
     assert!(refused(&format!("{head}kind: bound\non: daily\n---\n")).contains("daily"));
     assert!(refused(&format!("{head}kind: bound\n---\n")).contains("at least one"));
-    let session = refused(&format!("{head}kind: standalone\non: ci-failed\n---\n"));
-    assert!(session.contains("make it bound"), "{session}");
+    let standalone = refused(&format!("{head}kind: standalone\non: daily\n---\n"));
+    assert!(standalone.contains("`kind`"), "{standalone}");
     assert!(refused(&format!("{head}kind: bound\non: soon\n---\n")).contains("soon"));
     assert!(refused("no front matter").contains("front matter"));
     assert!(refused("---\nkind: bound\non: ci-failed\n---\n").contains("asks nothing"));
@@ -53,7 +46,7 @@ fn a_routine_may_use_several_skills_or_none_when_its_words_say_what_to_do() {
                    Fix the pipeline first, then the notes.\n";
     let read = parse("user:mend", "mend", several).unwrap();
     assert_eq!(read.skills, ["groove:fix-ci", "groove:fix-notes"]);
-    let none = "---\nkind: standalone\non: daily\n---\nCheck every task has its properties.\n";
+    let none = "---\nkind: bound\non: ci-failed\n---\nCheck every task has its properties.\n";
     assert!(parse("user:tidy", "tidy", none).unwrap().skills.is_empty());
 }
 

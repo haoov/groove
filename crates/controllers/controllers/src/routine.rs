@@ -5,7 +5,7 @@ mod run;
 mod seen;
 mod trail;
 
-use groove_routine_service::runs::{Fired, Pressed, Run};
+use groove_routine_service::runs::Fired;
 use groove_types::{Action, Error, Timestamp, Trigger};
 
 use crate::{AppState, Services, Spawner};
@@ -116,19 +116,14 @@ fn dawn(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// A standalone routine's button runs it now in its session, an action's does it; whatever the rules.
+/// An action routine's button does its action now, whatever the rules.
 pub fn button(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &str) {
     let Some(routine) = state.routine.routine(id).cloned() else {
         let why = format!("`{id}` is no routine Groove can run");
         return state.failed(Error::invalid(why));
     };
-    let session = match state.routine.runs.pressed(&routine, &seen::sessions(state)) {
-        Ok(Pressed::Act(one)) => return action::act(state, services, spawner, one),
-        Ok(Pressed::Run(session)) => session,
-        Err(why) => return state.failed(Error::invalid(why)),
-    };
-    let run = Run::new(&routine.id, session, None, "");
-    let started = state.routine.runs.start_now(run, Timestamp::now());
-    run::send(state, spawner, &started);
-    trail::started(state, services, spawner, &started);
+    match groove_routine_service::runs::pressed(&routine) {
+        Ok(one) => action::act(state, services, spawner, one),
+        Err(why) => state.failed(Error::invalid(why)),
+    }
 }

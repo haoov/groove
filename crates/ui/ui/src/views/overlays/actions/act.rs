@@ -12,6 +12,9 @@ pub enum Act {
     Rename,
     Copy,
     Delete,
+    Pause,
+    Resume,
+    MoveToTop,
 }
 
 impl Act {
@@ -27,6 +30,9 @@ impl Act {
             Act::Rename => "rename",
             Act::Copy => "copy",
             Act::Delete => "delete",
+            Act::Pause => "pause session",
+            Act::Resume => "resume session",
+            Act::MoveToTop => "move to top",
         }
     }
 }

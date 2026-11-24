@@ -23,7 +23,7 @@ use groove_controllers::{AppState, Command, delivery, task, workspace};
 use groove_types::DiffView;
 
 use self::board::{carried, opened_session, takes};
-pub(super) use self::board::{dropped, opened_from_board, reads as board_reads};
+pub(super) use self::board::{opened_from_board, reads as board_reads};
 pub(super) use self::drag::nudged;
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
@@ -59,8 +59,19 @@ pub(super) fn press(
         Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
         Some(target) if mods.ctrl && board::opens(&target) => opened_from_board(target, ui, false),
         Some(Target::Code) if mods.ctrl => defined(ui, app, hits, metrics, (x, y)),
+        Some(Target::Session(id)) => {
+            rail::takes(ui, app, &id, (x, y), metrics);
+            click(x, y, ui, app, hits, metrics)
+        }
         _ => click(x, y, ui, app, hits, metrics),
     }
+}
+
+/// The pointer let go: whatever a drag carried lands.
+pub(super) fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let mut out = board::dropped(ui, app);
+    out.extend(rail::dropped(ui, app));
+    out
 }
 
 /// The pointer moved: a boundary follows it, or the open file holds more.
@@ -75,6 +86,7 @@ pub(super) fn moved(
     match &ui.held {
         Some(Held::Edge(_)) => drag_to(ui, x, y, metrics),
         Some(Held::Task(_)) => carried(x, y, ui, app, metrics),
+        Some(Held::Session { .. }) => rail::carried(y, ui, app, metrics),
         Some(Held::Lens) => lensed(y, ui, app, hits, metrics),
         Some(Held::Clicking(_) | Held::Selecting(_)) => {
             return selection::carried(ui, app, (x, y), hits, metrics);

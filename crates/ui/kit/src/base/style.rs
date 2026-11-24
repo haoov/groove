@@ -170,6 +170,16 @@ impl Styles {
         }
     }
 
+    /// A kind tag in capitals: `TSK`, `MR`.
+    pub fn tag(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::SemiBold,
+            size: self.tokens.small,
+            color: self.color(role),
+        }
+    }
+
     /// Code: the agent, the terminal, the diff and the editor, and nowhere else.
     pub fn code(&self, role: Role) -> TextStyle {
         TextStyle {

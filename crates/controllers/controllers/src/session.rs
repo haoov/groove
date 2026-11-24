@@ -8,21 +8,22 @@ mod delete;
 pub(crate) mod feed;
 mod log;
 mod open;
+mod place;
 mod rail;
 mod repos;
 mod review;
 
-use groove_types::{Attached, RepoId, SessionId, WorktreeId, WorktreeSpec};
+use groove_types::{Attached, RepoId, Section, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::asker::Asker;
 
 pub use children::set_maintenance;
 pub(crate) use children::{Child, spawn_child};
-pub(crate) use delete::delete_then;
 pub use delete::{delete, delete_local, force_delete};
 pub(crate) use log::{Logged, log_work};
 pub(crate) use open::{Start, begun, begun_with};
 pub use open::{close, open, open_explorer, restore, select};
+pub use place::place;
 pub use rail::{list, refresh_status, rename_explorer};
 pub(crate) use rail::{listed, set_auto_approve};
 pub(crate) use repos::added;
@@ -129,6 +130,12 @@ pub enum Command {
     SpawnChild { parent: SessionId },
     /// `session.remove_log_entry`: one entry off the session's log.
     RemoveLogEntry { session: SessionId, entry: i64 },
+    /// `session.place`: a session put at `index` of a rail section; a section change is logged.
+    Place {
+        session: SessionId,
+        section: Section,
+        index: usize,
+    },
 }
 
 impl Command {
@@ -157,6 +164,7 @@ impl Command {
             Command::SetMaintenance { .. } => "session.set_maintenance",
             Command::SpawnChild { .. } => "session.spawn_child",
             Command::RemoveLogEntry { .. } => "session.remove_log_entry",
+            Command::Place { .. } => "session.place",
         }
     }
 }
@@ -215,6 +223,11 @@ fn worktrees(command: Command, state: &mut AppState, services: &Services, spawne
         } => close_worktree(state, services, spawner, &session, &worktree, force),
         Command::ListRepos => list_repos(services, spawner),
         Command::ListBranches { repo } => list_branches(services, spawner, &repo),
+        Command::Place {
+            session,
+            section,
+            index,
+        } => place(state, services, spawner, &session, section, index),
         other => children::dispatch(other, state, services, spawner),
     }
 }

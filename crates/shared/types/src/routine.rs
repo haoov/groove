@@ -1,4 +1,4 @@
-//! Routines: triggers and skills, bound to a session or standing alone.
+//! Routines: triggers and skills, bound to a session or done by Groove itself.
 
 /// What starts a routine besides its button.
 #[derive(
@@ -67,8 +67,6 @@ impl Trigger {
 pub enum RoutineKind {
     /// In the agent of the session the event is about.
     Bound,
-    /// In a routine session of its own.
-    Standalone,
     /// No agent of its own: Groove does its `do` itself.
     Action,
 }

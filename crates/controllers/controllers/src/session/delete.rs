@@ -14,21 +14,6 @@ pub fn delete(
     id: &SessionId,
     force: bool,
 ) {
-    delete_then(
-        state,
-        (services, spawner),
-        (id, force),
-        Box::new(|_, _, _| {}),
-    );
-}
-
-/// The same, then `then` once the delete landed.
-pub(crate) fn delete_then(
-    state: &mut AppState,
-    (services, spawner): (&Services, &dyn Spawner),
-    (id, force): (&SessionId, bool),
-    then: Continuation,
-) {
     if crate::workspace::review::answer_first(state, id) {
         return;
     }
@@ -52,15 +37,11 @@ pub(crate) fn delete_then(
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(pending);
-                let landed = removed.is_ok();
                 match removed {
                     Ok(()) => gone(state, spawner, &at),
                     Err(e) => kept(state, spawner, &at, running, e),
                 }
                 list(services, spawner);
-                if landed {
-                    then(state, services, spawner);
-                }
             },
         ) as Continuation
     }));

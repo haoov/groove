@@ -2,6 +2,7 @@
 
 mod made;
 mod open;
+mod rail;
 mod service;
 
 #[cfg(test)]
@@ -13,8 +14,9 @@ use groove_types::{
     Repo, RepoId, Session, SessionId, SessionState, Timestamp, Worktree, WorktreeId,
 };
 pub use groove_worktree::Keep;
-pub use made::{explorer, review_session, routine_session, task_session};
+pub use made::{explorer, review_session, task_session};
 pub use open::Open;
+pub use rail::Place;
 pub use service::{Added, ClusterWrite, Service, unsourced};
 
 /// The pool's name for a repo given as a git URL, or the name itself.
@@ -91,15 +93,6 @@ impl State {
             let repo = open.repos.iter().find(|one| one.id == worktree.repo)?;
             Some((open, repo, worktree))
         })
-    }
-
-    /// The session a standalone routine runs in, on the rail or on disk.
-    pub fn routine_session(&self, routine: &str) -> Option<SessionId> {
-        let on_rail = self.open.iter().map(|one| &one.session);
-        let on_disk = self.living.iter().map(|one| &one.session);
-        let mut all = on_rail.chain(on_disk);
-        all.find(|one| one.kind.routine() == Some(routine))
-            .map(|one| one.id.clone())
     }
 
     /// The session each worktree of the rail belongs to, and its branch.
