@@ -199,7 +199,10 @@ fn the_daily_routine_acts_on_the_day_s_first_look_and_not_again_that_day() {
     routine::watch(&mut state, &services, &spawner);
     spawner.drain(&mut state, &services);
     let said = |state: &AppState| {
-        let notes = state.notes.iter().filter(|one| one.what == "start-due opened T-1");
+        let notes = state
+            .notes
+            .iter()
+            .filter(|one| one.what == "start-due opened T-1");
         notes.count()
     };
     assert_eq!(said(&state), 1, "{:?}", state.notes);

@@ -7,8 +7,8 @@ mod order;
 pub use drag::Slot;
 pub(crate) use drag::{landing, slot_at, top_of};
 pub(crate) use item::{asks_to, state_of};
-pub(crate) use order::shown;
 pub use order::Shut;
+pub(crate) use order::shown;
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
@@ -25,10 +25,10 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::top_rule;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::widgets::{Button, flat_row, ground_under, lead, panel_head, solid_pane};
 
 /// What the rail remembers between frames.
@@ -92,7 +92,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// The sessions' window cut in its header, its Board row and its list.
 fn parts_of(tokens: &Tokens, sessions: Rect) -> [Rect; 3] {
     let tall = |height: f32| Spec::default().height(height);
-    column_in(sessions, [tall(tokens.bar), tall(tokens.header), Spec::fill()])
+    column_in(
+        sessions,
+        [tall(tokens.bar), tall(tokens.header), Spec::fill()],
+    )
 }
 
 fn rows_in(tokens: &Tokens, rows: Rect) -> Rect {
@@ -172,7 +175,7 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         |ctx, rect, (entry, _)| {
             let ghost = ghosted(entry, carried);
             if ghost {
-                ctx.fading(GHOST);
+                ctx.fading(groove_ui_kit::base::tokens::GHOST);
             }
             line(ctx, app, ui, rect, entry);
             if ghost {
@@ -181,9 +184,6 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         },
     );
 }
-
-/// How much of the carried row's own place still shows.
-const GHOST: f32 = 0.3;
 
 /// Whether `entry` is the carried session, or one of its children.
 fn ghosted(entry: &Entry, carried: Option<&SessionId>) -> bool {

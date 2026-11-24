@@ -80,7 +80,11 @@ fn a_row_s_menu_pauses_its_session_and_a_paused_one_s_resumes_it() {
     let picked = crate::tests::hit(&Target::MenuRow(0), &mut ui, &app);
     assert_eq!(picked, place("b", Section::Paused, 0));
 
-    app.session.get_mut(&SessionId::new("b")).unwrap().state.section = Section::Paused;
+    app.session
+        .get_mut(&SessionId::new("b"))
+        .unwrap()
+        .state
+        .section = Section::Paused;
     let (_, hits) = drawn(&app, &ui);
     let beta = row(&hits, "b");
     let (x, y) = (beta.x + beta.w / 2.0, beta.y + beta.h / 2.0);
@@ -98,10 +102,16 @@ fn a_section_s_heading_folds_its_sessions_away_and_opens_them_again() {
     crate::tests::hit(&active, &mut ui, &app);
     let (_, hits) = drawn(&app, &ui);
     assert!(hits.rect_of(&active).is_some());
-    assert!(hits.rect_of(&Target::Session(SessionId::new("d"))).is_none());
+    assert!(
+        hits.rect_of(&Target::Session(SessionId::new("d")))
+            .is_none()
+    );
     assert!(crate::views::rail::shown(&app, ui.rail.shut).is_empty());
 
     crate::tests::hit(&active, &mut ui, &app);
     let (_, hits) = drawn(&app, &ui);
-    assert!(hits.rect_of(&Target::Session(SessionId::new("d"))).is_some());
+    assert!(
+        hits.rect_of(&Target::Session(SessionId::new("d")))
+            .is_some()
+    );
 }

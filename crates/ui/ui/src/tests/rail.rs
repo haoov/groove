@@ -146,7 +146,11 @@ fn the_wheel_scrolls_the_rows_and_a_row_off_the_top_cannot_be_clicked() {
     }
     let mut ui = Ui::default();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let first = Target::Session(SessionId::new("a"));
+    let top = crate::views::rail::shown(&app, Default::default())[0]
+        .session
+        .id
+        .clone();
+    let first = Target::Session(top);
     let top = hits.rect_of(&first).expect("the first row is drawn");
     handle(
         Input::Scroll {
@@ -195,7 +199,11 @@ fn rows_keep_the_user_s_order_whatever_their_state_and_paused_ones_stand_below()
         .into_iter()
         .map(|one| one.session.id.to_string())
         .collect();
-    assert_eq!(order, ["d", "a", "c", "b"], "unranked, the last opened first, then ranked");
+    assert_eq!(
+        order,
+        ["d", "a", "c", "b"],
+        "unranked, the last opened first, then ranked"
+    );
 }
 
 #[test]

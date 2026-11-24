@@ -4,14 +4,9 @@ use crate::{ExternalId, SessionId, Timestamp, WorktreeId};
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum SessionKind {
-    Task {
-        external_id: ExternalId,
-    },
+    Task { external_id: ExternalId },
     Explorer,
-    Review {
-        project: String,
-        iid: u64,
-    },
+    Review { project: String, iid: u64 },
 }
 
 impl SessionKind {
@@ -70,7 +65,17 @@ pub struct SessionState {
 
 /// A section of the rail.
 #[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, serde::Serialize, serde::Deserialize,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Default,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Section {

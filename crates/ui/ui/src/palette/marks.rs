@@ -68,6 +68,10 @@ fn commanded(command: &Command, app: &AppState) -> Option<Mark> {
         Command::Session(session::Command::Close { .. } | session::Command::Delete { .. }) => {
             Mark::Close
         }
+        Command::Session(session::Command::Place { section, .. }) => match section {
+            groove_types::Section::Paused => Mark::Behind,
+            groove_types::Section::Active => Mark::Ahead,
+        },
         Command::Session(session::Command::Select { session }) => {
             let open = app
                 .session

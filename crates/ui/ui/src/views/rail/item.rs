@@ -10,7 +10,7 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
-use groove_ui_kit::shape::{from_left, from_top, ground, square};
+use groove_ui_kit::shape::{from_left, from_right, from_top, ground, square};
 use groove_ui_kit::text::{Label, ago};
 use groove_ui_kit::widgets::flat_row;
 
@@ -155,7 +155,7 @@ fn activity_age(ctx: &Ctx, app: &AppState, id: &SessionId) -> Option<String> {
 fn waited(ctx: &mut Ctx, app: &AppState, room: &mut Rect, id: &SessionId) {
     let sm = ctx.tokens.sm;
     let Some(text) = activity_age(ctx, app, id) else {
-        room.take_right(sm);
+        from_right(room, 0.0, sm);
         return;
     };
     Label::new(&text, ctx.styles.small(Role::Ghost)).right(ctx, room, sm);

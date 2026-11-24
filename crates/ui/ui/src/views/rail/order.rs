@@ -33,7 +33,10 @@ pub(crate) enum Entry<'a> {
     Heading(Section, usize),
     Session(&'a Open),
     /// A session spawned by the one above it; `last` when no sibling follows it.
-    Child { open: &'a Open, last: bool },
+    Child {
+        open: &'a Open,
+        last: bool,
+    },
 }
 
 /// The rail's lines: a heading over each section that holds sessions, or over both while

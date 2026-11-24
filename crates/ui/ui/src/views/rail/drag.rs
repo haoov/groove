@@ -30,7 +30,13 @@ pub(crate) fn carried(ui: &Ui) -> Option<(&SessionId, f32)> {
 }
 
 /// Where `id`'s row stands now, its top in the window.
-pub(crate) fn top_of(tokens: &Tokens, app: &AppState, ui: &Ui, rows: Rect, id: &SessionId) -> Option<f32> {
+pub(crate) fn top_of(
+    tokens: &Tokens,
+    app: &AppState,
+    ui: &Ui,
+    rows: Rect,
+    id: &SessionId,
+) -> Option<f32> {
     let mut y = rows.y - scroll(tokens, app, ui, rows);
     for entry in entries(app, false, ui.rail.shut) {
         if matches!(&entry, Entry::Session(open) if &open.session.id == id) {
@@ -76,7 +82,13 @@ fn gaps(tokens: &Tokens, app: &AppState, ui: &Ui) -> Vec<(f32, Slot)> {
 }
 
 /// The gap nearest to `y`, measured in `rows`, the list's room.
-pub(crate) fn slot_at(tokens: &Tokens, app: &AppState, ui: &Ui, rows: Rect, y: f32) -> Option<Slot> {
+pub(crate) fn slot_at(
+    tokens: &Tokens,
+    app: &AppState,
+    ui: &Ui,
+    rows: Rect,
+    y: f32,
+) -> Option<Slot> {
     let at = y - rows.y + scroll(tokens, app, ui, rows);
     let gaps = gaps(tokens, app, ui);
     let near = |one: &&(f32, Slot)| (one.0 - at).abs();

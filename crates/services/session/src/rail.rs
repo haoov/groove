@@ -27,7 +27,12 @@ impl State {
             .collect();
         tops.sort_by_key(|(at, one)| {
             let rank = one.state.rank;
-            (rank.is_some(), rank, Reverse(one.state.opened_at), Reverse(*at))
+            (
+                rank.is_some(),
+                rank,
+                Reverse(one.state.opened_at),
+                Reverse(*at),
+            )
         });
         tops.into_iter().map(|(_, one)| one).collect()
     }

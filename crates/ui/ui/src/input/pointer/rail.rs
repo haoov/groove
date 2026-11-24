@@ -12,7 +12,13 @@ use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::CLICK_SLOP;
 
 /// A press on a row of the rail's list holds its session; a child follows its parent instead.
-pub(super) fn takes(ui: &mut Ui, app: &AppState, id: &SessionId, (x, y): (f32, f32), metrics: Metrics) {
+pub(super) fn takes(
+    ui: &mut Ui,
+    app: &AppState,
+    id: &SessionId,
+    (x, y): (f32, f32),
+    metrics: Metrics,
+) {
     let tokens = metrics.tokens();
     let rows = rows_of(&tokens, Layout::of(metrics, ui).sessions);
     if !rows.contains(x, y) {
