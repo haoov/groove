@@ -35,11 +35,11 @@ fn the_diff_view_reads_the_drift_and_draws_it_as_a_change() {
             .any(|one| one.starts_with("reading the drift"))
     );
 
-    let path = "argo/Deployment/billing-acc/billing-api.yaml".to_string();
+    let path = "argo/billing-acc/Deployment/billing-api.yaml".to_string();
     let pairs = vec![(path, "replicas: 2\n".into(), "replicas: 3\n".into())];
     app.workspace.drifted((key(), "1".into()), prepare(pairs));
     let shown = texts(&app, &ui);
-    let head = "argo/Deployment/billing-acc/billing-api.yaml";
+    let head = "argo/billing-acc/Deployment/billing-api.yaml";
     assert!(shown.iter().any(|text| text == head), "{shown:?}");
     let runs = |run: &str| shown.iter().filter(|text| *text == run).count();
     assert_eq!(runs("replicas"), 2, "both sides drawn: {shown:?}");
@@ -187,4 +187,33 @@ fn off_the_hub_the_views_say_so_and_read_nothing() {
         )
     });
     assert!(!reads, "{asked:?}");
+}
+
+#[test]
+fn a_cluster_write_waiting_keeps_the_diff_from_the_drift() {
+    let (mut app, mut ui) = opened_application(failing());
+    let pair = (
+        "kind/billing-acc/Deployment/billing-api.yaml".to_string(),
+        String::new(),
+        "a: 1\n".to_string(),
+    );
+    let write = groove_types::ApprovalId::new("ap-1");
+    app.workspace.review(&write, prepare(vec![pair]));
+    hit(&app, &mut ui, Target::ResourceView(View::Diff));
+    let said = "a cluster write waits on review in the Diff tab";
+    assert!(texts(&app, &ui).iter().any(|one| one == said));
+    let drift = |one: &Command| {
+        matches!(
+            one,
+            Command::Workspace(Workspace::ShowDrift { .. } | Workspace::LeaveDrift)
+        )
+    };
+    let asked = crate::frame_commands(&app, &ui, window());
+    assert!(!asked.iter().any(drift), "{asked:?}");
+    hit(&app, &mut ui, Target::ResourceView(View::Resources));
+    let asked = crate::frame_commands(&app, &ui, window());
+    assert!(
+        !asked.iter().any(drift),
+        "leaving keeps the write: {asked:?}"
+    );
 }

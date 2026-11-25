@@ -207,10 +207,9 @@ pub struct AppCondition {
     pub at: Option<Timestamp>,
 }
 
-/// Where a resource's drift stands in the diff: `argo/Deployment/shop/web.yaml`.
+/// Where a resource's drift stands in the diff: `argo/shop/Deployment/web.yaml`.
 pub fn drift_path(kind: &str, namespace: Option<&str>, name: &str) -> String {
-    let namespace = namespace.unwrap_or("cluster");
-    format!("argo/{kind}/{namespace}/{name}.yaml")
+    crate::object_path("argo", kind, namespace, name)
 }
 
 /// `auto · prune · heal` for an automated sync policy, `manual` without one.

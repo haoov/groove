@@ -643,7 +643,11 @@ tint holds what the write asks, in capitals, then the object, with **Refuse** an
 **Approve** at its right once the change is shown, bordered words in capitals, Approve
 edged in peach. Under it, the
 diff itself, read-only, over the object's YAML before → after: the change stands in place
-of the worktree's until the write is decided, then the worktree's is read again. No sheet
+of the worktree's, or of an Application's drift, until the write is decided, then the
+worktree's is read again. Meanwhile an Application's diff view says a write waits and reads
+no drift. The object stands as `<context>/<namespace>/<Kind>/<name>.yaml`, as a drifted
+resource stands as `argo/<namespace>/<Kind>/<name>.yaml`, both its YAML without status or
+server fields. No sheet
 stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
 deleting or reloading the session is refused until it is answered. Another session can be
 selected meanwhile; back on this one, the change shows again. Once the write is answered,
@@ -654,8 +658,10 @@ the session goes back to the tab it stood on. Enforced by
 `only_the_band_s_approve_button_lets_a_cluster_write_through`,
 `a_write_is_answered_only_once_its_change_is_shown`,
 `once_one_write_is_answered_the_next_one_s_change_is_shown`,
-`a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered` and
-`a_review_takes_the_change_s_place_until_its_own_write_is_decided`.
+`a_session_waiting_on_a_cluster_write_is_not_closed_before_it_is_answered`,
+`a_review_takes_the_change_s_place_until_its_own_write_is_decided`,
+`a_cluster_write_waiting_keeps_its_place_from_a_drift` and
+`a_cluster_write_waiting_keeps_the_diff_from_the_drift`.
 
 **An object scales, restarts and goes from its row.** A list row's right-click offers
 **scale** on a Deployment or a StatefulSet, **restart** on those and a DaemonSet, and

@@ -10,12 +10,12 @@ fn pair(path: &str, old: &str, new: &str) -> (String, String, String) {
 fn pairs_read_as_one_stream_each_file_counted_and_an_empty_side_added_or_deleted() {
     let (files, changes) = from_pairs(vec![
         pair(
-            "argo/Deployment/shop/web.yaml",
+            "argo/shop/Deployment/web.yaml",
             "replicas: 2\n",
             "replicas: 3\n",
         ),
-        pair("argo/ConfigMap/shop/old.yaml", "a: 1\n", ""),
-        pair("argo/Service/shop/new.yaml", "", "b: 2\n"),
+        pair("argo/shop/ConfigMap/old.yaml", "a: 1\n", ""),
+        pair("argo/shop/Service/new.yaml", "", "b: 2\n"),
     ]);
     let statuses: Vec<FileStatus> = files.iter().map(|one| one.status).collect();
     assert_eq!(

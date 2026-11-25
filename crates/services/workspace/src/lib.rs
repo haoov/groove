@@ -30,13 +30,14 @@ mod review;
 mod revision;
 mod rows;
 mod servers;
+mod stand_in;
 
 #[cfg(test)]
 mod tests;
 
 pub use blame::{Blames, Read, blame};
 pub use buffers::Buffers;
-pub use drift::{Drift, DriftKey, DriftRead, Prepared, in_sync, prepare, prepared};
+pub use drift::{DriftKey, DriftRead};
 pub use git::{UNPUSHED_MAX, commit, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{
@@ -50,6 +51,7 @@ pub use servers::{
     Client, Hooks, Hovered, Landing, Launch, Offered, Offering, ServerKey, Servers, Tell, Telling,
     Up, landing, launch, matching, none_up, serving, start,
 };
+pub use stand_in::{Prepared, Source, StandIn, prepare, prepared};
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -89,8 +91,8 @@ pub struct State {
     pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
-    /// The Argo CD drift the surface shows instead of the working tree.
-    pub drift: Option<Drift>,
+    /// The change the surface shows instead of the working tree's: a drift or a cluster write.
+    pub stand_in: Option<StandIn>,
     pub drift_read: DriftRead,
     /// A repo's slug to select a worktree of in a session, and a commit of it to show once read.
     pub revision: Option<Revision>,
@@ -152,9 +154,9 @@ impl State {
         self.showing = 0..0;
     }
 
-    /// Whether what it shows is a commit or a drift, which nothing may write.
+    /// Whether what it shows is a commit or a change standing in, which nothing may write.
     pub fn readonly(&self) -> bool {
-        self.commit.is_some() || self.drift.is_some()
+        self.commit.is_some() || self.stand_in.is_some()
     }
 
     /// Shuts every open file the path that is gone is, or holds.

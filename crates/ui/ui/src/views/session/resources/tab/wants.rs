@@ -33,26 +33,24 @@ pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Ve
     out
 }
 
-/// The drift read while an Application's diff shows, at its version; the worktree's change once it does not.
+/// The drift read while an Application's diff shows and no cluster write waits; let go once it does not show.
 fn drift(app: &AppState, tab: Option<&Opened>) -> Option<Command> {
     let read = &app.workspace.drift_read;
     if let Some(tab) = tab.filter(|one| one.view == View::Diff) {
-        super::off_hub(app, &tab.link.context)
-            .is_none()
-            .then_some(())?;
+        let free = super::off_hub(app, &tab.link.context).is_none();
+        (free && app.workspace.reviewed().is_none()).then_some(())?;
         let (key, at) = (
             tab.link.pod(),
             tab.link.read(app)?.app.as_ref()?.compared.clone(),
         );
-        let shown = app.workspace.drift.as_ref();
-        let shown = shown.is_some_and(|one| one.app == key && one.at == at);
+        let shown = app.workspace.drift() == Some((&key, at.as_str()));
         let failed = read.failed.as_ref();
         let failed = failed.is_some_and(|(one, version, _)| *one == key && *version == at);
         let asking = read.asking.as_ref().is_some_and(|(one, _)| *one == key);
         let show = workspace::Command::ShowDrift { app: key, at };
         return (!shown && !failed && !asking).then_some(Command::Workspace(show));
     }
-    let held = app.workspace.drift.is_some() || read.asking.is_some();
+    let held = app.workspace.drift().is_some() || read.asking.is_some();
     held.then_some(Command::Workspace(workspace::Command::LeaveDrift))
 }
 

@@ -168,7 +168,7 @@ fn queued(
     }
     let kind = &target.kind;
     write.arguments["target"] = target.label().into();
-    write.arguments["change"] = json!([path_of(target), preview.before, preview.after]);
+    write.arguments["change"] = json!([target.path(), preview.before, preview.after]);
     write.arguments["diff"] = preview.diff.into();
     write.arguments["resource_version"] = preview.version.into();
     write.arguments["namespace"] = target.namespace.clone().into();
@@ -181,17 +181,6 @@ fn queued(
     }
     super::queued(state, write);
     crate::workspace::review::show(state, spawner);
-}
-
-/// `kind/paxone/deployments/api.yaml`: the file the change stands as in the diff.
-fn path_of(target: &Target) -> String {
-    let namespace = target.namespace.as_deref().unwrap_or("-");
-    let name = match &target.subresource {
-        Some(part) => format!("{}-{part}", target.name),
-        None => target.name.clone(),
-    };
-    let plural = &target.kind.plural;
-    format!("{}/{namespace}/{plural}/{name}.yaml", target.context)
 }
 
 fn target(write: &Write) -> Option<Target> {

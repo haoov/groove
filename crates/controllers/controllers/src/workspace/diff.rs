@@ -15,7 +15,7 @@ use groove_workspace_service::lock;
 /// The rows on screen: the files near them that are not read yet take their colours.
 pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
     let missing = state.workspace.show(rows);
-    if state.workspace.drift.is_some() {
+    if state.workspace.stand_in.is_some() {
         return;
     }
     let Some(asked) = super::Asked::now(state).filter(|_| !missing.is_empty()) else {
@@ -43,7 +43,7 @@ pub(super) fn mark_read(
     spawner: &dyn Spawner,
     path: String,
 ) {
-    if state.workspace.drift.is_some() {
+    if state.workspace.stand_in.is_some() {
         return;
     }
     let Some(one) = state.session.selected_worktree() else {
@@ -193,7 +193,7 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
     };
     if stale(state) {
         state.workspace.commit = None;
-        state.workspace.undrift();
+        state.workspace.show_worktree();
         let kind = state.session.selected().map(|open| &open.session.kind);
         state.workspace.mode = opens_in(kind);
         if !super::review::show(state, spawner) {

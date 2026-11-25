@@ -128,17 +128,19 @@ pub(super) fn off_hub(app: &AppState, context: &str) -> Option<String> {
     }
 }
 
+const WAITS: &str = "a cluster write waits on review in the Diff tab";
+
 /// The Application's drift as the diff draws a change, once read for this Application.
 fn drifted(ctx: &mut Ctx, body: Rect, (app, ui): (&AppState, &crate::Ui), tab: &Opened) {
     let workspace = &app.workspace;
     let key = tab.link.pod();
     let failed = workspace.drift_read.failed.as_ref();
     let off = off_hub(app, &tab.link.context);
-    let (said, role) = match workspace.drift.as_ref().filter(|one| one.app == key) {
+    let empty = workspace.stand_in.as_ref().is_some_and(|one| one.empty());
+    let (said, role) = match workspace.drift().filter(|(one, _)| **one == key) {
         _ if off.is_some() => (off.unwrap_or_default(), Role::Warn),
-        Some(drift) if !groove_controllers::workspace_service::in_sync(drift) => {
-            return crate::views::session::diff::draw(ctx, app, ui, body);
-        }
+        _ if workspace.reviewed().is_some() => (WAITS.to_string(), Role::Attention),
+        Some(_) if !empty => return crate::views::session::diff::draw(ctx, app, ui, body),
         Some(_) => ("in sync: nothing differs".to_string(), Role::Ok),
         None => match failed.filter(|(one, _, _)| *one == key) {
             Some((_, _, why)) => (why.clone(), Role::Bad),

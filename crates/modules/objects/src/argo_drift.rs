@@ -26,27 +26,8 @@ fn file(one: groove_argocd::Drifted) -> DriftFile {
     let path = groove_types::drift_path(&one.kind, one.namespace.as_deref(), &one.name);
     let side = |state: Option<Value>| {
         state
-            .map(|one| crate::yaml::yaml(&shown(one)))
+            .map(|one| crate::changed::side(&one))
             .unwrap_or_default()
     };
     (path, side(one.live), side(one.desired))
-}
-
-/// The object as the diff shows it: no status, and no field the server alone writes.
-fn shown(mut object: Value) -> Value {
-    if let Some(all) = object.as_object_mut() {
-        all.remove("status");
-    }
-    if let Some(metadata) = object.get_mut("metadata").and_then(Value::as_object_mut) {
-        for key in [
-            "managedFields",
-            "resourceVersion",
-            "generation",
-            "uid",
-            "creationTimestamp",
-        ] {
-            metadata.remove(key);
-        }
-    }
-    object
 }

@@ -69,6 +69,26 @@ impl Target {
         parts.extend(self.subresource.as_deref());
         format!("{} · {}", self.context, parts.join("/"))
     }
+
+    /// `kind/paxone/Deployment/api-scale.yaml`: the file the write's change stands as.
+    pub fn path(&self) -> String {
+        let name = match &self.subresource {
+            Some(part) => format!("{}-{part}", self.name),
+            None => self.name.clone(),
+        };
+        object_path(
+            &self.context,
+            &self.kind.kind,
+            self.namespace.as_deref(),
+            &name,
+        )
+    }
+}
+
+/// `<at>/<namespace>/<Kind>/<name>.yaml`: where one object stands as a file in the diff.
+pub fn object_path(at: &str, kind: &str, namespace: Option<&str>, name: &str) -> String {
+    let namespace = namespace.unwrap_or("-");
+    format!("{at}/{namespace}/{kind}/{name}.yaml")
 }
 
 /// One kind a cluster serves at its preferred version.

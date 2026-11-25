@@ -165,7 +165,7 @@ fn a_patch_waits_with_its_diff_under_auto_approve_and_lands_once_approved() {
         s.workspace.reviewed() == Some(ask.id.as_str())
     });
     let file = &state.workspace.files[0];
-    assert_eq!(file.path, "kind/paxone/deployments/api.yaml");
+    assert_eq!(file.path, "kind/paxone/Deployment/api.yaml");
     assert_eq!((file.added, file.deleted), (1, 1));
 
     crate::tools::allow(&mut state, &services, &spawner, &ask.id);
