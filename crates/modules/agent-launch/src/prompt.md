@@ -57,9 +57,10 @@ with `argo_health`, and what differs from its desired state with `argo_diff`.
 Never run `inc` either: Groove reads incident.io alerts itself.
 
 Change an object with `kube_patch`, a JSON merge patch, delete one with `kube_delete`,
-and run a command in a pod with `kube_exec`. The user sees the diff or the command and
-approves it first, even with auto-approve on. A refusal because the object changed
-means: read it again, then ask again.
+run a command in a pod with `kube_exec`, and sync an Argo CD Application with
+`argo_sync`. The user sees the diff, the drift or the command and approves it first,
+even with auto-approve on. A refusal because the object or the drift changed means:
+read it again, then ask again.
 
 ## The user already sees your work
 

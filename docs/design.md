@@ -584,7 +584,10 @@ click of something ordinary.
   message read once from Argo CD, its columns dragged wider as the resources'; its heading is
   the sync state with the resources out of sync and whether the target moved, in yellow while
   out of sync; its sync policy, automated or not, the sync options, the retry and the
-  project's sync windows, open or shut, read again each minute; and
+  project's sync windows, open or shut, read again each minute; its heading's REFRESH runs
+  at once and its SYNC asks over the diff it would apply, a prune toggle off until switched on, then
+  opens the resources on the sync; a row's menu offers sync, sync with prune, refresh and
+  hard refresh. A sync sends no sync options, so the Application's own apply; and
   where it syncs to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A

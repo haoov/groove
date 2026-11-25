@@ -95,7 +95,11 @@ fn drifted(files: &[groove_cluster_service::DriftFile]) -> String {
 }
 
 /// `namespace/name` on the hub, when the session holds the hub and that namespace.
-fn scoped(named: &str, hub: Option<&str>, attached: &[Attached]) -> Result<ArgoApp, String> {
+pub(crate) fn scoped(
+    named: &str,
+    hub: Option<&str>,
+    attached: &[Attached],
+) -> Result<ArgoApp, String> {
     let Some((namespace, name)) = named.split_once('/') else {
         return Err("name the Application as <namespace>/<name>".into());
     };

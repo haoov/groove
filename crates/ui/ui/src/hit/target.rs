@@ -96,6 +96,11 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// The open Application's sync asked over its diff, and its refresh.
+    ArgoSync,
+    ArgoRefresh,
+    /// The sync asked prunes or not.
+    ArgoPrune,
     /// An object's YAML made writable, or read-only again, its draft thrown away; and the draft applied.
     YamlWrite(bool),
     YamlApply,

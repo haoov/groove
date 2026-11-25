@@ -54,6 +54,9 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceTab(_)
             | Target::ResourceClose(_)
             | Target::ResourceView(_)
+            | Target::ArgoSync
+            | Target::ArgoRefresh
+            | Target::ArgoPrune
             | Target::YamlWrite(_)
             | Target::YamlApply
             | Target::ArgoFilter(_)

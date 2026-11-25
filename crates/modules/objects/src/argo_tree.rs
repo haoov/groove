@@ -123,6 +123,24 @@ impl Opened {
         body.map_err(|e| self.failed(e))
     }
 
+    /// The answer to `body` posted to `path`, asked again once on a refreshed login when refused.
+    pub(crate) async fn post(&mut self, path: &str, body: Vec<u8>) -> Result<String, String> {
+        let answer = match self.posted(path, body.clone()).await {
+            Err(e) if login_refused(&e) => {
+                self.refresh().await?;
+                self.posted(path, body).await
+            }
+            other => other,
+        };
+        answer.map_err(|e| self.failed(e))
+    }
+
+    async fn posted(&self, path: &str, body: Vec<u8>) -> Result<String, groove_kube::Error> {
+        let cookie = self.token.cookie();
+        let headers = [("Cookie", cookie.as_str())];
+        self.client.proxy_post(&self.to, path, &headers, body).await
+    }
+
     async fn got(&self, path: &str) -> Result<String, groove_kube::Error> {
         let cookie = self.token.cookie();
         let headers = [("Cookie", cookie.as_str())];

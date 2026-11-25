@@ -1,6 +1,6 @@
 //! What the agent asks Groove for, answered where the state is.
 
-mod argo;
+pub(crate) mod argo;
 mod files;
 mod forge;
 mod kube;

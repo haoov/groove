@@ -196,6 +196,11 @@ const CONFIG: [&str; 7] = [
 const RBAC: &str = "rbac.authorization.k8s.io";
 
 impl KubeKind {
+    /// Argo CD's Application, which Argo CD syncs.
+    pub fn application(&self) -> bool {
+        self.group == "argoproj.io" && self.kind == "Application"
+    }
+
     pub fn heading(&self) -> KindHeading {
         let kind = self.kind.as_str();
         let builtin = |one| KindHeading::Builtin(one);

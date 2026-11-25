@@ -18,6 +18,10 @@ fn offered(of: &Of, at: usize) -> Option<Picked> {
         } => Some(match at.checked_sub(shells.len()) {
             None => shelled(session, &shells[at]),
             Some(at) => match writes.get(at) {
+                Some(Losing::Row(written)) if written.write.immediate() => Picked {
+                    commands: vec![(**written).clone().command()],
+                    ..Picked::default()
+                },
                 Some(write) => Picked::asks(write.clone()),
                 None => sent(session, offered.get(at - writes.len())),
             },

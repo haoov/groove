@@ -25,7 +25,7 @@ use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Badge, Tab};
+use groove_ui_kit::widgets::{Badge, Button, Tab};
 
 pub use wants::{due, wants};
 
@@ -78,6 +78,9 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
         .collect();
     let side = groove_ui_kit::widgets::Side::Right;
     groove_ui_kit::widgets::tab_group(ctx, &mut room, shown, (side, ctx.tokens.xs));
+    if object.is_some_and(|one| one.app.is_some()) {
+        acts(ctx, &mut room);
+    }
     let mut at = room.x;
     let mut said = object.map(stands).unwrap_or_default();
     said.extend(object.and_then(|one| one.app.as_deref()).and_then(revision));
@@ -88,6 +91,16 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
         }
         at = badge.at(ctx, room, at).right() + gap;
     }
+}
+
+/// An Application's SYNC, asked over its diff, and its REFRESH, left of its views.
+fn acts(ctx: &mut Ctx, room: &mut Rect) {
+    let (gap, ground) = (ctx.tokens.sm, ctx.styles.panel_head());
+    let edge = ctx.styles.color(Role::Accent);
+    let sync = Button::new("SYNC", Target::ArgoSync, Role::Accent, ground).edged(edge);
+    sync.right(ctx, room, gap);
+    let refresh = Button::new("REFRESH", Target::ArgoRefresh, Role::Muted, ground);
+    refresh.right(ctx, room, gap);
 }
 
 /// What the object says of itself: a pod's status, a workload's ready replicas, an Application's sync and health.
@@ -132,6 +145,7 @@ const WAITS: &str = "a cluster write waits on review in the Diff tab";
 
 /// The Application's drift as the diff draws a change, once read for this Application.
 fn drifted(ctx: &mut Ctx, body: Rect, (app, ui): (&AppState, &crate::Ui), tab: &Opened) {
+    let body = asked_sync(ctx, body, ui, tab);
     let workspace = &app.workspace;
     let key = tab.link.pod();
     let failed = workspace.drift_read.failed.as_ref();
@@ -150,6 +164,21 @@ fn drifted(ctx: &mut Ctx, body: Rect, (app, ui): (&AppState, &crate::Ui), tab: &
     let line = body.pad(Edges::all(ctx.tokens.md));
     let [line, _] = column_in(line, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     Label::new(&said, ctx.styles.body(role)).draw(ctx, line);
+}
+
+/// The sync asked over the diff it would apply, on a band at the top; the room under it.
+fn asked_sync(ctx: &mut Ctx, body: Rect, ui: &crate::Ui, tab: &Opened) -> Rect {
+    let Some(crate::Overlay::Losing(crate::Losing::Row(written))) = &ui.overlay else {
+        return body;
+    };
+    let syncing = matches!(written.write, super::Write::Sync { .. });
+    if !syncing || written.link != tab.link {
+        return body;
+    }
+    let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
+    let [band, rest] = column_in(body, [tall, Spec::fill()]);
+    super::written::ask(ctx, band, written);
+    rest
 }
 
 /// Why the tab holds nothing yet: the object being read, or gone, or the read refused.

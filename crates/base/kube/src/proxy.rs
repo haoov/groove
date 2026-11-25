@@ -82,7 +82,24 @@ impl Client {
         path: &str,
         headers: &[(&str, &str)],
     ) -> Result<String> {
-        let request = request(to, path, headers)?;
+        let request = request(http::Request::get(to.uri(path)), headers, Vec::new())?;
+        self.answered(async {
+            let asked = self.inner.request_text(request).await;
+            asked.map_err(|e| Error::proxied(&self.context, e))
+        })
+        .await
+    }
+
+    /// The answer to `body` posted as JSON to `path` on the service, with `headers` added.
+    pub async fn proxy_post(
+        &self,
+        to: &Proxied,
+        path: &str,
+        headers: &[(&str, &str)],
+        body: Vec<u8>,
+    ) -> Result<String> {
+        let asked = http::Request::post(to.uri(path)).header("Content-Type", "application/json");
+        let request = request(asked, headers, body)?;
         self.answered(async {
             let asked = self.inner.request_text(request).await;
             asked.map_err(|e| Error::proxied(&self.context, e))
@@ -97,16 +114,20 @@ impl Client {
         path: &str,
         headers: &[(&str, &str)],
     ) -> Result<impl Stream<Item = Result<String>> + use<>> {
-        self.lines(request(to, path, headers)?, None).await
+        let asked = http::Request::get(to.uri(path));
+        self.lines(request(asked, headers, Vec::new())?, None).await
     }
 }
 
-fn request(to: &Proxied, path: &str, headers: &[(&str, &str)]) -> Result<http::Request<Vec<u8>>> {
-    let mut asked = http::Request::get(to.uri(path));
+fn request(
+    mut asked: http::request::Builder,
+    headers: &[(&str, &str)],
+    body: Vec<u8>,
+) -> Result<http::Request<Vec<u8>>> {
     for (name, value) in headers {
         asked = asked.header(*name, *value);
     }
     asked
-        .body(Vec::new())
+        .body(body)
         .map_err(|e| Error::Kubeconfig(e.to_string()))
 }

@@ -107,7 +107,7 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
         Some(Losing::Path(path)) => {
             workspace::Command::Path(groove_controllers::workspace_service::PathOp::Delete { path })
         }
-        Some(Losing::Row(written)) => return vec![written.command()],
+        Some(Losing::Row(written)) => return asked_sync(ui, *written),
         None => return Vec::new(),
     };
     vec![Command::Workspace(command)]
@@ -164,4 +164,17 @@ pub(super) fn palette_row(at: usize, ui: &mut Ui, app: &AppState) -> Vec<Command
     palette.selected = at;
     let outcome = palette.key(Key::Enter, app);
     ui.closed_palette(outcome, app)
+}
+
+/// The write answered; a sync asked over an Application's diff opens its resources on the sync.
+fn asked_sync(ui: &mut Ui, written: crate::views::session::resources::Written) -> Vec<Command> {
+    let synced = matches!(
+        written.write,
+        crate::views::session::resources::Write::Sync { .. }
+    );
+    let tab = ui.session.resources.tab_mut();
+    if let Some(tab) = tab.filter(|one| synced && one.link == written.link) {
+        (tab.view, tab.scroll) = (crate::views::session::resources::View::Resources, 0.0);
+    }
+    vec![written.command()]
 }

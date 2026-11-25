@@ -26,7 +26,9 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "log_work" => joined(&said("what"), &said("why")),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
         "kube_exec" => joined(&said("target"), &said("shown")),
-        "kube_patch" | "kube_delete" | crate::APPLY_EDIT => joined(&said("target"), &said("diff")),
+        "kube_patch" | "kube_delete" | "argo_sync" | crate::APPLY_EDIT => {
+            joined(&said("target"), &said("diff"))
+        }
         _ => shown(arguments),
     }
 }

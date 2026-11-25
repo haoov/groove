@@ -60,6 +60,14 @@ fn writes(ui: &Ui, app: &AppState, (session, uid): (&SessionId, &str), link: &Li
     if restartable(&link.kind) {
         writes.push(Write::Restart);
     }
+    if link.kind.application() {
+        writes.extend([
+            Write::Sync { prune: false },
+            Write::Sync { prune: true },
+            Write::Refresh { hard: false },
+            Write::Refresh { hard: true },
+        ]);
+    }
     writes.push(Write::Delete);
     let asked = |write| {
         Losing::Row(Box::new(Written {

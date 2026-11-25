@@ -1,5 +1,6 @@
 //! The cluster part of the app: the contexts found, their sign-in, the watched objects, and the writes.
 
+mod argo;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -9,10 +10,15 @@ use std::path::PathBuf;
 
 use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
+pub use argo::{
+    argo_drift_once, argo_drifted_once, argo_refresh_once, argo_revision_once, argo_sync_once,
+    argo_tree, argo_tree_once, argo_windows_once,
+};
 pub use groove_contexts::paths;
 pub use groove_kubectl::{Answer, Checked, Exec, LONGEST, RUNS, SHELL, check as checked};
 pub use groove_objects::{
-    ArgoApp, Batch, Change, Delta, DriftFile, FRESH, Followed, Logged, Stop, Treed,
+    ArgoApp, ArgoSync, Batch, Change, Delta, DriftFile, FRESH, Followed, Logged, Stop,
+    SyncResource, Treed,
 };
 pub use groove_objects::{Preview, edited};
 pub use store::{
@@ -221,44 +227,4 @@ pub async fn exec(exec: &Exec) -> Result<Answer> {
 /// A checked kubectl read run, its JSON through `filter` when one is given.
 pub async fn kubectl(checked: &Checked, filter: Option<&str>) -> Result<Answer> {
     groove_kubectl::run("kubectl", checked, filter).await
-}
-
-/// An Application's resource health from Argo CD, followed until `stop`; each read goes through `send`.
-pub fn argo_tree(
-    paths: (Vec<PathBuf>, PathBuf),
-    app: ArgoApp,
-    stop: &Stop,
-    send: impl Fn(Treed) + Send + Sync + 'static,
-) -> impl std::future::Future<Output = ()> + Send + 'static {
-    groove_objects::argo_tree(paths, app, stop, send)
-}
-
-/// An Application's resource health from Argo CD, read once.
-pub async fn argo_tree_once(paths: (Vec<PathBuf>, PathBuf), app: ArgoApp) -> Treed {
-    groove_objects::argo_tree_once(paths, app).await
-}
-
-/// A revision of an Application's source, read once from Argo CD.
-pub async fn argo_revision_once(
-    paths: (Vec<PathBuf>, PathBuf),
-    app: ArgoApp,
-    asked: (Option<usize>, String),
-) -> std::result::Result<groove_types::RevisionMeta, String> {
-    groove_objects::argo_revision_once(paths, app, asked).await
-}
-
-/// An Application's sync windows, read once from Argo CD.
-pub async fn argo_windows_once(
-    paths: (Vec<PathBuf>, PathBuf),
-    app: ArgoApp,
-) -> std::result::Result<groove_types::SyncWindows, String> {
-    groove_objects::argo_windows_once(paths, app).await
-}
-
-/// What differs between an Application's desired and live state, read once.
-pub async fn argo_drift_once(
-    paths: (Vec<PathBuf>, PathBuf),
-    app: ArgoApp,
-) -> std::result::Result<Vec<DriftFile>, String> {
-    groove_objects::argo_drift_once(paths, app).await
 }

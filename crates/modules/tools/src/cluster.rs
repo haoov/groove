@@ -174,6 +174,38 @@ fn argo_health() -> Tool {
     }
 }
 
+/// One Application synced through Argo CD, shown to the user as its drift before it runs.
+fn argo_sync() -> Tool {
+    Tool {
+        name: "argo_sync",
+        description: "Sync one Argo CD Application, through Argo CD's own API on the user's              argocd login, with the Application's own sync options. Groove reads the drift              first and shows it to the user; the sync runs only once the user approves, even              with auto-approve on. Argo CD's RBAC decides what the login may sync, and a              destination set read-only in Groove refuses it. If the drift changes before the              user approves, the sync is refused: read it again and ask again. Follow the              sync with argo_health, or read the Application with kube."
+            .to_string(),
+        schema: takes(
+            &["app"],
+            vec![
+                (
+                    "app",
+                    text("The Application as <namespace>/<name>: testack-argo/testack-prod-client-workload."),
+                ),
+                (
+                    "prune",
+                    serde_json::json!({ "type": "boolean", "description":
+                        "Delete what left the sources too; off when left out." }),
+                ),
+                (
+                    "resources",
+                    strings(
+                        "Sync these resources alone, each as <Kind>/<namespace>/<name>, or                          <Kind>/<name> for one no namespace holds; the whole Application when                          left out.",
+                    ),
+                ),
+            ],
+        ),
+        writes: true,
+        verb: "sync an Argo CD application",
+        subject: &["target"],
+    }
+}
+
 /// What differs between one Application's desired and live state, from Argo CD on the hub.
 fn argo_diff() -> Tool {
     Tool {
@@ -232,6 +264,7 @@ pub(crate) fn all() -> Vec<Tool> {
         kube_exec(),
         argo_health(),
         argo_diff(),
+        argo_sync(),
         attaching(
             "attach_cluster",
             "attach a cluster",

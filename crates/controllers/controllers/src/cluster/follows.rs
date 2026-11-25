@@ -67,7 +67,7 @@ pub(super) fn helm(state: &mut AppState, spawner: &dyn Spawner, release: Named) 
 }
 
 /// Whether `context` is an Argo CD hub the user added.
-fn hub(state: &AppState, context: &str) -> bool {
+pub(super) fn hub(state: &AppState, context: &str) -> bool {
     let clusters = state.config.clusters();
     clusters
         .iter()

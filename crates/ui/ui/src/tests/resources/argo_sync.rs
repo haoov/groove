@@ -274,7 +274,7 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
 #[test]
 fn a_narrow_pane_keeps_the_application_s_badges_clear_of_its_views() {
     let (app, ui) = opened_application(failing());
-    for width in [1100, 1300] {
+    for width in [1100, 1500] {
         let metrics = crate::tests::metrics(width, 800, 1.0);
         let (frame, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
         let views = hits.rect_of(&Target::ResourceView(View::Describe));

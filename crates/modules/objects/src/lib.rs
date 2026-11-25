@@ -3,6 +3,7 @@
 mod argo;
 mod argo_drift;
 mod argo_revision;
+mod argo_sync;
 mod argo_tree;
 mod changed;
 mod describe;
@@ -19,13 +20,15 @@ mod yaml;
 #[cfg(test)]
 mod tests;
 
-pub use argo_drift::{DriftFile, argo_drift_once};
+pub use argo_drift::{DriftFile, argo_drift_once, argo_drifted_once};
 pub use argo_revision::{argo_revision_once, argo_windows_once};
+pub use argo_sync::{ArgoSync, argo_refresh_once, argo_sync_once};
 pub use argo_tree::{ArgoApp, Treed, argo_tree, argo_tree_once};
 pub use describe::describe;
 pub use discovery::{FRESH, kinds, namespaces};
 pub use edited::edited;
 pub use follow::{Change, Followed, follow};
+pub use groove_argocd::Resource as SyncResource;
 pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};
 pub use watch::{Batch, Delta, Stop, watch};
