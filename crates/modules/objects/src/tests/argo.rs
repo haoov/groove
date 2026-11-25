@@ -218,3 +218,19 @@ fn an_empty_sources_list_leaves_the_one_source_read() {
         .expect("an application's part");
     assert_eq!(part.sources.len(), 1);
 }
+
+#[test]
+fn a_401_through_the_hub_is_a_refused_login_and_a_502_is_not() {
+    let api = |status| groove_kube::Error::Api {
+        context: "hub".into(),
+        status,
+        message: "token is expired".into(),
+    };
+    let streamed = groove_kube::Error::Refused {
+        context: "hub".into(),
+        detail: "token is expired".into(),
+    };
+    assert!(crate::argo_tree::login_refused(&api(401)));
+    assert!(crate::argo_tree::login_refused(&streamed));
+    assert!(!crate::argo_tree::login_refused(&api(502)));
+}

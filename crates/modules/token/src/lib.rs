@@ -6,7 +6,7 @@ mod cli;
 #[cfg(test)]
 mod tests;
 
-pub use argocd::{ArgocdToken, argocd};
+pub use argocd::{argocd, argocd_refreshed};
 pub use cli::{Cli, CliToken};
 
 use groove_http::{Result, TokenSource};
@@ -17,8 +17,6 @@ pub enum Token {
     Cli(CliToken),
     /// Handed over, for a host whose CLI is not logged in.
     Fixed(String),
-    /// The SSO token `argocd login` keeps, refreshed through the CLI.
-    Argocd(ArgocdToken),
 }
 
 impl Token {
@@ -46,7 +44,6 @@ impl TokenSource for Token {
         match self {
             Token::Cli(cli) => cli.token().await,
             Token::Fixed(token) => Ok(token.clone()),
-            Token::Argocd(argocd) => argocd.token().await,
         }
     }
 
@@ -54,7 +51,6 @@ impl TokenSource for Token {
         match self {
             Token::Cli(cli) => cli.invalidate(),
             Token::Fixed(_) => {}
-            Token::Argocd(argocd) => argocd.invalidate(),
         }
     }
 }

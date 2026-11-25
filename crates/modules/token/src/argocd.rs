@@ -1,63 +1,69 @@
-//! The token `argocd login --sso` keeps, refreshed by `argocd account get-user-info` near its end.
+//! The token `argocd login --sso` keeps, refreshed by `argocd account get-user-info` once refused.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use groove_exec::run::Run;
-use groove_http::{Error, Result, TokenSource};
+use groove_http::{Error, Result};
 use tokio::sync::Mutex;
 
 use crate::Cli;
 
-/// How long before it ends a token is refreshed.
-const SOON: i64 = 30;
 const WAIT: Duration = Duration::from_secs(20);
 
 /// One refresh at a time: the refresh token rotates, and two refreshes at once would race on it.
 static REFRESHING: Mutex<()> = Mutex::const_new(());
 
-/// The CLI's server and a token that lasts a while yet.
+/// The CLI's server and token; a token already ended is refreshed first.
 pub async fn argocd(home: &Path) -> Result<(String, groove_argocd::Token)> {
     let read = read(home).await?;
-    if lasting(&read.1) {
-        return Ok(read);
+    match ended(&read.1) {
+        true => argocd_refreshed(home, &read.1).await,
+        false => Ok(read),
     }
+}
+
+/// A token other than `used`, refreshed by the CLI unless another call already did.
+pub async fn argocd_refreshed(
+    home: &Path,
+    used: &groove_argocd::Token,
+) -> Result<(String, groove_argocd::Token)> {
+    refreshed(home, used, Cli::Argocd.program()).await
+}
+
+pub(crate) async fn refreshed(
+    home: &Path,
+    used: &groove_argocd::Token,
+    program: &str,
+) -> Result<(String, groove_argocd::Token)> {
     let _one = REFRESHING.lock().await;
     let read = self::read(home).await?;
-    if lasting(&read.1) {
+    if &read.1 != used {
         return Ok(read);
     }
-    let asked = Run::new(Cli::Argocd.program()).args(groove_argocd::REFRESH);
-    let _ = asked.timeout(WAIT).output().await;
+    let asked = Run::new(program).args(groove_argocd::REFRESH);
+    let said = said(asked.timeout(WAIT).output().await);
     let read = self::read(home).await?;
-    match lasting(&read.1) {
+    match &read.1 != used {
         true => Ok(read),
         false => Err(Error::Auth(format!(
-            "the argocd login has ended: {}",
+            "the argocd login has ended{said}: {}",
             Cli::Argocd.login(&read.0)
         ))),
     }
 }
 
-/// The CLI's token as a call's source, from the config under `home`.
-pub struct ArgocdToken {
-    home: PathBuf,
-}
-
-impl ArgocdToken {
-    pub fn new(home: impl Into<PathBuf>) -> Self {
-        Self { home: home.into() }
-    }
-}
-
-impl TokenSource for ArgocdToken {
-    async fn token(&self) -> Result<String> {
-        let (_, token) = argocd(&self.home).await?;
-        Ok(token.secret().to_string())
-    }
-
-    /// Nothing is held: each call reads the config again.
-    fn invalidate(&self) {}
+/// The first line the refresh printed on failing, as ` (argocd: …)`; empty when it succeeded.
+fn said(ran: groove_exec::Result<std::process::Output>) -> String {
+    let first = match ran {
+        Ok(out) if out.status.success() => return String::new(),
+        Ok(out) => String::from_utf8_lossy(&out.stderr)
+            .lines()
+            .next()
+            .map(str::to_string),
+        Err(e) => Some(e.to_string()),
+    };
+    first.map_or_else(String::new, |line| format!(" (argocd: {line})"))
 }
 
 async fn read(home: &Path) -> Result<(String, groove_argocd::Token)> {
@@ -71,9 +77,9 @@ async fn read(home: &Path) -> Result<(String, groove_argocd::Token)> {
     })
 }
 
-/// Past `SOON` from its end, or telling no end.
-fn lasting(token: &groove_argocd::Token) -> bool {
+/// Past its end by its own `exp`; a token telling no end never is.
+fn ended(token: &groove_argocd::Token) -> bool {
     let now = SystemTime::now().duration_since(UNIX_EPOCH);
     let now = now.map_or(0, |one| i64::try_from(one.as_secs()).unwrap_or(i64::MAX));
-    token.expires().is_none_or(|end| end - now > SOON)
+    token.expires().is_some_and(|end| end <= now)
 }

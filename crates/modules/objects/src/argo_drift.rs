@@ -14,7 +14,7 @@ pub async fn argo_drift_once(
     (paths, home): (Vec<PathBuf>, PathBuf),
     app: ArgoApp,
 ) -> Result<Vec<DriftFile>, String> {
-    let opened = Opened::of((&paths, &home), &app).await?;
+    let mut opened = Opened::of((&paths, &home), &app).await?;
     let body = opened
         .get(&groove_argocd::drift_path(&app.namespace, &app.name))
         .await?;

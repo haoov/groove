@@ -604,7 +604,7 @@ click of something ordinary.
   folded. Each resource stands with its health from Argo CD's resource tree, when the
   Application stands on the hub context: Argo CD's API, reached through the hub's API
   server on the token `argocd login --sso` left, which `argocd account get-user-info` refreshes
-  first when it ends within 30 seconds, read once when the view opens, then
+  once Argo CD refuses it, then asked again once, read once when the view opens, then
   followed on Argo CD's stream while it shows; a kind's heading counts the degraded and
   the progressing. When Argo CD refuses the read, a line over the filters' right end says
   what it answered, and how to sign in again; off the hub, it says so, and the diff view too. Syncing shows the sync's line on its colour, over a square bar that

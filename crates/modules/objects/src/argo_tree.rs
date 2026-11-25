@@ -53,15 +53,17 @@ async fn cycle(
     send: &impl Fn(Treed),
     backoff: &mut Backoff,
 ) -> Result<(), String> {
-    let opened = Opened::of((paths, home), app).await?;
+    let mut opened = Opened::of((paths, home), app).await?;
     send(Ok(opened.read(app).await?));
     backoff.reset();
     let streamed = groove_argocd::tree_path(&app.namespace, &app.name, true);
-    let headers = [("Cookie", opened.cookie.as_str())];
-    let lines = opened
-        .client
-        .proxy_lines(&opened.to, &streamed, &headers)
-        .await;
+    let lines = match opened.lines(&streamed).await {
+        Err(e) if login_refused(&e) => {
+            opened.refresh().await?;
+            opened.lines(&streamed).await
+        }
+        other => other,
+    };
     let mut lines = std::pin::pin!(lines.map_err(|e| opened.failed(e))?);
     while let Some(line) = lines.next().await {
         let line = line.map_err(|e| e.to_string())?;
@@ -76,7 +78,7 @@ async fn cycle(
 
 /// `app`'s tree read once.
 pub async fn argo_tree_once((paths, home): (Vec<PathBuf>, PathBuf), app: ArgoApp) -> Treed {
-    let opened = Opened::of((&paths, &home), &app).await?;
+    let mut opened = Opened::of((&paths, &home), &app).await?;
     opened.read(&app).await
 }
 
@@ -85,7 +87,8 @@ pub(crate) struct Opened {
     client: Client,
     to: Proxied,
     server: String,
-    cookie: String,
+    home: PathBuf,
+    token: groove_argocd::Token,
 }
 
 impl Opened {
@@ -99,20 +102,51 @@ impl Opened {
         let client = Client::shared(paths, &app.hub).await;
         let client = client.map_err(|e| e.to_string())?;
         let to = reach(&client).await?;
-        let cookie = token.cookie();
         Ok(Self {
             client,
             to,
             server,
-            cookie,
+            home: home.to_path_buf(),
+            token,
         })
     }
 
-    /// The body `path` answers on argocd-server; `Err` says how to sign in again when refused.
-    pub(crate) async fn get(&self, path: &str) -> Result<String, String> {
-        let headers = [("Cookie", self.cookie.as_str())];
-        let body = self.client.proxy_get(&self.to, path, &headers).await;
+    /// The body `path` answers on argocd-server, asked again once on a refreshed login when refused.
+    pub(crate) async fn get(&mut self, path: &str) -> Result<String, String> {
+        let body = match self.got(path).await {
+            Err(e) if login_refused(&e) => {
+                self.refresh().await?;
+                self.got(path).await
+            }
+            other => other,
+        };
         body.map_err(|e| self.failed(e))
+    }
+
+    async fn got(&self, path: &str) -> Result<String, groove_kube::Error> {
+        let cookie = self.token.cookie();
+        let headers = [("Cookie", cookie.as_str())];
+        self.client.proxy_get(&self.to, path, &headers).await
+    }
+
+    async fn lines(
+        &self,
+        path: &str,
+    ) -> Result<
+        impl futures_util::Stream<Item = Result<String, groove_kube::Error>> + use<>,
+        groove_kube::Error,
+    > {
+        let cookie = self.token.cookie();
+        let headers = [("Cookie", cookie.as_str())];
+        self.client.proxy_lines(&self.to, path, &headers).await
+    }
+
+    /// The token the CLI refreshes in place of the one refused.
+    async fn refresh(&mut self) -> Result<(), String> {
+        let refreshed = groove_token::argocd_refreshed(&self.home, &self.token).await;
+        let (server, token) = refreshed.map_err(|e| e.to_string())?;
+        (self.server, self.token) = (server, token);
+        Ok(())
     }
 
     /// What a request through the proxy came to; argocd-server unreached is found again next time.
@@ -135,11 +169,19 @@ impl Opened {
         refused(&self.server, why)
     }
 
-    async fn read(&self, app: &ArgoApp) -> Treed {
+    async fn read(&mut self, app: &ArgoApp) -> Treed {
         let path = groove_argocd::tree_path(&app.namespace, &app.name, false);
         let body = self.get(&path).await?;
         groove_argocd::health(&body).map_err(|why| refused(&self.server, &why))
     }
+}
+
+/// A 401 through the hub's API server, as a read or a stream reports it.
+pub(crate) fn login_refused(error: &groove_kube::Error) -> bool {
+    matches!(
+        error,
+        groove_kube::Error::Api { status: 401, .. } | groove_kube::Error::Refused { .. }
+    )
 }
 
 /// What Argo CD said, with how to sign in again when it refused the session.
