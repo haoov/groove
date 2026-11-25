@@ -54,6 +54,9 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceTab(_)
             | Target::ResourceClose(_)
             | Target::ResourceView(_)
+            | Target::ArgoSync
+            | Target::ArgoRefresh
+            | Target::ArgoPrune
             | Target::YamlWrite(_)
             | Target::YamlApply
             | Target::ArgoFilter(_)
@@ -61,6 +64,7 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ContainerUsage(..)
             | Target::ResourceSection(_)
             | Target::ResourceOpen(_)
+            | Target::ResourceDrift(..)
             | Target::ResourceCopy(..)
             | Target::LogSource(_)
             | Target::LogPrevious(_)

@@ -17,6 +17,7 @@ pub(super) fn acted(
 ) -> Option<Vec<Command>> {
     logs(target, ui, hits)
         .or_else(|| drafted(target, ui, app))
+        .or_else(|| argo(target, ui, app))
         .or_else(|| listed(target, ui, app))
 }
 
@@ -35,6 +36,28 @@ fn drafted(target: &Target, ui: &Ui, app: &AppState) -> Option<Vec<Command>> {
         _ => return None,
     };
     Some(vec![Command::Cluster(asked)])
+}
+
+/// The Application tab's SYNC, asked over its diff, and its REFRESH, run at once.
+fn argo(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    let tab = ui.session.resources.tab_mut()?;
+    let write = match target {
+        Target::ArgoSync => resources::Write::Sync { prune: false },
+        Target::ArgoRefresh => resources::Write::Refresh { hard: false },
+        _ => return None,
+    };
+    let written = resources::Written {
+        session: app.session.selected.clone()?,
+        uid: String::new(),
+        link: tab.link.clone(),
+        write,
+    };
+    if write.immediate() {
+        return Some(vec![written.command()]);
+    }
+    (tab.view, tab.scroll) = (resources::View::Diff, 0.0);
+    ui.overlay = Some(Overlay::Losing(crate::Losing::Row(Box::new(written))));
+    Some(Vec::new())
 }
 
 /// A click on the sidebar, the list, or an object's tab.
@@ -66,6 +89,11 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
             return Some(vec![Command::Cluster(copy)]);
         }
         Target::ResourceList => held.showing = None,
+        Target::ResourceDrift(path, _) => {
+            let tab = held.tab_mut()?;
+            (tab.view, tab.scroll) = (resources::View::Diff, 0.0);
+            tab.argo.landing = Some(path.clone());
+        }
         Target::ResourceRow(uid) => {
             let open = app.session.selected()?;
             let link = resources::row_link(app, open, &ui.session.resources, uid)?;
@@ -214,4 +242,24 @@ pub(super) fn dragged(ui: &mut Ui, x: f32, metrics: Metrics) {
         Columns::Alerts => &mut ui.alerts.widths,
     };
     widths.insert(drag.label, width);
+}
+
+/// The scale a row asks, one step down or up.
+pub(super) fn stepped(ui: &mut Ui, by: i32) -> Vec<Command> {
+    if let Some(Overlay::Losing(crate::Losing::Row(written))) = &mut ui.overlay
+        && let crate::views::session::resources::Write::Scale(count) = &mut written.write
+    {
+        *count = count.saturating_add_signed(by);
+    }
+    Vec::new()
+}
+
+/// The sync asked prunes, or no longer does.
+pub(super) fn pruned(ui: &mut Ui) -> Vec<Command> {
+    if let Some(Overlay::Losing(crate::Losing::Row(written))) = &mut ui.overlay
+        && let crate::views::session::resources::Write::Sync { prune } = &mut written.write
+    {
+        *prune = !*prune;
+    }
+    Vec::new()
 }

@@ -38,9 +38,11 @@ fn result(kind: &str, name: &str, hook: bool, hook_phase: &str) -> SyncedResourc
     }
 }
 
-/// The Application's tab open on its resources view.
+/// The Application's tab open on its resources view, its context the Argo CD hub.
 pub(super) fn opened_application(object: Described) -> (AppState, Ui) {
     let (mut app, mut ui) = listed();
+    let hub = groove_types::ClusterChange::ArgoHub(true);
+    app.config.change_cluster("staging", hub);
     let link = Link {
         context: "staging".into(),
         kind: applications(),
@@ -68,7 +70,7 @@ fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
 }
 
 #[test]
-fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
+fn resources_open_on_what_is_out_of_sync_and_all_folds_the_quiet_kinds() {
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     let operation = part.operation.as_mut().expect("its sync");
@@ -87,22 +89,21 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     let shown = texts(&app, &ui);
     for one in [
         "RESOURCES",
-        "NEEDS ATTENTION · 2",
+        "DEGRADED · 0",
         "OUT OF SYNC · 1",
         "SYNCING · 0",
         "Deployment",
         "billing-api",
         "1 out of sync",
-        "1 failed",
-        "field is immutable",
-        "billing-migrate",
     ] {
         assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
     }
     assert!(!shown.iter().any(|text| text == "ConfigMap"), "{shown:?}");
     hit(&app, &mut ui, Target::ArgoFilter(Filter::All));
     let shown = texts(&app, &ui);
-    assert!(shown.iter().any(|text| text == "ConfigMap"), "{shown:?}");
+    for one in ["ConfigMap", "1 failed", "field is immutable"] {
+        assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
+    }
     assert!(
         !shown.iter().any(|text| text == "billing-config"),
         "a kind with nothing to see stands folded"
@@ -273,7 +274,7 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
 #[test]
 fn a_narrow_pane_keeps_the_application_s_badges_clear_of_its_views() {
     let (app, ui) = opened_application(failing());
-    for width in [1100, 1300] {
+    for width in [1100, 1500] {
         let metrics = crate::tests::metrics(width, 800, 1.0);
         let (frame, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
         let views = hits.rect_of(&Target::ResourceView(View::Describe));

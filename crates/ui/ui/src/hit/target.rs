@@ -96,6 +96,11 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// The open Application's sync asked over its diff, and its refresh.
+    ArgoSync,
+    ArgoRefresh,
+    /// The sync asked prunes or not.
+    ArgoPrune,
     /// An object's YAML made writable, or read-only again, its draft thrown away; and the draft applied.
     YamlWrite(bool),
     YamlApply,
@@ -113,6 +118,8 @@ pub enum Target {
     /// A section of the described view folded, and another object to open.
     ResourceSection(crate::views::session::resources::Section),
     ResourceOpen(Box<crate::views::session::resources::Link>),
+    /// A resource out of sync: its file in the Application's diff, and its object when it has one.
+    ResourceDrift(String, Option<Box<crate::views::session::resources::Link>>),
     /// A value of an object's tab, which a click copies; a ctrl+click opens its object.
     ResourceCopy(String, Option<Box<crate::views::session::resources::Opens>>),
     /// A context's line, which only lights under the pointer.

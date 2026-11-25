@@ -2,28 +2,24 @@
 
 use groove_types::ApprovalId;
 
-use crate::{DriftKey, Prepared, State};
-
-const REVIEW: &str = "review";
+use crate::{Prepared, Source, State};
 
 impl State {
-    /// The change of `id` shown in place of the worktree's until it is decided.
+    /// The change of `id` shown in place of the worktree's, or of a drift, until it is decided.
     pub fn review(&mut self, id: &ApprovalId, change: Prepared) {
-        self.drifted((key(id), String::new()), change);
+        self.show_instead(Source::Write(id.clone()), change);
     }
 
     /// The write whose change the diff shows, when it shows one.
     pub fn reviewed(&self) -> Option<&str> {
-        let drift = self.drift.as_ref().filter(|one| one.app.0 == REVIEW);
-        drift.map(|one| one.app.1.as_str())
+        match &self.stand_in.as_ref()?.source {
+            Source::Write(id) => Some(id.as_str()),
+            Source::Drift { .. } => None,
+        }
     }
 
     /// The change of `id` let go; true when the worktree's change must be read again.
     pub fn decided(&mut self, id: &ApprovalId) -> bool {
-        self.reviewed() == Some(id.as_str()) && self.undrift()
+        self.reviewed() == Some(id.as_str()) && self.show_worktree()
     }
-}
-
-fn key(id: &ApprovalId) -> DriftKey {
-    (REVIEW.to_string(), id.as_str().to_string(), String::new())
 }

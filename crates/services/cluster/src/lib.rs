@@ -1,5 +1,6 @@
 //! The cluster part of the app: the contexts found, their sign-in, the watched objects, and the writes.
 
+mod argo;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -9,12 +10,20 @@ use std::path::PathBuf;
 
 use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
+pub use argo::{
+    argo_drift_once, argo_drifted_once, argo_refresh_once, argo_revision_once, argo_sync_once,
+    argo_tree, argo_tree_once, argo_windows_once,
+};
 pub use groove_contexts::paths;
 pub use groove_kubectl::{Answer, Checked, Exec, LONGEST, RUNS, SHELL, check as checked};
-pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
+pub use groove_objects::{
+    ArgoApp, ArgoSync, Batch, Change, Delta, DriftFile, FRESH, Followed, Logged, Stop,
+    SyncResource, Treed,
+};
 pub use groove_objects::{Preview, edited};
 pub use store::{
-    CAP, Draft, Follow, Follows, Log, Logs, Named, Store, Streaming, Up, Watched, Yamls,
+    CAP, Draft, Follow, Follows, Log, Logs, Named, Revised, Revisions, Store, Streaming, Trees, Up,
+    Watched, Windows, Yamls,
 };
 pub use writes::{
     Allowed, Asked, delete, doomed, patch, preview, restart, restartable, scalable, scale, tried,
@@ -112,6 +121,10 @@ pub enum Event {
         key: Box<LogKey>,
         batch: Logged,
     },
+    Treed {
+        app: Box<Named>,
+        read: Treed,
+    },
 }
 
 pub fn apply(state: &mut State, event: Event) {
@@ -137,6 +150,7 @@ pub fn apply(state: &mut State, event: Event) {
         Event::Watched { key, batch } => state.store.apply(&key, batch),
         Event::Followed { key, batch } => state.store.follows.apply(&key, batch),
         Event::Logged { key, batch } => state.store.logs.apply(&key, batch),
+        Event::Treed { app, read } => state.store.trees.apply(&app, read),
     }
 }
 

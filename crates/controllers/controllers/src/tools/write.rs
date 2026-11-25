@@ -15,6 +15,7 @@ mod forge;
 mod git;
 mod notes;
 mod patches;
+mod syncs;
 
 pub(crate) use patches::edit_asked;
 mod repos;
@@ -65,6 +66,9 @@ impl Write {
 pub(super) fn asked(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
     if call.tool == "kube_exec" {
         return execs::asked(state, spawner, Write::of(call));
+    }
+    if call.tool == "argo_sync" {
+        return syncs::asked(state, spawner, Write::of(call));
     }
     if groove_agent_service::tools::reviewed(&call.tool) {
         return patches::asked(state, spawner, Write::of(call));
@@ -182,6 +186,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "kube_patch" => patches::patch(state, spawner, write),
         "kube_delete" => patches::delete(state, spawner, write),
         "kube_exec" => execs::run(state, spawner, write),
+        "argo_sync" => syncs::run(state, spawner, write),
         groove_agent_service::tools::APPLY_EDIT => patches::applied(state, spawner, write),
         _ => write
             .reply

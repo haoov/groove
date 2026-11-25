@@ -101,6 +101,7 @@ pub(super) fn failing() -> Described {
         applied: Vec::new(),
     };
     let part = AppPart {
+        compared: "1".into(),
         project: "analytics".into(),
         sync: "OutOfSync".into(),
         health: "Degraded".into(),
@@ -112,6 +113,7 @@ pub(super) fn failing() -> Described {
             values: Vec::new(),
             reference: None,
             synced: Some("e9f8a7b".into()),
+            compared: Some("e9f8a7b".into()),
         }],
         synced: Some("e9f8a7b".into()),
         destination: Destination {
@@ -120,6 +122,8 @@ pub(super) fn failing() -> Described {
             namespace: Some("billing-acc".into()),
         },
         automated: Some((true, true)),
+        options: vec!["ServerSideApply=true".into()],
+        retry: None,
         operation: Some(operation),
         conditions: Vec::new(),
         resources: Vec::new(),
@@ -188,12 +192,12 @@ fn applications_list_their_own_columns_and_one_opens_on_its_failed_sync() {
     for shown in [
         "OutOfSync",
         "Degraded",
-        "OPERATION · last sync",
+        "OPERATION · LAST SYNC",
         "✗ Sync failed",
         "billing-migrate",
-        "auto · prune · heal",
-        "SOURCES · 1",
-        "billing-eu-deploy · envs/acc",
+        "on · prune on · self-heal on",
+        "SOURCE 1",
+        "· main · envs/acc",
         "gitlab.example.com/billing-eu-deploy",
         "e9f8a7b",
     ] {

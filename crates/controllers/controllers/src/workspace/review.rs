@@ -17,11 +17,12 @@ pub(crate) fn show(state: &mut AppState, spawner: &dyn Spawner) -> bool {
     if state.workspace.reviewed() == Some(id.as_str()) {
         return true;
     }
-    let Some(pair) = pair_of(&approval.payload) else {
+    let pairs = pairs_of(&approval.payload);
+    if pairs.is_empty() {
         return false;
-    };
+    }
     spawner.spawn(Box::pin(async move {
-        let prepared = groove_workspace_service::prepared(vec![pair]).await;
+        let prepared = groove_workspace_service::prepared(pairs).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if !waits(state, &session, &id) || state.workspace.reviewed() == Some(id.as_str()) {
                 return;
@@ -55,9 +56,14 @@ fn waits(state: &AppState, session: &SessionId, id: &ApprovalId) -> bool {
             .is_some_and(|one| &one.id == id)
 }
 
-/// The file the change stands as, its YAML before and after, from what the ask carries.
-fn pair_of(payload: &Value) -> Option<(String, String, String)> {
-    let change = &payload["change"];
-    let text = |at: usize| change[at].as_str().map(str::to_string);
-    Some((text(0)?, text(1)?, text(2)?))
+/// Each file the change stands as, its YAML before and after: an object's one, or a sync's several.
+fn pairs_of(payload: &Value) -> Vec<(String, String, String)> {
+    let pair = |change: &Value| {
+        let text = |at: usize| change[at].as_str().map(str::to_string);
+        Some((text(0)?, text(1)?, text(2)?))
+    };
+    match payload["changes"].as_array() {
+        Some(all) => all.iter().filter_map(pair).collect(),
+        None => pair(&payload["change"]).into_iter().collect(),
+    }
 }

@@ -7,7 +7,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-argocd = { path = "../argocd" }
 groove-kube = { path = "../../base/kube" }
+groove-token = { path = "../token" }
 groove-types = { path = "../../shared/types" }
 imara-diff.workspace = true
 futures-util.workspace = true

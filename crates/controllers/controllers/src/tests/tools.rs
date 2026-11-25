@@ -8,6 +8,7 @@ mod forge;
 mod owned;
 mod patches;
 mod reads;
+mod syncs;
 mod writes;
 
 use groove_agent_service::{Answer, Call, Reply};

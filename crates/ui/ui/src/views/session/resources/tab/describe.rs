@@ -5,8 +5,7 @@ use std::sync::Arc;
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::{
-    AppCondition, AppSource, Condition, Container, Described, Operation, PodPart, SyncedResource,
-    Usage,
+    AppCondition, Condition, Container, Described, Operation, PodPart, SyncedResource, Usage,
 };
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::widgets::{rounded_slice, scrolled};
@@ -17,9 +16,13 @@ use super::containers;
 use super::destined;
 use super::read::{events, key_width, usage};
 use super::relations::{self, Line};
+use super::revisions;
 use super::sections::{self, Fact};
 use crate::ctx::Ctx;
 use crate::hit::Scroller;
+
+/// The widths the user dragged the tab's columns to.
+type Dragged = std::collections::BTreeMap<String, f32>;
 
 /// One block of the column, stacked from the top.
 pub(super) enum Block<'a> {
@@ -28,7 +31,8 @@ pub(super) enum Block<'a> {
     Said(&'a str),
     Broke(&'a SyncedResource),
     AppCondition(&'a AppCondition),
-    Source(&'a AppSource),
+    /// A line of the sync's table, under its header when it is the first.
+    Revision(revisions::Line, bool),
     Condition(&'a Condition),
     Summary(Vec<Fact>),
     /// A line of a table, under its header when it is the first.
@@ -46,6 +50,8 @@ pub(super) enum Block<'a> {
 pub(super) enum Tally {
     Count(usize),
     Note(String),
+    /// A note in the warning colour, its heading on the warning's ground.
+    Warned(String),
 }
 
 pub(super) fn draw(
@@ -53,6 +59,7 @@ pub(super) fn draw(
     body: Rect,
     app: &AppState,
     (tab, object): (&Opened, &Described),
+    dragged: &Dragged,
 ) {
     let events = events(app, tab, object);
     let blocks = blocks(app, (tab, object), &events, ctx.now);
@@ -74,18 +81,21 @@ pub(super) fn draw(
                 return;
             }
             let card = line.pad(Edges::across(md, md));
-            let tinted = tint.filter(|(_, until)| at < until);
+            let tinted = tint.filter(|(_, until)| at < until).map(|(role, _)| role);
             let gap = |one: Option<&Block>| matches!(one, None | Some(Block::Gap));
             let ends = (gap(blocks.get(at.wrapping_sub(1))), gap(blocks.get(at + 1)));
-            carded(ctx, card, (block, ends), tinted.map(|(role, _)| role));
+            carded(ctx, card, (block, ends), tinted);
             let rect = match block {
                 Block::Heading(..) => card,
-                Block::Container(..) | Block::Relation(..) | Block::Detail(_) => {
+                Block::Container(..)
+                | Block::Relation(..)
+                | Block::Revision(..)
+                | Block::Detail(_) => {
                     card.pad(Edges::across(ctx.tokens.hairline, ctx.tokens.hairline))
                 }
                 _ => card.pad(Edges::across(md, md)),
             };
-            let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()));
+            let drawn = one(ctx, rect, block, (tab, keys, usage.as_ref()), dragged);
             tip = drawn.or(tip.take());
         },
     );
@@ -97,7 +107,7 @@ pub(super) fn draw(
 
 /// A slice of its section's card: the sunk ground inside the panel's edge, the heading on its
 /// band, ruled off under it unless the section is folded to it alone. The operation's colour
-/// tints its card whole, its heading included.
+/// tints its card whole, its heading included; a heading that warns is washed in yellow alone.
 fn carded(ctx: &mut Ctx, card: Rect, (block, ends): (&Block, (bool, bool)), tint: Option<Role>) {
     let ground = match tint {
         Some(role) => ctx.styles.tint(role),
@@ -113,6 +123,13 @@ fn carded(ctx: &mut Ctx, card: Rect, (block, ends): (&Block, (bool, bool)), tint
         Some(_) if !alone => groove_ui_kit::shape::hairline(ctx, card, ctx.styles.line()),
         Some(_) => {}
     }
+    if tint.is_none() && matches!(block, Block::Heading(_, Tally::Warned(_))) {
+        let wash = ctx.styles.row_tint(Role::Warn);
+        rounded_slice(ctx, card, ends, (wash, Some(ctx.styles.panel_edge())));
+        if !alone {
+            groove_ui_kit::shape::hairline(ctx, card, ctx.styles.line());
+        }
+    }
 }
 
 /// One block in `rect`; a container's row returns the tip under the pointer.
@@ -121,15 +138,18 @@ fn one(
     rect: Rect,
     block: &Block,
     (tab, keys, usage): (&Opened, f32, Option<&Usage>),
+    dragged: &Dragged,
 ) -> Option<containers::Tip> {
     let last = tab.copied.as_deref();
     match block {
         Block::Heading(section, tally) => {
             sections::heading(ctx, rect, (*section, tab.shut.contains(section)), tally)
         }
-        Block::Operation(_) | Block::Said(_) | Block::Broke(_) => operated(ctx, rect, block),
+        Block::Operation(_) | Block::Said(_) | Block::Broke(_) => argo::operated(ctx, rect, block),
         Block::AppCondition(one) => argo::condition(ctx, rect, one, ctx.now),
-        Block::Source(one) => argo::source(ctx, rect, one, last),
+        Block::Revision(line, header) => {
+            revisions::draw(ctx, rect, (line, *header), (last, dragged));
+        }
         Block::Condition(one) => sections::condition(ctx, rect, one),
         Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
         Block::Relation(line, header) => relations::draw(ctx, rect, (line, *header), last),
@@ -154,23 +174,14 @@ fn tinted(object: &Described, blocks: &[Block]) -> Option<(Role, usize)> {
     Some((role, until.map_or(blocks.len(), |at| at + 1)))
 }
 
-/// A row of the operation.
-fn operated(ctx: &mut Ctx, rect: Rect, block: &Block) {
-    match block {
-        Block::Operation(one) => argo::operation(ctx, rect, one, ctx.now),
-        Block::Said(message) => argo::said(ctx, rect, message),
-        Block::Broke(one) => argo::broke(ctx, rect, one),
-        _ => {}
-    }
-}
-
 fn height(ctx: &Ctx, block: &Block) -> f32 {
     let row = ctx.tokens.row;
     match block {
         Block::Summary(facts) => row * facts.len() as f32,
-        Block::Relation(_, true) | Block::Container(_, true) => row * 2.0,
+        Block::Relation(_, true) | Block::Revision(_, true) | Block::Container(_, true) => {
+            row * 2.0
+        }
         Block::Heading(..) => row + ctx.tokens.xs,
-        Block::Source(one) => row * argo::source_rows(one) as f32,
         Block::Gap => ctx.tokens.md,
         _ => row,
     }
@@ -213,6 +224,9 @@ fn parts<'a>(
         let lines = pod.conditions.iter().map(Block::Condition).collect();
         parts.push((Section::Conditions, Tally::Count(0), lines));
     }
+    parts.extend(app.map(|one| revisions::section(state, tab, one)));
+    let windows = state.cluster.store.windows.get(&tab.link.pod());
+    parts.extend(app.map(|one| argo::policy(one, windows.map(|(read, _)| read))));
     let facts = match app {
         Some(one) => {
             let context = destined::context(state, &tab.link.context, &one.destination);
@@ -225,7 +239,6 @@ fn parts<'a>(
         Tally::Count(0),
         vec![Block::Summary(facts)],
     ));
-    parts.extend(app.map(argo::sourced));
     if let Some(pod) = pod {
         let count = Tally::Count(pod.containers.len());
         parts.push((Section::Containers, count, contained(tab, pod)));

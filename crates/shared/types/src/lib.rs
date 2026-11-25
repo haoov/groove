@@ -52,15 +52,16 @@ pub use alert::{Alert, AlertChild, AlertsConfig};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
-    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
-    server_of, sync_policy,
+    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, ResourceHealth, Retry,
+    RevisionMeta, SyncWindow, SyncWindows, SyncedResource, drift_path, health_of, server_of,
+    sync_policy,
 };
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use cells::{cell_value, compare_cells};
 pub use chord::{Chord, Stroke};
 pub use cluster::{
     Attached, Builtin, KindHeading, KubeAuth, KubeContext, KubeKind, Login, ObjectRow, TableColumn,
-    Target, WatchKey,
+    Target, WatchKey, object_path,
 };
 pub use config::{
     ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,

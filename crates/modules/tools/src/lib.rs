@@ -57,7 +57,7 @@ pub fn named(name: &str) -> Option<Tool> {
 pub fn reviewed(name: &str) -> bool {
     matches!(
         name,
-        "kube_patch" | "kube_delete" | "kube_exec" | APPLY_EDIT
+        "kube_patch" | "kube_delete" | "kube_exec" | "argo_sync" | APPLY_EDIT
     )
 }
 

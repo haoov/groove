@@ -69,6 +69,26 @@ impl Target {
         parts.extend(self.subresource.as_deref());
         format!("{} · {}", self.context, parts.join("/"))
     }
+
+    /// `kind/paxone/Deployment/api-scale.yaml`: the file the write's change stands as.
+    pub fn path(&self) -> String {
+        let name = match &self.subresource {
+            Some(part) => format!("{}-{part}", self.name),
+            None => self.name.clone(),
+        };
+        object_path(
+            &self.context,
+            &self.kind.kind,
+            self.namespace.as_deref(),
+            &name,
+        )
+    }
+}
+
+/// `<at>/<namespace>/<Kind>/<name>.yaml`: where one object stands as a file in the diff.
+pub fn object_path(at: &str, kind: &str, namespace: Option<&str>, name: &str) -> String {
+    let namespace = namespace.unwrap_or("-");
+    format!("{at}/{namespace}/{kind}/{name}.yaml")
 }
 
 /// One kind a cluster serves at its preferred version.
@@ -176,6 +196,11 @@ const CONFIG: [&str; 7] = [
 const RBAC: &str = "rbac.authorization.k8s.io";
 
 impl KubeKind {
+    /// Argo CD's Application, which Argo CD syncs.
+    pub fn application(&self) -> bool {
+        self.group == "argoproj.io" && self.kind == "Application"
+    }
+
     pub fn heading(&self) -> KindHeading {
         let kind = self.kind.as_str();
         let builtin = |one| KindHeading::Builtin(one);

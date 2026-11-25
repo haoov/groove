@@ -40,7 +40,7 @@ pub const NOTED: f32 = 0.18;
 /// The words of a row its pair does not have, over that ground.
 pub const WORD_ALPHA: (u8, u8) = (44, 80);
 /// A badge's ground and edge, both of its word's own colour.
-pub const BADGE_GROUND: u8 = 25;
+pub const BADGE_GROUND: u8 = 14;
 pub const BADGE_EDGE: u8 = 90;
 
 /// A line of prose against its type size.
@@ -204,9 +204,9 @@ const LOGICAL: Tokens = Tokens {
     feed_row: 20.0,
     bar: 36.0,
     hairline: 1.0,
-    corner: 4.0,
-    round: 2.0,
-    glass_round: 3.0,
+    corner: 2.0,
+    round: 1.0,
+    glass_round: 1.0,
     glass_row: 32.0,
     edge: 0.5,
     grab: 8.0,

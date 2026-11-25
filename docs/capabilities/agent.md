@@ -45,7 +45,7 @@ runs the binary as an argument list, never through a shell. A read names a conte
 session holds and a namespace it holds, takes only read verbs and flags, and never prints
 a secret's data. Attaching or letting go of a cluster is a write, through the queue.
 
-**The agent writes to a cluster only through `kube_patch` and `kube_delete`.** Groove reads
+**The agent writes to a cluster only through `kube_patch`, `kube_delete` and `argo_sync`.** Groove reads
 the object, tries the patch or the delete on that version with a server dry run, and queues
 it with the diff of the object's YAML; a delete shows the whole object going. It waits for
 the user even with auto-approve on. Once approved, it lands on the version shown, and an
@@ -53,6 +53,13 @@ object that moved since is refused. Enforced by
 `a_patch_waits_with_its_diff_under_auto_approve_and_lands_once_approved`,
 `a_delete_waits_with_the_object_going_and_lands_on_the_version_shown` and
 `an_object_that_moved_before_the_approval_is_not_overwritten`.
+
+**An Argo CD sync waits with its drift and runs only on the drift shown.** `argo_sync`
+reads what differs, kept to the resources it names and to what a sync without prune
+applies, and queues it as a cluster write. Once approved, Groove reads the drift again
+and refuses the sync when it moved. A hub not held, or read-only, refuses it first.
+Enforced by `a_read_only_hub_refuses_the_agent_s_sync_before_it_waits` and
+`a_hub_the_session_does_not_hold_refuses_the_agent_s_sync`.
 
 **The agent runs a command in a pod only through `kube_exec`.** It names the pod, its
 container and the command as an argument list; Groove runs `kubectl exec` with no shell,

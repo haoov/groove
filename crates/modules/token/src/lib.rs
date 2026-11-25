@@ -1,10 +1,12 @@
 //! The bearer token a host is called with, from its CLI or handed over; never stored.
 
+mod argocd;
 mod cli;
 
 #[cfg(test)]
 mod tests;
 
+pub use argocd::{argocd, argocd_refreshed};
 pub use cli::{Cli, CliToken};
 
 use groove_http::{Result, TokenSource};

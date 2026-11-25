@@ -9,7 +9,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{
-    Cell, Column, Laid, Rows, Search, Shown, Sorted, Steps, Tab, Table, Width, glass_field,
+    Cell, Column, Laid, Rows, Search, Shown, Sorted, Tab, Table, Width, glass_field,
 };
 
 mod cells;
@@ -20,8 +20,8 @@ pub(super) mod plan;
 
 use self::cells::{column, one};
 use self::plan::plan;
+use super::Written;
 use super::scope::{self, ResourcesUi};
-use super::{Write, Written};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -263,17 +263,5 @@ fn asking(ctx: &mut Ctx, laid: &Laid, asked: Option<(usize, &Written)>) {
     if line.y < room.y || line.y + line.h > room.y + room.h {
         return;
     }
-    let count = match written.write {
-        Write::Scale(count) => Some(count),
-        Write::Restart | Write::Delete => None,
-    };
-    let shown = count.map(|count| count.to_string()).unwrap_or_default();
-    let steps = count.map(|count| Steps {
-        shown: &shown,
-        less: (count > 0).then_some(Target::Step(-1)),
-        more: Target::Step(1),
-    });
-    let (yes, question) = (written.write.act(), written.question());
-    let answers = [(yes, Target::Discard), ("keep", Target::Keep)];
-    groove_ui_kit::widgets::question(ctx, line, (&question, steps), answers);
+    super::written::ask(ctx, line, written);
 }

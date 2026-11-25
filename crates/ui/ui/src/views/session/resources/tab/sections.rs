@@ -46,14 +46,24 @@ impl Fact {
     }
 }
 
-/// The fold caret, the section's name and what it holds; a click folds it.
+/// The fold caret, the section's name and what it holds; a click folds it. The sync's heading is
+/// what it holds alone.
 pub(super) fn heading(ctx: &mut Ctx, rect: Rect, (section, shut): (Section, bool), tally: &Tally) {
-    let title = format!("{section:?}");
+    let role = match tally {
+        Tally::Warned(_) => Role::Warn,
+        _ => Role::Faint,
+    };
+    let (title, tally) = match (section, tally) {
+        (Section::Sync, Tally::Note(said) | Tally::Warned(said)) => (said.clone(), None),
+        (Section::Policy, _) => ("sync policy".to_string(), Some(tally)),
+        (other, _) => (format!("{other:?}"), Some(tally)),
+    };
     glass_hoverable(ctx, rect, Target::ResourceSection(section));
-    let heading = Heading::new(&title).fold(!shut);
+    let heading = Heading::new(&title).fold(!shut).role(role);
     let heading = match tally {
-        Tally::Count(count) => heading.count(*count),
-        Tally::Note(note) => heading.note(note),
+        Some(Tally::Count(count)) => heading.count(*count),
+        Some(Tally::Note(note) | Tally::Warned(note)) => heading.note(note),
+        None => heading,
     };
     let md = ctx.tokens.md;
     heading.within(ctx, rect, rect.pad(Edges::across(md, md)));

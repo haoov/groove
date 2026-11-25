@@ -1,18 +1,21 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
+pub(crate) mod argo;
+mod contexts;
 pub(crate) mod drafts;
 mod follows;
 mod logs;
 mod objects;
 pub(crate) mod writes;
 
-use groove_cluster_service::Event as ClusterEvent;
-use groove_cluster_service::Named;
+use groove_cluster_service::{Named, Revised};
 use groove_types::{Edit, FollowKey, LogKey, SessionId, Timestamp, WatchKey};
 
 use crate::asker::Asker;
-use crate::{AppState, Continuation, Event, Services, Spawner, apply};
+use crate::{AppState, Services, Spawner};
 
+pub(crate) use contexts::check;
+use contexts::scan;
 pub use writes::Patched;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -37,6 +40,20 @@ pub enum Command {
     Usage { pod: Named },
     /// `cluster.helm_revision`: a Helm release's latest revision, read once.
     HelmRevision { release: Named },
+    /// `cluster.follow_argo`: `reader` reads an Application's resource health from Argo CD on the hub.
+    FollowArgo { reader: String, app: Named },
+    /// `cluster.argo_revision`: a revision of an Application's source, read once from Argo CD.
+    ArgoRevision { revised: Box<Revised> },
+    /// `cluster.argo_windows`: an Application's sync windows, read from Argo CD.
+    ArgoWindows { app: Named },
+    /// `cluster.argo_sync`: an Application synced through Argo CD, pruning when `prune`.
+    ArgoSync {
+        session: SessionId,
+        app: Named,
+        prune: bool,
+    },
+    /// `cluster.argo_refresh`: an Application compared with its sources again, `hard` past the cache.
+    ArgoRefresh { app: Named, hard: bool },
     /// `cluster.caret`: the caret or what it holds moved in an object's YAML; nothing writes.
     Caret { key: Box<FollowKey>, edit: Edit },
     /// `cluster.copy`: what the caret holds in an object's YAML, to the clipboard.
@@ -102,6 +119,11 @@ impl Command {
             Command::CopyValue { .. } => "cluster.copy_value",
             Command::Usage { .. } => "cluster.usage",
             Command::HelmRevision { .. } => "cluster.helm_revision",
+            Command::FollowArgo { .. } => "cluster.follow_argo",
+            Command::ArgoRevision { .. } => "cluster.argo_revision",
+            Command::ArgoWindows { .. } => "cluster.argo_windows",
+            Command::ArgoSync { .. } => "cluster.argo_sync",
+            Command::ArgoRefresh { .. } => "cluster.argo_refresh",
             Command::FollowLogs { .. } => "cluster.follow_logs",
             Command::LogCaret { .. } => "cluster.log_caret",
             Command::LogCopy { .. } => "cluster.log_copy",
@@ -121,6 +143,9 @@ pub fn dispatch(
     services: &Services,
     spawner: &dyn Spawner,
 ) {
+    let Some(command) = argo::dispatched(command, state, spawner) else {
+        return;
+    };
     match command {
         Command::ScanContexts => scan(state, spawner, true),
         Command::ReadContexts => scan(state, spawner, false),
@@ -159,6 +184,7 @@ pub fn dispatch(
         Command::ApplyYaml { session, key } => {
             crate::tools::edit_asked(state, spawner, session, &key)
         }
+        _ => {}
     }
 }
 
@@ -181,6 +207,9 @@ fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
     later(spawner, store.logs.release(reader), |state, key, n| {
         state.cluster.store.logs.drop_unread(key, n)
     });
+    later(spawner, store.trees.release(reader), |state, app, n| {
+        state.cluster.store.trees.drop_unread(app, n)
+    });
 }
 
 /// Each key handed to `dropped` once `IDLE` has passed, with the release it came from.
@@ -200,78 +229,4 @@ fn later<K: Send + 'static>(
             ));
         }));
     }
-}
-
-/// One scan at a time; a second ask while it runs is the same answer.
-/// The contexts read; with `check`, every context added to Groove checked again.
-fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
-    if !state.cluster.begin_scan() {
-        if check {
-            check_added(state, spawner);
-        }
-        return;
-    }
-    let paths = state.env.kubeconfig.clone();
-    spawner.spawn(Box::pin(async move {
-        let found = groove_cluster_service::scan(paths).await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match found {
-                Ok(contexts) => {
-                    apply(Event::Cluster(ClusterEvent::Found(contexts)), state);
-                    if check {
-                        check_added(state, spawner);
-                    }
-                }
-                Err(e) => {
-                    apply(
-                        Event::Cluster(ClusterEvent::Unread(e.message.clone())),
-                        state,
-                    );
-                    state.failed(e);
-                    unscanned(spawner);
-                }
-            },
-        ) as Continuation
-    }));
-}
-
-/// A scan that failed may be asked again once `IDLE` has passed.
-fn unscanned(spawner: &dyn Spawner) {
-    let sink = spawner.sink();
-    spawner.detach(Box::pin(async move {
-        tokio::time::sleep(objects::IDLE).await;
-        sink.deliver(Box::new(
-            |state: &mut AppState, _: &Services, _: &dyn Spawner| state.cluster.scanned = false,
-        ));
-    }));
-}
-
-/// Every context added to Groove, checked again.
-fn check_added(state: &mut AppState, spawner: &dyn Spawner) {
-    let added: Vec<String> = state
-        .config
-        .clusters()
-        .iter()
-        .map(|one| one.context.clone())
-        .collect();
-    for context in added {
-        check(state, spawner, context);
-    }
-}
-
-/// One check a context at a time.
-pub(crate) fn check(state: &mut AppState, spawner: &dyn Spawner, context: String) {
-    if !state.cluster.begin_check(&context) {
-        return;
-    }
-    let paths = state.env.kubeconfig.clone();
-    spawner.spawn(Box::pin(async move {
-        let login = groove_cluster_service::check(paths, context.clone()).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            apply(
-                Event::Cluster(ClusterEvent::Checked { context, login }),
-                state,
-            )
-        }) as Continuation
-    }));
 }

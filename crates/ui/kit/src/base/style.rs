@@ -85,7 +85,7 @@ impl Styles {
 
     /// A section's name inside a surface; drawn upper case.
     pub fn heading(&self, role: Role) -> TextStyle {
-        self.sans(self.tokens.heading, Weight::Medium, role)
+        self.sans(self.tokens.heading, Weight::Regular, role)
     }
 
     /// A file's name where it heads its own rows.
@@ -99,7 +99,7 @@ impl Styles {
 
     /// Prose that names something: a tab, a row, a button.
     pub fn label(&self, role: Role) -> TextStyle {
-        self.sans(self.tokens.text, Weight::Medium, role)
+        self.sans(self.tokens.text, Weight::Regular, role)
     }
 
     /// A name cut to its initials.
@@ -154,7 +154,7 @@ impl Styles {
     pub fn tab(&self, role: Role) -> TextStyle {
         TextStyle {
             font: Font::Mono,
-            weight: Weight::Medium,
+            weight: Weight::Regular,
             size: self.tokens.small,
             color: self.color(role),
         }

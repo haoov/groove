@@ -2,11 +2,12 @@
 
 use std::collections::BTreeSet;
 
-use groove_controllers::{AppState, Command, cluster};
+use groove_controllers::cluster_service::Named;
+use groove_controllers::{AppState, Command, cluster, workspace};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
 use super::super::around::{helm_release, lineage};
-use super::super::opened::Opened;
+use super::super::opened::{Link, Opened};
 use super::super::{ResourcesUi, View, log_key};
 
 /// The one reader an object's tab holds its watchers under.
@@ -15,20 +16,52 @@ pub const READER: &str = "resource";
 /// How often a pod's usage is read again while its tab shows.
 pub const USAGE_EVERY: i64 = 15;
 
+/// How often an Application's sync windows are read again while its tab shows.
+const WINDOWS_EVERY: i64 = 60;
+
 /// The watchers the tab shown wants, and the reads it lacks; `up` while the tab is on screen.
 pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Vec<Command> {
     let added = |tab: &&Opened| app.config.cluster(&tab.link.context).is_some();
     let tab = held.tab().filter(|_| up).filter(added);
     let mut out = Vec::new();
-    let (keys, log) = match tab {
+    let (keys, streams) = match tab {
         Some(tab) => {
             out.extend(asks(app, tab, now));
-            (keys(app, tab), logged(app, tab))
+            (keys(app, tab), (logged(app, tab), treed(app, tab)))
         }
-        None => (Vec::new(), None),
+        None => (Vec::new(), (None, None)),
     };
-    out.extend(leases(app, keys, log));
+    out.extend(leases(app, keys, streams));
+    out.extend(drift(app, tab));
     out
+}
+
+/// The drift read while an Application's diff shows and no cluster write waits; let go once it does not show.
+fn drift(app: &AppState, tab: Option<&Opened>) -> Option<Command> {
+    let read = &app.workspace.drift_read;
+    if let Some(tab) = tab.filter(|one| one.view == View::Diff) {
+        let free = super::off_hub(app, &tab.link.context).is_none();
+        (free && app.workspace.reviewed().is_none()).then_some(())?;
+        let (key, at) = (
+            tab.link.pod(),
+            tab.link.read(app)?.app.as_ref()?.compared.clone(),
+        );
+        let shown = app.workspace.drift() == Some((&key, at.as_str()));
+        let failed = read.failed.as_ref();
+        let failed = failed.is_some_and(|(one, version, _)| *one == key && *version == at);
+        let asking = read.asking.as_ref().is_some_and(|(one, _)| *one == key);
+        let show = workspace::Command::ShowDrift { app: key, at };
+        return (!shown && !failed && !asking).then_some(Command::Workspace(show));
+    }
+    let held = app.workspace.drift().is_some() || read.asking.is_some();
+    held.then_some(Command::Workspace(workspace::Command::LeaveDrift))
+}
+
+/// The Application whose resource health the tab reads while its resources show.
+fn treed(app: &AppState, tab: &Opened) -> Option<Named> {
+    let shown = tab.view == View::Resources && tab.link.read(app)?.app.is_some();
+    let on_hub = super::off_hub(app, &tab.link.context).is_none();
+    (shown && on_hub).then(|| tab.link.pod())
 }
 
 /// The log stream the tab reads while its logs show.
@@ -69,10 +102,16 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
         .is_none_or(|(_, at)| due_at(*at, USAGE_EVERY, now));
     let described = tab.view == View::Describe;
     if object.pod.is_some() && described && stale && !follows.asking(&pod) {
-        out.push(Command::Cluster(cluster::Command::Usage { pod }));
+        out.push(Command::Cluster(cluster::Command::Usage {
+            pod: pod.clone(),
+        }));
     }
     if let Some(part) = &object.app {
         out.extend(super::destined::asks(app, &link.context, part));
+        if described {
+            out.extend(super::revisions::asks(app, link, part));
+            out.extend(windows(app, link, now));
+        }
     }
     let owners = lineage(app, link, object);
     if let Some((namespace, name)) = helm_release(object, &owners) {
@@ -84,11 +123,19 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     out
 }
 
-/// The followers and the log stream held while they are the ones wanted; else the new ones.
-fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Command> {
-    let held: BTreeSet<&FollowKey> = app.cluster.store.follows.read_by(READER).collect();
-    let logs: Vec<&LogKey> = app.cluster.store.logs.read_by(READER).collect();
-    let same = logs == log.iter().collect::<Vec<_>>() && held == wanted.iter().collect();
+/// The followers and the streams held while they are the ones wanted; else the new ones.
+fn leases(
+    app: &AppState,
+    wanted: Vec<FollowKey>,
+    (log, tree): (Option<LogKey>, Option<Named>),
+) -> Vec<Command> {
+    let store = &app.cluster.store;
+    let held: BTreeSet<&FollowKey> = store.follows.read_by(READER).collect();
+    let logs: Vec<&LogKey> = store.logs.read_by(READER).collect();
+    let trees: Vec<&Named> = store.trees.read_by(READER).collect();
+    let same = logs == log.iter().collect::<Vec<_>>()
+        && trees == tree.iter().collect::<Vec<_>>()
+        && held == wanted.iter().collect();
     let follow = |key| {
         Command::Cluster(cluster::Command::Follow {
             reader: READER.into(),
@@ -101,7 +148,13 @@ fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Co
             key: Box::new(key),
         })
     });
-    let reads = wanted.into_iter().map(follow).chain(stream);
+    let treed = tree.map(|app| {
+        Command::Cluster(cluster::Command::FollowArgo {
+            reader: READER.into(),
+            app,
+        })
+    });
+    let reads = wanted.into_iter().map(follow).chain(stream).chain(treed);
     super::super::leases(READER, same, reads)
 }
 
@@ -109,10 +162,26 @@ fn due_at(at: Timestamp, every: i64, now: Timestamp) -> bool {
     now.seconds() - at.seconds() >= every
 }
 
-/// When the tab shown next wants a pod's usage read.
+/// The Application's sync windows read again once `WINDOWS_EVERY` passed: one opens or shuts.
+fn windows(app: &AppState, link: &Link, now: Timestamp) -> Option<Command> {
+    let held = &app.cluster.store.windows;
+    let named = link.pod();
+    let stale = held
+        .get(&named)
+        .is_none_or(|(_, at)| due_at(*at, WINDOWS_EVERY, now));
+    let ask = cluster::Command::ArgoWindows { app: named.clone() };
+    (stale && !held.asking(&named)).then_some(Command::Cluster(ask))
+}
+
+/// When the tab shown next wants a pod's usage or an Application's windows read.
 pub fn due(app: &AppState, held: &ResourcesUi) -> Option<Timestamp> {
     let tab = held.tab().filter(|tab| tab.view == View::Describe)?;
-    tab.link.read(app)?.pod.as_ref()?;
-    let (_, at) = app.cluster.store.follows.usage(&tab.link.pod())?;
-    Some(Timestamp::new(at.seconds() + USAGE_EVERY))
+    let object = tab.link.read(app)?;
+    let store = &app.cluster.store;
+    let (at, every) = match (&object.pod, &object.app) {
+        (Some(_), _) => (store.follows.usage(&tab.link.pod())?.1, USAGE_EVERY),
+        (None, Some(_)) => (store.windows.get(&tab.link.pod())?.1, WINDOWS_EVERY),
+        (None, None) => return None,
+    };
+    Some(Timestamp::new(at.seconds() + every))
 }

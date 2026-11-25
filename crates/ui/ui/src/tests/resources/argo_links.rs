@@ -9,7 +9,7 @@ use super::kind;
 use crate::Ui;
 use crate::hit::Target;
 use crate::views::session::Tab;
-use crate::views::session::resources::{Link, Opens, View};
+use crate::views::session::resources::{Filter, Link, Opens, View};
 
 const SHA: &str = "e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0";
 const REPO: &str = "https://gitlab.example.com/billing-eu-deploy.git";
@@ -53,6 +53,7 @@ fn a_resource_opens_on_the_context_whose_server_the_destination_names() {
         namespace: Some("billing-acc".into()),
         name: "billing-api".into(),
     };
+    hit(&app, &mut ui, Target::ArgoFilter(Filter::All));
     hit(&app, &mut ui, Target::ResourceOpen(Box::new(link.clone())));
     let shown = ui.session.resources.tab().map(|one| &one.link);
     assert_eq!(shown, Some(&link));
@@ -188,6 +189,7 @@ fn the_in_cluster_address_is_the_application_s_own_context_with_no_kubeconfig_re
         namespace: Some("billing-acc".into()),
         name: "billing-config".into(),
     };
+    hit(&app, &mut ui, Target::ArgoFilter(Filter::All));
     hit(&app, &mut ui, Target::ResourceOpen(Box::new(link.clone())));
     assert_eq!(ui.session.resources.tab().map(|one| &one.link), Some(&link));
 }

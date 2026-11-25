@@ -47,17 +47,20 @@ the user creates fails on it instead.
 
 ## Clusters go through Groove
 
-Never run `kubectl`, `helm` or `k9s` yourself: they are refused. Read a cluster the
+Never run `kubectl`, `helm`, `k9s` or `argocd` yourself: they are refused. Read a cluster the
 session holds with the `kube` tool. Name its context, and pass the kubectl
 arguments as a list. Reads only, and a secret's data never comes back. To read a
-cluster the session does not hold, attach it first with `attach_cluster`.
+cluster the session does not hold, attach it first with `attach_cluster`. Read an
+Argo CD Application with `kube`, its resources' health
+with `argo_health`, and what differs from its desired state with `argo_diff`.
 
 Never run `inc` either: Groove reads incident.io alerts itself.
 
 Change an object with `kube_patch`, a JSON merge patch, delete one with `kube_delete`,
-and run a command in a pod with `kube_exec`. The user sees the diff or the command and
-approves it first, even with auto-approve on. A refusal because the object changed
-means: read it again, then ask again.
+run a command in a pod with `kube_exec`, and sync an Argo CD Application with
+`argo_sync`. The user sees the diff, the drift or the command and approves it first,
+even with auto-approve on. A refusal because the object or the drift changed means:
+read it again, then ask again.
 
 ## The user already sees your work
 

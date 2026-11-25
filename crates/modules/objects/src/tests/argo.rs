@@ -191,18 +191,30 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
 }
 
 #[test]
-fn a_source_keeps_its_whole_synced_commit_for_the_link_to_show() {
+fn a_source_keeps_its_last_synced_commit_apart_from_the_one_compared() {
     let sha = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678";
     let app = serde_json::json!({
         "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
         "metadata": { "name": "billing-eu-acc", "namespace": "argocd", "uid": "u1" },
         "spec": { "source": { "repoURL": "https://gitlab.example.com/billing-eu-deploy.git", "targetRevision": "main" } },
-        "status": { "sync": { "status": "Synced", "revision": sha } }
+        "status": {
+            "sync": { "status": "OutOfSync", "revision": "f00d" },
+            "history": [{ "revision": "0ld" }, { "revision": sha }]
+        }
     });
     let part = crate::describe("Application", &app, false)
         .app
         .expect("an application's part");
-    assert_eq!(part.sources[0].synced.as_deref(), Some(sha));
+    assert_eq!(
+        part.sources[0].synced.as_deref(),
+        Some(sha),
+        "the last sync applied"
+    );
+    assert_eq!(
+        part.sources[0].compared.as_deref(),
+        Some("f00d"),
+        "what it compares against"
+    );
 }
 
 #[test]
@@ -217,4 +229,46 @@ fn an_empty_sources_list_leaves_the_one_source_read() {
         .app
         .expect("an application's part");
     assert_eq!(part.sources.len(), 1);
+}
+
+#[test]
+fn a_401_through_the_hub_is_a_refused_login_and_a_502_is_not() {
+    let api = |status| groove_kube::Error::Api {
+        context: "hub".into(),
+        status,
+        message: "token is expired".into(),
+    };
+    let streamed = groove_kube::Error::Refused {
+        context: "hub".into(),
+        detail: "token is expired".into(),
+    };
+    assert!(crate::argo_tree::login_refused(&api(401)));
+    assert!(crate::argo_tree::login_refused(&streamed));
+    assert!(!crate::argo_tree::login_refused(&api(502)));
+}
+
+#[test]
+fn the_sync_policy_reads_its_options_and_its_retry() {
+    let app = serde_json::json!({
+        "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
+        "metadata": { "name": "billing-eu-acc", "namespace": "argocd", "uid": "u1" },
+        "spec": { "syncPolicy": {
+            "syncOptions": ["ServerSideApply=true", "RespectIgnoreDifferences=true"],
+            "retry": { "limit": 5, "backoff": { "duration": "5s", "factor": 2, "maxDuration": "3m" } }
+        } }
+    });
+    let part = crate::describe("Application", &app, false)
+        .app
+        .expect("an application's part");
+    assert_eq!(part.automated, None);
+    assert_eq!(
+        part.options,
+        ["ServerSideApply=true", "RespectIgnoreDifferences=true"]
+    );
+    let retry = part.retry.expect("its retry");
+    assert_eq!((retry.limit, retry.factor), (5, Some(2)));
+    assert_eq!(
+        (retry.backoff.as_deref(), retry.max.as_deref()),
+        (Some("5s"), Some("3m"))
+    );
 }

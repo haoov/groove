@@ -1,13 +1,15 @@
 //! An Argo CD Application's sections: its last sync on its outcome's colour, its conditions, its summary.
 
 use groove_gfx::Rect;
-use groove_types::{AppCondition, AppPart, AppSource, Operation, SyncedResource, Timestamp};
+use groove_types::{
+    AppCondition, AppPart, Operation, Retry, SyncWindows, SyncedResource, Timestamp,
+};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in, column_of, row_in};
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 
-use super::super::opened::{Opens, Section};
+use super::super::opened::Section;
 use super::describe::{Block, Tally};
 use super::sections::Fact;
 use crate::ctx::Ctx;
@@ -42,6 +44,16 @@ pub(super) fn tint(app: &AppPart) -> Option<Role> {
         _ if operation.failed() => Some(Role::Bad),
         _ if operation.running() => Some(Role::Working),
         _ => None,
+    }
+}
+
+/// A row of the operation.
+pub(super) fn operated(ctx: &mut Ctx, rect: Rect, block: &Block) {
+    match block {
+        Block::Operation(one) => operation(ctx, rect, one, ctx.now),
+        Block::Said(message) => said(ctx, rect, message),
+        Block::Broke(one) => broke(ctx, rect, one),
+        _ => {}
     }
 }
 
@@ -142,11 +154,6 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
     let to = &app.destination;
     let cluster = to.name.clone().or(to.server.clone()).unwrap_or_default();
     let namespace = to.namespace.clone().unwrap_or_default();
-    let said = groove_types::sync_policy(app.automated);
-    let role = match app.automated.is_some() {
-        true => Role::Ok,
-        false => Role::Muted,
-    };
     let context = match context {
         Some(name) => Some(Fact::new("context", name, Role::Text)),
         None if read => Some(Fact::new(
@@ -165,100 +172,86 @@ pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<F
         ),
     ];
     out.extend(context);
-    out.push(Fact::new("auto-sync", said, role));
     out
 }
 
-/// What it syncs from: a row a source, each with the revision it synced to.
-pub(super) fn sourced(app: &AppPart) -> (Section, Tally, Vec<Block<'_>>) {
-    let count = Tally::Count(app.sources.len());
+/// How it syncs: by itself or by hand, the options every sync applies, and how a failure retries.
+pub(super) fn policy<'a>(
+    app: &'a AppPart,
+    windows: Option<&Result<SyncWindows, String>>,
+) -> (Section, Tally, Vec<Block<'a>>) {
+    let on = |set: bool| if set { "on" } else { "off" };
+    let automated = match app.automated {
+        Some((prune, heal)) => {
+            let said = format!("on · prune {} · self-heal {}", on(prune), on(heal));
+            Fact::new("automated", said, Role::Ok)
+        }
+        None => Fact::new("automated", "off: it syncs when asked".into(), Role::Muted),
+    };
+    let options = match app.options.is_empty() {
+        true => Fact::new("options", "none".into(), Role::Muted),
+        false => Fact::new("options", app.options.join(" · "), Role::Text),
+    };
+    let retry = match &app.retry {
+        Some(retry) => Fact::new("retry", retried(retry), Role::Text),
+        None => Fact::new("retry", "none".into(), Role::Muted),
+    };
+    let facts = vec![automated, options, retry, windowed(windows)];
     (
-        Section::Sources,
-        count,
-        app.sources.iter().map(Block::Source).collect(),
+        Section::Policy,
+        Tally::Count(0),
+        vec![Block::Summary(facts)],
     )
 }
 
-/// How many lines a source takes: what it is, where it lives, and its value files when it has some.
-pub(super) fn source_rows(one: &AppSource) -> usize {
-    2 + usize::from(!one.values.is_empty())
-}
-
-/// A source: its name, what it follows and what it synced to; under it, its address and value files.
-pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&str>) {
-    let row = Spec::default().height(ctx.tokens.row);
-    let lines = column_of(rect, &vec![row; source_rows(one)]);
-    let tag = Spec::default().width(ctx.tokens.aside_near);
-    let [kind, head] = row_in(lines[0], [tag, Spec::fill()]);
-    let is_chart = one.chart.is_some();
-    let said = if is_chart { "chart" } else { "git" };
-    Label::new(said, ctx.styles.small(Role::Ghost)).draw(ctx, kind);
-    let mut room = head;
-    let gap = ctx.tokens.md;
-    Label::new(&named(one), ctx.styles.body(Role::Text)).left(ctx, &mut room, gap);
-    Label::new(&one.target, ctx.styles.body(Role::Muted)).left(ctx, &mut room, gap);
-    if let Some(revision) = &one.synced {
-        Label::new("synced", ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.sm);
-        synced(ctx, &mut room, (one, revision), last);
-    }
-    let [_, under] = row_in(lines[1], [tag, Spec::fill()]);
-    let mut room = under;
-    let bare = bare(&one.repo);
-    let opens = (!is_chart).then(|| Opens::Repo {
-        repo: one.repo.clone(),
-        target: one.target.clone(),
-    });
-    let role = if is_chart { Role::Faint } else { Role::Accent };
-    let address = super::copy::Copied::new(&bare, role, last).opens(opens);
-    address.left(ctx, &mut room, gap);
-    if let Some(name) = &one.reference {
-        let said = format!("· referenced as ${name}");
-        Label::new(&said, ctx.styles.small(Role::Ghost)).draw(ctx, room);
-    }
-    if let Some(line) = lines.get(2) {
-        let [_, values] = row_in(*line, [tag, Spec::fill()]);
-        let said = format!("values  {}", one.values.join(", "));
-        Label::new(&said, ctx.styles.small(Role::Faint)).draw(ctx, values);
-    }
-}
-
-/// The revision a source synced to, short; a git commit links to its diff.
-fn synced(ctx: &mut Ctx, room: &mut Rect, (one, revision): (&AppSource, &str), last: Option<&str>) {
-    let opens = (one.chart.is_none() && groove_types::is_sha(revision)).then(|| Opens::Revision {
-        repo: one.repo.clone(),
-        target: one.target.clone(),
-        sha: revision.to_string(),
-    });
-    let role = if opens.is_some() {
-        Role::Accent
-    } else {
-        Role::Text
+/// `shut · deny 0 22 * * * for 8h Europe/Paris, by hand passes, active`.
+fn windowed(windows: Option<&Result<SyncWindows, String>>) -> Fact {
+    let (said, role) = match windows {
+        None => ("reading".to_string(), Role::Faint),
+        Some(Err(why)) => (why.clone(), Role::Bad),
+        Some(Ok(read)) if read.assigned.is_empty() => ("none".to_string(), Role::Muted),
+        Some(Ok(read)) => {
+            let each = read.assigned.iter().map(|one| {
+                let mut said = format!("{} {} for {}", one.kind, one.schedule, one.duration);
+                if !one.time_zone.is_empty() {
+                    said.push_str(&format!(" {}", one.time_zone));
+                }
+                if one.manual {
+                    said.push_str(", by hand passes");
+                }
+                if read.active.contains(one) {
+                    said.push_str(", active");
+                }
+                said
+            });
+            let each: Vec<String> = each.collect();
+            match read.can_sync {
+                true => (format!("open · {}", each.join(" · ")), Role::Ok),
+                false => (format!("shut · {}", each.join(" · ")), Role::Warn),
+            }
+        }
     };
-    let shown = groove_types::short_sha(revision);
-    let synced = super::copy::Copied::new(&shown, role, last).copies(revision);
-    synced.opens(opens).left(ctx, room, ctx.tokens.md);
+    Fact::new("windows", said, role)
 }
 
-/// What a source is called: its chart, or its repository's name and the path in it.
-fn named(one: &AppSource) -> String {
-    if let Some(chart) = &one.chart {
-        return chart.clone();
+/// `5 times · 5s backoff ×2 up to 3m`.
+fn retried(retry: &Retry) -> String {
+    let mut said = vec![match retry.limit {
+        limit if limit < 0 => "without end".to_string(),
+        1 => "once".to_string(),
+        limit => format!("{limit} times"),
+    }];
+    if let Some(backoff) = &retry.backoff {
+        let factor = retry
+            .factor
+            .map(|one| format!(" ×{one}"))
+            .unwrap_or_default();
+        let max = retry
+            .max
+            .as_ref()
+            .map(|one| format!(" up to {one}"))
+            .unwrap_or_default();
+        said.push(format!("{backoff} backoff{factor}{max}"));
     }
-    let repo = bare(&one.repo);
-    let name = repo.rsplit('/').next().unwrap_or(&repo).to_string();
-    match &one.path {
-        Some(path) => format!("{name} · {path}"),
-        None => name,
-    }
-}
-
-/// A repository's address without its scheme, its credentials and `.git`.
-fn bare(repo: &str) -> String {
-    let path = repo.split_once("://").map_or(repo, |(_, rest)| rest);
-    let host = path.find('/').unwrap_or(path.len());
-    let path = match path[..host].rfind('@') {
-        Some(at) => &path[at + 1..],
-        None => path,
-    };
-    path.trim_end_matches(".git").to_string()
+    said.join(" · ")
 }

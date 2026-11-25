@@ -15,7 +15,7 @@ use crate::{Focus, Ui};
 fn pairs() -> Vec<(String, String, String)> {
     let before = "spec:\n  replicas: 1\n  paused: false\n".to_string();
     let after = "spec:\n  replicas: 3\n  paused: false\n".to_string();
-    vec![("kind/paxone/deployments/api.yaml".into(), before, after)]
+    vec![("kind/paxone/Deployment/api.yaml".into(), before, after)]
 }
 
 /// A patch waiting on the selected session, its change shown in place of the worktree's.
