@@ -7,7 +7,7 @@ mod objects;
 pub(crate) mod writes;
 
 use groove_cluster_service::Event as ClusterEvent;
-use groove_cluster_service::Named;
+use groove_cluster_service::{Named, Revised};
 use groove_types::{Edit, FollowKey, LogKey, SessionId, Timestamp, WatchKey};
 
 use crate::asker::Asker;
@@ -39,6 +39,10 @@ pub enum Command {
     HelmRevision { release: Named },
     /// `cluster.follow_argo`: `reader` reads an Application's resource health from Argo CD on the hub.
     FollowArgo { reader: String, app: Named },
+    /// `cluster.argo_revision`: a revision of an Application's source, read once from Argo CD.
+    ArgoRevision { revised: Box<Revised> },
+    /// `cluster.argo_windows`: an Application's sync windows, read from Argo CD.
+    ArgoWindows { app: Named },
     /// `cluster.caret`: the caret or what it holds moved in an object's YAML; nothing writes.
     Caret { key: Box<FollowKey>, edit: Edit },
     /// `cluster.copy`: what the caret holds in an object's YAML, to the clipboard.
@@ -105,6 +109,8 @@ impl Command {
             Command::Usage { .. } => "cluster.usage",
             Command::HelmRevision { .. } => "cluster.helm_revision",
             Command::FollowArgo { .. } => "cluster.follow_argo",
+            Command::ArgoRevision { .. } => "cluster.argo_revision",
+            Command::ArgoWindows { .. } => "cluster.argo_windows",
             Command::FollowLogs { .. } => "cluster.follow_logs",
             Command::LogCaret { .. } => "cluster.log_caret",
             Command::LogCopy { .. } => "cluster.log_copy",
@@ -145,6 +151,8 @@ pub fn dispatch(
         Command::Usage { pod } => follows::usage(state, spawner, pod),
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::FollowArgo { reader, app } => follows::argo(state, spawner, &reader, app),
+        Command::ArgoRevision { revised } => follows::revision(state, spawner, *revised),
+        Command::ArgoWindows { app } => follows::windows(state, spawner, app),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
         Command::Age { now } => state.cluster.store.age(now),
         Command::Patch { session, patched } => {

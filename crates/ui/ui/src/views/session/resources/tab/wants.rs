@@ -7,7 +7,7 @@ use groove_controllers::{AppState, Command, cluster, workspace};
 use groove_types::{FollowKey, LogKey, Timestamp};
 
 use super::super::around::{helm_release, lineage};
-use super::super::opened::Opened;
+use super::super::opened::{Link, Opened};
 use super::super::{ResourcesUi, View, log_key};
 
 /// The one reader an object's tab holds its watchers under.
@@ -15,6 +15,9 @@ pub const READER: &str = "resource";
 
 /// How often a pod's usage is read again while its tab shows.
 pub const USAGE_EVERY: i64 = 15;
+
+/// How often an Application's sync windows are read again while its tab shows.
+const WINDOWS_EVERY: i64 = 60;
 
 /// The watchers the tab shown wants, and the reads it lacks; `up` while the tab is on screen.
 pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Vec<Command> {
@@ -105,6 +108,10 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
     }
     if let Some(part) = &object.app {
         out.extend(super::destined::asks(app, &link.context, part));
+        if described {
+            out.extend(super::revisions::asks(app, link, part));
+            out.extend(windows(app, link, now));
+        }
     }
     let owners = lineage(app, link, object);
     if let Some((namespace, name)) = helm_release(object, &owners) {
@@ -155,10 +162,26 @@ fn due_at(at: Timestamp, every: i64, now: Timestamp) -> bool {
     now.seconds() - at.seconds() >= every
 }
 
-/// When the tab shown next wants a pod's usage read.
+/// The Application's sync windows read again once `WINDOWS_EVERY` passed: one opens or shuts.
+fn windows(app: &AppState, link: &Link, now: Timestamp) -> Option<Command> {
+    let held = &app.cluster.store.windows;
+    let named = link.pod();
+    let stale = held
+        .get(&named)
+        .is_none_or(|(_, at)| due_at(*at, WINDOWS_EVERY, now));
+    let ask = cluster::Command::ArgoWindows { app: named.clone() };
+    (stale && !held.asking(&named)).then_some(Command::Cluster(ask))
+}
+
+/// When the tab shown next wants a pod's usage or an Application's windows read.
 pub fn due(app: &AppState, held: &ResourcesUi) -> Option<Timestamp> {
     let tab = held.tab().filter(|tab| tab.view == View::Describe)?;
-    tab.link.read(app)?.pod.as_ref()?;
-    let (_, at) = app.cluster.store.follows.usage(&tab.link.pod())?;
-    Some(Timestamp::new(at.seconds() + USAGE_EVERY))
+    let object = tab.link.read(app)?;
+    let store = &app.cluster.store;
+    let (at, every) = match (&object.pod, &object.app) {
+        (Some(_), _) => (store.follows.usage(&tab.link.pod())?.1, USAGE_EVERY),
+        (None, Some(_)) => (store.windows.get(&tab.link.pod())?.1, WINDOWS_EVERY),
+        (None, None) => return None,
+    };
+    Some(Timestamp::new(at.seconds() + every))
 }

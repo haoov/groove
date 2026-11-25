@@ -85,7 +85,7 @@ impl<'a, T: Clone + PartialEq> Heading<'a, T> {
         let name = self.label.to_uppercase();
         let text = match (self.count, self.note) {
             (Some(n), _) if n > 0 => format!("{name} · {n}"),
-            (_, Some(note)) if !note.is_empty() => format!("{name} · {note}"),
+            (_, Some(note)) if !note.is_empty() => format!("{name} · {}", note.to_uppercase()),
             _ => name,
         };
         let drawn = Label::new(&text, ctx.styles.heading(self.role)).draw(ctx, room);

@@ -19,7 +19,7 @@ fn a_heading_shows_its_count_else_its_note_else_its_name_alone() {
     assert_eq!(said(Heading::new("pods").count(3).note("idle")), "PODS · 3");
     assert_eq!(
         said(Heading::new("pods").count(0).note("idle")),
-        "PODS · idle"
+        "PODS · IDLE"
     );
     assert_eq!(said(Heading::new("pods").note("")), "PODS");
     assert_eq!(said(Heading::new("pods")), "PODS");

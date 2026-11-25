@@ -578,8 +578,14 @@ click of something ordinary.
 - **Argo CD.** Argo CD's Applications list their project, sync, health, auto-sync and
   revision. An Application's heading adds the commit its first git source on a branch
   synced to, short. An Application's describe holds its last sync, red when it failed and blue
-  while it runs, its heading included; its conditions; where it syncs to and how; and its
-  sources, a line each with the revision it synced to. The summary names the context the
+  while it runs, its heading included; its conditions; its sync, a table with each source on
+  its folding band with where it reads from, then the commit it targets and the one it last
+  synced as badges, one row when they agree, each with the author, age and first line of its
+  message read once from Argo CD, its columns dragged wider as the resources'; its heading is
+  the sync state with the resources out of sync and whether the target moved, in yellow while
+  out of sync; its sync policy, automated or not, the sync options, the retry and the
+  project's sync windows, open or shut, read again each minute; and
+  where it syncs to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
   resource's row opens its tab there; under out of sync it opens the diff view on its file
@@ -587,7 +593,7 @@ click of something ordinary.
   find key opens a find bar under its filters, as over the list: its words narrow the rows
   by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
-  the source follows when it is one; its synced commit, ctrl+clicked, shows in the diff as
+  the source follows when it is one; a commit of it, ctrl+clicked, shows in the diff as
   a commit of the list does, fetched first when the clone lacks it. Its `diff` view is the
   diff itself, read-only, over what differs between the desired state and the live one as
   Argo CD computes it (hooks left out, a resource to prune all removed, one missing live

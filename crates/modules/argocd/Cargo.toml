@@ -1,6 +1,6 @@
 [package]
 name = "groove-argocd"
-description = "Argo CD read from its own API: the argocd CLI's token, and an Application's resource tree as its health"
+description = "Argo CD read from its own API: the argocd CLI's token, an Application's resource tree as its health, a revision's metadata and the sync windows"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

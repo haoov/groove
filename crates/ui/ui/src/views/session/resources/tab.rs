@@ -11,7 +11,9 @@ mod logs;
 mod managed;
 mod read;
 mod relations;
+mod revisions;
 mod sections;
+mod source_band;
 mod stages;
 mod syncing;
 mod wants;
@@ -41,6 +43,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
     let Some(object) = object else {
         return standing(ctx, rest, app, tab);
     };
+    let dragged = &ui.session.resources.tab_widths;
     match tab.view {
         View::Yaml => {
             let bar = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
@@ -49,13 +52,10 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
             crate::views::session::diff::editor(ctx, app, ui, yaml)
         }
         View::Logs => logs::draw(ctx, rest, app, (ui, tab)),
-        View::Describe => describe::draw(ctx, rest, app, (tab, object)),
+        View::Describe => describe::draw(ctx, rest, app, (tab, object), dragged),
         View::Resources => match object.app.as_deref() {
-            Some(part) => {
-                let dragged = &ui.session.resources.tab_widths;
-                managed::draw(ctx, rest, (app, tab, part), dragged)
-            }
-            None => describe::draw(ctx, rest, app, (tab, object)),
+            Some(part) => managed::draw(ctx, rest, (app, tab, part), dragged),
+            None => describe::draw(ctx, rest, app, (tab, object), dragged),
         },
         View::Diff => drifted(ctx, rest, (app, ui), tab),
     }

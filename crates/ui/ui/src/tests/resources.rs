@@ -15,6 +15,7 @@ mod argo_drift;
 mod argo_find;
 mod argo_health;
 mod argo_links;
+mod argo_revisions;
 mod argo_sync;
 mod copy;
 mod fixture;

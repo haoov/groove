@@ -15,9 +15,22 @@ pub struct AppPart {
     pub destination: Destination,
     /// Auto-sync, with prune and self-heal as set; none syncs by hand.
     pub automated: Option<(bool, bool)>,
+    /// The sync options every sync applies: `ServerSideApply=true`.
+    pub options: Vec<String>,
+    pub retry: Option<Retry>,
     pub operation: Option<Operation>,
     pub conditions: Vec<AppCondition>,
     pub resources: Vec<AppResource>,
+}
+
+/// How a failed sync is tried again: `limit` times, waiting `backoff` grown by `factor` up to `max`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Retry {
+    /// Below zero, without end.
+    pub limit: i64,
+    pub backoff: Option<String>,
+    pub factor: Option<i64>,
+    pub max: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,8 +44,45 @@ pub struct AppSource {
     pub values: Vec<String>,
     /// The name another source reads its files by: `values` for `$values/…`.
     pub reference: Option<String>,
-    /// The revision it last synced to.
+    /// The revision its last successful sync applied.
     pub synced: Option<String>,
+    /// The revision Argo CD last compared against: where `target` points now.
+    pub compared: Option<String>,
+}
+
+impl AppSource {
+    pub fn git(&self) -> bool {
+        self.chart.is_none()
+    }
+}
+
+/// The sync windows an Application's project puts on it, and whether one lets it sync now.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SyncWindows {
+    pub can_sync: bool,
+    pub assigned: Vec<SyncWindow>,
+    pub active: Vec<SyncWindow>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SyncWindow {
+    /// `allow` or `deny`.
+    pub kind: String,
+    /// A cron schedule: `0 22 * * *`.
+    pub schedule: String,
+    pub duration: String,
+    pub time_zone: String,
+    /// A sync asked by hand passes it.
+    pub manual: bool,
+}
+
+/// What Argo CD's repo server says of one revision.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RevisionMeta {
+    pub author: String,
+    pub date: Option<Timestamp>,
+    /// Its first line only.
+    pub message: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

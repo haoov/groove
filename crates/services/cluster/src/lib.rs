@@ -16,7 +16,8 @@ pub use groove_objects::{
 };
 pub use groove_objects::{Preview, edited};
 pub use store::{
-    CAP, Draft, Follow, Follows, Log, Logs, Named, Store, Streaming, Trees, Up, Watched, Yamls,
+    CAP, Draft, Follow, Follows, Log, Logs, Named, Revised, Revisions, Store, Streaming, Trees, Up,
+    Watched, Windows, Yamls,
 };
 pub use writes::{
     Allowed, Asked, delete, doomed, patch, preview, restart, restartable, scalable, scale, tried,
@@ -235,6 +236,23 @@ pub fn argo_tree(
 /// An Application's resource health from Argo CD, read once.
 pub async fn argo_tree_once(paths: (Vec<PathBuf>, PathBuf), app: ArgoApp) -> Treed {
     groove_objects::argo_tree_once(paths, app).await
+}
+
+/// A revision of an Application's source, read once from Argo CD.
+pub async fn argo_revision_once(
+    paths: (Vec<PathBuf>, PathBuf),
+    app: ArgoApp,
+    asked: (Option<usize>, String),
+) -> std::result::Result<groove_types::RevisionMeta, String> {
+    groove_objects::argo_revision_once(paths, app, asked).await
+}
+
+/// An Application's sync windows, read once from Argo CD.
+pub async fn argo_windows_once(
+    paths: (Vec<PathBuf>, PathBuf),
+    app: ArgoApp,
+) -> std::result::Result<groove_types::SyncWindows, String> {
+    groove_objects::argo_windows_once(paths, app).await
 }
 
 /// What differs between an Application's desired and live state, read once.

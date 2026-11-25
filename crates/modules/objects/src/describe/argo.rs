@@ -1,7 +1,7 @@
 //! An Argo CD Application's own part: its sources, destination, sync policy, last sync and conditions.
 
 use groove_types::{
-    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
+    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, Retry, SyncedResource,
 };
 use serde_json::Value;
 
@@ -41,6 +41,8 @@ pub(super) fn part(app: &Value) -> AppPart {
             namespace: optional(&spec["destination"], "/namespace"),
         },
         automated,
+        options: strings(spec.pointer("/syncPolicy/syncOptions")),
+        retry: retry(spec.pointer("/syncPolicy/retry")),
         operation: operation(&status["operationState"]),
         conditions: conditions(&status["conditions"]),
         resources: managed(&status["resources"]),
@@ -55,10 +57,9 @@ fn sources(spec: &Value, status: &Value) -> Vec<AppSource> {
         .filter(|all| !all.is_empty());
     let all = several.unwrap_or_else(|| vec![&spec["source"]]);
     let all = all.into_iter().filter(|one| one.is_object());
-    let synced = |at: usize| match status.pointer("/sync/revisions") {
-        Some(list) => list[at].as_str().map(String::from),
-        None => optional(status, "/sync/revision"),
-    };
+    let last = status["history"].as_array().and_then(|all| all.last());
+    let synced = |at: usize| last.and_then(|one| revision(one, at));
+    let compared = |at: usize| revision(&status["sync"], at);
     all.enumerate()
         .map(|(at, one)| AppSource {
             repo: text(one, "/repoURL"),
@@ -68,8 +69,28 @@ fn sources(spec: &Value, status: &Value) -> Vec<AppSource> {
             values: strings(one.pointer("/helm/valueFiles")),
             reference: optional(one, "/ref"),
             synced: synced(at),
+            compared: compared(at),
         })
         .collect()
+}
+
+fn retry(held: Option<&Value>) -> Option<Retry> {
+    let held = held.filter(|one| one.is_object())?;
+    let backoff = &held["backoff"];
+    Some(Retry {
+        limit: held["limit"].as_i64().unwrap_or_default(),
+        backoff: optional(backoff, "/duration"),
+        factor: backoff["factor"].as_i64(),
+        max: optional(backoff, "/maxDuration"),
+    })
+}
+
+/// The `at`th source's revision where `held` lists several, else its one.
+fn revision(held: &Value, at: usize) -> Option<String> {
+    match held.pointer("/revisions") {
+        Some(list) => list[at].as_str().map(String::from),
+        None => optional(held, "/revision"),
+    }
 }
 
 fn operation(state: &Value) -> Option<Operation> {

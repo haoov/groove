@@ -24,7 +24,7 @@ impl Link {
         )
     }
 
-    /// The pod's context, namespace and name, which its usage is kept under.
+    /// Its context, namespace and name: a pod's usage and an Application's windows are kept so.
     pub fn pod(&self) -> groove_controllers::cluster_service::Named {
         let namespace = self.namespace.clone().unwrap_or_default();
         (self.context.clone(), namespace, self.name.clone())
@@ -57,7 +57,8 @@ pub enum Section {
     Operation,
     Conditions,
     Summary,
-    Sources,
+    Sync,
+    Policy,
     Relations,
     Containers,
     Labels,

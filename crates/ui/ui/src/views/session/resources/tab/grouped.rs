@@ -24,17 +24,7 @@ pub(super) fn draw<'a>(
     let columns: Vec<Column<'_, Target>> = columns
         .iter()
         .enumerate()
-        .map(|(at, (label, sample))| Column {
-            label,
-            width: match (dragged.get(*label), at == last) {
-                (Some(wide), _) => Width::Fixed(*wide),
-                (None, true) => Width::Fill,
-                (None, false) => Width::FitBody(sample),
-            },
-            end: false,
-            sort: Some(Target::ResourceSort(label.to_string())),
-            edge: Some(Target::ResourceEdge(label.to_string())),
-        })
+        .map(|(at, one)| column(one, at == last, dragged))
         .collect();
     let sorted = tab.sort.as_ref().and_then(|(label, descending)| {
         let column = columns.iter().position(|one| one.label == label)?;
@@ -60,6 +50,25 @@ pub(super) fn draw<'a>(
     let body = body.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     let laid = table.draw(ctx, body, shown);
     ctx.app.hits.scrolls(Scroller::Resources, laid.extent);
+}
+
+/// A column as wide as its sample, or as the user dragged it; the last fills.
+pub(super) fn column<'a>(
+    (label, sample): &'a Columned,
+    last: bool,
+    dragged: &BTreeMap<String, f32>,
+) -> Column<'a, Target> {
+    Column {
+        label,
+        width: match (dragged.get(*label), last) {
+            (Some(wide), _) => Width::Fixed(*wide),
+            (None, true) => Width::Fill,
+            (None, false) => Width::FitBody(sample),
+        },
+        end: false,
+        sort: Some(Target::ResourceSort(label.to_string())),
+        edge: Some(Target::ResourceEdge(label.to_string())),
+    }
 }
 
 /// A group's heading behind its fold caret, which folds it on a click.

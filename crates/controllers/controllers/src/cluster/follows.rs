@@ -1,6 +1,6 @@
-//! What the resource tabs read: followed objects, a pod's usage, a Helm revision, Argo CD health.
+//! What the resource tabs read: followed objects, usage, Helm revisions, Argo CD health and commits.
 
-use groove_cluster_service::{ArgoApp, Event as ClusterEvent, Named};
+use groove_cluster_service::{ArgoApp, Event as ClusterEvent, Named, Revised};
 use groove_types::{FollowKey, Timestamp};
 
 use super::objects::{IDLE, known};
@@ -66,14 +66,61 @@ pub(super) fn helm(state: &mut AppState, spawner: &dyn Spawner, release: Named) 
     }));
 }
 
+/// Whether `context` is an Argo CD hub the user added.
+fn hub(state: &AppState, context: &str) -> bool {
+    let clusters = state.config.clusters();
+    clusters
+        .iter()
+        .any(|one| one.argo_hub && one.context == context)
+}
+
+/// One read of a revision; its answer, or why none, stays: a commit does not change.
+pub(super) fn revision(state: &mut AppState, spawner: &dyn Spawner, revised: Revised) {
+    if !hub(state, &revised.0.0) || !state.cluster.store.revisions.begin(&revised) {
+        return;
+    }
+    let paths = (state.env.kubeconfig.clone(), state.env.home.clone());
+    let ((hub, namespace, name), source, sha) = revised.clone();
+    let app = ArgoApp {
+        hub,
+        namespace,
+        name,
+    };
+    spawner.spawn(Box::pin(async move {
+        let read = groove_cluster_service::argo_revision_once(paths, app, (source, sha)).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.cluster.store.revisions.set(revised, read)
+        }) as Continuation
+    }));
+}
+
+/// One read of an Application's sync windows at a time; the answer lands with when it was read.
+pub(super) fn windows(state: &mut AppState, spawner: &dyn Spawner, named: Named) {
+    if !hub(state, &named.0) || !state.cluster.store.windows.begin(&named) {
+        return;
+    }
+    let paths = (state.env.kubeconfig.clone(), state.env.home.clone());
+    let (hub, namespace, name) = named.clone();
+    let app = ArgoApp {
+        hub,
+        namespace,
+        name,
+    };
+    spawner.spawn(Box::pin(async move {
+        let read = groove_cluster_service::argo_windows_once(paths, app).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state
+                .cluster
+                .store
+                .windows
+                .set(named, read, Timestamp::now())
+        }) as Continuation
+    }));
+}
+
 /// The tree stream of an Application on the Argo CD hub, opened with its first reader.
 pub(super) fn argo(state: &mut AppState, spawner: &dyn Spawner, reader: &str, app: Named) {
-    let hub = state
-        .config
-        .clusters()
-        .iter()
-        .any(|one| one.argo_hub && one.context == app.0);
-    if !hub {
+    if !hub(state, &app.0) {
         return;
     }
     let paths = (state.env.kubeconfig.clone(), state.env.home.clone());

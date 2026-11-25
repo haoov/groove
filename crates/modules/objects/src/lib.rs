@@ -2,6 +2,7 @@
 
 mod argo;
 mod argo_drift;
+mod argo_revision;
 mod argo_tree;
 mod changed;
 mod describe;
@@ -19,6 +20,7 @@ mod yaml;
 mod tests;
 
 pub use argo_drift::{DriftFile, argo_drift_once};
+pub use argo_revision::{argo_revision_once, argo_windows_once};
 pub use argo_tree::{ArgoApp, Treed, argo_tree, argo_tree_once};
 pub use describe::describe;
 pub use discovery::{FRESH, kinds, namespaces};
