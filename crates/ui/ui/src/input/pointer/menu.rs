@@ -11,6 +11,11 @@ use groove_ui_kit::base::ctx::Metrics;
 /// The right button on a file's row opens its actions; anywhere else closes them.
 pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let menu = match hits.at(x, y) {
+        Some(Target::Listing | Target::File(_) | Target::Group(_)) if listing(ui) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::Listing(ui.session.flat),
+        }),
         Some(Target::Dir(path)) => Some(Menu {
             at: (x, y),
             corner: Corner::TopLeft,
@@ -85,6 +90,12 @@ fn selected(app: &AppState, path: &str) -> Option<(u32, u32)> {
     Some((from.line as u32, to.line as u32))
 }
 
+/// Whether the modes Diff's sidebar lists the changed files.
+fn listing(ui: &Ui) -> bool {
+    let files = ui.session.pane == crate::views::session::Pane::Files;
+    crate::views::session::files::moded::diffing(ui) && files
+}
+
 /// Whether the sidebar is browsing the worktree rather than listing its change.
 fn browsing(ui: &Ui) -> bool {
     crate::views::session::files::browsing(ui)
@@ -119,6 +130,10 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
+    if let Of::Listing(flat) = menu.of {
+        ui.session.flat = !flat;
+        return Vec::new();
+    }
     if menu.of == Of::LogRanges {
         super::resources::ranged(ui, at);
         return Vec::new();

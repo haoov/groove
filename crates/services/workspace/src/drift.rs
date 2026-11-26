@@ -69,8 +69,9 @@ impl State {
         self.moved();
         self.commit = None;
         self.files = prepared.files;
+        let focus = self.changes.focused().map(str::to_string);
         self.changes = prepared.changes;
-        self.changes.refold(shut);
+        self.changes.refold(shut, focus);
         self.coloured = prepared.coloured;
         if !same {
             self.showing = 0..0;

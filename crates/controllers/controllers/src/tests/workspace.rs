@@ -4,6 +4,7 @@ mod blame;
 mod commits;
 mod diff;
 mod editor;
+mod focused;
 mod gaps;
 mod git;
 mod paths;

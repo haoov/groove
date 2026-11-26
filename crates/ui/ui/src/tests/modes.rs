@@ -10,6 +10,7 @@ use crate::tests::chat::{chat_ui, talking};
 use crate::tests::{all_texts, click, window};
 use crate::views::session::Mode;
 
+mod diff;
 mod overview;
 
 fn moded() -> crate::Ui {
@@ -66,17 +67,17 @@ fn a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so() {
     let app = talking(vec![Heard::Said("on it".into())]);
     let mut ui = moded();
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let diff = hits
-        .rect_of(&Target::ModeTab(Mode::Diff))
-        .expect("the Diff tab");
-    click(diff, &mut ui, &app, &hits);
-    assert_eq!(ui.session.mode, Mode::Diff);
+    let files = hits
+        .rect_of(&Target::ModeTab(Mode::Files))
+        .expect("the Files tab");
+    click(files, &mut ui, &app, &hits);
+    assert_eq!(ui.session.mode, Mode::Files);
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let texts = all_texts(&frame);
     assert!(
         texts
             .iter()
-            .any(|one| one.starts_with("Diff comes to this layout")),
+            .any(|one| one.starts_with("Files comes to this layout")),
         "{texts:?}"
     );
     assert!(

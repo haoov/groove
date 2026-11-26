@@ -18,12 +18,16 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     let Some(ask) = waiting(app) else {
         return super::diff::draw(ctx, app, ui, body);
     };
+    let diff = match ui.modes {
+        true => super::diff::moded::body,
+        false => super::diff::draw,
+    };
     let tall = Spec::default().height(ctx.tokens.row * 2.0 + ctx.tokens.md * 2.0);
     let [band, rest] = column_in(body, [tall, Spec::fill()]);
     let shown = app.workspace.reviewed() == Some(ask.id.as_str());
     asking(ctx, band, &ask, shown);
     if shown {
-        return super::diff::draw(ctx, app, ui, rest);
+        return diff(ctx, app, ui, rest);
     }
     let room = rest.pad(Edges::all(ctx.tokens.md));
     let [line, _] = column_in(room, [Spec::default().height(ctx.tokens.row), Spec::fill()]);

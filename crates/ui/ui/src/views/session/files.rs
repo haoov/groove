@@ -4,6 +4,7 @@ mod bar;
 mod commits;
 pub(crate) mod explorer;
 mod heading;
+pub(crate) mod moded;
 mod narrowing;
 mod notes;
 mod results;

@@ -52,6 +52,8 @@ pub enum Command {
     Grep { query: String, under: String },
     /// `workspace.fold`: one file's rows hidden under its head, or shown again.
     Fold { path: String },
+    /// `workspace.focus`: only this file takes rows, or every file again with none.
+    Focus { path: Option<String> },
     /// `workspace.open_gap`: a gap gives up the lines it hides, from one end or whole.
     OpenGap { row: usize, way: Way },
     /// `workspace.show`: which rows of the whole change are on screen.
@@ -119,6 +121,7 @@ impl Command {
             Command::MarkRead { .. } => "workspace.mark_read",
             Command::Grep { .. } => "workspace.grep",
             Command::Fold { .. } => "workspace.fold",
+            Command::Focus { .. } => "workspace.focus",
             Command::OpenGap { .. } => "workspace.open_gap",
             Command::Show { .. } => "workspace.show",
             Command::Edit(_) => "workspace.edit",
@@ -174,6 +177,7 @@ pub fn dispatch(
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
         Command::Grep { query, under } => grep(state, spawner, query, under),
         Command::Fold { path } => state.workspace.changes.fold(&path),
+        Command::Focus { path } => state.workspace.changes.focus(path),
         Command::OpenGap { row, way } => state.workspace.open_gap_at(row, way),
         Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),

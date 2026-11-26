@@ -71,6 +71,7 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
+    out.extend(session::files::moded::focused(app, ui));
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
     out.extend(resources::wants(
         app,

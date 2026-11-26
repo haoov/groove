@@ -105,6 +105,21 @@ fn modes(ctx: &mut Ctx, room: &mut Rect, current: DiffMode) {
     widgets::tab_group(ctx, room, tabs.into(), (widgets::Side::Left, ctx.tokens.xs));
 }
 
+/// The views, then what the change is read against unless it is read-only, at the right of `room`.
+pub(super) fn switches(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) {
+    let (right, gap) = (widgets::Side::Right, ctx.tokens.sm);
+    if !app.workspace.readonly() {
+        let mode = app.workspace.mode;
+        let tabs =
+            DiffMode::ALL.map(|one| widgets::Tab::new(one.label(), Target::Mode(one), one == mode));
+        widgets::tab_group(ctx, room, tabs.into(), (right, gap));
+    }
+    let view = ui.session.view;
+    let tabs =
+        DiffView::ALL.map(|one| widgets::Tab::new(one.label(), Target::View(one), one == view));
+    widgets::tab_group(ctx, room, tabs.into(), (right, gap));
+}
+
 /// How many files the change touches, then what it added and removed in all, from the left.
 fn totals(ctx: &mut Ctx, room: &mut Rect, app: &AppState) {
     let files = files::changed(app);

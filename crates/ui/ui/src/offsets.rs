@@ -51,7 +51,7 @@ impl Ui {
     }
 }
 
-/// A list the wheel scrolls, at the scroller's offset, its extent kept for the next turn.
+/// A list the wheel scrolls, at the scroller's offset, its extent kept for the next turn and returned.
 pub(crate) fn listed<'c, T>(
     ctx: &mut Ctx<'c>,
     body: Rect,
@@ -59,7 +59,8 @@ pub(crate) fn listed<'c, T>(
     items: &[T],
     height: impl Fn(&T) -> f32,
     draw: impl FnMut(&mut Ctx<'c>, Rect, &T),
-) {
+) -> f32 {
     let extent = groove_ui_kit::widgets::scrolled(ctx, body, offset, items, height, draw);
     ctx.app.hits.scrolls(which, extent);
+    extent
 }

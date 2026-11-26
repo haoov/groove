@@ -248,6 +248,8 @@ pub enum Target {
     AsideFold,
     /// The head of a card on the modes Overview, which folds it, by key.
     CardFold(String),
+    /// The modes Diff's list of changed files, under its rows.
+    Listing,
     /// The conversation's column, the file an edit wrote at its hunk's first line, and the prompt.
     Chat,
     Edited {

@@ -215,6 +215,9 @@ fn aside(ui: &mut Ui) -> Vec<Command> {
 
 /// In the diff, the stream at the file's rows; anything else, the file in the Files tab.
 fn opened(ui: &mut Ui, app: &AppState, path: String, metrics: Metrics) -> Vec<Command> {
+    if crate::views::session::files::moded::diffing(ui) {
+        return sidebar::shown(ui, app, path);
+    }
     if ui.session.tab == Tab::Diff && jump(ui, app, &path, metrics) {
         return unfolded(app, path);
     }

@@ -46,8 +46,8 @@ pub struct SessionUi {
     pub reading: bool,
     /// The selected session waits on a cluster write, its change on the Diff tab under the ask.
     pub reviewing: bool,
-    /// The tab the session stood on before a cluster write took it to the Diff tab.
-    pub left: Option<(groove_types::SessionId, Tab)>,
+    /// The tab and the mode the session stood on before a cluster write took it to the Diff tab.
+    pub left: Option<(groove_types::SessionId, Tab, Mode)>,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.
@@ -89,6 +89,8 @@ pub struct SessionUi {
     pub opened: std::collections::BTreeSet<String>,
     /// The changed list's directories folded over their files.
     pub closed: std::collections::BTreeSet<String>,
+    /// The modes Diff lists the changed files flat rather than as a tree.
+    pub flat: bool,
     /// A path being named, where the tree asked for it.
     pub naming: Option<Naming>,
     /// A reply being typed under a thread.

@@ -9,6 +9,7 @@ mod finder;
 mod header;
 mod heads;
 mod map;
+pub(crate) mod moded;
 mod notes;
 mod offers;
 pub(crate) mod painted;
@@ -38,7 +39,7 @@ pub(crate) use blame::{rested, spot};
 pub(crate) use map::total as rows_of;
 pub(crate) use notes::{Inline, noting_drawn};
 pub use popup::Pointed;
-pub(crate) use row::{edited, line_at, text_at};
+pub(crate) use row::{edited, is_read, line_at, text_at};
 pub(crate) use scroll::scrolled;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {

@@ -39,6 +39,8 @@ pub enum Of {
     Hues(String),
     /// Where a pod's logs start, from the logs view's range picker.
     LogRanges,
+    /// The modes Diff's changed files, listed flat while `true`, else as a tree.
+    Listing(bool),
     /// A session's row on the rail, with the section it stands in; none for a child.
     Session {
         session: groove_types::SessionId,

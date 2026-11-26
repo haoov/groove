@@ -141,7 +141,7 @@ fn a_fold_outlives_the_worktree_being_read_again() {
         aligned("src/a.rs", "one\n", "ONE\n"),
         aligned("src/b.rs", "two\n", "TWO\n"),
     ]);
-    again.refold(changes.folds());
+    again.refold(changes.folds(), None);
     assert!(again.is_folded("src/a.rs"), "still shut");
     assert!(!again.is_folded("src/b.rs"), "a file it never shut");
 }

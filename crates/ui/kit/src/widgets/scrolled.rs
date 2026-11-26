@@ -27,3 +27,15 @@ pub fn scrolled<'c, A: App, T>(
     });
     extent
 }
+
+/// A thumb down the right edge of `body` for `offset` in `extent`; none while every row shows.
+pub fn scrollbar<A: App>(ctx: &mut Ctx<'_, A>, body: Rect, (offset, extent): (f32, f32)) {
+    if extent <= 0.0 || body.h <= 0.0 {
+        return;
+    }
+    let tall = (body.h * body.h / (body.h + extent)).max(ctx.tokens.row);
+    let down = (offset / extent).clamp(0.0, 1.0) * (body.h - tall).max(0.0);
+    let wide = ctx.tokens.xs;
+    let thumb = Rect::new(body.right() - wide, body.y + down, wide, tall);
+    ctx.quad(thumb, ctx.styles.panel_edge());
+}

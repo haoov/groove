@@ -14,7 +14,8 @@ impl Target {
             | Target::Shell(_)
             | Target::Pinned
             | Target::Palette
-            | Target::Overview => Cursor::Default,
+            | Target::Overview
+            | Target::Listing => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
             Target::ResourceEdge(_) | Target::AlertEdge(_) => Cursor::ColResize,
             Target::Split(edge) => match edge.upright() {

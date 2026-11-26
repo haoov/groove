@@ -145,9 +145,10 @@ impl State {
         }
         self.worktree = Some(worktree);
         self.files = files;
-        let shut = self.changes.folds();
+        let (shut, focus) = (self.changes.folds(), self.changes.focused());
+        let focus = focus.map(str::to_string);
         self.changes = changes;
-        self.changes.refold(shut);
+        self.changes.refold(shut, focus);
         self.coloured.clear();
         self.showing = 0..0;
     }

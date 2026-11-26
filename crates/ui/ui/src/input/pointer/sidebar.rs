@@ -4,6 +4,7 @@ use groove_controllers::{AppState, Command};
 
 use crate::Ui;
 use crate::views::session::Term;
+use crate::views::session::files::moded::diffing;
 
 /// One of the sidebar's lists up, or which notes its list shows; the frame reads what it shows.
 pub(super) fn paned(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
@@ -33,6 +34,10 @@ pub(super) fn note_at(
     };
     let line = anchor.start_line as usize;
     ui.focus = crate::Focus::Workspace;
+    if diffing(ui) {
+        ui.session.revealing = Some((anchor.path.clone(), anchor.start_line));
+        return shown(ui, app, anchor.path);
+    }
     if let Some(note) = app.delivery.shown.get(at).filter(|one| one.resolved)
         && !ui.session.unfolded.contains(&note.thread)
     {
@@ -56,6 +61,17 @@ pub(super) fn note_at(
         ))),
     };
     vec![Command::Workspace(open)]
+}
+
+/// The modes Diff on one file, from its top; a folded file opened.
+pub(super) fn shown(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
+    (ui.session.diff, ui.session.diff_across) = (0.0, 0.0);
+    let focus = groove_controllers::workspace::Command::Focus {
+        path: Some(path.clone()),
+    };
+    let mut out = vec![Command::Workspace(focus)];
+    out.extend(super::surface::unfolded(app, path));
+    out
 }
 
 /// A directory's twisty: the explorer's opens or shuts, the changed list's folds or opens.

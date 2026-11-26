@@ -43,9 +43,12 @@ fn acts(of: &Of) -> &'static [Act] {
             Some(groove_types::Section::Paused) => &PAUSED,
             None => &CHILD,
         },
-        Of::Resource { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges | Of::Models { .. } => {
-            &[]
-        }
+        Of::Resource { .. }
+        | Of::Mapping(_)
+        | Of::Hues(_)
+        | Of::LogRanges
+        | Of::Listing(_)
+        | Of::Models { .. } => &[],
     }
 }
 
@@ -69,6 +72,8 @@ pub fn rows(of: &Of) -> Vec<&str> {
             .map(|one| one.name())
             .collect(),
         Of::LogRanges => crate::views::session::resources::RANGES.to_vec(),
+        Of::Listing(true) => vec!["Show as a tree"],
+        Of::Listing(false) => vec!["Show as a list"],
         Of::Models { rows, .. } => rows.iter().map(|one| one.label.as_str()).collect(),
         _ => acts(of).iter().map(|one| one.label()).collect(),
     }

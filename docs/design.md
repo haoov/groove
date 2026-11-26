@@ -305,13 +305,25 @@ session's task, or the MR under review, on a card, then each repo apart on a car
 its name and remote, then a row for each worktree with its changes, MR and pipeline; a click on
 a card's head folds it, and the column keeps the conversation's gutter. Its sidebar holds the
 task's fields, the status in its colour, or the review's MR threads and pipeline, then the
-clusters and the children.
+clusters and the children. `DIFF` shows one changed file at a time, the first in the sidebar's
+order until a click picks another: a band of the views and the modes over its rows, on the
+ground, and a thin map of that file beside them. Its sidebar heads on the whole change, its
+files and what it added and removed, then the strip of files, commits and the MR's threads; the
+files stand as a tree whose directories fold, or as a list, a right click switching the two. A
+cluster write takes the session to `DIFF` until it is answered, then back.
 A tab not yet built in this layout says so and how to go back. Enforced by
 `the_switch_is_off_by_default_and_the_setting_turns_it_on`,
 `the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
 `a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so`,
 `the_overview_shows_each_repo_apart_with_its_worktree_in_a_row`,
 `a_card_s_head_folds_the_card_on_the_overview`,
+`the_middle_shows_the_first_file_alone_when_none_is_chosen`,
+`a_click_on_a_file_in_the_sidebar_shows_it_in_the_middle`,
+`the_sidebar_s_head_holds_the_whole_change_s_totals`,
+`the_list_switches_between_tree_and_list_by_its_right_click`,
+`a_directory_of_the_tree_folds_its_files`,
+`the_wheel_over_the_middle_scrolls_the_code`,
+`a_cluster_write_takes_the_session_to_diff_and_back_once_answered`,
 `the_overview_s_sidebar_heads_on_the_session_s_kind_and_folds`,
 `alt_one_to_five_pick_the_tabs_and_the_sidebar_folds_to_its_head_and_drags`,
 `the_sidebar_s_edge_drags_as_the_rail_s_does`,

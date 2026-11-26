@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_types::SessionId;
 
-use crate::views::session::Tab;
+use crate::views::session::{Mode, Tab};
 use crate::{Overlay, Surface, Ui};
 
 impl Ui {
@@ -26,6 +26,7 @@ impl Ui {
         }
         self.session.reading = app.workspace.commit.is_some();
         self.review(app);
+        self.moded();
         self.sheeted(app);
         self.kept_resources(app);
         self.moved(app);
@@ -63,19 +64,32 @@ impl Ui {
             .map(|one| one.id.clone());
         self.session.reviewing = waiting.is_some();
         let held = self.session.left.as_ref();
-        let left = held.filter(|(one, _)| *one == selected);
+        let left = held.filter(|(one, ..)| *one == selected);
         let Some(id) = waiting else {
-            if let Some((_, tab)) = left {
-                self.session.tab = *tab;
+            if let Some((_, tab, mode)) = left {
+                (self.session.tab, self.session.mode) = (*tab, *mode);
                 self.session.left = None;
             }
             return;
         };
         if left.is_none() {
-            self.session.left = Some((selected, self.session.tab));
+            self.session.left = Some((selected, self.session.tab, self.session.mode));
         }
         (self.session.tab, self.session.stowed) = (Tab::Diff, false);
+        if self.modes {
+            self.session.mode = Mode::Diff;
+        }
         self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
+    }
+
+    /// With modes, the code surface's tab follows the middle: the Diff tab under `DIFF`.
+    fn moded(&mut self) {
+        let diff = self.session.mode == Mode::Diff;
+        match (self.modes, diff, self.session.tab) {
+            (true, true, _) => self.session.tab = Tab::Diff,
+            (true, false, Tab::Diff) => self.session.tab = Tab::Overview,
+            _ => {}
+        }
     }
 
     /// The sheet shows the selected session's write only: it closes on one of another session's,

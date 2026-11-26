@@ -42,23 +42,19 @@ pub const WORD_ALPHA: (u8, u8) = (44, 80);
 /// A badge's ground and edge, both of its word's own colour.
 pub const BADGE_GROUND: u8 = 25;
 pub const BADGE_EDGE: u8 = 90;
-
 /// A line of prose against its type size.
 pub const LEADING: f32 = 1.5;
 /// How many lines of a commit message the box shows.
 pub const MESSAGE_LINES: usize = 10;
-
 /// How many scopes stand over the rows, and the share of the surface they may take.
 pub const PINNED_DEEP: usize = 3;
 pub const PINNED_SHARE: f32 = 4.0;
 pub const ALERTS_TALL: f32 = 280.0;
 /// How many rows a search keeps above the match it lands on.
 pub const ABOVE_MATCH: usize = 4;
-
 /// How soon and how near a press counts as the same click, in milliseconds and logical pixels.
 pub const CLICK_MS: u64 = 400;
 pub const CLICK_SLOP: f32 = 4.0;
-
 /// How long the caret rests before its blame shows, and the pointer before its popup, in ms.
 pub const REST_MS: u64 = 250;
 /// How long the caret rests on a word before it and its occurrences are grounded, in ms.
@@ -67,14 +63,12 @@ pub const WORD_MS: u64 = 125;
 pub const POPUP_LINES: usize = 14;
 /// The most rows the completion list shows at once.
 pub const COMPLETION_ROWS: usize = 10;
-
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
 /// How many lines one notch of a wheel carries the agent's screen.
 pub const NOTCH: f32 = 3.0;
 /// The feed and the footer under it, at their shortest.
 pub const FEED_MIN: f32 = 96.0;
-
 /// What the rail's own rows keep whatever the feed takes.
 pub const SESSIONS_MIN: f32 = 120.0;
 /// The smallest the commit box and the list above it may be.
@@ -139,8 +133,9 @@ pub struct Tokens {
     pub edge: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
-    /// The column that holds the whole change.
+    /// The column that holds the whole change, and the thinner one of one file.
     pub map: f32,
+    pub map_thin: f32,
     /// The gap between a hatch's stripes.
     pub hatch: f32,
     /// The type scale. Mono is only for code: the agent, the terminal, the diff.
@@ -211,6 +206,7 @@ const LOGICAL: Tokens = Tokens {
     edge: 0.5,
     grab: 8.0,
     map: 14.0,
+    map_thin: 8.0,
     hatch: 6.0,
     text: 13.0,
     small: 11.5,
@@ -267,6 +263,7 @@ impl Tokens {
             edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),
             map: s(LOGICAL.map),
+            map_thin: s(LOGICAL.map_thin),
             hatch: s(LOGICAL.hatch),
             text: s(text),
             small: of_text(SMALL),

@@ -160,7 +160,7 @@ fn named(ctx: &mut Ctx, room: Rect, file: &FileDiff, query: &str) {
 }
 
 /// The colour of a file's status letter.
-fn status_role(status: FileStatus) -> Role {
+pub(super) fn status_role(status: FileStatus) -> Role {
     match status {
         FileStatus::Added | FileStatus::Untracked => Role::Ok,
         FileStatus::Modified => Role::Warn,

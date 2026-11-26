@@ -17,6 +17,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
     match ui.session.mode {
         Mode::Agent => agent_pane::draw(ctx, app, ui),
         Mode::Overview => super::overview::moded::draw(ctx, app, ui, ctx.app.layout.agent),
+        Mode::Diff if ui.session.reviewing => {
+            let gutter = Edges::xy(ctx.tokens.xl, ctx.tokens.sm);
+            super::review::draw(ctx, app, ui, ctx.app.layout.agent.pad(gutter))
+        }
+        Mode::Diff => super::diff::moded::draw(ctx, app, ui, ctx.app.layout.agent),
         other => pending(ctx, other),
     }
     ctx.layer();
@@ -25,6 +30,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
     match ui.session.mode {
         Mode::Agent => agent_pane::aside::draw(ctx, app, aside, shown),
         Mode::Overview => super::overview::moded::aside::draw(ctx, app, open, (aside, shown)),
+        Mode::Diff => super::files::moded::draw(ctx, app, ui, (aside, shown)),
         _ => {}
     }
     manual::draw(ctx, app, ui, &open.session.id);

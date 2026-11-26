@@ -36,6 +36,10 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Overview, pixels(tokens.row), hits);
         return Vec::new();
     }
+    if crate::views::session::files::moded::diffing(ui) && layout.agent.contains(x, y) {
+        in_tab(ui, hits, delta, &tokens);
+        return Vec::new();
+    }
     // The agent or the board first: with the rail folded, they run across the rail's column.
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
         agent(ui, delta, point, (hits, metrics));

@@ -108,7 +108,11 @@ fn band(
 
 /// One run of lines the change touched, inset from the column's edges.
 fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: LineMark) {
-    let inset = ctx.tokens.xs;
+    let inset = ctx
+        .tokens
+        .xs
+        .min(rect.w / 2.0 - ctx.tokens.hairline * 2.0)
+        .max(0.0);
     let high = (run as f32 * per).max(ctx.tokens.hairline);
     let run =
         groove_ui_kit::shape::band(rect, at as f32 * per, high).pad(Edges::across(inset, inset));
