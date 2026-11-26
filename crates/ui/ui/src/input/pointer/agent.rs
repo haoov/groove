@@ -57,6 +57,12 @@ fn toggled(target: &Target, ui: &mut Ui) -> bool {
             }
         }
         Target::AsideFold => ui.session.folded = !ui.session.folded,
+        Target::CardFold(key) => {
+            let shut = &mut ui.session.cards;
+            if !shut.remove(key) {
+                shut.insert(key.clone());
+            }
+        }
         Target::ModeTab(mode) => ui.session.mode = *mode,
         Target::FoldAgents => ui.agent.docked = !ui.agent.docked,
         _ => return false,

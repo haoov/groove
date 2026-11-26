@@ -10,6 +10,8 @@ use crate::tests::chat::{chat_ui, talking};
 use crate::tests::{all_texts, click, window};
 use crate::views::session::Mode;
 
+mod overview;
+
 fn moded() -> crate::Ui {
     crate::Ui {
         modes: true,

@@ -16,13 +16,16 @@ use groove_ui_kit::widgets::{Side, Tab, tab_group};
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
     match ui.session.mode {
         Mode::Agent => agent_pane::draw(ctx, app, ui),
+        Mode::Overview => super::overview::moded::draw(ctx, app, ui, ctx.app.layout.agent),
         other => pending(ctx, other),
     }
     ctx.layer();
     bar(ctx, app, ui, open);
-    if ui.session.mode == Mode::Agent {
-        let open = !ui.session.folded;
-        agent_pane::aside::draw(ctx, app, ctx.app.layout.sidebar, open);
+    let (aside, shown) = (ctx.app.layout.sidebar, !ui.session.folded);
+    match ui.session.mode {
+        Mode::Agent => agent_pane::aside::draw(ctx, app, aside, shown),
+        Mode::Overview => super::overview::moded::aside::draw(ctx, app, open, (aside, shown)),
+        _ => {}
     }
     manual::draw(ctx, app, ui, &open.session.id);
     if crate::views::rail::over(app, ui) {

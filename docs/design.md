@@ -301,11 +301,19 @@ column, their heads standing over it as the sidebar's does, the transcript scrol
 the feed's. `AGENT` shows the
 conversation with no line at its foot; its sidebar holds the model, a click on it opening the
 models alone, the usage gauges and the agents it sent, each a click away from its block in the
-conversation; no dock stands over the foot. A tab not yet
-built in this layout says so and how to go back. Enforced by
+conversation; no dock stands over the foot. `OVERVIEW` shows the
+session's task, or the MR under review, on a card, then each repo apart on a card of its own:
+its name and remote, then a row for each worktree with its changes, MR and pipeline; a click on
+a card's head folds it, and the column keeps the conversation's gutter. Its sidebar holds the
+task's fields, the status in its colour, or the review's MR threads and pipeline, then the
+clusters and the children.
+A tab not yet built in this layout says so and how to go back. Enforced by
 `the_switch_is_off_by_default_and_the_setting_turns_it_on`,
 `the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
 `a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so`,
+`the_overview_shows_each_repo_apart_with_its_worktree_in_a_row`,
+`a_card_s_head_folds_the_card_on_the_overview`,
+`the_overview_s_sidebar_heads_on_the_session_s_kind_and_folds`,
 `alt_one_to_five_pick_the_tabs_and_the_sidebar_folds_to_its_head_and_drags`,
 `the_sidebar_s_edge_drags_as_the_rail_s_does`,
 `with_both_rail_windows_folded_the_middle_takes_the_rail_s_column`,

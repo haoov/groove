@@ -1,7 +1,7 @@
 //! What the overview shows of the task a session works: its properties in columns, its body.
 
 use groove_gfx::{Edges, Rect};
-use groove_types::Task;
+use groove_types::{StatusIntent, Task};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -53,7 +53,7 @@ fn widths(ctx: &mut Ctx, said: &[(&str, String, Role)], room: f32) -> Vec<f32> {
 }
 
 /// Each property the task has a value for: its name, its value, the role it reads in.
-fn said(task: &Task, maintenance: bool) -> Vec<(&'static str, String, Role)> {
+pub(super) fn said(task: &Task, maintenance: bool) -> Vec<(&'static str, String, Role)> {
     let dates = match (task.dates.start, task.dates.due) {
         (Some(start), Some(due)) => Some(format!("{start} → {due}")),
         (Some(start), None) => Some(format!("from {start}")),
@@ -63,7 +63,7 @@ fn said(task: &Task, maintenance: bool) -> Vec<(&'static str, String, Role)> {
     let status = (!task.status.is_empty()).then(|| task.status.clone());
     let priority = task.priority.map(|one| one.label().to_string());
     [
-        ("status", status, Role::Text),
+        ("status", status, intended(task.intent)),
         ("priority", priority, Role::Text),
         ("dates", dates, Role::Text),
         ("hours", task.logged.map(hours), Role::Text),
@@ -76,6 +76,16 @@ fn said(task: &Task, maintenance: bool) -> Vec<(&'static str, String, Role)> {
     .into_iter()
     .filter_map(|(name, one, role)| one.map(|one| (name, one, role)))
     .collect()
+}
+
+/// A status's colour: blue in progress, green done, muted ready.
+fn intended(intent: Option<StatusIntent>) -> Role {
+    match intent {
+        Some(StatusIntent::InProgress) => Role::Working,
+        Some(StatusIntent::Done) => Role::Ok,
+        Some(StatusIntent::Ready) => Role::Muted,
+        None => Role::Text,
+    }
 }
 
 /// How tall the body stands as Markdown `wide` across.

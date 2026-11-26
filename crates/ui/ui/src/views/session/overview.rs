@@ -1,5 +1,6 @@
 mod children;
 mod clusters;
+pub mod moded;
 mod task;
 
 use groove_controllers::AppState;

@@ -73,6 +73,8 @@ pub struct SessionUi {
     pub folds: std::collections::BTreeMap<String, crate::views::session::diff::blocks::Folds>,
     /// How far the overview is scrolled, in pixels.
     pub overview: f32,
+    /// The modes Overview's cards the user folded, by key.
+    pub cards: std::collections::BTreeSet<String>,
     /// Which of the two views the stream is drawn in.
     pub view: DiffView,
     /// What the sidebar's search bar narrows by.

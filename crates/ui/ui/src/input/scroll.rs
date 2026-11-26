@@ -32,6 +32,10 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Alerts, pixels(tokens.row), hits);
         return Vec::new();
     }
+    if overviewed(ui, &layout, point) {
+        ui.wheeled(Scroller::Overview, pixels(tokens.row), hits);
+        return Vec::new();
+    }
     // The agent or the board first: with the rail folded, they run across the rail's column.
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
         agent(ui, delta, point, (hits, metrics));
@@ -72,6 +76,12 @@ fn overlaid(
         return true;
     }
     ui.overlay.is_some() && !ui.prompting()
+}
+
+/// Whether the wheel stands over the modes layout's Overview.
+fn overviewed(ui: &Ui, layout: &Layout, (x, y): (f32, f32)) -> bool {
+    let up = ui.modes && ui.session.mode == crate::views::session::Mode::Overview;
+    up && layout.agent.contains(x, y)
 }
 
 /// The open tab's own column.
