@@ -31,9 +31,14 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
 }
 
 /// The file's path from the left, then what stands beside it: unsaved, changed, faults, servers.
-fn named(ctx: &mut Ctx, band: Rect, app: &AppState, path: &str) {
+pub(super) fn named(ctx: &mut Ctx, band: Rect, app: &AppState, path: &str) {
+    let md = ctx.tokens.md;
+    written(ctx, band.pad(Edges::across(md, md)), app, path);
+}
+
+/// The same, from the very left of `room`, as the modes layout's band reads.
+pub(super) fn written(ctx: &mut Ctx, mut room: Rect, app: &AppState, path: &str) {
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = band.pad(Edges::across(md, md));
     let style = ctx.styles.code(Role::Muted);
     let counts = super::row::counted(app, path).unwrap_or_default();
     let tally = super::faults::tally(app, path);

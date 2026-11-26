@@ -18,6 +18,10 @@ pub(super) enum Row {
         text: String,
         spans: Vec<Highlight>,
     },
+    Head {
+        text: String,
+        role: Role,
+    },
     Rule,
     Gap,
 }
@@ -43,6 +47,7 @@ pub(super) fn rows<A: App>(ctx: &mut Ctx<'_, A>, said: &[Said], most: f32) -> Ve
                 },
                 width: 0.0,
             }),
+            Said::Head { word, note, role } => out.push(headed(ctx, (word, note), *role, most)),
             Said::Code { text, spans } => out.extend(folded(ctx, text, spans, most)),
             Said::Prose { pieces, role, mark } => {
                 out.extend(wrapped(ctx, pieces, (*role, *mark), most))
@@ -143,4 +148,17 @@ fn folded<A: App>(ctx: &mut Ctx<'_, A>, text: &str, spans: &[Highlight], most: f
         start = end;
     }
     out
+}
+
+/// `WORD · NOTE` in capitals, cut to `most`.
+fn headed<A: App>(ctx: &mut Ctx<'_, A>, (word, note): (&str, &str), role: Role, most: f32) -> Laid {
+    let text = match note.is_empty() {
+        true => word.to_uppercase(),
+        false => format!("{} · {}", word.to_uppercase(), note.to_uppercase()),
+    };
+    let width = ctx.measure(&text, &ctx.styles.tag(role)).min(most);
+    Laid {
+        row: Row::Head { text, role },
+        width,
+    }
 }

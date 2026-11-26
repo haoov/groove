@@ -1,12 +1,12 @@
-//! The Diff tab in the modes layout: one file of the change, its head and switches on one band
-//! over its rows, and a thin map of that file beside them, all on the ground.
+//! The Diff and Files tabs in the modes layout: one file, its head on one band over its rows,
+//! and a thin map of that file beside them, all on the ground.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::CommitEntry;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::{Panel, from_right, from_top, square};
+use groove_ui_kit::shape::{Panel, from_right, from_top, hairline, square};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::code::read_box;
 use groove_ui_kit::widgets::{Button, cap};
@@ -24,6 +24,38 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         committed(ctx, band, one);
     }
     body(ctx, app, ui, column);
+}
+
+/// The Files tab: the open file's band over its rows, the thin map beside them.
+pub fn file(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
+    let column = area.pad(Edges::xy(ctx.tokens.xl, ctx.tokens.sm));
+    let tall = |height: f32| Spec::default().height(height);
+    let [band, _, body] = column_in(
+        column,
+        [tall(ctx.tokens.row), tall(ctx.tokens.sm), Spec::fill()],
+    );
+    let path = app.workspace.active().map(|one| one.path.as_str());
+    super::header::written(ctx, band, app, path.unwrap_or_default());
+    hairline(ctx, band, ctx.styles.panel_edge());
+    match super::whole_file(app, ui) {
+        Some(true) => super::said(ctx, body, "Too long to show."),
+        Some(false) => super::said(ctx, body, "Open a file in the sidebar."),
+        None => mapped(ctx, app, ui, body),
+    }
+}
+
+/// The rows in `body` with the thin map at their right.
+fn mapped(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
+    let wide = |width: f32| Spec::default().width(width);
+    let [body, _, map] = row_in(
+        body,
+        [Spec::fill(), wide(ctx.tokens.sm), wide(ctx.tokens.map_thin)],
+    );
+    let cols = super::surface::note_cols(ctx, body, app, ui);
+    ctx.app.hits.wraps(cols);
+    let inline = Inline::of(app, ui, ui.session.face(), cols);
+    super::map::draw(ctx, (map, body), app, ui, &inline);
+    super::rows(ctx, body, app, ui, &inline);
 }
 
 /// `COMMIT 3f2a91c  fix(ui): light tints · Alex`, and what puts the working tree back.
@@ -56,19 +88,11 @@ pub fn body(ctx: &mut Ctx, app: &AppState, ui: &Ui, column: Rect) {
         [tall(ctx.tokens.row), tall(ctx.tokens.sm), Spec::fill()],
     );
     headed(ctx, app, ui, band);
+    hairline(ctx, band, ctx.styles.panel_edge());
     if app.workspace.changes.is_empty() {
         return super::hint(ctx, app, body);
     }
-    let wide = |width: f32| Spec::default().width(width);
-    let [body, _, map] = row_in(
-        body,
-        [Spec::fill(), wide(ctx.tokens.sm), wide(ctx.tokens.map_thin)],
-    );
-    let cols = super::surface::note_cols(ctx, body, app, ui);
-    ctx.app.hits.wraps(cols);
-    let inline = Inline::of(app, ui, ui.session.face(), cols);
-    super::map::draw(ctx, (map, body), app, ui, &inline);
-    super::rows(ctx, body, app, ui, &inline);
+    mapped(ctx, app, ui, body);
 }
 
 /// The file's name, folder and counts at the left; the switches and its read box at the right.

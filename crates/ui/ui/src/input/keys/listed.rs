@@ -113,7 +113,7 @@ fn followed(stop: &Stop, ui: &mut Ui, hits: &Hits, metrics: Metrics) {
 
 /// Enter: what a click on the row does; a file hands the keys to the code.
 fn entered(target: Target, ui: &mut Ui, app: &AppState, seen: (&Hits, Metrics)) -> Vec<Command> {
-    let file = matches!(target, Target::File(_));
+    let file = matches!(target, Target::File(_) | Target::OpenTab(_));
     let commands = crate::input::pointer::act_on(target, ui, app, seen);
     if file {
         ui.focus = Focus::Workspace;

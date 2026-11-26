@@ -22,6 +22,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open, (rect, shown): 
     let row = flat_row(ctx, top, Target::AsideFold, false);
     match ui.session.mode {
         Mode::Diff => files::moded::head(ctx, app, row, shown),
+        Mode::Files => files::moded::browsed::head(ctx, app, row, shown),
         Mode::Agent => Heading::new("agent").fold(shown).draw(ctx, row),
         _ => Heading::new(kind(open)).fold(shown).draw(ctx, row),
     }
@@ -32,6 +33,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open, (rect, shown): 
         Mode::Diff => {
             let (body, extent) = files::moded::body(ctx, app, ui, room);
             (Scroller::Files, body, extent)
+        }
+        Mode::Files => {
+            let extent = files::moded::browsed::body(ctx, app, ui, room);
+            (Scroller::Files, room, extent)
         }
         Mode::Agent => flow(ctx, ui, (room, room), |ctx, at| {
             agent_pane::aside::body(ctx, app, at);

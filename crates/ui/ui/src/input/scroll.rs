@@ -36,7 +36,7 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Overview, pixels(tokens.row), hits);
         return Vec::new();
     }
-    if crate::views::session::files::moded::diffing(ui) && layout.agent.contains(x, y) {
+    if crate::views::session::files::moded::coding(ui) && layout.agent.contains(x, y) {
         in_tab(ui, hits, delta, &tokens);
         return Vec::new();
     }
@@ -106,7 +106,7 @@ fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
 
 /// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
 fn beside(ui: &Ui) -> Scroller {
-    if ui.modes && ui.session.mode != crate::views::session::Mode::Diff {
+    if ui.modes && !crate::views::session::files::moded::coding(ui) {
         return Scroller::Aside;
     }
     match ui.session.tab {

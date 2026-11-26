@@ -20,6 +20,12 @@ pub(crate) struct Stop {
 pub(crate) fn stops(app: &AppState, ui: &Ui, tokens: &Tokens) -> Vec<Stop> {
     let mut rows = Rows::default();
     let row = tokens.row;
+    if ui.modes && ui.session.mode == crate::views::session::Mode::Files {
+        for one in super::moded::browsed::lines(app, ui) {
+            rows.push(one.target(), row);
+        }
+        return rows.out;
+    }
     if ui.modes && !super::moded::diffing(ui) {
         return Vec::new();
     }

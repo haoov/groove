@@ -1,4 +1,5 @@
-//! The list a completion offers under the caret: a label and its detail a row, the chosen one raised.
+//! The list a completion offers under the caret: a tinted head, then a label and its detail a
+//! row, the chosen one raised.
 
 use groove_gfx::{Color, Rect, TextStyle};
 
@@ -39,16 +40,12 @@ pub fn completions<A: App>(
     let after = if details > 0.0 { gap + details } else { 0.0 };
     let most = ctx.tokens.popup.min(ctx.window.w - ctx.tokens.xl);
     let wide = (pad * 2.0 + labels + after).min(most);
-    let size = (wide, ctx.tokens.row * shown as f32);
-    let rect = panel_at(
-        ctx,
-        at,
-        Corner::TopLeft,
-        size,
-        (ctx.styles.line(), Material::Solid),
-    );
+    let size = (wide, ctx.tokens.row * (shown + 1) as f32);
+    let ring = ctx.styles.band_edge(Role::Accent);
+    let rect = panel_at(ctx, at, Corner::TopLeft, size, (ring, Material::Solid));
+    headed(ctx, row_of(ctx, rect, 0), offers.len());
     for (index, one) in window.iter().enumerate() {
-        let line = row_of(ctx, rect, index);
+        let line = row_of(ctx, rect, index + 1);
         let ground = (first + index == chosen).then(|| ctx.styles.raised());
         listed(ctx, (line, pad), (one.label, label), ground);
         let x = rect.x + pad + labels + gap;
@@ -56,6 +53,14 @@ pub fn completions<A: App>(
         row(ctx, room, 0.0, one.detail, detail);
     }
     Some(rect)
+}
+
+/// `COMPLETIONS · 12` on the role's tint.
+fn headed<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, count: usize) {
+    ctx.quad(line, ctx.styles.band_tint(Role::Accent));
+    let text = format!("COMPLETIONS · {count}");
+    let style = ctx.styles.tag(Role::Accent);
+    row(ctx, line, ctx.tokens.sm, &text, style);
 }
 
 /// Row `index` of the panel.

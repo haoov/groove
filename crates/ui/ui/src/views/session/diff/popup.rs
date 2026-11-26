@@ -1,4 +1,4 @@
-//! What the language servers say of one spot of the open file, in a panel under it.
+//! What the language servers say of one spot of the open file, in a card under it.
 
 mod said;
 
@@ -37,9 +37,9 @@ pub(crate) fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let Some(at) = place(ctx, app, ui, hovered) else {
         return;
     };
-    let said = said::said(app, ui, hovered);
+    let (said, role) = said::said(app, ui, hovered);
     if !said.is_empty() {
-        popup(ctx, at, &said);
+        popup(ctx, at, &said, role);
     }
 }
 

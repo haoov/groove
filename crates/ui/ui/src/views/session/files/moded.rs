@@ -14,6 +14,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 
+pub(crate) mod browsed;
 pub(crate) mod tree;
 
 use tree::{Kind, Line};
@@ -173,4 +174,10 @@ pub(crate) fn focused(app: &AppState, ui: &Ui) -> Option<groove_controllers::Com
 /// Whether the middle is the modes layout's Diff.
 pub(crate) fn diffing(ui: &Ui) -> bool {
     ui.modes && ui.session.mode == crate::views::session::Mode::Diff
+}
+
+/// Whether the middle is the modes layout's Diff or Files, the code surface.
+pub(crate) fn coding(ui: &Ui) -> bool {
+    use crate::views::session::Mode;
+    ui.modes && matches!(ui.session.mode, Mode::Diff | Mode::Files)
 }

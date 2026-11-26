@@ -168,11 +168,11 @@ fn board(ui: &mut Ui) -> Vec<Command> {
 }
 
 /// The workspace unfolded, then given the keys, then folded away under the agent.
-/// What holds the keys in the modes layout's middle: the code on Diff, else the agent.
+/// What holds the keys in the modes layout's middle: the code on Diff and Files, else the agent.
 fn middle(ui: &Ui) -> Focus {
-    match ui.session.mode {
-        crate::views::session::Mode::Diff => Focus::Workspace,
-        _ => Focus::Agent,
+    match crate::views::session::files::moded::coding(ui) {
+        true => Focus::Workspace,
+        false => Focus::Agent,
     }
 }
 

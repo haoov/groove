@@ -315,6 +315,12 @@ files and what it added and removed, then the strip of files, commits and the MR
 files stand as a tree whose directories fold, or as a list, a right click switching the two; its
 scrollbar's thumb drags. An edit's link in the conversation opens `DIFF` on that file at its hunk.
 A cluster write takes the session to `DIFF` until it is answered, then back.
+`FILES` shows the open file on the ground under one band: its path, then its unsaved dot, counts,
+faults and language servers; no strip of tabs stands over it. On `DIFF` and `FILES` a thin rule
+stands under the band. The `FILES` sidebar heads on the repo, then holds `OPEN · n`, a row each
+open file that a click shows and the middle button or its menu closes, then `WORKTREE`, the
+worktree's tree with the changed files marked with their letter. A file opened from
+elsewhere brings `FILES` up.
 A tab not yet built in this layout says so and how to go back. Enforced by
 `the_switch_is_off_by_default_and_the_setting_turns_it_on`,
 `the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
@@ -328,6 +334,14 @@ A tab not yet built in this layout says so and how to go back. Enforced by
 `a_directory_of_the_tree_folds_its_files`,
 `the_wheel_over_the_middle_scrolls_the_code`,
 `a_cluster_write_takes_the_session_to_diff_and_back_once_answered`,
+`the_middle_shows_the_open_file_under_its_band_and_no_strip_of_tabs`,
+`a_click_on_a_file_of_the_tree_opens_it_in_the_middle`,
+`the_open_rows_list_the_open_files_and_a_click_shows_one`,
+`the_middle_button_or_the_menu_closes_an_open_row`,
+`a_directory_of_the_tree_opens_and_folds`,
+`alt_o_on_files_gives_the_keys_to_the_code`,
+`the_arrows_walk_the_open_rows_then_the_tree_as_drawn`,
+`the_wheel_over_the_open_file_scrolls_it`,
 `the_file_s_head_and_its_switches_share_one_band_over_its_rows`,
 `a_commit_says_so_over_the_file_and_offers_the_working_tree_back`,
 `a_press_low_on_the_sidebar_s_scrollbar_takes_the_list_to_its_end`,
@@ -615,6 +629,13 @@ glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_hover_popup_is_glass`,
 `the_completion_list_stays_solid` and
 `a_palette_row_under_the_pointer_takes_a_square_see_through_ground`.
+
+**The code's popups are cards.** The language servers' popup is ringed and tinted in the worst
+diagnostic's colour, muted without one. Each diagnostic stands under a head in small capitals,
+its kind and line in its colour, `WARNING · LINE 31`, then its message; the hover stands under
+its own head. The completion list keeps its rows under a tinted head that counts them. Enforced
+by `a_fault_s_popup_heads_on_its_kind_and_line` and
+`a_diagnostic_heads_on_its_kind_and_line_in_its_colour_then_its_title_details_and_source`.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the

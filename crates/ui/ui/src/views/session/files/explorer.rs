@@ -128,7 +128,7 @@ pub(super) fn draw(
     );
 }
 
-fn one_row(
+pub(super) fn one_row(
     ctx: &mut Ctx,
     line: Rect,
     app: &groove_controllers::AppState,

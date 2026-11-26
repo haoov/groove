@@ -22,12 +22,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
             super::review::draw(ctx, app, ui, ctx.app.layout.agent.pad(gutter))
         }
         Mode::Diff => super::diff::moded::draw(ctx, app, ui, ctx.app.layout.agent),
+        Mode::Files => super::diff::moded::file(ctx, app, ui, ctx.app.layout.agent),
         other => pending(ctx, other),
     }
     ctx.layer();
     bar(ctx, app, ui, open);
     let (aside, shown) = (ctx.app.layout.sidebar, !ui.session.folded);
-    if matches!(ui.session.mode, Mode::Agent | Mode::Overview | Mode::Diff) {
+    if ui.session.mode != Mode::Kubernetes {
         super::aside::draw(ctx, app, ui, open, (aside, shown));
     }
     manual::draw(ctx, app, ui, &open.session.id);

@@ -86,14 +86,22 @@ impl Ui {
         self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
     }
 
-    /// With modes, the code surface's tab follows the middle: the Diff tab under `DIFF`.
+    /// With modes, the tab follows the mode; a file opened from elsewhere brings `FILES` up.
     fn moded(&mut self) {
-        let diff = self.session.mode == Mode::Diff;
-        match (self.modes, diff, self.session.tab) {
-            (true, true, _) => self.session.tab = Tab::Diff,
-            (true, false, Tab::Diff) => self.session.tab = Tab::Overview,
-            _ => {}
+        if !self.modes {
+            return;
         }
+        let session = &mut self.session;
+        let opened = session.tab == Tab::Files && session.settled != Tab::Files;
+        if opened && session.mode != Mode::Diff {
+            session.mode = Mode::Files;
+        }
+        session.tab = match (session.mode, session.tab) {
+            (Mode::Diff, _) => Tab::Diff,
+            (Mode::Files, _) => Tab::Files,
+            (_, Tab::Diff | Tab::Files) => Tab::Overview,
+            (_, tab) => tab,
+        };
     }
 
     /// The sheet shows the selected session's write only: it closes on one of another session's,
