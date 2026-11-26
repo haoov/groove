@@ -235,12 +235,13 @@ fn a_file_s_band_reads_from_the_left_its_counts_right_after_its_path() {
 }
 
 #[test]
-fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
-    let app = crate::tests::diff::opened();
+fn a_reply_being_written_stands_on_glass_as_a_read_note_does() {
+    let mut app = crate::tests::diff::opened();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Files;
     let anchor = groove_types::Anchor::line("src/lib.rs", 0);
-    ui.session.noting = Some(crate::views::session::Noting::new(anchor));
+    app.delivery.shown = vec![crate::tests::diff::thread_on(&anchor)];
+    ui.session.noting = Some(crate::views::session::Noting::reply(anchor, "t1".into()));
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows");
     let panes = frame.layers()[1..]
@@ -248,7 +249,7 @@ fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
         .flat_map(|layer| layer.glass.iter())
         .filter(|one| code.contains(one.rect.x, one.rect.y))
         .count();
-    assert_eq!(panes, 1, "the composer floats over its rows, one pane");
+    assert_eq!(panes, 1, "the reply floats in its thread's card, one pane");
     let sliced = frame.layers()[0].quads.iter().any(|quad| {
         code.contains(quad.rect.x, quad.rect.y)
             && quad.shape.radius > 0.0

@@ -270,8 +270,8 @@ pub enum Target {
     Subagent(String),
     /// The dock of agents at work, folded to its head or opened.
     FoldAgents,
-    /// One button of a note's own row.
-    Note(groove_types::NoteOrigin, NoteButton),
-    /// What the composer of the note being typed offers.
+    /// One button of a thread's own row, by the thread's id.
+    Note(String, NoteButton),
+    /// What the composer of the reply being typed offers.
     Compose(super::Composing),
 }

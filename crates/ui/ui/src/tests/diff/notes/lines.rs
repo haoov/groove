@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn a_note_says_which_lines_it_is_about() {
-    let mut one = own(1, "issue: this leaks");
+    let mut one = note(1, "reviewer", "issue: this leaks");
     one.anchor = Some(Anchor {
         path: "src/lib.rs".into(),
         start_line: 0,
@@ -20,7 +20,7 @@ fn a_note_says_which_lines_it_is_about() {
 
 #[test]
 fn a_note_on_one_line_says_that_line() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|text| text == "2"), "{drawn:?}");
 }

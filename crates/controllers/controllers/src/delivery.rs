@@ -1,7 +1,6 @@
 //! The `delivery` controller: one function per user action on the `delivery` service.
 
 pub(crate) mod mr;
-pub(crate) mod notes;
 pub(crate) mod poll;
 mod queue;
 pub(crate) mod threads;
@@ -11,7 +10,6 @@ use groove_types::{Repo, SessionId, Worktree, WorktreeId};
 
 use crate::{AppState, Services, Spawner};
 
-pub use notes::NoteAct;
 pub use poll::{known, poll, polls};
 pub use threads::{Say, ThreadAct};
 
@@ -29,11 +27,7 @@ pub enum Command {
     UpdateMr,
     /// `delivery.close_mr`: closed, with nothing merged.
     CloseMr,
-    /// `delivery.get_notes`: the selected session's notes.
-    GetNotes,
-    /// One note of the selected session made, written again, resolved or taken away.
-    Note(NoteAct),
-    /// One note posted, or one of the MR's threads answered or resolved.
+    /// A thread opened on lines of the diff, or one of the MR's threads answered or resolved.
     Thread(ThreadAct),
     /// What the commit box says on the merge request: a comment, or a verdict.
     Say(Say),
@@ -48,8 +42,6 @@ impl Command {
             Command::CreateMr => "delivery.create_mr",
             Command::UpdateMr => "delivery.update_mr",
             Command::CloseMr => "delivery.close_mr",
-            Command::GetNotes => "delivery.get_notes",
-            Command::Note(act) => act.id(),
             Command::Thread(act) => act.id(),
             Command::Say(say) => say.id(),
         }
@@ -57,7 +49,7 @@ impl Command {
 
     /// Whether it writes on what the surface shows, which a commit never allows.
     fn writes(&self) -> bool {
-        matches!(self, Command::Note(_) | Command::Thread(_))
+        matches!(self, Command::Thread(_))
     }
 }
 
@@ -79,11 +71,15 @@ pub fn dispatch(
         Command::CreateMr => mr::here(state, services, spawner, MrAct::Open),
         Command::UpdateMr => mr::here(state, services, spawner, MrAct::Edit),
         Command::CloseMr => mr::here(state, services, spawner, MrAct::Close),
-        Command::GetNotes => notes::list_selected(state, services, spawner),
-        Command::Note(act) => notes::here(state, services, spawner, act),
         Command::Thread(act) => threads::here(state, services, spawner, act),
         Command::Say(say) => threads::say_here(state, services, spawner, say),
     }
+}
+
+/// The threads the surface shows: the selected worktree's.
+pub(crate) fn show(state: &mut AppState) {
+    let worktree = state.session.selected_worktree().map(|one| one.id.clone());
+    state.delivery.show(worktree.as_ref());
 }
 
 /// The session a write belongs to, and the worktree and repo it lands on.

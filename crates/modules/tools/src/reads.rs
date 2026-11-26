@@ -113,7 +113,7 @@ fn work() -> Vec<Tool> {
             "The discussion on an MR, live from the forge: review threads with their file \
              and line, and general comments such as a CI bot's report. Each note says who \
              wrote it and whether its thread is resolved. A reviewer's thread is a note to \
-             act on, the same as an annotation.",
+             act on.",
             takes(&["worktree_id"], vec![worktree()]),
         ),
         read(
@@ -129,12 +129,6 @@ fn work() -> Vec<Tool> {
 /// What stands on the files themselves.
 fn files() -> Vec<Tool> {
     vec![
-        read(
-            "get_annotations",
-            "Every note left on this session, by the user or by you, each with its file, \
-             lines and status. The MR's own threads come from get_mr_threads.",
-            takes(&[], vec![task()]),
-        ),
         read(
             "get_status",
             "What each worktree of the task has: its branch, what is staged, what is \

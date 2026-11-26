@@ -7,7 +7,7 @@ use groove_ui_kit::base::style::{Role, Styles};
 #[test]
 fn a_line_counts_its_open_notes_in_a_tile_before_its_numbers() {
     let app = noted(vec![
-        own(1, "issue: this leaks"),
+        note(1, "reviewer", "issue: this leaks"),
         note(1, "reviewer", "nitpick: a name"),
     ]);
     let ui = on_diff();
@@ -68,10 +68,7 @@ fn a_line_with_only_resolved_notes_ticks_and_a_click_opens_the_note() {
         .rect;
     let rows = |ui: &Ui| crate::views::session::diff::rows_of(&app, ui, drawn_cols(&app, ui));
     let folded = rows(&ui);
-    let opens = Target::Note(
-        NoteOrigin::Thread("t1".into()),
-        crate::hit::NoteButton::Fold,
-    );
+    let opens = Target::Note(String::from("t1"), crate::hit::NoteButton::Fold);
     assert_eq!(hits.at(ticked.x + 2.0, ticked.y + 2.0), Some(opens));
     click(ticked, &mut ui, &app, &hits);
     assert!(rows(&ui) > folded, "the note opens out of its fold");

@@ -37,7 +37,7 @@ fn acted(act: &Act) -> Option<Mark> {
         Act::View(DiffView::Inline) => Mark::Inline,
         Act::View(DiffView::Split) => Mark::Split,
         Act::Mode(_) => Mark::Review,
-        Act::Note | Act::Notes(_) => Mark::Note,
+        Act::Notes(_) => Mark::Note,
         Act::Examine(_) => Mark::Agent,
         Act::Open(_) => Mark::File,
         Act::Kind(_) => Mark::Cluster,

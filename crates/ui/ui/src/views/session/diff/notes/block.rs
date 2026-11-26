@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_types::Note;
 
-use super::{BETWEEN, Block, GAPS, OVER, Slot, UNDER, anchored, starts};
+use super::{BETWEEN, Block, OVER, Slot, UNDER, anchored, starts};
 use crate::components::Room;
 use crate::views::session::Face;
 use crate::views::session::diff::wrap::{Compacted, wrapped};
@@ -30,7 +30,7 @@ pub(super) fn block(
         after,
         from: anchored(app, (view, lines), &starts(anchor)).unwrap_or(after),
         rows,
-        at: Some(at),
+        at,
         acts: !hidden,
         typing: 0,
         said,
@@ -38,12 +38,12 @@ pub(super) fn block(
 }
 
 impl super::Inline {
-    /// The piece of the note being typed that row `row` of its field shows.
+    /// The piece of the reply being typed that row `row` of its field shows.
     pub(crate) fn piece(&self, row: usize) -> Option<(usize, usize, usize)> {
         self.typed.get(row).copied()
     }
 
-    /// How many rows the note being typed takes.
+    /// How many rows the reply being typed takes.
     pub(crate) fn typed_rows(&self) -> usize {
         self.typed.len()
     }
@@ -55,22 +55,7 @@ impl Block {
         if row + UNDER >= self.rows {
             return Slot::Pad { room: Room::Under };
         }
-        let Some(at) = self.at else {
-            let typed = GAPS + 1;
-            return match row {
-                0 => Slot::Pad { room: Room::Over },
-                2 => Slot::Pad { room: Room::Gap },
-                1 => Slot::Chips,
-                row if row < typed + self.typing => Slot::Typed {
-                    row: row - typed,
-                    reply: false,
-                },
-                row if row == typed + self.typing => Slot::Pad {
-                    room: Room::Between,
-                },
-                _ => Slot::Footer { reply: false },
-            };
-        };
+        let at = self.at;
         let Some(row) = row.checked_sub(OVER) else {
             return Slot::Pad { room: Room::Over };
         };
@@ -80,8 +65,8 @@ impl Block {
             None => Slot::Pad {
                 room: Room::Between,
             },
-            Some(row) if row < self.typing => Slot::Typed { row, reply: true },
-            Some(_) if self.typing > 0 => Slot::Footer { reply: true },
+            Some(row) if row < self.typing => Slot::Typed { row },
+            Some(_) if self.typing > 0 => Slot::Footer,
             Some(_) => Slot::Acts { at },
         }
     }

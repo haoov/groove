@@ -77,8 +77,8 @@ the rail only as its attention count.
 
 - **Long lines wrap on a toggle.** With *wrap long lines* on (Settings › Appearance or the
   palette), the editor wraps each line to its width; the arrows step row by row, a click
-  lands along the line, and nothing scrolls sideways. A note wraps in its card and while it
-  is typed. Without wrap, the diff and the editor scroll sideways to keep the caret in view.
+  lands along the line, and nothing scrolls sideways. A note wraps in its card, and a reply
+  while it is typed. Without wrap, the diff and the editor scroll sideways to keep the caret in view.
   Enforced by `down_steps_along_a_wrapped_line_before_the_next_one`.
 - **The editor shows each scope's shape.** A block the syntax tree opens takes a guide down
   its indent, in the comment colour, and a caret in the column after the line numbers. A
@@ -483,7 +483,7 @@ keep their room before the cut, and a badge with no room left is dropped.
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | sections, each a card set into the panel, a step below its base, inset from its sides and headed by its band — the section's name and, where it counts, how many — its rows ruled apart: the task's properties in columns, each name over its value — status, priority, dates, the hours logged — a missing one left out, sized to what they hold; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, a hairline box with no ground, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on square grounds edge to edge as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, a hairline box with no ground, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on square grounds edge to edge as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the MR's threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 | kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | the kinds the contexts serve, under headings that fold |
 
@@ -570,10 +570,10 @@ Each panel is headed by its band — a step from its base toward the theme's fir
 ruled off under it by a hairline; a panel folded to its header is that band alone, laid before
 what stands on it. Enforced by `every_open_panel_is_headed_by_its_band_ruled_off_under_it` and
 `a_folded_capsule_is_its_band_and_what_it_holds_stands_on_it`. A note floats over the rows it takes as one pane of glass, on the layer
-the sticky file head uses, its replies and its buttons ruled off on it; a note being written
-does the same, its field a rounded field. Enforced by
+the sticky file head uses, its replies and its buttons ruled off on it; a reply being written
+stands in that pane, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and
-`a_note_being_written_stands_on_glass_as_a_read_one_does`.
+`a_reply_being_written_stands_on_glass_as_a_read_note_does`.
 The sidebar is a box a step below its panel's base, from the info line's rule to the panel's
 edges, its rows lit and held across it whole; its own border is its separator, and the ring goes
 around that box when the sidebar has the keys. The diff's map runs the column's whole height,

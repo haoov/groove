@@ -67,7 +67,6 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 /// What the frame needs before it draws: the reads it lacks, every terminal fitted to its pane.
 pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
     let mut out = walks(app, ui);
-    out.extend(notes(app));
     out.extend(log(app, ui));
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
@@ -177,16 +176,6 @@ fn log(app: &AppState, ui: &Ui) -> Vec<Command> {
     match crate::views::session::files::needs_commits(app, ui) {
         true => vec![Command::Workspace(
             groove_controllers::workspace::Command::GetCommits,
-        )],
-        false => Vec::new(),
-    }
-}
-
-/// The notes the sidebar's list needs before it can show them.
-fn notes(app: &AppState) -> Vec<Command> {
-    match crate::views::session::files::needs_notes(app) {
-        true => vec![Command::Delivery(
-            groove_controllers::delivery::Command::GetNotes,
         )],
         false => Vec::new(),
     }

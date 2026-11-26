@@ -1279,7 +1279,6 @@ dependencies = [
 name = "groove"
 version = "1.0.0-beta.2"
 dependencies = [
- "groove-annotations",
  "groove-config",
  "groove-controllers",
  "groove-db",
@@ -1363,17 +1362,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "wiremock",
-]
-
-[[package]]
-name = "groove-annotations"
-version = "1.0.0-beta.2"
-dependencies = [
- "groove-db",
- "groove-types",
- "sqlx",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1481,7 +1469,6 @@ dependencies = [
 name = "groove-delivery-service"
 version = "1.0.0-beta.2"
 dependencies = [
- "groove-annotations",
  "groove-browser",
  "groove-forge",
  "groove-git",

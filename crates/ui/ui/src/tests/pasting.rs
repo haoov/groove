@@ -158,12 +158,13 @@ fn a_paste_in_the_text_term_searches_as_typing_does() {
 }
 
 #[test]
-fn the_note_takes_a_paste_without_its_carriage_returns() {
-    let app = crate::tests::diff::opened();
+fn the_reply_takes_a_paste_without_its_carriage_returns() {
+    let mut app = crate::tests::diff::opened();
     let mut ui = Ui::default();
     ui.session.tab = Tab::Diff;
     let anchor = groove_types::Anchor::line("src/lib.rs", 0);
-    ui.session.noting = Some(crate::views::session::Noting::new(anchor));
+    app.delivery.shown = vec![crate::tests::diff::thread_on(&anchor)];
+    ui.session.noting = Some(crate::views::session::Noting::reply(anchor, "t1".into()));
     ui.focus = crate::Focus::Workspace;
     paste("  one\r\n  two\r\n", &mut ui, &app);
     let typed = ui.session.noting.as_ref().map(|one| one.buffer.text());

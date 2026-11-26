@@ -1,8 +1,7 @@
-//! What a verdict carries, and what a call that fails halfway leaves behind.
+//! What a verdict and a comment on lines send to the forge.
 
-use groove_annotations::New;
 use groove_mrs::Stored as _;
-use groove_types::{Annotation, MrState, RepoId, ReviewVerdict, SessionId};
+use groove_types::{Anchor, ReviewVerdict};
 use wiremock::matchers::{body_string_contains, method};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -32,29 +31,6 @@ async fn held(service: &Service) {
     .expect("the row is seeded");
 }
 
-/// Two notes of this session, on two lines of one file.
-async fn two_notes(service: &Service) -> Vec<Annotation> {
-    let mut made = Vec::new();
-    for line in [10, 20] {
-        let new = New {
-            session: SessionId::new("s1"),
-            repo: RepoId::new("r1"),
-            file_path: "src/lib.rs".into(),
-            start_line: line,
-            end_line: line,
-            content: format!("issue: line {line}"),
-            author: "you".into(),
-        };
-        made.push(
-            service
-                .create_note(new, groove_types::Timestamp::new(1))
-                .await
-                .expect("a note"),
-        );
-    }
-    made
-}
-
 /// One MR as a read by its number answers.
 fn mr() -> serde_json::Value {
     serde_json::json!({ "data": {
@@ -82,24 +58,19 @@ fn mr() -> serde_json::Value {
     }})
 }
 
-/// Which notes of the session stand open.
-async fn open_notes(service: &Service) -> Vec<String> {
-    service
-        .notes(&SessionId::new("s1"))
-        .await
-        .expect("the notes")
-        .into_iter()
-        .filter(|note| note.status == groove_types::AnnotationStatus::Open)
-        .map(|note| note.content)
-        .collect()
-}
-
 #[tokio::test]
-async fn a_note_that_went_up_is_gone_even_when_the_next_one_fails() {
+async fn a_comment_on_lines_goes_up_on_the_lines_the_forge_counts_from_one() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
-        .and(body_string_contains("line 20"))
-        .respond_with(ResponseTemplate::new(500).set_body_string("no"))
+        .and(body_string_contains("createLatestDiffNote"))
+        .and(body_string_contains(r#""from":10"#))
+        .and(body_string_contains(r#""to":12"#))
+        .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(body_string_contains("createLatestDiffNote"))
+        .respond_with(ResponseTemplate::new(500).set_body_string("wrong lines"))
         .mount(&server)
         .await;
     Mock::given(method("POST"))
@@ -108,38 +79,16 @@ async fn a_note_that_went_up_is_gone_even_when_the_next_one_fails() {
         .await;
     let service = service().await;
     held(&service).await;
-    let notes = two_notes(&service).await;
     let (repo, service) = gitlab(&server, service);
-
-    let refused = service
-        .review(
-            &repo,
-            &worktree().id,
-            Said {
-                verdict: ReviewVerdict::Approve,
-                body: "",
-                notes: &notes,
-            },
-        )
+    let anchor = Anchor::numbered("src/lib.rs", 10, Some(12)).expect("lines");
+    service
+        .comment_lines(&repo, &worktree().id, &anchor, "issue: it leaks")
         .await
-        .expect_err("the second note is refused");
-    assert!(format!("{refused}").contains("500"), "{refused}");
-    let left: Vec<String> = service
-        .notes(&SessionId::new("s1"))
-        .await
-        .expect("the notes")
-        .into_iter()
-        .map(|note| note.content)
-        .collect();
-    assert_eq!(
-        left,
-        ["issue: line 20"],
-        "the first is up and gone; only the second is left to post"
-    );
+        .expect("the comment is posted");
 }
 
 #[tokio::test]
-async fn a_verdict_resolves_every_note_it_carried() {
+async fn a_verdict_goes_up_with_its_words() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
@@ -147,63 +96,13 @@ async fn a_verdict_resolves_every_note_it_carried() {
         .await;
     let service = service().await;
     held(&service).await;
-    let notes = two_notes(&service).await;
     let (repo, service) = gitlab(&server, service);
-
+    let said = Said {
+        verdict: ReviewVerdict::Approve,
+        body: "looks right",
+    };
     service
-        .review(
-            &repo,
-            &worktree().id,
-            Said {
-                verdict: ReviewVerdict::Approve,
-                body: "looks right",
-                notes: &notes,
-            },
-        )
+        .review(&repo, &worktree().id, said)
         .await
         .expect("the review is posted");
-    assert!(open_notes(&service).await.is_empty(), "every one is up");
-}
-
-#[tokio::test]
-async fn a_note_of_another_repo_is_refused() {
-    let server = MockServer::start().await;
-    Mock::given(method("POST"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
-        .mount(&server)
-        .await;
-    let service = service().await;
-    held(&service).await;
-    let mut note = two_notes(&service).await.remove(0);
-    note.repo = RepoId::new("another");
-    let (repo, service) = gitlab(&server, service);
-
-    let refused = service
-        .post_note(&repo, &worktree().id, &note)
-        .await
-        .expect_err("it is not this repo's note");
-    assert!(format!("{refused}").contains("not of r1"), "{refused}");
-    assert_eq!(MrState::Open, MrState::Open, "nothing about the mr changed");
-}
-
-#[tokio::test]
-async fn posting_one_note_keeps_the_others() {
-    let server = MockServer::start().await;
-    Mock::given(method("POST"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
-        .mount(&server)
-        .await;
-    Mock::given(method("GET"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
-        .mount(&server)
-        .await;
-    let service = service().await;
-    held(&service).await;
-    let note = two_notes(&service).await.remove(0);
-    let (repo, service) = gitlab(&server, service);
-    service
-        .post_note(&repo, &worktree().id, &note)
-        .await
-        .expect("the note is posted");
-    assert_eq!(open_notes(&service).await, ["issue: line 20"]);
 }

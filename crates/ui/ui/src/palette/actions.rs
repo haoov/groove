@@ -18,8 +18,6 @@ pub enum Act {
     View(DiffView),
     /// What the diff is read against: the base or the local changes.
     Mode(DiffMode),
-    /// A note on the caret's line of the open file.
-    Note,
     Notes(Showing),
     /// The agent's ask, shown in its sheet.
     Examine(ApprovalId),
@@ -37,7 +35,6 @@ impl Act {
             Act::View(DiffView::Split) => "diff.split",
             Act::Mode(DiffMode::Base) => "diff.base",
             Act::Mode(DiffMode::Working) => "diff.local",
-            Act::Note => "notes.add",
             Act::Notes(_) => "notes.show",
             Act::Examine(_) => "agent.review",
             Act::Open(_) => "workspace.open_file",
@@ -73,7 +70,7 @@ pub(super) fn actions(app: &AppState) -> Vec<Entry> {
     out.extend(diffing(app));
     out.extend(landing(app, open));
     out.extend(agent(app, open));
-    out.extend(noting(app));
+    out.extend(noting());
     out.extend(tasked(app, open));
     out.extend(super::maintenance::entries(open));
     out.extend(super::skills::entries(app, open));
@@ -175,12 +172,9 @@ fn agent(app: &AppState, open: &Open) -> Vec<Entry> {
     out
 }
 
-/// A note where the caret stands, and the sidebar's notes list on what it shows.
-fn noting(app: &AppState) -> Vec<Entry> {
+/// The sidebar's notes list on what it shows.
+fn noting() -> Vec<Entry> {
     let mut out = Vec::new();
-    if app.workspace.active().is_some() {
-        out.push(act("Notes", "Add a note on the caret's line", Act::Note));
-    }
     for showing in Showing::ALL {
         let label = format!("Show {} notes", showing.label());
         out.push(act("Notes", label, Act::Notes(showing)));

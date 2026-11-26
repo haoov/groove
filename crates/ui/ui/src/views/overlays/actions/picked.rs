@@ -4,7 +4,7 @@ use groove_controllers::{Command, session, workspace};
 use groove_types::Section;
 
 use super::{Act, TAB, acts};
-use crate::views::session::{Asked, Naming, Noting};
+use crate::views::session::{Asked, Naming};
 use crate::{Losing, Of};
 
 /// A menu whose rows come with it: a write asked, a skill sent, or a mapping slot given a value.
@@ -135,7 +135,6 @@ pub struct Picked {
     pub commands: Vec<Command>,
     pub asking: Option<Losing>,
     pub naming: Option<Naming>,
-    pub noting: Option<Noting>,
     /// The terminal drawer opens, its new tab taking the keys.
     pub drawer: bool,
     /// Words put in the agent's prompt.
@@ -153,13 +152,6 @@ impl Picked {
     fn names(naming: Naming) -> Self {
         Self {
             naming: Some(naming),
-            ..Self::default()
-        }
-    }
-
-    fn notes(anchor: groove_types::Anchor) -> Self {
-        Self {
-            noting: Some(Noting::new(anchor)),
             ..Self::default()
         }
     }
@@ -192,11 +184,6 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         return picked;
     }
     match (of, acts(of).get(at)) {
-        (Of::Line { path, lines }, Some(Act::Note)) => Picked::notes(groove_types::Anchor {
-            path: path.clone(),
-            start_line: lines.0,
-            end_line: lines.1,
-        }),
         (Of::Line { path, lines }, Some(Act::Ask)) => {
             let anchor = groove_types::Anchor {
                 path: path.clone(),

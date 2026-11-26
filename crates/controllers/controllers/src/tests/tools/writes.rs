@@ -1,6 +1,6 @@
 //! What a write does: it waits, then it runs or it does not.
 
-mod notes;
+mod threads;
 
 use groove_agent_service::{Call, Reply};
 use serde_json::json;

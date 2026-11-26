@@ -83,12 +83,11 @@ async fn services(
     let plan = groove_plan::Plan::new(db.clone());
     let ledger = groove_ledger::Ledger::new(db.clone());
     let mrs = groove_mrs::Store::new(db.clone());
-    let notes = groove_annotations::Store::new(db.clone());
     let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {
         session: groove_controllers::session_service::Service::new(store, pool),
         task: groove_controllers::task_service::Service::new(plan, ledger),
-        delivery: groove_controllers::delivery_service::Service::new(mrs, notes),
+        delivery: groove_controllers::delivery_service::Service::new(mrs),
         config: groove_controllers::config_service::Keeper::default(),
         alert: groove_controllers::alert_service::Service::incident_io()?,
         clipboard: groove_controllers::workspace_service::Clipboard::system(),

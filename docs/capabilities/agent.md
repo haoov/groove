@@ -80,7 +80,7 @@ Enforced by `a_new_transcript_starts_the_conversation_again_and_the_old_one_is_n
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
-forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
+forge — an MR opened, written again, merged or closed, a CI result, a review, a thread opened;
 repos and worktrees; the agent's cluster reads; each cluster write that lands, the user's or
 the agent's, as its target and the fields it set, never their values; and the agent's turns, so the feed can say when
 it worked.

@@ -11,13 +11,7 @@ async fn tables(db: &Db) -> Vec<String> {
 async fn an_in_memory_database_carries_the_whole_schema() {
     let db = Db::in_memory().await.unwrap();
     let tables = tables(&db).await;
-    for expected in [
-        "sessions",
-        "repos",
-        "worktrees",
-        "annotations",
-        "pending_confirmations",
-    ] {
+    for expected in ["sessions", "repos", "worktrees", "pending_confirmations"] {
         assert!(
             tables.iter().any(|t| t == expected),
             "missing {expected} in {tables:?}"

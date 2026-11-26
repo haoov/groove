@@ -19,11 +19,12 @@ Attaching the repos (step 3) is the one thing it starts.
    each on why it is on it. Say plainly when the body names no repo — guessing
    from the title attaches the wrong one — and when a repo is missing from
    `list_repos`, which means the user has to clone it first.
-4. `get_task_diff`, `get_commit_log` and `get_annotations` — the branches may
-   already carry work, so do not assume a blank slate. Tell real commits from
-   dependency-bot noise, and treat an unresolved annotation as part of the job.
+4. `get_task_diff`, `get_commit_log`, and `get_mr_threads` where an MR is open —
+   the branches may already carry work, so do not assume a blank slate. Tell
+   real commits from dependency-bot noise, and treat an unresolved thread as
+   part of the job.
    Skip this on a branch you created a moment ago; it has no history.
 5. Read each worktree's `CLAUDE.md` or `AGENTS.md`. The plan has to fit them.
 
 Then summarize, skimmable: the goal, what each worktree already holds, the open
-annotations, and an ordered plan naming the repo for every step.
+threads, and an ordered plan naming the repo for every step.

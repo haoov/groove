@@ -18,8 +18,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, ac
     if code.covered {
         return;
     }
-    if let Some(composed) = code.composed.as_ref() {
-        return composer(ctx, line, composed, gutter);
+    if code.footer {
+        return composer(ctx, line, gutter);
     }
     if let Some(room) = code.pad {
         return padded(ctx, line, room, gutter);
@@ -55,7 +55,7 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         tile: line.tile.as_ref().map(|(tile, folds)| {
             let opens = folds
                 .clone()
-                .map(|origin| Target::Note(origin, NoteButton::Fold));
+                .map(|thread| Target::Note(thread, NoteButton::Fold));
             (*tile, opens)
         }),
         empty: line.empty,

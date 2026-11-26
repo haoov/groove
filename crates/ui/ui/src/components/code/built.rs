@@ -7,7 +7,7 @@ use super::{Line, Tile};
 
 impl<'a> Line<'a> {
     /// A row of code a note stands on.
-    pub fn tile(mut self, tile: Option<(Tile, Option<groove_types::NoteOrigin>)>) -> Self {
+    pub fn tile(mut self, tile: Option<(Tile, Option<String>)>) -> Self {
         self.tile = tile;
         self
     }

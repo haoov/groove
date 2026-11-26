@@ -18,7 +18,7 @@ mod state;
 mod tab;
 
 pub use state::{
-    Asked, Bar, Face, Mode, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
+    Asked, Bar, Face, Mode, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term,
 };
 
 use groove_controllers::AppState;

@@ -5,7 +5,7 @@ use crate::views::session::{Pane, Showing, Tab};
 
 fn thread(id: &str, line: Option<u32>, resolved: bool) -> Note {
     Note {
-        origin: NoteOrigin::Thread(id.into()),
+        thread: id.into(),
         anchor: line.map(|at| Anchor::line("src/lib.rs", at)),
         resolved,
         said: vec![Said {
@@ -25,9 +25,8 @@ fn a_note_reads_on_two_lines_under_its_file() {
         "src",
         "issue",
         "this leaks",
-        "ME",
-        "me",
-        "local",
+        "RE",
+        "reviewer",
         "L12",
     ] {
         assert!(drawn.iter().any(|one| one == text), "{text}: {drawn:?}");
@@ -49,7 +48,6 @@ fn a_thread_says_how_many_replies_it_holds() {
     let (app, ui) = noting(vec![one]);
     let drawn = in_sidebar(&app, &ui);
     assert!(drawn.iter().any(|one| one == "1 reply"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "MR"), "{drawn:?}");
 }
 
 #[test]
@@ -131,5 +129,5 @@ fn a_click_on_a_resolved_note_opens_it_from_behind_its_tick() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let line = hits.rect_of(&Target::NoteAt(0)).expect("the note's row");
     click(line, &mut ui, &app, &hits);
-    assert_eq!(ui.session.unfolded, [NoteOrigin::Thread("closed".into())]);
+    assert_eq!(ui.session.unfolded, ["closed"]);
 }

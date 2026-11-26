@@ -187,7 +187,7 @@ pub(super) fn set_mode(state: &mut AppState, spawner: &dyn Spawner, mode: DiffMo
 
 /// The selected worktree read and watched, or nothing when none is selected.
 pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
-    crate::delivery::notes::show(state);
+    crate::delivery::show(state);
     let Some(worktree) = state.session.selected_worktree().map(|one| one.id.clone()) else {
         return state.workspace.clear();
     };

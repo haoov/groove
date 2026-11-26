@@ -175,7 +175,7 @@ pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
 /// What a palette row asks of the window, done as its chord or its click would.
 pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     use crate::palette::Act;
-    use crate::views::session::{Noting, Pane, Tab};
+    use crate::views::session::{Pane, Tab};
     match act {
         Act::Key(action) => return keys::run(action, ui, app),
         Act::View(view) => {
@@ -186,15 +186,6 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             ui.session.tab = Tab::Diff;
             let set = groove_controllers::workspace::Command::SetMode { mode };
             return vec![Command::Workspace(set)];
-        }
-        Act::Note => {
-            let Some(open) = app.workspace.active() else {
-                return Vec::new();
-            };
-            let line = open.new.caret().line as u32;
-            let anchor = groove_types::Anchor::line(open.path.clone(), line);
-            ui.session.noting = Some(Noting::new(anchor));
-            ui.focus = crate::Focus::Workspace;
         }
         Act::Notes(showing) => {
             ui.session.pane = Pane::Notes;

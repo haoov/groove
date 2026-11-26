@@ -35,8 +35,7 @@ fn write(does: Does, description: &str, schema: serde_json::Value) -> Tool {
 pub(crate) fn all() -> Vec<Tool> {
     let mut out = git();
     out.extend(delivery::forge());
-    out.extend(delivery::notes());
-    out.extend(delivery::posting());
+    out.push(delivery::comment());
     out.extend(delivery::threads());
     out.extend(repos());
     out.extend(skills());

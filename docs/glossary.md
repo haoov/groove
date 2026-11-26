@@ -14,7 +14,7 @@ A session that works a ticket from a provider. It has a branch and usually ends 
 A session with no ticket yet. Filing a ticket and adopting it turns it into a task.
 
 ### Review
-A session on someone else's MR, checked out to read and annotate.
+A session on someone else's MR, checked out to read and review.
 
 ### Maintenance task
 A task the user marked as maintenance in Groove. It spawns children.

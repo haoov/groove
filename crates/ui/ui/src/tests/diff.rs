@@ -35,6 +35,16 @@ pub(super) fn opened() -> AppState {
     app
 }
 
+/// A thread `t1` of the MR on `anchor`, with nothing said yet.
+pub(super) fn thread_on(anchor: &groove_types::Anchor) -> groove_types::Note {
+    groove_types::Note {
+        thread: "t1".into(),
+        anchor: Some(anchor.clone()),
+        resolved: false,
+        said: Vec::new(),
+    }
+}
+
 fn with_files() -> AppState {
     let mut app = full_app();
     let worktree = app

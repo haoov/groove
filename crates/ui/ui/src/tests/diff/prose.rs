@@ -1,14 +1,14 @@
 //! What a note in the surface says, drawn as the Markdown it is written in.
 
 use groove_gfx::{Font, Fonts, Weight};
-use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
+use groove_types::{Anchor, Note, Said, Timestamp};
 
 use super::*;
 
 fn noted(body: &str) -> AppState {
     let mut app = opened();
     app.delivery.shown = vec![Note {
-        origin: NoteOrigin::Thread("t1".into()),
+        thread: "t1".into(),
         anchor: Some(Anchor::line("src/lib.rs", 1)),
         resolved: false,
         said: vec![Said {

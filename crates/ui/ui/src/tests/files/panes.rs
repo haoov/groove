@@ -1,6 +1,6 @@
 //! The sidebar's three lists: the strip that picks one, and what the notes list shows.
 
-use groove_types::{Anchor, AnnotationId, Note, NoteOrigin, Said, Timestamp};
+use groove_types::{Anchor, Note, Said, Timestamp};
 
 mod listed;
 
@@ -10,11 +10,11 @@ use crate::views::session::{Pane, Term};
 
 fn note(path: &str, line: u32, body: &str) -> Note {
     Note {
-        origin: NoteOrigin::Local(AnnotationId::new(path)),
+        thread: path.into(),
         anchor: Some(Anchor::line(path, line)),
         resolved: false,
         said: vec![Said {
-            author: "you".into(),
+            author: "reviewer".into(),
             body: body.into(),
             at: Timestamp::new(0),
         }],
@@ -60,7 +60,7 @@ fn a_resolved_note_is_not_counted() {
 }
 
 #[test]
-fn picking_the_notes_list_reads_the_notes() {
+fn picking_the_notes_list_puts_it_up() {
     let app = with_files(&["src/lib.rs"]);
     let mut ui = sidebar_ui();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -69,40 +69,6 @@ fn picking_the_notes_list_reads_the_notes() {
         .expect("the strip names the notes");
     click(strip, &mut ui, &app, &hits);
     assert_eq!(ui.session.pane, Pane::Notes);
-    let asked = crate::render::frame_commands(&app, &ui, window());
-    assert!(
-        asked.iter().any(|one| matches!(
-            one,
-            groove_controllers::Command::Delivery(groove_controllers::delivery::Command::GetNotes)
-        )),
-        "the frame asks for them: {asked:?}"
-    );
-}
-
-#[test]
-fn the_notes_are_read_once_a_session() {
-    let mut app = with_files(&["src/lib.rs"]);
-    let mut ui = sidebar_ui();
-    ui.session.pane = Pane::Notes;
-    let asks = |app: &AppState, ui: &Ui| {
-        crate::render::frame_commands(app, ui, window())
-            .iter()
-            .filter(|one| {
-                matches!(
-                    one,
-                    groove_controllers::Command::Delivery(
-                        groove_controllers::delivery::Command::GetNotes
-                    )
-                )
-            })
-            .count()
-    };
-    assert_eq!(asks(&app, &ui), 1, "nothing is held yet");
-    let session = app.session.selected.clone().expect("a session");
-    app.delivery.reading(&session);
-    assert_eq!(asks(&app, &ui), 0, "the read is out or landed");
-    app.session.selected = Some(groove_types::SessionId::new("b"));
-    assert_eq!(asks(&app, &ui), 1, "another session brings its own");
 }
 
 #[test]
@@ -180,21 +146,6 @@ fn one_search_field_always_stands_over_the_strip_and_switches_its_term() {
 }
 
 /// A thread the forge holds, on a line or on the MR itself.
-#[test]
-fn a_session_s_notes_are_read_whichever_list_is_up() {
-    let app = with_files(&["src/lib.rs"]);
-    let ui = sidebar_ui();
-    assert_ne!(ui.session.pane, Pane::Notes);
-    let asked = crate::render::frame_commands(&app, &ui, window());
-    assert!(
-        asked.iter().any(|one| matches!(
-            one,
-            groove_controllers::Command::Delivery(groove_controllers::delivery::Command::GetNotes)
-        )),
-        "the surface draws them too: {asked:?}"
-    );
-}
-
 #[test]
 fn a_narrow_tab_keeps_its_mark_whole_inside_it() {
     let app = with_files(&["src/lib.rs"]);

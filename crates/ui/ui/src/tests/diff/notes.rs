@@ -1,6 +1,6 @@
-//! A note drawn in the surface, under the line it was left on.
+//! A thread drawn in the surface, under the line it hangs on.
 
-use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
+use groove_types::{Anchor, Note, Said, Timestamp};
 
 use super::*;
 
@@ -12,7 +12,7 @@ mod tiles;
 /// One note on `line` of the open file, said by `author`.
 fn note(line: u32, author: &str, body: &str) -> Note {
     Note {
-        origin: NoteOrigin::Thread("t1".into()),
+        thread: "t1".into(),
         anchor: Some(Anchor::line("src/lib.rs", line)),
         resolved: false,
         said: vec![said(author, body)],
@@ -97,12 +97,12 @@ fn a_read_note_floats_over_its_rows_as_one_pane_of_glass() {
 }
 
 #[test]
-fn each_comment_opens_on_a_header_that_names_who_from_where_and_its_label() {
+fn each_comment_opens_on_a_header_that_names_who_and_its_label() {
     let mut one = note(1, "Marie Dupont", "issue (blocking): this leaks");
     one.said.push(said("haoov", "fixed"));
     let drawn = in_editor(&noted(vec![one]));
     let at = |text: &str| drawn.iter().position(|one| one == text);
-    let header = ["MD", "Marie Dupont", "MR", "issue", "blocking"].map(&at);
+    let header = ["MD", "Marie Dupont", "issue", "blocking"].map(&at);
     assert!(header.iter().all(Option::is_some), "{drawn:?}");
     let words = at("this leaks").expect("the words, their label off");
     assert!(header.iter().all(|one| one.is_some_and(|one| one < words)));
@@ -111,12 +111,6 @@ fn each_comment_opens_on_a_header_that_names_who_from_where_and_its_label() {
     assert!(
         !drawn.iter().any(|one| one.contains("issue (blocking)")),
         "{drawn:?}"
-    );
-    let local = in_editor(&noted(vec![own(1, "thought: maybe")]));
-    assert!(local.iter().any(|one| one == "local"), "{local:?}");
-    assert!(
-        local.iter().any(|one| one == "me") && local.iter().any(|one| one == "ME"),
-        "the user's own note reads as theirs: {local:?}"
     );
 }
 
@@ -245,19 +239,9 @@ fn a_file_carrying_a_note_is_marked_in_the_sidebar() {
     assert_eq!(marks_in_sidebar(&app), 1, "the file that carries it");
 }
 
-/// A note of this session's own, which its row of buttons can act on.
-fn own(line: u32, body: &str) -> Note {
-    Note {
-        origin: NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        anchor: Some(Anchor::line("src/lib.rs", line)),
-        resolved: false,
-        said: vec![said("you", body)],
-    }
-}
-
 #[test]
 fn a_note_s_header_starts_where_the_code_does_and_its_words_a_step_in() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let ui = on_diff();
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows");
@@ -272,7 +256,7 @@ fn a_note_s_header_starts_where_the_code_does_and_its_words_a_step_in() {
         .layers()
         .iter()
         .flat_map(|layer| layer.texts.iter())
-        .find(|run| run.text == "ME" && code.contains(run.x, run.y))
+        .find(|run| run.text == "RE" && code.contains(run.x, run.y))
         .map(|run| run.x)
         .expect("the initials");
     assert_eq!(
@@ -289,13 +273,12 @@ fn a_note_s_header_starts_where_the_code_does_and_its_words_a_step_in() {
 
 #[test]
 fn the_buttons_start_where_the_words_do() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
     let first = hits
-        .rect_of(&Target::Note(id, crate::hit::NoteButton::Edit))
-        .expect("the first button");
+        .rect_of(&Target::Note("t1".into(), crate::hit::NoteButton::Reply))
+        .expect("the reply field");
     assert_eq!(first.x, hits.chars().left, "under the words themselves");
 }
 
@@ -314,45 +297,10 @@ fn a_line_carrying_a_note_takes_its_own_ground() {
     };
     assert_eq!(grounds(&opened()), 0, "no note, no ground");
     assert_eq!(
-        grounds(&noted(vec![own(1, "issue")])),
+        grounds(&noted(vec![note(1, "reviewer", "issue")])),
         1,
         "the line it is on"
     );
-}
-
-#[test]
-fn a_note_of_this_session_offers_what_to_do_with_it() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
-    let ui = on_diff();
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
-    for button in [
-        crate::hit::NoteButton::Edit,
-        crate::hit::NoteButton::Resolve,
-        crate::hit::NoteButton::Delete,
-    ] {
-        assert!(
-            hits.rect_of(&Target::Note(id.clone(), button)).is_some(),
-            "{button:?} stands under the note"
-        );
-    }
-    assert!(
-        hits.rect_of(&Target::Note(id.clone(), crate::hit::NoteButton::Post))
-            .is_none(),
-        "posting waits for the forge"
-    );
-    let at = |button| {
-        hits.rect_of(&Target::Note(id.clone(), button))
-            .expect("drawn")
-    };
-    let (edit, resolve, delete) = (
-        at(crate::hit::NoteButton::Edit),
-        at(crate::hit::NoteButton::Resolve),
-        at(crate::hit::NoteButton::Delete),
-    );
-    assert!(edit.x < resolve.x, "edit, then resolve");
-    let gap = delete.x - resolve.right();
-    assert!(gap > edit.w, "delete stands apart, at the end: {gap}");
 }
 
 #[test]
@@ -360,7 +308,7 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let origin = NoteOrigin::Thread("t1".into());
+    let origin = String::from("t1");
     let field = hits
         .rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
         .expect("a thread takes a reply");
@@ -375,24 +323,16 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
         "the reply is a field across the row"
     );
     assert!(resolve.x > field.right(), "resolve stands at its end");
-    assert!(
-        hits.rect_of(&Target::Note(origin, crate::hit::NoteButton::Delete))
-            .is_none(),
-        "and none of this session's own writes"
-    );
 }
 
 #[test]
 fn a_button_under_the_pointer_takes_a_rounded_ground() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let edit = Target::Note(
-        groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        crate::hit::NoteButton::Edit,
-    );
+    let resolve = Target::Note("t1".into(), crate::hit::NoteButton::Resolve);
     let grounds = |ui: &Ui| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
-        let at = hits.rect_of(&edit).expect("the edit button");
+        let at = hits.rect_of(&resolve).expect("the resolve button");
         frame
             .layers()
             .iter()
@@ -403,16 +343,13 @@ fn a_button_under_the_pointer_takes_a_rounded_ground() {
     let ui = on_diff();
     assert_eq!(grounds(&ui), 0, "nothing is under the pointer");
     let mut on_it = on_diff();
-    on_it.hover = Some(Target::Note(
-        groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        crate::hit::NoteButton::Edit,
-    ));
+    on_it.hover = Some(resolve.clone());
     assert_eq!(grounds(&on_it), 1, "the one it stands on");
 }
 
 #[test]
-fn a_commit_shows_none_of_the_sessions_notes() {
-    let mut app = noted(vec![own(1, "issue: this leaks")]);
+fn a_commit_shows_none_of_the_threads() {
+    let mut app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let ui = on_diff();
     app.workspace.commit = Some(groove_types::CommitEntry {
         sha: "abc".into(),
@@ -425,7 +362,7 @@ fn a_commit_shows_none_of_the_sessions_notes() {
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         crate::views::session::diff::rows_of(&opened(), &ui, drawn_cols(&opened(), &ui)),
-        "a note stands on the working tree's lines, not a commit's"
+        "a thread stands on the working tree's lines, not a commit's"
     );
     let drawn = in_editor(&app);
     assert!(

@@ -3,7 +3,6 @@
 mod activity;
 mod aging;
 mod alert;
-mod annotation;
 mod approval;
 mod argo;
 mod attention;
@@ -50,7 +49,6 @@ mod tests;
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
 pub use aging::{Aging, agings, human_age, tells_time};
 pub use alert::{Alert, AlertChild, AlertsConfig};
-pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
     AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
@@ -82,7 +80,7 @@ pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
 pub use health::{Health, count_health, ready_health, status_health};
-pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
+pub use ids::{ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use logs::{Level, LogKey, LogLine, LogRange, LogSource, LogTime, level, log_time};
 pub use mapping::{Kind, Mapped, Mapping, Property};
 pub use mr::{
@@ -91,7 +89,7 @@ pub use mr::{
 };
 pub use naming::{explorer_branch, is_explorer_branch, names_session};
 pub use narrowing::{fuzzy, narrows, occurrences, score};
-pub use note::{Anchor, LABELS, Labelled, Note, NoteOrigin, Said, decorated, labelled};
+pub use note::{Anchor, LABELS, Labelled, Note, Said, decorated, labelled};
 pub use panes::Panes;
 pub use quantity::{Gauge, Pressure, bytes, cores, gauge, quantity};
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};

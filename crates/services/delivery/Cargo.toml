@@ -7,7 +7,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-groove-annotations = { path = "../../modules/annotations" }
 groove-browser = { path = "../../modules/browser" }
 groove-forge = { path = "../../modules/forge" }
 groove-git = { path = "../../modules/git" }

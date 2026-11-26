@@ -1,24 +1,10 @@
-//! What the forge answers for: a note posted, a thread replied to or resolved.
+//! What the forge answers for: a thread replied to or resolved.
 
 use super::*;
 use crate::tests::typed;
 use groove_controllers::delivery;
 
-/// A thread of the merge request, on line 1.
-fn thread() -> groove_types::Note {
-    groove_types::Note {
-        origin: groove_types::NoteOrigin::Thread("t1".into()),
-        anchor: Some(Anchor::line("src/lib.rs", 1)),
-        resolved: false,
-        said: vec![groove_types::Said {
-            author: "reviewer".into(),
-            body: "issue: this leaks".into(),
-            at: groove_types::Timestamp::new(0),
-        }],
-    }
-}
-
-/// The app with an MR of its own, so a note of it can be posted.
+/// The app with an MR of its own, and these threads on it.
 fn delivered(notes: Vec<groove_types::Note>) -> AppState {
     let mut app = opened();
     app.delivery.shown = notes;
@@ -33,48 +19,18 @@ fn delivered(notes: Vec<groove_types::Note>) -> AppState {
     app
 }
 
-/// A click on one button of one note's row.
+/// A click on one button of one thread's row.
 fn on(
     app: &AppState,
     ui: &mut Ui,
-    origin: groove_types::NoteOrigin,
+    thread: &str,
     button: crate::hit::NoteButton,
 ) -> Vec<groove_controllers::Command> {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let rect = hits
-        .rect_of(&Target::Note(origin, button))
+        .rect_of(&Target::Note(thread.into(), button))
         .unwrap_or_else(|| panic!("{button:?} is drawn"));
     click(rect, ui, app, &hits)
-}
-
-fn local() -> groove_types::NoteOrigin {
-    groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"))
-}
-
-#[test]
-fn a_note_of_a_session_with_an_mr_offers_to_post_it() {
-    let app = delivered(vec![own()]);
-    let mut ui = on_diff();
-    let commands = on(&app, &mut ui, local(), crate::hit::NoteButton::Post);
-    assert_eq!(
-        one_command(commands),
-        delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Post {
-            id: groove_types::AnnotationId::new("n1")
-        })
-    );
-}
-
-#[test]
-fn a_session_with_no_mr_offers_no_post() {
-    let mut app = opened();
-    app.delivery.shown = vec![own()];
-    let ui = on_diff();
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(
-        hits.rect_of(&Target::Note(local(), crate::hit::NoteButton::Post))
-            .is_none(),
-        "nothing to post it on"
-    );
 }
 
 #[test]
@@ -82,26 +38,13 @@ fn a_thread_offers_a_reply_and_a_resolve_and_nothing_else() {
     let app = delivered(vec![thread()]);
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let origin = groove_types::NoteOrigin::Thread("t1".into());
     for button in [
         crate::hit::NoteButton::Reply,
         crate::hit::NoteButton::Resolve,
     ] {
         assert!(
-            hits.rect_of(&Target::Note(origin.clone(), button))
-                .is_some(),
+            hits.rect_of(&Target::Note("t1".into(), button)).is_some(),
             "{button:?} stands under the thread"
-        );
-    }
-    for button in [
-        crate::hit::NoteButton::Edit,
-        crate::hit::NoteButton::Delete,
-        crate::hit::NoteButton::Post,
-    ] {
-        assert!(
-            hits.rect_of(&Target::Note(origin.clone(), button))
-                .is_none(),
-            "{button:?} is not the forge's to offer"
         );
     }
 }
@@ -110,8 +53,7 @@ fn a_thread_offers_a_reply_and_a_resolve_and_nothing_else() {
 fn resolving_a_thread_asks_the_forge() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
-    let origin = groove_types::NoteOrigin::Thread("t1".into());
-    let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
+    let commands = on(&app, &mut ui, "t1", crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
         delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Resolve {
@@ -127,9 +69,8 @@ fn a_resolved_thread_asks_to_be_opened_again() {
     one.resolved = true;
     let app = delivered(vec![one]);
     let mut ui = on_diff();
-    let origin = groove_types::NoteOrigin::Thread("t1".into());
-    on(&app, &mut ui, origin.clone(), crate::hit::NoteButton::Fold);
-    let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
+    on(&app, &mut ui, "t1", crate::hit::NoteButton::Fold);
+    let commands = on(&app, &mut ui, "t1", crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
         delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Resolve {
@@ -143,8 +84,7 @@ fn a_resolved_thread_asks_to_be_opened_again() {
 fn a_reply_is_typed_under_the_thread_it_answers() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
-    let origin = groove_types::NoteOrigin::Thread("t1".into());
-    let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Reply);
+    let commands = on(&app, &mut ui, "t1", crate::hit::NoteButton::Reply);
     assert!(commands.is_empty(), "nothing is asked of the forge yet");
     let noting = ui.session.noting.as_ref().expect("the row opens");
     assert_eq!(noting.anchor, Anchor::line("src/lib.rs", 1));
@@ -167,8 +107,7 @@ fn a_reply_is_typed_inside_the_thread_s_card_in_place_of_its_buttons() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     let before = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
-    let origin = groove_types::NoteOrigin::Thread("t1".into());
-    on(&app, &mut ui, origin, crate::hit::NoteButton::Reply);
+    on(&app, &mut ui, "t1", crate::hit::NoteButton::Reply);
     typed("fixed", &mut ui, &app);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
@@ -189,7 +128,7 @@ fn a_reply_is_typed_inside_the_thread_s_card_in_place_of_its_buttons() {
 }
 
 #[test]
-fn a_line_someone_else_commented_on_still_takes_a_note() {
+fn a_line_with_a_thread_still_opens_the_line_menu() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
@@ -200,20 +139,6 @@ fn a_line_someone_else_commented_on_still_takes_a_note() {
             path: "src/lib.rs".into(),
             lines: (1, 1),
         }),
-        "a thread is not this session's note"
-    );
-}
-
-#[test]
-fn a_line_whose_note_is_resolved_takes_another() {
-    let mut one = own();
-    one.resolved = true;
-    let app = delivered(vec![one]);
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    asked(&app, &mut ui, 1);
-    assert!(
-        ui.menu().is_some(),
-        "a note that is dealt with holds the line no longer"
+        "a thread holds no line"
     );
 }

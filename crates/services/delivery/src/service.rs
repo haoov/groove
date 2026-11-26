@@ -5,7 +5,6 @@ pub(crate) mod queue;
 
 use std::sync::Arc;
 
-use groove_annotations::Store as Notes;
 use groove_forge::{Proposed, Remote, Snapshot};
 use groove_mrs::{Answered, Store, Stored as _};
 use groove_types::{Error, Mr, MrState, Repo, Result, Worktree, WorktreeId};
@@ -39,16 +38,14 @@ pub type Connect = Arc<dyn Fn(&Repo) -> Result<Arc<Remote>> + Send + Sync>;
 #[derive(Clone)]
 pub struct Service {
     mrs: Store,
-    notes: Notes,
     connect: Connect,
 }
 
 impl Service {
     /// Reaches each forge with the token its CLI holds.
-    pub fn new(mrs: Store, notes: Notes) -> Self {
+    pub fn new(mrs: Store) -> Self {
         Self {
             mrs,
-            notes,
             connect: Arc::new(|repo| Ok(Remote::shared(&repo.host)?)),
         }
     }
@@ -69,15 +66,13 @@ impl Service {
         let mrs = Store::in_memory()
             .await
             .map_err(|e| Error::store("in-memory database", e))?;
-        let notes = Notes::new(mrs.db().clone());
-        Ok(Self::new(mrs, notes))
+        Ok(Self::new(mrs))
     }
 
     /// On the database the sessions live in, where the worktrees an MR hangs off are.
     pub fn beside(sessions: &groove_sessions::Store) -> Self {
         use groove_sessions::Stored as _;
-        let db = sessions.db().clone();
-        Self::new(Store::new(db.clone()), Notes::new(db))
+        Self::new(Store::new(sessions.db().clone()))
     }
 
     fn remote(&self, repo: &Repo) -> Result<Arc<Remote>> {

@@ -34,9 +34,9 @@ pub(super) fn note_at(
     let line = anchor.start_line as usize;
     ui.focus = crate::Focus::Workspace;
     if let Some(note) = app.delivery.shown.get(at).filter(|one| one.resolved)
-        && !ui.session.unfolded.contains(&note.origin)
+        && !ui.session.unfolded.contains(&note.thread)
     {
-        ui.session.unfolded.push(note.origin.clone());
+        ui.session.unfolded.push(note.thread.clone());
     }
     let height = metrics.tokens().code_line;
     let above = |row: usize| row.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH) as f32;

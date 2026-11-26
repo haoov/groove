@@ -61,13 +61,13 @@ means: read it again, then ask again.
 
 ## The user already sees your work
 
-Groove renders the diff, your annotations in the file, and the MR. Do not paste
+Groove renders the diff, the MR and its threads. Do not paste
 back what it shows. Say what you did and what you need.
 
 ## Session kinds
 
 - `task` — work on a ticket. It has a branch and usually ends in an MR.
-- `review` — someone else's MR, checked out to read and annotate.
+- `review` — someone else's MR, checked out to read and review.
 - `explorer` — no ticket yet. File one at its source, then `adopt_task` makes this
   session the task's.
 
@@ -82,5 +82,5 @@ starting a task, landing the work, reviewing an MR, fixing the notes, closing
 the task. When what the user asks for matches one, invoke it instead of
 improvising the same tool calls: the skill carries rules the ask does not repeat.
 
-It says WHAT to do. How to word a commit message, MR text, an annotation or a
-task body belongs to the tool you are calling, and it tells you at the call.
+It says WHAT to do. How to word a commit message, MR text, an MR comment or
+a task body belongs to the tool you are calling, and it tells you at the call.

@@ -1,37 +1,29 @@
-//! The buttons a note's own row carries.
+//! The buttons a thread's own row carries.
 
-/// What a note's row of buttons offers.
+/// What a thread's row of buttons offers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoteButton {
-    Edit,
     Resolve,
-    Delete,
-    Post,
     Reply,
-    /// A resolved note folded to one line, or opened out of it.
+    /// A resolved thread folded to one line, or opened out of it.
     Fold,
 }
 
 impl NoteButton {
-    /// What the button says; a resolved note offers to open again.
+    /// What the button says; a resolved thread offers to open again.
     pub fn label(self, resolved: bool) -> &'static str {
         match (self, resolved) {
-            (NoteButton::Edit, _) => "edit",
             (NoteButton::Resolve, false) => "resolve",
             (NoteButton::Resolve, true) => "reopen",
-            (NoteButton::Delete, _) => "delete",
-            (NoteButton::Post, _) => "post to MR",
             (NoteButton::Reply, _) => "reply",
             (NoteButton::Fold, _) => "fold",
         }
     }
 }
 
-/// What the composer of a note offers: a label, a decoration, save and cancel.
+/// What the composer of a reply offers: send and cancel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Composing {
-    Label(&'static str),
-    Decoration(&'static str),
     Save,
     Cancel,
 }

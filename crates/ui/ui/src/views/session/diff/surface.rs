@@ -185,12 +185,12 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 said(&held.words[on], resolved)
             }
             Slot::Pad { room } => Line::pad(*room),
-            Slot::Chips | Slot::Footer { .. } => match held.words[on].composed.clone() {
-                Some(composed) => Line::composed(composed),
-                None => Line::new(""),
-            },
+            Slot::Footer => Line::footer(),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
-                Some(note) => Line::acting(acting_of(app, note)),
+                Some(note) => Line::acting(Acting {
+                    thread: note.thread.clone(),
+                    resolved: note.resolved,
+                }),
                 None => Line::new(""),
             },
             Slot::Typed { .. } => said(&held.words[on], false)
@@ -213,19 +213,6 @@ fn said(words: &Words, resolved: bool) -> Line<'_> {
         field: words.field,
     };
     Line::note(&words.body, noted)
-}
-
-/// What a note's own row of buttons acts on.
-fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
-    Acting {
-        origin: note.origin.clone(),
-        resolved: note.resolved,
-        thread: !note.is_local(),
-        post: app
-            .session
-            .selected_worktree()
-            .is_some_and(|worktree| app.delivery.has_mr(&worktree.id)),
-    }
 }
 
 /// One row as the code widget takes it: a head, a gap, or a line of text.

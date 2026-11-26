@@ -1,4 +1,4 @@
-//! The sidebar's notes: open, resolved or all, under the file each stands on.
+//! The sidebar's notes, the MR's threads: open, resolved or all, under the file each stands on.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -81,7 +81,7 @@ fn said(showing: Showing) -> &'static str {
     match showing {
         Showing::Open => "No open notes",
         Showing::Resolved => "Nothing resolved yet",
-        Showing::All => "Right click a line in the diff to add a note",
+        Showing::All => "No threads on the merge request",
     }
 }
 
@@ -185,7 +185,7 @@ fn said_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header, role: Ro
     Label::new(&subject(note), ctx.styles.body(role)).draw(ctx, room);
 }
 
-/// Who wrote it, from where, on which line, how many replies and how long ago, from the left.
+/// Who wrote it, on which line, how many replies and how long ago, from the left.
 fn who_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header) {
     let (gap, faint) = (ctx.tokens.sm, ctx.styles.small(Role::Faint));
     let age = ago(head.at.age_at(ctx.now));
@@ -196,13 +196,7 @@ fn who_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header) {
     };
     let initials = ctx.styles.initials(Role::Muted);
     Label::new(&head.initials, initials).left(ctx, &mut room, ctx.tokens.xs);
-    let said = [
-        head.author.as_str(),
-        head.source,
-        head.lines.as_str(),
-        &replies,
-        &age,
-    ];
+    let said = [head.author.as_str(), head.lines.as_str(), &replies, &age];
     for text in said.into_iter().filter(|one| !one.is_empty()) {
         Label::new(text, faint).left(ctx, &mut room, gap);
     }

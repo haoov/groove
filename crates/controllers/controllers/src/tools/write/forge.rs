@@ -30,7 +30,7 @@ pub(super) fn mr(
     mr::write(state, services, spawner, &worktree.id, text, act, asker);
 }
 
-/// A comment on the MR itself, under no line of it.
+/// A comment on the MR: on lines of the diff when the write names a path, else on the MR itself.
 pub(super) fn comment(
     state: &mut AppState,
     services: &Services,
@@ -40,7 +40,10 @@ pub(super) fn comment(
     let Some(body) = write.text("body").map(str::to_string) else {
         return write.reply.failed("comment_mr needs a body");
     };
-    let Some(whose) = super::notes::whose(state, &write) else {
+    if let Some(path) = write.text("path").map(str::to_string) {
+        return super::threads::comment(state, services, spawner, (write, path, &body));
+    }
+    let Some(whose) = super::threads::whose(state, &write) else {
         return write.reply.failed(NO_WORKTREE);
     };
     let asker = Asker::Agent(write.reply);

@@ -1,6 +1,5 @@
 //! What frames a note's words: the header a comment opens on, the room around the card.
 
-use groove_controllers::delivery_service::BY_USER;
 use groove_types::Note;
 use groove_ui_kit::base::style::Role;
 
@@ -8,8 +7,6 @@ use groove_ui_kit::base::style::Role;
 pub struct Header {
     pub initials: String,
     pub author: String,
-    /// `local` for the session's own note, `MR` for a thread.
-    pub source: &'static str,
     /// Its Conventional Comments label, and the decorations after it.
     pub label: Option<(String, Vec<String>)>,
     /// The lines the note is about, on its opening comment.
@@ -22,28 +19,11 @@ pub struct Header {
 /// A row of room inside a note's card: plain, or ruled across it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Room {
-    Gap,
     Between,
     /// A row half above a card, half inside it before its header.
     Over,
     /// A row half inside a card under its buttons, half under it.
     Under,
-}
-
-/// A row of the composer around the words being typed.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Composed {
-    /// The lines it is about, and the label its words open on.
-    Chips {
-        lines: String,
-        label: Option<String>,
-    },
-    /// The decorations once a label is chosen, with those held; a hint; save and cancel.
-    Footer {
-        hint: &'static str,
-        save: &'static str,
-        decorations: Option<Vec<String>>,
-    },
 }
 
 /// A row of the field the words are typed in: whether it opens it, closes it, and has the keyboard.
@@ -78,14 +58,9 @@ impl Header {
             let decorations = one.decorations.iter().map(|one| one.to_string());
             (one.label.to_string(), decorations.collect())
         });
-        let author = match said.author.as_str() {
-            BY_USER => "me",
-            other => other,
-        };
         Self {
-            initials: initials(author),
-            author: author.to_string(),
-            source: if note.is_local() { "local" } else { "MR" },
+            initials: initials(&said.author),
+            author: said.author.clone(),
             label,
             lines,
             at: said.at,

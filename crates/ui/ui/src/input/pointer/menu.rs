@@ -68,19 +68,13 @@ fn tab_of(app: &AppState, path: String) -> Of {
     Of::Tab { path, owes, others }
 }
 
-/// The lines a note would stand on: the selection under the click, else its line.
+/// The lines a click asks about: the selection under it, else its line.
 fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32)) -> Option<Of> {
     let (path, caret) = super::surface::at(ui, app, hits, metrics, at)?;
     let line = caret.line as u32;
     let held = selected(app, &path).filter(|(from, to)| (*from..=*to).contains(&line));
     let lines = held.unwrap_or((line, line));
-    let noted = app
-        .delivery
-        .shown
-        .iter()
-        .filter(|note| note.is_local() && !note.resolved)
-        .any(|note| note.over(&path, lines));
-    (!noted).then_some(Of::Line { path, lines })
+    Some(Of::Line { path, lines })
 }
 
 /// The lines a selection of the open file covers.
@@ -138,10 +132,6 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     if picked.drawer {
         ui.session.manual = true;
         ui.focus = Focus::Terminal;
-    }
-    if picked.noting.is_some() {
-        ui.session.noting = picked.noting;
-        ui.focus = Focus::Workspace;
     }
     if let Some(about) = picked.prompting {
         crate::input::ask::asked(ui, about);

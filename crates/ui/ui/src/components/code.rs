@@ -9,21 +9,17 @@ mod rows;
 use groove_gfx::Color;
 use groove_types::{Highlight, Severity};
 
-pub use self::header::{Composed, Field, Header, Noted, Room, label_role};
+pub use self::header::{Field, Header, Noted, Room, label_role};
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
 pub(crate) use self::row::card_across;
 pub use self::rows::{Rows, code};
 pub use groove_ui_kit::widgets::code::{Block, Gutters, Outline, Tile, head_mark, head_of};
 
-/// The buttons a note's last row carries, and the note they act on.
+/// The buttons a thread's last row carries, and the thread they act on.
 #[derive(Debug, Clone)]
 pub struct Acting {
-    pub origin: groove_types::NoteOrigin,
+    pub thread: String,
     pub resolved: bool,
-    /// The MR holds it.
-    pub thread: bool,
-    /// It can be posted.
-    pub post: bool,
 }
 
 /// One row of code: what its gutters say, its text, and the colour over it.
@@ -54,9 +50,10 @@ pub struct Line<'a> {
     /// A side of a split row with no line on it.
     pub empty: bool,
     pub pad: Option<Room>,
-    pub composed: Option<Composed>,
-    /// The notes this line carries, and the resolved one a click on them opens.
-    pub tile: Option<(Tile, Option<groove_types::NoteOrigin>)>,
+    /// The send and cancel row under a reply being typed.
+    pub footer: bool,
+    /// The threads this line carries, and the resolved one a click on them opens.
+    pub tile: Option<(Tile, Option<String>)>,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -85,9 +82,9 @@ pub struct Line<'a> {
 }
 
 impl<'a> Line<'a> {
-    pub fn composed(composed: Composed) -> Self {
+    pub fn footer() -> Self {
         Self {
-            composed: Some(composed),
+            footer: true,
             ..Self::new("")
         }
     }
@@ -129,7 +126,7 @@ impl<'a> Line<'a> {
             covered: false,
             empty: false,
             pad: None,
-            composed: None,
+            footer: false,
             tile: None,
             caret: None,
             held: None,

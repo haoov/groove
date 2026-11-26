@@ -31,7 +31,6 @@ groove-types = { path = "../../shared/types" }
 groove-config = { path = "../../modules/config" }
 groove-db = { path = "../../base/db" }
 groove-exec = { path = "../../base/exec" }
-groove-annotations = { path = "../../modules/annotations" }
 groove-mrs = { path = "../../modules/mrs" }
 groove-hooks = { path = "../../modules/hooks" }
 groove-mcp = { path = "../../modules/mcp" }

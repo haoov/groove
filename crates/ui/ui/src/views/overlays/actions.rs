@@ -16,7 +16,7 @@ pub use picked::picked;
 pub const TAB: [Act; 3] = [Act::Close, Act::CloseOthers, Act::CloseAll];
 
 /// What the lines under a click offer.
-pub const LINE: [Act; 2] = [Act::Note, Act::Ask];
+pub const LINE: [Act; 1] = [Act::Ask];
 
 /// The actions of one path of the explorer.
 pub const PATH: [Act; 5] = [

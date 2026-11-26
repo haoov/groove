@@ -66,33 +66,24 @@ goes to the server**, as a watcher of its own. Both are typed in the list's find
 failing, or done. A row whose status is done keeps its ready count faint. A word Groove does
 not know stays plain.
 
-## Annotations
+## MR threads
 
-**A note is the session's own**: a line range on a file's new side, its words, its
-author and its status, kept in Groove's database. The notes list shows the session's
-notes and the MR's threads as one list.
+**Groove keeps no note of its own: a note is a thread of the MR.** The forge holds it.
+The notes list shows the selected worktree's threads. The agent opens a thread on lines
+of the diff with `comment_mr`; its words carry the `agent` decoration.
 
-**One open note a line.** A note stands in the surface under the line it was left on,
-in a card from the code's column, with its buttons under it. The line it opens on carries a tile
-before its numbers: a yellow count of its open notes, or a tick when they are all
-resolved. Each comment opens on a
-header: the author's initials and name, where the note lives, its Conventional Comments
-label and decoration, its lines and its age. Its words are typed on the same kind of buffer a file is, so a
-caret, a selection, an undo and the clipboard work there too. Around it, a composer: the
-Conventional Comments labels to pick from, which write the label into the words, its
-decorations once a label is chosen, and save and cancel. Its field's edge lights while it
-has the keyboard. A label reads plain or bold, and carries its decorations as a list; a note the
-agent writes carries the `agent` decoration.
+**A thread stands in the surface under the line it hangs on**, in a card from the code's
+column, with its buttons under it. The line it opens on carries a tile before its numbers:
+a yellow count of its open threads, or a tick when they are all resolved. Each comment
+opens on a header: the author's initials and name, its Conventional Comments label and
+decorations, its lines and its age. A label reads plain or bold, and carries its
+decorations as a list.
 
-**What a note offers depends on what holds it.** A note of the session is written again,
-resolved, deleted, or posted where the worktree has an MR; posting resolves the local
-copy. A forge thread is replied to, in a field across its last row where the reply is typed,
-and resolved. A resolved note takes no row: its tick opens it, and closes
-it again. Delete
-stands alone at the row's end, in red.
-
-**A verdict carries every open note of the repo**: in one atomic call on GitHub, and a
-note at a time on GitLab, each resolved as it lands.
+**A thread is replied to and resolved.** The reply is typed in a field across its last
+row, on the same kind of buffer a file is, so a caret, a selection, an undo and the
+clipboard work there too. Send and cancel stand under it. The field's edge lights while
+it has the keyboard. A resolved thread takes no row: its tick opens it, and closes it
+again.
 
 ## Editor
 

@@ -4,7 +4,7 @@ use groove_types::DiffView;
 
 pub use super::mode::Mode;
 pub use super::tab::{Face, Tab};
-pub use noting::{Noting, Writing};
+pub use noting::Noting;
 pub use prompt::Prompt;
 
 mod noting;
@@ -91,10 +91,10 @@ pub struct SessionUi {
     pub closed: std::collections::BTreeSet<String>,
     /// A path being named, where the tree asked for it.
     pub naming: Option<Naming>,
-    /// A note being typed, on the lines it will stand on.
+    /// A reply being typed under a thread.
     pub noting: Option<Noting>,
-    /// The resolved notes opened out of their fold.
-    pub unfolded: Vec<groove_types::NoteOrigin>,
+    /// The resolved threads opened out of their fold.
+    pub unfolded: Vec<String>,
     /// Which notes the sidebar's list shows.
     pub showing: Showing,
     pub resources: crate::views::session::resources::ResourcesUi,

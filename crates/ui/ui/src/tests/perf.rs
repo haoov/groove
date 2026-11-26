@@ -65,7 +65,7 @@ fn time_the_frame() {
 
 /// `big(lines)` with a long note, answered once, on every tenth line.
 fn noted(lines: usize) -> AppState {
-    use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
+    use groove_types::{Anchor, Note, Said, Timestamp};
     let said = |author: &str, body: &str| Said {
         author: author.into(),
         body: body.into(),
@@ -78,7 +78,7 @@ fn noted(lines: usize) -> AppState {
     app.delivery.shown = (0..lines as u32)
         .step_by(10)
         .map(|line| Note {
-            origin: NoteOrigin::Thread(format!("t{line}")),
+            thread: format!("t{line}"),
             anchor: Some(Anchor::line("src/lib.rs", line + 1)),
             resolved: false,
             said: vec![

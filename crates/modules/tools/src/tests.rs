@@ -64,12 +64,7 @@ fn a_tool_that_changes_something_says_so() {
         .filter(|tool| tool.writes)
         .map(|tool| tool.name)
         .collect();
-    for named in [
-        "git_commit",
-        "create_mr",
-        "create_annotation",
-        "finish_task",
-    ] {
+    for named in ["git_commit", "create_mr", "comment_mr", "finish_task"] {
         assert!(writes.contains(&named), "{named}");
     }
     let reads: Vec<&str> = all()
@@ -97,8 +92,8 @@ fn the_rules_for_what_a_human_reads_are_said_at_the_call() {
     assert!(body.contains("## What"), "{body}");
     assert!(body.contains(wording::TIGHT), "{body}");
 
-    let note = named("create_annotation").expect("the note tool");
-    let said = note.schema["properties"]["content"]["description"]
+    let comment = named("comment_mr").expect("the comment tool");
+    let said = comment.schema["properties"]["body"]["description"]
         .as_str()
         .expect("what a note says");
     assert!(said.contains("Conventional Comment"), "{said}");

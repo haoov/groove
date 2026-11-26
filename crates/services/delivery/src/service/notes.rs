@@ -1,23 +1,19 @@
-//! The session's notes, and what it says on the forge's threads.
+//! What the session says on the forge's threads.
 
-use groove_annotations::New;
-use groove_forge::{Posted, Remote, Verdict};
-use groove_types::{
-    Annotation, AnnotationId, Forge, Repo, Result, ReviewVerdict, SessionId, Timestamp, WorktreeId,
-};
+use groove_forge::{Posted, Verdict};
+use groove_types::{Anchor, Repo, Result, ReviewVerdict, WorktreeId};
 
 use super::Service;
 
-/// What a review says: its verdict, its words, and the notes it carries.
+/// What a review says: its verdict and its words.
 pub struct Said<'a> {
     pub verdict: ReviewVerdict,
     pub body: &'a str,
-    pub notes: &'a [Annotation],
 }
 
 impl Said<'_> {
-    /// Why a comment has nothing to post; a review posts as it stands, words and notes or none.
-    pub fn empty(verdict: Option<ReviewVerdict>, body: &str, _notes: &[Annotation]) -> Result<()> {
+    /// Why a comment has nothing to post; a review posts as it stands, words or none.
+    pub fn empty(verdict: Option<ReviewVerdict>, body: &str) -> Result<()> {
         match (verdict, body.is_empty()) {
             (None, true) => Err(groove_types::Error::invalid("a comment needs a body")),
             _ => Ok(()),
@@ -25,69 +21,23 @@ impl Said<'_> {
     }
 }
 
-/// A note of another repo has no line on this merge request.
-fn elsewhere(note: &Annotation, repo: &Repo) -> Result<()> {
-    match note.repo == repo.id {
-        true => Ok(()),
-        false => Err(groove_types::Error::invalid(format!(
-            "{} is a note of {}, not of {}",
-            note.id, note.repo, repo.id
-        ))),
-    }
-}
-
-/// One note of this session as the forges take it, lines and all.
-pub(crate) fn posted(note: &Annotation) -> Posted<'_> {
-    Posted {
-        path: &note.file_path,
-        from: note.start_line + 1,
-        to: note.end_line + 1,
-        body: &note.content,
-    }
-}
-
 impl Service {
-    /// The notes this session left, whichever file they stand on.
-    pub async fn notes(&self, session: &SessionId) -> Result<Vec<Annotation>> {
-        self.notes.list(session).await
-    }
-
-    pub async fn create_note(&self, new: New, now: Timestamp) -> Result<Annotation> {
-        self.notes.create(new, now).await
-    }
-
-    pub async fn update_note(
-        &self,
-        session: &SessionId,
-        id: &AnnotationId,
-        content: &str,
-    ) -> Result<Annotation> {
-        self.notes.update(session, id, content).await
-    }
-
-    pub async fn resolve_note(&self, session: &SessionId, id: &AnnotationId) -> Result<Annotation> {
-        self.notes.resolve(session, id).await
-    }
-
-    pub async fn reopen_note(&self, session: &SessionId, id: &AnnotationId) -> Result<Annotation> {
-        self.notes.reopen(session, id).await
-    }
-
-    pub async fn delete_note(&self, session: &SessionId, id: &AnnotationId) -> Result<()> {
-        self.notes.delete(session, id).await
-    }
-
-    /// One note of this session posted on the MR, and resolved here once it is there.
-    pub async fn post_note(
+    /// A new thread of the MR on lines of a file's new side.
+    pub async fn comment_lines(
         &self,
         repo: &Repo,
         worktree: &WorktreeId,
-        note: &Annotation,
+        anchor: &Anchor,
+        body: &str,
     ) -> Result<()> {
-        elsewhere(note, repo)?;
         let (remote, mr) = (self.remote(repo)?, self.held(worktree).await?);
-        remote.post_note(repo, &mr.remote_id, posted(note)).await?;
-        self.notes.delete(&note.session, &note.id).await
+        let posted = Posted {
+            path: &anchor.path,
+            from: anchor.start_line + 1,
+            to: anchor.end_line + 1,
+            body,
+        };
+        Ok(remote.post_note(repo, &mr.remote_id, posted).await?)
     }
 
     /// Words under a thread of the MR.
@@ -110,49 +60,9 @@ impl Service {
         Ok(remote.comment(repo, &mr.remote_id, body).await?)
     }
 
-    /// A verdict carrying the session's unposted notes, which are resolved once up.
+    /// A verdict on the MR, with its words.
     pub async fn review(&self, repo: &Repo, worktree: &WorktreeId, said: Said<'_>) -> Result<()> {
-        let remote = self.remote(repo)?;
-        match remote.kind() {
-            Forge::Github => self.reviewed(&remote, repo, worktree, said).await,
-            Forge::Gitlab => self.one_by_one(&remote, repo, worktree, said).await,
-        }
-    }
-
-    /// One call carries the verdict and every note, so all of them land or none do.
-    async fn reviewed(
-        &self,
-        remote: &Remote,
-        repo: &Repo,
-        worktree: &WorktreeId,
-        said: Said<'_>,
-    ) -> Result<()> {
-        let mr = self.held(worktree).await?;
-        let notes: Vec<Posted<'_>> = said.notes.iter().map(posted).collect();
-        let verdict = Verdict {
-            said: said.verdict,
-            body: said.body,
-            notes: &notes,
-        };
-        remote.review(repo, &mr.remote_id, verdict).await?;
-        for note in said.notes {
-            self.notes.delete(&note.session, &note.id).await?;
-        }
-        Ok(())
-    }
-
-    /// Each note posted and taken away in turn, then the verdict on its own.
-    async fn one_by_one(
-        &self,
-        remote: &Remote,
-        repo: &Repo,
-        worktree: &WorktreeId,
-        said: Said<'_>,
-    ) -> Result<()> {
-        for note in said.notes {
-            self.post_note(repo, worktree, note).await?;
-        }
-        let mr = self.held(worktree).await?;
+        let (remote, mr) = (self.remote(repo)?, self.held(worktree).await?);
         let verdict = Verdict {
             said: said.verdict,
             body: said.body,
