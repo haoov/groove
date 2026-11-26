@@ -2,7 +2,6 @@
 
 use groove_routine_service::runs::{Deliver, Run, deliver};
 
-use crate::session::FIRST_SIZE;
 use crate::{AppState, Spawner, agent};
 
 /// The run's routine asked of its agent, as its kind wants.
@@ -13,8 +12,8 @@ pub(super) fn send(state: &mut AppState, spawner: &dyn Spawner, run: &Run) {
     let words = groove_routine_service::routines::prompt(&routine, run.trigger, &run.about);
     let id = run.session.clone();
     match deliver(routine.kind, state.agent.alive(&id)) {
-        Deliver::Type => agent::skills::typed(state, spawner, &id, &words),
-        Deliver::Ask => agent::asking(state, spawner, id, FIRST_SIZE, Some(words)),
+        Deliver::Type => agent::skills::typed(state, &id, &words),
+        Deliver::Ask => agent::asking(state, spawner, id, Some(words)),
         Deliver::Nothing => {}
     }
 }

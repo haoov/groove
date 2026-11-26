@@ -1,6 +1,7 @@
 mod actions;
 mod agent;
 mod alerts;
+mod chat;
 mod cluster;
 mod cluster_writes;
 mod config;
@@ -8,6 +9,7 @@ mod deleting;
 mod delivery;
 mod docs;
 mod fixture;
+mod headless;
 mod landed;
 mod launches;
 mod layers;

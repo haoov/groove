@@ -1,6 +1,6 @@
 //! The keymap: its rings, the keys it leaves to a terminal, and a chord rebound from Settings.
 
-use groove_controllers::{Command, agent, config};
+use groove_controllers::{Command, config};
 use groove_gfx::Fonts;
 use groove_types::Chord;
 
@@ -17,17 +17,6 @@ fn chord(text: &str) -> Chord {
 fn bare_config() -> groove_types::Config {
     let file = serde_json::json!({ "git": { "worktree_root": "~" } });
     serde_json::from_value(file).expect("a config")
-}
-
-#[test]
-fn an_alt_key_groove_does_not_claim_reaches_the_agent() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    let sent = press(Key::Char('b'), ALT, &mut ui, &app);
-    let Some(Command::Agent(agent::Command::Send { bytes, .. })) = sent.first() else {
-        panic!("the shell's word back: {sent:?}");
-    };
-    assert_eq!(bytes, b"\x1bb");
 }
 
 #[test]

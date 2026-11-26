@@ -37,7 +37,7 @@ fn explorer(
     dispatch(Command::Session(open), state, services, spawner);
     let id = state.session.selected.clone().expect("a session");
     until(spawner, services, state, |s| {
-        s.agent.terminal(&id).is_some()
+        s.agent.stream(&id).is_some()
     });
     id
 }
@@ -51,9 +51,9 @@ fn status(state: &mut AppState, id: &SessionId, to: AgentStatus) {
     agent.expect("its agent").1.activity.status = to;
 }
 
-fn screen(state: &AppState, id: &SessionId, row: usize) -> String {
-    let terminal = state.agent.terminal(id).expect("a terminal");
-    terminal.screen().line(row).to_string()
+fn heard(state: &AppState, id: &SessionId, words: &str) -> bool {
+    let heard = crate::tests::fixture::heard(&state.env.home, id.as_str());
+    heard.is_some_and(|(_, said)| said.iter().any(|one| one.contains(words)))
 }
 
 fn due_today(short_id: &str) -> groove_types::Task {
@@ -86,9 +86,6 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     on("user:notes", &mut state, &services, &spawner);
     let away = explorer("away", &mut state, &services, &spawner);
     let here = explorer("here", &mut state, &services, &spawner);
-    until(&spawner, &services, &mut state, |s| {
-        screen(s, &away, 0).starts_with("ready")
-    });
     for id in [&away, &here] {
         auto(&mut state, id, true);
     }
@@ -111,7 +108,7 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     );
     assert_eq!(state.routine.runs.running.len(), 1);
     until(&spawner, &services, &mut state, |s| {
-        screen(s, &away, 2) == "got /groove:fix-notes"
+        heard(s, &away, "/groove:fix-notes")
     });
 
     let run = &mut state.routine.runs.running[0];

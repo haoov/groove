@@ -137,7 +137,7 @@ fn a_task_source_turns_on_and_off_by_its_toggle() {
 
 #[test]
 fn each_source_sums_up_its_gaps_and_splits_its_mapping_under_headings() {
-    let app = crate::tests::screen::sourced(checked(ready(), true), true, true);
+    let app = crate::tests::agent::sourced(checked(ready(), true), true, true);
     let mut ui = Ui::default();
     (ui.settings.open, ui.settings.section) = (true, Section::Providers);
     let texts = crate::tests::settings::drawn_whole(&app, &ui);

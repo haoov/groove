@@ -113,10 +113,9 @@ fn with_both_rail_windows_folded_the_agent_takes_the_whole_width() {
     let x = folded.agent.x + folded.agent.w / 8.0;
     let y = folded.agent.y + folded.agent.h / 2.0;
     assert!(x < open.rail.right(), "inside the rail's column");
-    assert_eq!(
-        hits.at(x, y),
-        Some(Target::Agent),
-        "the agent's screen answers there"
+    assert!(
+        matches!(hits.at(x, y), Some(Target::Agent | Target::Chat)),
+        "the agent's pane answers there"
     );
 }
 

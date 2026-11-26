@@ -123,7 +123,7 @@ fn a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box() {
 #[test]
 fn the_defense_themes_lay_a_hex_lattice_on_the_deep_ground_and_the_others_none() {
     let lattice_in = |theme: groove_types::ThemeName| {
-        let mut app = crate::tests::screen::sourced(full_app(), true, true);
+        let mut app = crate::tests::agent::sourced(full_app(), true, true);
         let mut config = app.config.config.clone().expect("a config");
         config.ui.theme = theme;
         app.config.config = Some(config);
@@ -180,7 +180,7 @@ fn a_boundary_is_grabbed_on_the_border_the_user_sees() {
 fn signals_fire_across_the_lattice_only_while_the_session_s_agent_works() {
     use groove_types::{AgentStatus, SessionActivity, SessionId, ThemeName, Timestamp};
     let lit = |theme: ThemeName, status: AgentStatus| {
-        let mut app = crate::tests::screen::sourced(full_app(), true, true);
+        let mut app = crate::tests::agent::sourced(full_app(), true, true);
         let mut config = app.config.config.clone().expect("a config");
         config.ui.theme = theme;
         app.config.config = Some(config);
@@ -197,7 +197,12 @@ fn signals_fire_across_the_lattice_only_while_the_session_s_agent_works() {
             seen_at: None,
         };
         let agent = groove_controllers::agent_service::Agent {
-            terminal: None,
+            stream: None,
+            permissions: Vec::new(),
+            commands: Vec::new(),
+            limits: Default::default(),
+            windows: Vec::new(),
+            chosen: None,
             activity,
             started_at: Timestamp::new(0),
             launch: 0,

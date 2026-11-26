@@ -13,6 +13,7 @@ mod noting;
 mod offered;
 mod opened;
 mod panes;
+mod prompt;
 mod resources;
 mod scope;
 mod worded;
@@ -27,7 +28,7 @@ use crate::views::settings::Draft;
 use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
-use agent::{to_agent, to_shell};
+use agent::to_shell;
 use bar::{finding, in_bar, opened, typing};
 pub(in crate::input) use bar::{refound, searches};
 use naming::in_name;
@@ -117,7 +118,7 @@ fn in_pane(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
+    let raw = ui.focus == Focus::Terminal;
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return copy::copied(ui.focus, app);
     }
@@ -141,11 +142,9 @@ fn in_pane(
         if let Some(commands) = resources::in_table((key, mods), ui, app, seen) {
             return commands;
         }
-    }
-    if ui.focus == Focus::Workspace
-        && let Some(commands) = offered::in_list((key, mods), ui, app)
-    {
-        return commands;
+        if let Some(commands) = offered::in_list((key, mods), ui, app) {
+            return commands;
+        }
     }
     if ui.focus == Focus::Terminal
         && let Some(commands) = opened::in_terminal((key, mods), app, keymap)
@@ -166,7 +165,7 @@ fn to_focused(
     ),
 ) -> Vec<Command> {
     match ui.focus {
-        Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
+        Focus::Agent => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),

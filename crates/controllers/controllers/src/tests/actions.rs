@@ -81,10 +81,13 @@ fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the
     );
     let pressed = groove_types::ExternalId::new("notion:PRESSED");
     let id = state.session.working(&pressed).unwrap().session.id.clone();
+    let home = state.env.home.clone();
     until(&spawner, &services, &mut state, |s| {
-        s.agent
-            .terminal(&id)
-            .is_some_and(|t| t.screen().line(0) == "ready /groove:start-task")
+        s.agent.stream(&id).is_some()
+            && fixture_heard(&home, id.as_str())
+                .first()
+                .map(String::as_str)
+                == Some("/groove:start-task")
     });
 }
 
@@ -133,4 +136,10 @@ fn what_start_due_opened_joins_the_notes_within_their_cap() {
     assert_eq!(state.notes.len(), kept, "the oldest let go");
     let last = state.notes.last().map(|one| one.what.as_str());
     assert_eq!(last, Some("start-due opened LATE"));
+}
+
+fn fixture_heard(home: &std::path::Path, session: &str) -> Vec<String> {
+    crate::tests::fixture::heard(home, session)
+        .map(|(_, said)| said)
+        .unwrap_or_default()
 }

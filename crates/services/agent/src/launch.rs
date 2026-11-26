@@ -1,11 +1,10 @@
-//! Starting an agent for a session, and what its terminal reports.
+//! Starting an agent for a session, headless on its stream.
 
 use std::path::{Path, PathBuf};
 
 use groove_agent_launch::{Launch, Loopback, Paths, Tools};
 use groove_hooks::Receiver;
 use groove_mcp::Server;
-use groove_terminal::{Hooks, Terminal};
 use groove_types::{AnsiPalette, Error, Session, ThemeName};
 
 /// Where a launch reads and writes, from the app's environment.
@@ -23,44 +22,45 @@ pub struct LaunchPaths {
 }
 
 impl crate::State {
-    /// Whether `session`'s agent has a terminal it has not exited.
+    /// Whether `session`'s agent runs on a stream it has not exited.
     pub fn alive(&self, session: &groove_types::SessionId) -> bool {
         let exited = |one: &groove_types::SessionActivity| {
             matches!(one.status, groove_types::AgentStatus::Exited { .. })
         };
-        self.terminal(session).is_some() && !self.activity(session).is_some_and(exited)
+        self.stream(session).is_some() && !self.activity(session).is_some_and(exited)
     }
 }
 
-/// Plans the command line and spawns it on a terminal of `cols` by `rows`, `prompt` its first message.
+/// Plans the command line and spawns it headless, `prompt` its first message.
 pub async fn launch(
     session: &Session,
     paths: &LaunchPaths,
     cwd: &Path,
-    (cols, rows): (u16, u16),
-    palette: AnsiPalette,
-    hooks: Hooks,
+    hooks: crate::StreamHooks,
     prompt: Option<&str>,
-) -> Result<Terminal, Error> {
-    let launch = Launch::plan(
+) -> Result<crate::Stream, Error> {
+    let launch = planned(session, paths, cwd).await?;
+    let stream = crate::Stream::spawn(launch.streamed(), hooks).await?;
+    if let Some(prompt) = prompt {
+        stream.say(prompt)?;
+    }
+    Ok(stream)
+}
+
+async fn planned(session: &Session, paths: &LaunchPaths, cwd: &Path) -> Result<Launch, Error> {
+    let at = Paths {
+        home: &paths.home,
+        launch_dir: &paths.launch_dir,
+        cwd,
+        knowledge: paths.knowledge.as_deref(),
+    };
+    Launch::plan(
         session,
-        &Paths {
-            home: &paths.home,
-            launch_dir: &paths.launch_dir,
-            cwd,
-            knowledge: paths.knowledge.as_deref(),
-        },
+        &at,
         &paths.plugin_dirs,
         loopback(paths, session).as_ref(),
     )
-    .await?;
-    let launch = match prompt {
-        Some(prompt) => launch.asking(prompt),
-        None => launch,
-    };
-    Terminal::spawn(launch.spec(cols, rows), palette, hooks)
-        .await
-        .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
+    .await
 }
 
 /// Every session posts its hooks to its own url, and asks its tools on its own stream.

@@ -15,7 +15,9 @@ mod sheet;
 mod state;
 mod tab;
 
-pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Showing, Tab, Term, Writing};
+pub use state::{
+    Asked, Bar, Face, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
+};
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -53,7 +55,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         sidebar(ctx, app, ui);
     }
     // After the agent: the header, folded or not, and the drawer float over its screen.
-    agent_pane::draw(ctx, app, on(crate::Focus::Agent));
+    agent_pane::draw(ctx, app, ui, on(crate::Focus::Agent));
     crate::views::alerts::draw(ctx, app, ui);
     header::draw(ctx, app, ui);
     if let Some(session) = app.session.selected.as_ref() {

@@ -12,8 +12,6 @@ fn explorer() -> SessionId {
 fn start(state: &mut AppState, services: &Services, spawner: &SyncSpawner) {
     let start = crate::agent::Command::Start {
         session: explorer(),
-        cols: 40,
-        rows: 6,
     };
     dispatch(crate::Command::Agent(start), state, services, spawner);
 }
@@ -33,8 +31,8 @@ fn released(
     spawner: &dyn crate::Spawner,
     held: Option<crate::agent_service::Held>,
 ) {
-    if let Some((size, prompt)) = held {
-        crate::agent::asking(state, spawner, explorer(), size, prompt);
+    if let Some(prompt) = held {
+        crate::agent::asking(state, spawner, explorer(), prompt);
     }
 }
 
@@ -52,7 +50,7 @@ fn a_write_that_panics_still_lets_the_start_it_held_run() {
 fn a_forget_asked_while_a_launch_writes_its_files_runs_after_it() {
     let (home, spawner, services, mut state) = fixture::with_explorer();
     let held = fixture::Held::over(&spawner);
-    crate::agent::start(&mut state, &held, explorer(), (40, 6));
+    crate::agent::start(&mut state, &held, explorer());
     crate::agent::forget(&mut state, &held, &explorer());
     state.session.close(&explorer());
     held.backwards(&mut state, &services);

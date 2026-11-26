@@ -63,8 +63,8 @@ fn a_key_reaches_the_agent_only_while_the_agent_has_the_keyboard() {
         &mut ui,
         &app,
     );
-    assert_eq!(typed.len(), 1, "the agent hears it");
-    assert_eq!(typed[0].id(), "agent.send");
+    assert!(typed.is_empty(), "nothing is sent yet");
+    assert_eq!(ui.agent.prompt.text(), "a", "the agent's prompt takes it");
 
     ui.focus = Focus::Workspace;
     let quiet = press(
@@ -74,6 +74,7 @@ fn a_key_reaches_the_agent_only_while_the_agent_has_the_keyboard() {
         &app,
     );
     assert!(quiet.is_empty(), "the workspace does not pass it on");
+    assert_eq!(ui.agent.prompt.text(), "a");
 }
 
 #[test]
@@ -166,8 +167,7 @@ fn a_second_press_folds_the_sidebar_away() {
 #[test]
 fn on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask() {
     use crate::input::Modifiers;
-    let app =
-        crate::tests::screen::asking(vec![crate::tests::screen::ask("w1", "write", "src/lib.rs")]);
+    let app = crate::tests::agent::asking(vec![crate::tests::agent::ask("w1", "write", "src/lib.rs")]);
     let mut ui = Ui {
         focus: Focus::Rail,
         ..Default::default()

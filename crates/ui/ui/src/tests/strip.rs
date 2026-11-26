@@ -1,17 +1,12 @@
 //! The workspace's strip: a click on the open tab folds it, any tab opens it again.
 
-use groove_gfx::{CellSize, Fonts};
+use groove_gfx::Fonts;
 
 use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tests::{click, full_app, window};
 use crate::views::session::Tab;
 use crate::{Ui, view};
-
-const CELL: CellSize = CellSize {
-    width: 8.0,
-    height: 17.0,
-};
 
 fn tab_click(tab: Tab, ui: &mut Ui, app: &groove_controllers::AppState) {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
@@ -36,11 +31,7 @@ fn a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent() {
     assert_eq!(folded.strip.right(), open.strip.right());
     assert!(folded.workspace.is_empty() && folded.sidebar.is_empty());
     assert_eq!(folded.agent.w, folded.board.w, "the agent takes the ground");
-    assert_eq!(folded.agent.y, open.agent.y, "from the top still");
-    let tokens = window().tokens();
-    let (wide, _) = folded.agent_grid(&tokens, CELL);
-    let (narrow, _) = open.agent_grid(&tokens, CELL);
-    assert!(wide > narrow, "the grid is sized for the wide pane at once");
+    assert_eq!(folded.agent.y, open.agent.y, "under the top bar still");
 }
 
 #[test]
@@ -266,18 +257,18 @@ fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
     assert!(!sliced, "no card cut row by row among the code");
 }
 
-/// The layer the agent's screen draws on.
-fn screen_layer(frame: &groove_gfx::Frame) -> usize {
+/// The layer the agent's prompt draws its hint on.
+fn prompt_layer(frame: &groove_gfx::Frame) -> usize {
     let mut layers = frame.layers().iter();
     layers
-        .position(|one| !one.grids.is_empty())
-        .expect("the agent's screen")
+        .position(|one| one.texts.iter().any(|run| run.text.starts_with("Reply to")))
+        .expect("the agent's prompt")
 }
 
 #[test]
-fn the_folded_header_stands_a_layer_over_the_agent_s_screen() {
-    let mut app = crate::tests::screen::asking(Vec::new());
-    crate::tests::agent::reading_mouse(&mut app);
+fn the_folded_header_stands_a_layer_over_the_agent_s_conversation() {
+    let mut app = crate::tests::agent::asking(Vec::new());
+    crate::tests::agent::headless(&mut app);
     let ui = Ui {
         surface: crate::Surface::Session,
         session: crate::views::session::SessionUi {
@@ -290,14 +281,14 @@ fn the_folded_header_stands_a_layer_over_the_agent_s_screen() {
     let layout = Layout::of(window(), &ui);
     assert!(
         layout.header.bottom() <= layout.agent.y,
-        "the capsule stands in the room over the agent's screen"
+        "the capsule stands in the room over the agent's conversation"
     );
     let capsule = crate::tests::panes(&frame, &app)
         .into_iter()
         .find(|(_, one)| one.y == layout.header.y && one.right() == layout.header.right());
     assert!(
-        capsule.map(|one| one.0) > Some(screen_layer(&frame)),
-        "its pane is a layer over the screen, not under its text"
+        capsule.map(|one| one.0) > Some(prompt_layer(&frame)),
+        "its pane is a layer over the conversation, not under its text"
     );
     let tab = hits.rect_of(&Target::Tab(Tab::Diff)).expect("a tab");
     assert_eq!(

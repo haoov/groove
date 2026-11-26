@@ -26,7 +26,12 @@ fn a_working_child_stands_under_its_idle_parent() {
         seen_at: None,
     };
     let agent = Agent {
-        terminal: None,
+        stream: None,
+        permissions: Vec::new(),
+        commands: Vec::new(),
+        limits: Default::default(),
+        windows: Vec::new(),
+        chosen: None,
         activity,
         started_at: Timestamp::new(0),
         launch: 0,

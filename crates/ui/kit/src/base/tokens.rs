@@ -91,6 +91,8 @@ pub const SIDEBAR_MIN: f32 = 180.0;
 /// How much of a carried row's place still shows, and of the raised ground under a selection.
 pub const GHOST: f32 = 0.3;
 pub const HELD: f32 = 0.8;
+/// Past this share of a window, a gauge turns to the ask's colour.
+pub const GAUGE_HIGH: f32 = 0.8;
 /// How far a panel's header band stands from its base toward the theme's first surface.
 pub const PANEL_HEAD: f32 = 0.45;
 /// The hex lattice a defense theme lays on its deepest ground — its hexes' corner radius in logical
@@ -159,7 +161,7 @@ pub struct Tokens {
     pub aside_near: f32,
     pub aside_mid: f32,
     pub aside_far: f32,
-    /// The palette's box.
+    /// The palette's box; `palette` is also the agent's prompt at its widest.
     pub modal: f32,
     pub palette: f32,
     pub modal_top: f32,

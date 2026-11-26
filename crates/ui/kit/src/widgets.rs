@@ -13,6 +13,7 @@ mod input;
 mod inset;
 mod list;
 mod menu;
+mod meter;
 mod modal;
 mod neurons;
 mod pane;
@@ -29,7 +30,7 @@ mod typed;
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
 pub use completions::{Offer, completions};
-pub use counts::{changes, counts, counts_room, faults, faults_room};
+pub use counts::{changes, changes_room, counts, counts_room, faults, faults_room};
 pub use field::Field;
 pub use fold::{caret, fold, fold_turn, folder};
 pub use heading::Heading;
@@ -41,6 +42,7 @@ pub use inset::{
 };
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};
+pub use meter::meter;
 pub use modal::{
     Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_lattice,
     ground_under, modal, panel_at, panel_head, solid_pane, sunk_pane,

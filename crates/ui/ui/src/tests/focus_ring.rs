@@ -56,33 +56,23 @@ fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
 }
 
 #[test]
-fn the_agent_has_no_ring_and_its_caret_takes_the_accent() {
-    let mut app = crate::tests::screen::asking(Vec::new());
-    crate::tests::agent::reading_mouse(&mut app);
-    let styles = styles(&app);
-    let accent = styles.color(Role::Accent);
-    let caret_ground = |keys: Focus| {
+fn the_prompt_stands_in_the_ring_while_the_agent_has_the_keys() {
+    let mut app = crate::tests::agent::asking(Vec::new());
+    crate::tests::agent::headless(&mut app);
+    let focus = styles(&app).focus();
+    let ringed = |keys: Focus| {
         let ui = Ui {
             surface: crate::Surface::Session,
             focus: keys,
             ..Ui::default()
         };
-        let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-        let ringed = in_colour(&frame, styles.focus());
-        let grid = frame
-            .layers()
-            .iter()
-            .flat_map(|one| one.grids.iter())
-            .next();
-        let grid = grid.expect("the agent's screen").clone();
-        let lit = grid.cells.iter().any(|cell| cell.bg == accent);
-        (ringed, lit)
+        let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+        let prompt = hits.rect_of(&crate::hit::Target::Prompt).expect("the prompt");
+        let ring = in_colour(&frame, focus);
+        ring.iter().any(|one| prompt.contains(one.x, one.y))
     };
-    let (ringed, lit) = caret_ground(Focus::Agent);
-    assert!(ringed.is_empty(), "no ring around the agent: {ringed:?}");
-    assert!(lit, "the caret on the accent");
-    let (_, lit) = caret_ground(Focus::Rail);
-    assert!(!lit, "not while another region has the keys");
+    assert!(ringed(Focus::Agent), "the prompt ringed while it has the keys");
+    assert!(!ringed(Focus::Rail), "not while another region has them");
 }
 
 #[test]

@@ -35,10 +35,10 @@ the rail only as its attention count.
   a container. Enforced by `a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box`.
 - **Focus is a ring**: the region that has the keys — the sessions' window, the strip, the
   sidebar, the terminals — stands in a thin ring in the accent, read as half its strength on
-  either theme. The agent's screen has no edge to ring: its cursor turns a solid block in the
-  accent while it has the keys. A terminal shows them by a solid cursor too. Enforced by
+  either theme. The agent's pane has no edge to ring: its prompt takes the ring while it has the
+  keys. A terminal shows them by a solid cursor. Enforced by
   `the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else`,
-  `the_agent_has_no_ring_and_its_caret_takes_the_accent` and
+  `the_prompt_stands_in_the_ring_while_the_agent_has_the_keys` and
   `a_selection_stays_neutral_in_the_region_that_has_the_keys`.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
   rail, the agent, the workspace and the sidebar; `alt+i` hands them to a maintenance task's
@@ -54,7 +54,7 @@ the rail only as its attention count.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
-  agent's and the terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
+  terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
   Enforced by `alt_shift_q_closes_the_session`.
 - **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
   palette's included, as the arrows do. Enforced by
@@ -279,25 +279,94 @@ The rail, then one ground for the agent with the workspace's strip standing on i
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's pty, a bar's room left over it and under it |
+| **Agent pane** | the agent's transcript, what it asks, and Groove's prompt; a bar's room left over it and under it |
 | **Strip** | header · info line · the selected tab · the sidebar |
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
 | **Alerts** | a maintenance task's firing alerts, over the agent: their header alone while folded |
 
+**The agent pane draws the conversation.** Every agent runs headless: Claude Code's
+stream-json on its pipes, no pty. A message, a skill, an interrupt and a model switch go over
+that stream, and the transcript draws the blocks. It is a transcript, not a chat: no bubbles,
+no avatars. The user's turn is a block across the column on a quiet ground under `YOU` and how
+long ago; the agent's words are plain text, under `AGENT` once a turn. A kind is a word in
+small capitals; the only marks are the fold chevron. Enforced by
+`the_conversation_shows_in_the_agent_pane` and `the_agent_speaks_under_its_name_once_a_turn`.
+
+**Steps fold into one block.** Reads, searches, commands and MCP calls back to back are
+counted in words, `Read 3 · Searched 2 · Ran 1`, with the time they took and the last step
+under. A thought says nothing and shows nothing. A click opens a row for each: its kind, its
+target and its time, a command's last lines in a sunk box under it. While the agent works, a
+line tinted in the accent stands over the block and says what runs and for how long. Enforced by `a_click_on_the_steps_opens_each_step_with_what_it_printed` and
+`while_the_agent_works_past_its_last_record_a_working_line_says_so`.
+
+**Edits are one block.** Files written back to back stand under `EDITED · N FILES` and their
+sum; each file is a link to its hunk in the Diff tab with its `+N -N`. Enforced by
+`edits_back_to_back_stand_in_one_block_each_file_a_link`,
+`a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff` and
+`an_edit_in_another_worktree_selects_it_first`.
+
+**What asks stands over the prompt.** A tool Claude asks leave for is glass ringed in the ask's
+colour: `BASH ASKS LEAVE` and where, what it runs in a sunk box, *Refuse* on `ESC` and *Allow*
+on `ENTER`. A question shows one at a time, its options on their digits with what each means,
+and *Back* undoes the last pick. In an empty prompt Enter allows, Escape refuses and a digit
+picks. With nothing asked, Escape interrupts the turn. Enforced by
+`a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
+`a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
+`back_undoes_the_last_pick_of_a_question` and
+`escape_on_an_empty_prompt_interrupts_the_agent_when_nothing_is_asked`.
+
+**What goes wrong is red.** An API error, a reached limit or the agent ending by itself is a
+red-tinted block: its title in small capitals, then what it printed. An interrupt is a rule
+across the column, and nothing runs after it. A message typed while the agent works waits faint
+and says so. Enforced by `what_went_wrong_shows_in_the_conversation` and
+`an_interrupt_is_a_rule_across_the_column_and_nothing_runs_after_it`.
+
+**An agent the agent sends is a block**: its type, its task, its state and its time, its steps
+counted, its answer cut to two lines until a click. Over the prompt, a dock holds one row for
+each agent still working, and for each one done since the user last spoke; a click opens its
+block and scrolls to it, and the dock folds to its head. Enforced by
+`a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation` and
+`a_finished_agent_leaves_the_dock_once_the_user_speaks_again`.
+
+**The prompt is glass at the pane's foot**, centred and no wider than the palette; the
+conversation scrolls on under it. It edits as a note does, grows to eight rows and then
+scrolls. Enter sends, shift+Enter breaks the line. Up in an empty prompt brings back the user's
+last message. Under it, plain text: the context used with a gauge and the five-hour window with
+when it resets. A click there opens the models a headless agent switches to, over gauges of the
+context, the five-hour window and the week. A `/` offers the agent's commands, then Groove's,
+each group under its head and each command with what it does. *Ask the agent*, in the menu of
+the diff's lines, puts where they stand in the prompt. A drag selects text and copies it.
+Enforced by `enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line`,
+`up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
+`under_the_prompt_the_usage_line_opens_the_models_over_three_gauges`,
+`picking_a_model_switches_the_agent_to_it`,
+`a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one`,
+`the_slash_offers_the_agent_s_commands_then_groove_s_under_their_heads`,
+`asking_the_agent_about_lines_puts_where_they_stand_in_its_prompt`,
+`a_long_line_of_code_the_agent_shows_wraps_instead_of_running_out_of_sight`,
+`a_drag_over_the_conversation_copies_what_it_holds`,
+`a_double_click_takes_a_word_and_a_triple_click_its_line`,
+`ctrl_and_a_click_follow_a_link_or_open_a_file_at_its_line`,
+`the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does`,
+`a_double_click_in_the_prompt_takes_its_word` and
+`the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it`.
+
 **The strip folds to its header.** A click on the open tab folds it: the header alone stays
 at the top right, a capsule as narrow as its title and tabs, and the agent takes the
-ground's whole width. A click on any tab opens it again on that tab. The agent's terminal
-takes its new size at once. Folding the terminals leaves a folded strip folded. Enforced by
+ground's whole width. A click on any tab opens it again on that tab. Folding the terminals
+leaves a folded strip folded. Enforced by
 `a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent`,
 `any_tab_opens_the_folded_strip_on_itself`,
 `the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
 `folding_the_drawer_leaves_the_strip_folded`.
-The agent's screen leaves a bar's room over it, where the folded header's capsule stands, and one
-under it. The header, open or folded, and the terminals' drawer stand a layer over the screen,
-never under its text. Enforced by
-`the_folded_header_stands_a_layer_over_the_agent_s_screen`. With both the rail's windows folded, the
-screen runs left across the rail's column to the window's edge, its two headers in the rooms over
+The agent's pane leaves a bar's room over it, where the folded header's capsule stands, and one
+under it. The header, open or folded, and the terminals' drawer stand a layer over the
+conversation, never under its text, and the conversation stays inside the pane, clear of the
+bar rooms where the rail's folded headers stand. Enforced by
+`the_folded_header_stands_a_layer_over_the_agent_s_conversation` and
+`with_the_rail_folded_the_conversation_stays_clear_of_its_headers`. With both the rail's windows folded, the
+pane runs left across the rail's column to the window's edge, its two headers in the rooms over
 and under it; the wheel there scrolls the agent and the rail's edge is not dragged. Enforced by
 `with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
 
@@ -440,7 +509,7 @@ terminals' drawer, Settings' sections — are opaque: the theme's base, edged by
 Nothing passes under a panel, so glass would only show the same ground through it.
 The defense themes, dark and light, lay a hex lattice on that deepest ground: the faint edges of
 hexes 18 pixels from centre to corner, pointy at the top, counted from the window's corner, under
-everything — the panels cover it, and it runs faintly behind the agent's screen. No other theme
+everything — the panels cover it, and it runs faintly behind the agent's conversation. No other theme
 lays one. Enforced by `the_defense_themes_lay_a_hex_lattice_on_the_deep_ground_and_the_others_none`.
 While the session's agent works, signals fire across the session's lattice: each starts at a corner
 anywhere on the ground, runs the hexes' edges down, fires the corner it reaches and branches on, the edges it
@@ -461,7 +530,7 @@ square-cornered, its lens too, and a changed row says so by its ground alone, it
 numbers left quiet.
 
 **Glass only where it floats.** What stands over something is glass: the palette, every
-menu, the cluster scope panel, and the language servers' popup
+menu, the cluster scope panel, the agent's prompt, what it asks and its dock, and the language servers' popup
 the diff's sticky file heads and its notes: the work below shows through them, blurred
 under the theme's tint; nothing bends, magnifies or lights them. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; a row of the rail, a sidebar or a table takes its square, edge to edge. A button on

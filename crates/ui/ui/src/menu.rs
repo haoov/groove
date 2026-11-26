@@ -44,6 +44,29 @@ pub enum Of {
         session: groove_types::SessionId,
         section: Option<groove_types::Section>,
     },
+    /// The models the agent switches to and what it uses, from its button in the top bar.
+    Models {
+        session: groove_types::SessionId,
+        rows: Vec<Told>,
+        gauges: Vec<Gauge>,
+    },
+}
+
+/// One row of the models' menu: a model to switch to, marked while current.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Told {
+    pub label: String,
+    pub model: Option<String>,
+    pub current: bool,
+}
+
+/// One gauge under the models: what is used, how much, its share, and when it starts again.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Gauge {
+    pub label: &'static str,
+    pub value: String,
+    pub used: f32,
+    pub resets: Option<String>,
 }
 
 /// One skill a menu row stands for, with what it is sent.

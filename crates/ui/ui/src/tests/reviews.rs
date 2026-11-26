@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command, agent};
 use groove_gfx::Fonts;
 use groove_types::ApprovalId;
 
-use super::screen::{ask, asking, session_ui};
+use super::agent::{ask, asking, session_ui};
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
 use crate::tests::{all_texts, click, press, window};

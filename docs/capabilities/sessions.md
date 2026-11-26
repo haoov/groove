@@ -102,9 +102,9 @@ namespaces under it. No health, no counts. A session with none has no clusters s
 
 ## Agent session
 
-**The pane draws the agent's terminal**; keys go to the pty as bytes. Escape reaches the
-agent's TUI like any key. The terminal takes the whole pane: no bar stands under it, and a
-skill is sent from the palette. Auto-approve is a setting. An ask stands on the rail row alone.
+**The pane draws the agent's conversation**; the agent runs headless and keys go to
+Groove's own prompt. A skill is sent from the prompt's `/` or from the palette. Auto-approve
+is a setting. An ask stands on the rail row and over the prompt.
 
-**Skills are scoped per launch**: the palette lists exactly what this agent was
-started with. A skill saved later shows after a reload, from the palette.
+**Skills are scoped per launch**: the `/` offers and the palette list exactly what this agent
+was started with. A skill saved later shows after a reload, from the palette.

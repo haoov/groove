@@ -13,7 +13,7 @@ fn at(tick: u64) -> groove_ui_kit::base::ctx::Metrics {
 }
 
 fn configured(still: bool) -> AppState {
-    let mut app = crate::tests::screen::sourced(full_app(), true, true);
+    let mut app = crate::tests::agent::sourced(full_app(), true, true);
     let mut config = app.config.config.clone().expect("a config");
     config.ui.reduce_motion = still;
     app.config.config = Some(config);
