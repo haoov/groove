@@ -2,7 +2,7 @@
 
 use groove_types::TimelineKind;
 
-use super::fixture::{pooled_clone, send, until, worktree};
+use super::fixture::{pooled_clone, send, sh, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, workspace};
 
 /// Every line the selected session's log holds, newest first.
@@ -27,15 +27,8 @@ fn a_commit_leaves_its_subject_on_the_log() {
     pooled_clone(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
+    sh(std::path::Path::new(&dir), &["add", "a.txt"]);
     send(&mut state, &services, &spawner, workspace::Command::Load);
-    send(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::Stage {
-            path: "a.txt".into(),
-        },
-    );
     super::fixture::commit(&mut state, &spawner, "fix: one\n\nwhy");
     spawner.drain(&mut state, &services);
     assert!(state.errors.is_empty(), "{:?}", state.errors);

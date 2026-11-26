@@ -197,9 +197,6 @@ pub enum Target {
     Fold,
     /// A file's row in the sidebar.
     File(String),
-    /// What a row offers while the pointer is on it.
-    Stage(String),
-    Unstage(String),
     /// The two answers to what is asked before a change is thrown away.
     Discard,
     Keep,

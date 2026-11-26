@@ -1,4 +1,4 @@
-//! A question in the place of what asked it, and the one-word offers a row makes.
+//! A question in the place of what asked it.
 
 use groove_gfx::{Edges, Rect};
 
@@ -7,12 +7,6 @@ use crate::base::style::Role;
 use crate::shape::Panel;
 use crate::text::Label;
 use crate::widgets::Button;
-
-/// One word at the right of `room`, on a pill of glass under the pointer.
-pub fn offer<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, label: &str, target: A::Target) {
-    let word = Button::glass(label, target, Role::Muted, &ctx.styles).flat();
-    word.right(ctx, room, ctx.tokens.sm);
-}
 
 /// A count the question sets before it is answered, between its step down and its step up.
 pub struct Steps<'a, T> {

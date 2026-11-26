@@ -1,6 +1,6 @@
-//! The sidebar from the keyboard: the arrows, Enter, Space, the folds, the lists, the box.
+//! The sidebar from the keyboard: the arrows, Enter, the folds, the lists, the box.
 
-use groove_controllers::{Command, workspace};
+use groove_controllers::Command;
 use groove_types::{CommitEntry, Timestamp};
 
 use super::*;
@@ -14,7 +14,7 @@ fn key(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
 }
 
 #[test]
-fn the_arrows_walk_the_changed_files_and_space_stages_one() {
+fn the_arrows_walk_the_changed_files_and_enter_hands_over_the_keys() {
     let app = with_files(&["a.rs", "b.rs"]);
     let mut ui = sidebar_ui();
     let moved = key(Key::Down, &mut ui, &app);
@@ -22,11 +22,6 @@ fn the_arrows_walk_the_changed_files_and_space_stages_one() {
     assert!(moved.is_empty(), "the arrows only stand on a file");
     key(Key::Down, &mut ui, &app);
     assert_eq!(ui.hover, Some(Target::File("b.rs".into())));
-    let staged = key(Key::Char(' '), &mut ui, &app);
-    assert!(matches!(
-        &staged[..],
-        [Command::Workspace(workspace::Command::Stage { path })] if path == "b.rs"
-    ));
     key(Key::Enter, &mut ui, &app);
     assert_eq!(
         ui.focus,

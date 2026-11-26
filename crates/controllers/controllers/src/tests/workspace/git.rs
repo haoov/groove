@@ -1,45 +1,6 @@
-//! The index, the commit, the push and the pull, as the controller drives them.
+//! The commit, the push and the pull, as the controller drives them.
 
 use super::*;
-
-#[test]
-fn a_file_is_staged_then_taken_back_out() {
-    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    pooled_clone(home.path());
-    let dir = worktree(&mut state, &services, &spawner);
-    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
-    until(&spawner, &services, &mut state, |s| {
-        !s.workspace.files.is_empty()
-    });
-    assert_eq!(changed(&state), [("a.txt".to_string(), Some(false))]);
-
-    act(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::Stage {
-            path: "a.txt".into(),
-        },
-    );
-    until(&spawner, &services, &mut state, |s| {
-        s.workspace.files.iter().any(|f| f.staged == Some(true))
-    });
-    assert_eq!(changed(&state), [("a.txt".to_string(), Some(true))]);
-
-    act(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::Unstage {
-            path: "a.txt".into(),
-        },
-    );
-    until(&spawner, &services, &mut state, |s| {
-        s.workspace.files.iter().any(|f| f.staged == Some(false))
-    });
-    assert_eq!(changed(&state), [("a.txt".to_string(), Some(false))]);
-    assert!(state.errors.is_empty(), "{:?}", state.errors);
-}
 
 #[test]
 fn a_commit_takes_the_index() {
@@ -50,14 +11,7 @@ fn a_commit_takes_the_index() {
     until(&spawner, &services, &mut state, |s| {
         !s.workspace.files.is_empty()
     });
-    act(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::Stage {
-            path: "a.txt".into(),
-        },
-    );
+    sh(std::path::Path::new(&dir), &["add", "a.txt"]);
     until(&spawner, &services, &mut state, |s| {
         s.workspace.files.iter().any(|f| f.staged == Some(true))
     });
@@ -102,7 +56,7 @@ fn a_commit_whose_index_cannot_be_read_says_why() {
 }
 
 #[test]
-fn a_stage_from_outside_the_window_reaches_the_list() {
+fn a_git_add_from_outside_the_window_reaches_the_list() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     let dir = worktree(&mut state, &services, &spawner);

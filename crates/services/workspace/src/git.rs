@@ -4,17 +4,7 @@ use std::path::Path;
 
 use groove_types::Result;
 
-/// What the index holds, and the commit that turns it into history.
-pub async fn stage(dir: &Path, paths: &[String]) -> Result<()> {
-    groove_git::Git::at(dir).stage(paths).await?;
-    Ok(())
-}
-
-pub async fn unstage(dir: &Path, paths: &[String]) -> Result<()> {
-    groove_git::Git::at(dir).unstage(paths).await?;
-    Ok(())
-}
-
+/// The index committed; nothing staged is an error.
 pub async fn commit(dir: &Path, message: &str) -> Result<()> {
     if !staged(dir).await? {
         return Err(groove_types::Error::invalid(NOTHING_STAGED));

@@ -53,7 +53,6 @@ mod reviews;
 mod routines;
 mod scoping;
 mod settings;
-mod staging;
 mod strip;
 mod structure;
 

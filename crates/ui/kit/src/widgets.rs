@@ -52,7 +52,7 @@ pub use modal::{
 pub use neurons::{NEURON_MS, neurons};
 pub use pane::{Side, aside_bounds, glass_aside};
 pub use popup::{Piece, Said, popup};
-pub use question::{Steps, offer, question};
+pub use question::{Steps, question};
 pub use scrolled::scrolled;
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};

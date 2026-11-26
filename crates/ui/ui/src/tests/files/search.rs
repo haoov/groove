@@ -175,23 +175,6 @@ fn the_first_character_of_a_path_asks_for_the_worktrees_files() {
 }
 
 #[test]
-fn a_file_with_no_change_offers_nothing_to_stage() {
-    let mut app = with_files(&[]);
-    with_paths(&mut app, &["src/two/beta.rs"]);
-    let mut ui = on_diff();
-    ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), crate::tests::CTRL_ONLY, &mut ui, &app);
-    typed("beta", &mut ui, &app);
-    ui.hover = Some(Target::File("src/two/beta.rs".into()));
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(
-        hits.rect_of(&Target::Stage("src/two/beta.rs".into()))
-            .is_none(),
-        "there is nothing of it to stage"
-    );
-}
-
-#[test]
 fn a_file_with_no_change_shows_its_own_lines() {
     let mut app = with_files(&[]);
     with_paths(&mut app, &["src/two/beta.rs"]);

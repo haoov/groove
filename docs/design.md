@@ -58,9 +58,8 @@ the rail only as its attention count.
 - **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
   palette's included, as the arrows do. Enforced by
   `ctrl_j_and_ctrl_k_walk_a_list_as_the_arrows_do`. In the sidebar the arrows step through the rows, Enter
-  does what a click does, Space stages a changed file, Left and Right fold a folder, and
-  `[` and `]` change the list.
-  Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
+  does what a click does, Left and Right fold a folder, and `[` and `]` change the list.
+  Enforced by `the_arrows_walk_the_changed_files_and_enter_hands_over_the_keys`.
 - **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
   `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
   workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
@@ -483,7 +482,7 @@ keep their room before the cut, and a badge with no room left is dropped.
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | sections, each a card set into the panel, a step below its base, inset from its sides and headed by its band — the section's name and, where it counts, how many — its rows ruled apart: the task's properties in columns, each name over its value — status, priority, dates, the hours logged — a missing one left out, sized to what they hold; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, a hairline box with no ground, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on square grounds edge to edge as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the MR's threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, a hairline box with no ground, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on square grounds edge to edge as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one; commits — the branch's own log, a commit opens its change read-only; notes — the MR's threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 | kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | the kinds the contexts serve, under headings that fold |
 
@@ -640,9 +639,6 @@ Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
 **Git and the MR go through the palette.** Push, pull, and
 create, update, comment on, approve or close the MR are palette rows of the selected
 worktree. No box in the window holds them.
-
-**A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,
-or unstage — where its counts were. Everything else is behind the right button.
 
 **A question takes the place of what asked it.** Closing a tab with unsaved edits, deleting
 a path or a write on a resource's row turns that line into the question, square across its

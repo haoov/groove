@@ -160,7 +160,7 @@ adopting the session ends its terminals.
 
 ## Git
 
-**A commit takes the index**; stage and unstage are per file. The agent commits; the
+**A commit takes the index.** The agent or a terminal stages, the agent commits; the
 palette holds push and pull.
 
 **A push goes to the branch's own name on origin**, and nowhere else. A pull is

@@ -428,3 +428,39 @@ fn tab_said(app: &AppState, ui: &Ui, pane: crate::views::session::Pane) -> Optio
         .map_or(String::new(), |run| run.text.clone());
     marked.then_some(said)
 }
+
+#[test]
+fn a_row_under_the_pointer_and_the_open_one_read_apart() {
+    let app = with_files(&["a.txt"]);
+    let mut ui = on_diff();
+    let tokens = Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let grounds = |ui: &Ui| {
+        let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
+        let line = hits
+            .rect_of(&Target::File("a.txt".into()))
+            .expect("the row");
+        let quads = frame.layers()[0].quads.clone();
+        let of = |color| {
+            quads
+                .iter()
+                .filter(|quad| quad.color == color && quad.rect.h > tokens.row / 2.0)
+                .filter(|quad| line.contains(quad.rect.x, quad.rect.y + 1.0))
+                .count()
+        };
+        (of(styles.glass_hover()), of(styles.glass_chosen()))
+    };
+    assert_eq!(grounds(&ui), (0, 0), "a row at rest carries neither");
+    ui.hover = Some(Target::File("a.txt".into()));
+    assert_eq!(grounds(&ui).0, 1, "the pointer grounds the row");
+    assert_ne!(
+        styles.glass_hover(),
+        styles.glass_chosen(),
+        "and the two never match"
+    );
+    assert_ne!(
+        styles.hover(),
+        styles.action(),
+        "nor does a button's ground"
+    );
+}

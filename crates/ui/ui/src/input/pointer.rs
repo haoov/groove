@@ -172,17 +172,15 @@ fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
-        one => staging(one, ui, app),
+        one => answered(one, ui, app),
     }
 }
 
-/// What the change itself is asked to keep or give up.
-fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+/// A tab, an answer to what a row asks, or a block folded.
+fn answered(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     match target {
         Some(Target::OpenTab(path)) => in_files(ui, app, path),
         Some(Target::CloseTab(path)) => closing(ui, app, path),
-        Some(Target::Stage(path)) => one(workspace::Command::Stage { path }),
-        Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
         Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => kept(ui),
         Some(Target::Step(by)) => stepped(ui, by),

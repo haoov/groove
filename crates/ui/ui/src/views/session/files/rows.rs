@@ -1,4 +1,4 @@
-//! One row per changed file: what it is, what it offers, what it counts.
+//! One row per changed file: what it is, what it counts.
 
 use groove_gfx::{Edges, Rect};
 use groove_types::{FileDiff, FileStatus};
@@ -126,10 +126,7 @@ pub(super) fn entry(
 
     let sm = ctx.tokens.sm;
     let mut room = line.pad(Edges::across(super::text_at(ctx, indent), 0.0));
-    match on_row {
-        true => offer(ctx, &mut room, file),
-        false => counts(ctx, &mut room, file),
-    }
+    counts(ctx, &mut room, file);
     if let Some(tally) = reading.tally {
         groove_ui_kit::widgets::faults(ctx, &mut room, tally);
     }
@@ -173,24 +170,9 @@ fn status_role(status: FileStatus) -> Role {
     }
 }
 
-/// Whether the pointer is on this row, or on what the row is offering.
+/// Whether the pointer is on this row.
 fn pointed(ctx: &Ctx, path: &str) -> bool {
-    match ctx.hover() {
-        Some(Target::File(at) | Target::Stage(at) | Target::Unstage(at)) => at == path,
-        _ => false,
-    }
-}
-
-/// What the row offers the pointer, or its counts when it has no change to stage.
-fn offer(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
-    let Some(staged) = file.staged else {
-        return counts(ctx, room, file);
-    };
-    let (label, target) = match staged {
-        true => ("unstage", Target::Unstage(file.path.clone())),
-        false => ("stage", Target::Stage(file.path.clone())),
-    };
-    groove_ui_kit::widgets::offer(ctx, room, label, target)
+    matches!(ctx.hover(), Some(Target::File(at)) if at == path)
 }
 
 fn counts(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {

@@ -1,7 +1,7 @@
 //! The sidebar's list from the keyboard: the arrows walk its rows, Enter does what a click
-//! does, Space stages, Left and Right fold, `[` and `]` change the list.
+//! does, Left and Right fold, `[` and `]` change the list.
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::{AppState, Command};
 
 use super::super::Key;
 use crate::hit::{Hits, Target};
@@ -52,7 +52,6 @@ pub(super) fn in_list(
                 Vec::new()
             }
         },
-        Key::Char(' ') => at.map_or_else(Vec::new, |at| staged(&rows[at].target, app)),
         Key::Left | Key::Right => {
             if let Some(at) = at {
                 folded(&rows[at].target, ui, key == Key::Right);
@@ -120,22 +119,6 @@ fn entered(target: Target, ui: &mut Ui, app: &AppState, seen: (&Hits, Metrics)) 
         ui.focus = Focus::Workspace;
     }
     commands
-}
-
-/// Space on a changed file: staged when it was not, unstaged when it was.
-fn staged(target: &Target, app: &AppState) -> Vec<Command> {
-    let Target::File(path) = target else {
-        return Vec::new();
-    };
-    let Some(file) = app.workspace.files.iter().find(|one| &one.path == path) else {
-        return Vec::new();
-    };
-    let path = path.clone();
-    let command = match file.staged {
-        Some(true) => workspace::Command::Unstage { path },
-        _ => workspace::Command::Stage { path },
-    };
-    vec![Command::Workspace(command)]
 }
 
 /// Left shuts a folder, Right opens it, in the tree and in the changed list alike.
