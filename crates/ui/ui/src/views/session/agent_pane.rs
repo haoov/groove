@@ -2,14 +2,12 @@
 
 mod asked;
 mod chat;
-mod commands;
 mod dock;
 mod edits;
 mod entry;
 pub(crate) mod model;
 pub(crate) mod offered;
 mod parts;
-mod prompt;
 pub(crate) mod steps;
 mod subagent;
 
@@ -18,6 +16,8 @@ use groove_controllers::agent_service::Agent;
 use groove_controllers::session_service::Open;
 use groove_types::{AgentStatus, Worktree};
 
+pub(crate) use parts::{cap, keycap};
+
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -25,7 +25,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
 
 /// The agent's conversation, or why there is none.
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
+pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let Some(open) = app.session.selected() else {
         return;
     };
@@ -36,43 +36,45 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, focused: bool) {
         return note(ctx, "starting the agent…");
     };
     match (&agent.stream, &agent.activity.status) {
-        (Some(_), _) => conversation(ctx, (app, ui), (open, agent), focused),
+        (Some(_), _) => conversation(ctx, (app, ui), (open, agent)),
         (None, AgentStatus::Error { message }) => note(ctx, message),
         (None, _) => note(ctx, "starting the agent…"),
     }
 }
 
-/// The conversation, and over the prompt what the agent asks and the agents it sent that still work.
-fn conversation(
-    ctx: &mut Ctx,
-    (app, ui): (&AppState, &Ui),
-    (open, agent): (&Open, &Agent),
-    focused: bool,
-) {
+/// The conversation, its usage line at the foot, and over it what the agent asks and the agents
+/// it sent that still work.
+fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Open, &Agent)) {
     let chat = app.agent.chat(&open.session.id);
-    let laid = prompt::laid(ctx, ui);
+    let foot = foot(ctx);
     let working = agent.activity.status == AgentStatus::Working;
     let first = agent.permissions.first();
     let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
     let place = placed(open);
-    let over = asked::ends(ctx, asked, laid.pane);
+    let over = asked::ends(ctx, asked, foot);
     let docked = subagent::docked(chat);
-    let dock = dock::laid(ctx, &docked, ui.agent.docked, over, laid.pane);
+    let dock = dock::laid(ctx, &docked, ui.agent.docked, over, foot);
     let ends = dock.map_or(over, |one| one.y);
     let rows = docked.iter().filter(|_| !ui.agent.docked);
     let wanted: Vec<&str> = rows.map(|one| one.id.as_str()).collect();
     chat::draw(ctx, (open, chat, working), ui, (ends, &wanted));
     ctx.layer();
     if let Some((one, picked)) = asked {
-        asked::draw(ctx, one, picked, (laid.pane, &place));
+        asked::draw(ctx, one, picked, (foot, &place));
     }
     if let Some(at) = dock {
         dock::draw(ctx, at, &docked, ui.agent.docked);
     }
-    prompt::draw(ctx, ui, &laid, focused);
-    model::line(ctx, chat, agent, laid.meta);
-    let (offers, own) = offered::grouped(app, ui);
-    commands::draw(ctx, (&offers, own), ui.agent.offered, laid.pane);
+    model::line(ctx, chat, agent, foot);
+}
+
+/// The usage line at the pane's foot, centred and no wider than the palette.
+fn foot(ctx: &Ctx) -> groove_gfx::Rect {
+    let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
+    let room = ctx.app.layout.agent.pad(groove_gfx::Edges::across(sm + xs, sm + xs));
+    let wide = room.w.min(ctx.tokens.palette);
+    let room = room.align((wide, room.h), groove_gfx::Align::Center, groove_gfx::Align::Start);
+    groove_ui_kit::shape::band(room, room.h - ctx.tokens.row - xs, ctx.tokens.row)
 }
 
 /// `groove · feat/x`: the session's first worktree, where an ask acts.

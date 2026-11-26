@@ -67,6 +67,7 @@ fn a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt() {
     let plain = Modifiers::default();
     assert_eq!(press(Key::Enter, plain, &mut ui, &app), answer(true, &[]));
     assert_eq!(press(Key::Escape, plain, &mut ui, &app), answer(false, &[]));
+    ui.overlay = Some(crate::Overlay::Prompt);
     typed("go", &mut ui, &app);
     let said = press(Key::Enter, plain, &mut ui, &app);
     assert!(

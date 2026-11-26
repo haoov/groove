@@ -54,6 +54,9 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         if let Some(palette) = ui.palette() {
             overlays::palette::draw(&mut ctx, app, (palette, open));
         }
+        if ui.prompting() && ui.showing(app) == Surface::Session {
+            overlays::prompt::draw(&mut ctx, app, ui, open);
+        }
         if let Some(crate::Overlay::Scope(scoping)) = &ui.overlay {
             overlays::scope::draw(&mut ctx, app, ui, scoping);
         }

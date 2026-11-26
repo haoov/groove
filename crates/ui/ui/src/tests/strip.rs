@@ -257,12 +257,12 @@ fn a_note_being_written_stands_on_glass_as_a_read_one_does() {
     assert!(!sliced, "no card cut row by row among the code");
 }
 
-/// The layer the agent's prompt draws its hint on.
+/// The layer the agent's usage line draws on.
 fn prompt_layer(frame: &groove_gfx::Frame) -> usize {
     let mut layers = frame.layers().iter();
     layers
-        .position(|one| one.texts.iter().any(|run| run.text.starts_with("Reply to")))
-        .expect("the agent's prompt")
+        .position(|one| one.texts.iter().any(|run| run.text == "reply"))
+        .expect("the agent's usage line")
 }
 
 #[test]

@@ -43,7 +43,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if !ctx.app.layout.work.is_empty() {
         solid_pane(ctx, ctx.app.layout.strip);
     }
-    let on = |focus: crate::Focus| ui.focus == focus;
     if app.session.selected().is_none() {
         header::draw(ctx, app, ui);
         empty(ctx, app);
@@ -55,7 +54,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         sidebar(ctx, app, ui);
     }
     // After the agent: the header, folded or not, and the drawer float over its screen.
-    agent_pane::draw(ctx, app, ui, on(crate::Focus::Agent));
+    agent_pane::draw(ctx, app, ui);
     crate::views::alerts::draw(ctx, app, ui);
     header::draw(ctx, app, ui);
     if let Some(session) = app.session.selected.as_ref() {

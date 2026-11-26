@@ -34,6 +34,9 @@ fn context(chat: Option<&Chat>, agent: &Agent) -> Option<(u64, Option<u64>)> {
 pub(super) fn line(ctx: &mut Ctx, chat: Option<&Chat>, agent: &Agent, rect: Rect) {
     glass_hoverable(ctx, rect, Target::ModelButton);
     let mut room = rect;
+    super::parts::keycap_left(ctx, &mut room, "ALT");
+    super::parts::keycap_left(ctx, &mut room, "A");
+    Label::new("reply", ctx.styles.log(Role::Ghost)).left(ctx, &mut room, ctx.tokens.lg);
     if let Some(model) = current(chat, agent) {
         cap_right(ctx, &mut room, &model_name(model), Role::Faint);
     }
@@ -50,6 +53,20 @@ pub(super) fn line(ctx: &mut Ctx, chat: Option<&Chat>, agent: &Agent, rect: Rect
         let said = windowed(five, ctx.now);
         Label::new(&said, ctx.styles.log(Role::Faint)).draw(ctx, room);
     }
+}
+
+/// `opus 5.5 · context 62%` for the selected session's agent, as far as it is known.
+pub(crate) fn summary(app: &AppState) -> String {
+    let session = app.session.selected.as_ref();
+    let Some(agent) = session.and_then(|one| app.agent.agent(one)) else {
+        return String::new();
+    };
+    let chat = session.and_then(|one| app.agent.chat(one));
+    let model = current(chat, agent).map(model_name);
+    let held = context(chat, agent).and_then(|(held, size)| Some(held as f32 / size? as f32));
+    let context = held.map(|share| format!("context {}", percent(share)));
+    let parts: Vec<String> = model.into_iter().chain(context).collect();
+    parts.join(" · ")
 }
 
 fn gauge_role(share: f32) -> Role {

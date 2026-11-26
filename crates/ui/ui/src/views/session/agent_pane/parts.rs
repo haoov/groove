@@ -11,7 +11,7 @@ use groove_ui_kit::text::{Label, ago};
 use crate::ctx::Ctx;
 
 /// `word` in small capitals at the left of `room`.
-pub(super) fn cap(ctx: &mut Ctx, room: &mut Rect, word: &str, role: Role) -> Rect {
+pub(crate) fn cap(ctx: &mut Ctx, room: &mut Rect, word: &str, role: Role) -> Rect {
     let word = word.to_uppercase();
     Label::new(&word, ctx.styles.tag(role)).left(ctx, room, ctx.tokens.sm)
 }
@@ -23,10 +23,22 @@ pub(super) fn cap_right(ctx: &mut Ctx, room: &mut Rect, word: &str, role: Role) 
 }
 
 /// A key's name on a hairline cap at the right of `room`.
-pub(super) fn keycap(ctx: &mut Ctx, room: &mut Rect, key: &str) {
+pub(crate) fn keycap(ctx: &mut Ctx, room: &mut Rect, key: &str) {
+    capped(ctx, room, key, false);
+}
+
+/// The same at the left of `room`.
+pub(crate) fn keycap_left(ctx: &mut Ctx, room: &mut Rect, key: &str) {
+    capped(ctx, room, key, true);
+}
+
+fn capped(ctx: &mut Ctx, room: &mut Rect, key: &str, left: bool) {
     let style = ctx.styles.tag(Role::Faint);
     let wide = ctx.measure(key, &style) + ctx.tokens.sm;
-    let slot = groove_ui_kit::shape::from_right(room, wide, ctx.tokens.sm);
+    let slot = match left {
+        true => groove_ui_kit::shape::from_left(room, wide, ctx.tokens.xs),
+        false => groove_ui_kit::shape::from_right(room, wide, ctx.tokens.sm),
+    };
     let cap = slot.align((wide, ctx.tokens.line), Align::Center, Align::Center);
     Panel::default().border(ctx.styles.line()).draw(ctx, cap);
     let word = cap.align((wide - ctx.tokens.sm, cap.h), Align::Center, Align::Center);

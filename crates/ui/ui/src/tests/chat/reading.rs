@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::chat::{Heard, Outcome};
 use groove_types::{AgentStatus, Caret, Selection};
 
-use super::{CTRL, chat_ui, copied, ran, talking};
+use super::{CTRL, chat_ui, copied, prompt_ui, ran, talking};
 use crate::hit::Target;
 use crate::input::{Input, Key, handle};
 use crate::tests::{all_texts, click, press, pressed, release, typed, window};
@@ -73,7 +73,7 @@ fn a_double_click_takes_a_word_and_a_triple_click_its_line() {
 #[test]
 fn a_double_click_in_the_prompt_takes_its_word() {
     let app = talking(Vec::new());
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("one two", &mut ui, &app);
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let (row, _) = hits.typed().rows[0];

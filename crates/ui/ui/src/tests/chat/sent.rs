@@ -3,7 +3,7 @@
 use groove_gfx::Fonts;
 use groove_types::chat::{Heard, Outcome};
 
-use super::{chat_ui, talking};
+use super::{chat_ui, prompt_ui, talking};
 use crate::hit::Target;
 use crate::tests::window as window_size;
 use crate::tests::{all_texts, click, window};
@@ -125,7 +125,7 @@ fn a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one() {
     };
     let listed = ["review", "groove:save-task", "groove:start-task"].map(slash);
     app.agent.agents[0].1.commands = listed.to_vec();
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("/task", &mut ui, &app);
     let names = |ui: &crate::Ui| {
         let offers = crate::views::session::agent_pane::offered::offered(&app, ui);
@@ -139,7 +139,7 @@ fn a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one() {
     press(Key::Tab, Modifiers::default(), &mut ui, &app);
     assert_eq!(ui.agent.prompt.text(), "/groove:start-task ");
     assert!(names(&ui).is_empty(), "past the word, nothing is offered");
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("/rev", &mut ui, &app);
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(names(&ui).is_empty(), "put away");
@@ -155,7 +155,7 @@ fn a_click_on_an_offered_command_takes_it() {
         about: "reviews the branch".into(),
     };
     app.agent.agents[0].1.commands = vec![review];
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("/rev", &mut ui, &app);
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let row = hits

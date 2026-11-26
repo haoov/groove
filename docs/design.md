@@ -35,10 +35,9 @@ the rail only as its attention count.
   a container. Enforced by `a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box`.
 - **Focus is a ring**: the region that has the keys — the sessions' window, the strip, the
   sidebar, the terminals — stands in a thin ring in the accent, read as half its strength on
-  either theme. The agent's pane has no edge to ring: its prompt takes the ring while it has the
-  keys. A terminal shows them by a solid cursor. Enforced by
+  either theme. The agent's pane has no edge to ring: its prompt, open, takes the ring. A terminal shows them by a solid cursor. Enforced by
   `the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else`,
-  `the_prompt_stands_in_the_ring_while_the_agent_has_the_keys` and
+  `the_open_prompt_stands_in_the_ring` and
   `a_selection_stays_neutral_in_the_region_that_has_the_keys`.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
   rail, the agent, the workspace and the sidebar; `alt+i` hands them to a maintenance task's
@@ -306,11 +305,11 @@ sum; each file is a link to its hunk in the Diff tab with its `+N -N`. Enforced 
 `a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff` and
 `an_edit_in_another_worktree_selects_it_first`.
 
-**What asks stands over the prompt.** A tool Claude asks leave for is glass ringed in the ask's
+**What asks stands over the pane's foot.** A tool Claude asks leave for is glass ringed in the ask's
 colour: `BASH ASKS LEAVE` and where, what it runs in a sunk box, *Refuse* on `ESC` and *Allow*
 on `ENTER`. A question shows one at a time, its options on their digits with what each means,
-and *Back* undoes the last pick. In an empty prompt Enter allows, Escape refuses and a digit
-picks. With nothing asked, Escape interrupts the turn. Enforced by
+and *Back* undoes the last pick. While the pane has the keys and the prompt is shut, Enter
+allows, Escape refuses and a digit picks. With nothing asked, Escape interrupts the turn. Enforced by
 `a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
 `a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
 `back_undoes_the_last_pick_of_a_question` and
@@ -329,15 +328,27 @@ block and scrolls to it, and the dock folds to its head. Enforced by
 `a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation` and
 `a_finished_agent_leaves_the_dock_once_the_user_speaks_again`.
 
-**The prompt is glass at the pane's foot**, centred and no wider than the palette; the
-conversation scrolls on under it. It edits as a note does, grows to eight rows and then
-scrolls. Enter sends, shift+Enter breaks the line. Up in an empty prompt brings back the user's
-last message. Under it, plain text: the context used with a gauge and the five-hour window with
-when it resets. A click there opens the models a headless agent switches to, over gauges of the
-context, the five-hour window and the week. A `/` offers the agent's commands, then Groove's,
-each group under its head and each command with what it does. *Ask the agent*, in the menu of
-the diff's lines, puts where they stand in the prompt. A drag selects text and copies it.
-Enforced by `enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line`,
+**The prompt opens over everything.** At rest the pane has no prompt: the transcript runs to its
+foot, where one plain line says `ALT A reply`, the context used with a gauge and the five-hour
+window. A click there opens the models a headless agent switches to, over gauges of the
+context, the five-hour window and the week. `alt+a` opens the prompt, `alt+a` again closes it,
+as do Escape and a send. A click or a chord elsewhere leaves it open, the keys going there, so
+text can be copied into it, and the wheel scrolls what stands under the pointer; `alt+a` or a click on it takes the keys back. It is glass a layer
+over the window, undimmed, as wide as the palette and centred over the window's foot, in the
+focus ring while it has the keys. It holds
+the commands `/` offers, the agent's then Groove's, each group under its head; then what is
+typed, growing to eight rows and then scrolling; then its keys, with the model and the
+context. Escape keeps the draft. Enter sends, shift+Enter breaks the line, Up in an empty
+prompt brings back the user's last message. *Ask the agent*, in the menu of the diff's lines,
+puts where they stand in the prompt and opens it. A drag over the transcript selects text and
+copies it.
+Enforced by `alt_a_opens_the_prompt_and_alt_a_again_closes_it`,
+`escape_closes_the_prompt_and_keeps_its_draft`,
+`enter_sends_the_message_and_closes_the_prompt`,
+`the_prompt_stays_open_while_the_keys_go_elsewhere_and_alt_a_takes_them_back`,
+`with_the_prompt_open_the_wheel_still_scrolls_the_transcript`,
+`at_rest_the_pane_says_how_to_reply`,
+`enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line`,
 `up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
 `under_the_prompt_the_usage_line_opens_the_models_over_three_gauges`,
 `picking_a_model_switches_the_agent_to_it`,

@@ -56,23 +56,19 @@ fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
 }
 
 #[test]
-fn the_prompt_stands_in_the_ring_while_the_agent_has_the_keys() {
+fn the_open_prompt_stands_in_the_ring() {
     let mut app = crate::tests::agent::asking(Vec::new());
     crate::tests::agent::headless(&mut app);
-    let focus = styles(&app).focus();
-    let ringed = |keys: Focus| {
-        let ui = Ui {
-            surface: crate::Surface::Session,
-            focus: keys,
-            ..Ui::default()
-        };
-        let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-        let prompt = hits.rect_of(&crate::hit::Target::Prompt).expect("the prompt");
-        let ring = in_colour(&frame, focus);
-        ring.iter().any(|one| prompt.contains(one.x, one.y))
+    let ui = Ui {
+        surface: crate::Surface::Session,
+        focus: Focus::Agent,
+        overlay: Some(crate::Overlay::Prompt),
+        ..Ui::default()
     };
-    assert!(ringed(Focus::Agent), "the prompt ringed while it has the keys");
-    assert!(!ringed(Focus::Rail), "not while another region has them");
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let prompt = hits.rect_of(&crate::hit::Target::Prompt).expect("the prompt");
+    let ring = in_colour(&frame, styles(&app).focus());
+    assert!(ring.iter().any(|one| prompt.contains(one.x, one.y)));
 }
 
 #[test]

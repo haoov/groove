@@ -39,7 +39,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             on_board(action, ui);
         }
         Action::FocusRail => rail(ui),
-        Action::FocusAgent => ui.focus = Focus::Agent,
+        Action::FocusAgent => super::prompt::toggled(ui, app),
         Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
         Action::FocusAlerts if ui.alerts.shown => alerts(ui),

@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::Timestamp;
 use groove_types::chat::{Heard, Outcome, Patch, Slash};
 
-use super::{WORKTREE, chat_ui, talking};
+use super::{WORKTREE, chat_ui, prompt_ui, talking};
 use crate::hit::{Answering, Target};
 use crate::input::{Key, Modifiers};
 use crate::tests::{all_texts, click, press, typed, window};
@@ -77,7 +77,7 @@ fn the_slash_offers_the_agent_s_commands_then_groove_s_under_their_heads() {
     let listed = ["review", "groove:review-mr"].map(slash);
     app.agent.agents[0].1.commands = listed.to_vec();
     app.skill.skills = vec![crate::tests::agent::skill("review-mr")];
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("/rev", &mut ui, &app);
     let (offers, own) = crate::views::session::agent_pane::offered::grouped(&app, &ui);
     let names: Vec<&str> = offers.iter().map(|one| one.label).collect();

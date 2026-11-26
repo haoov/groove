@@ -1,34 +1,45 @@
-//! The commands `/` offers, on glass over the prompt: the agent's, then Groove's, each group under
-//! its head, a command's name then what it does.
+//! The commands `/` offers in the prompt: the agent's, then Groove's, each group under its head.
 
 use groove_gfx::{Edges, Rect};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::COMPLETION_ROWS;
-use groove_ui_kit::shape::{band, from_left, from_top};
+use groove_ui_kit::shape::{from_left, from_top, hairline};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Offer, glass_chosen, glass_hoverable, glass_pane};
+use groove_ui_kit::widgets::{Offer, glass_chosen, glass_hoverable};
 
-use super::parts::cap;
+use crate::views::session::agent_pane::cap;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
-/// The offers in sight around the `chosen` one, the agent's `own` first.
-pub(super) fn draw(ctx: &mut Ctx, (offers, own): (&[Offer], usize), chosen: usize, pane: Rect) {
+/// The offers in sight around the `chosen` one, and how many group heads stand among them.
+fn window(offers: &[Offer], own: usize, chosen: usize) -> (std::ops::Range<usize>, usize) {
+    let shown = COMPLETION_ROWS.min(offers.len());
+    let chosen = chosen.min(offers.len().saturating_sub(1));
+    let first = chosen.saturating_sub(shown.saturating_sub(1)).min(offers.len() - shown);
+    let window = first..first + shown;
+    let heads = [0, own].into_iter().filter(|at| window.contains(at)).count();
+    let heads = heads - usize::from(own == 0 && window.contains(&0));
+    (window, heads)
+}
+
+/// How tall the offers stand over the typed rows; nothing without one.
+pub(super) fn height(ctx: &Ctx, (offers, own): (&[Offer], usize), chosen: usize) -> f32 {
+    if offers.is_empty() {
+        return 0.0;
+    }
+    let (window, heads) = window(offers, own, chosen);
+    (window.len() + heads) as f32 * ctx.tokens.glass_row + ctx.tokens.sm * 2.0
+}
+
+/// The offers in `rect`, the agent's `own` first, each group under its head, ruled off under.
+pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (offers, own): (&[Offer], usize), chosen: usize) {
     if offers.is_empty() {
         return;
     }
-    let shown = COMPLETION_ROWS.min(offers.len());
-    let chosen = chosen.min(offers.len() - 1);
-    let first = chosen.saturating_sub(shown - 1).min(offers.len() - shown);
-    let window = first..first + shown;
-    let heads = [0, own].into_iter().filter(|at| window.contains(at));
-    let heads = heads.count() - usize::from(own == 0 && window.contains(&0));
+    hairline(ctx, rect, ctx.styles.panel_edge());
+    let (window, _) = window(offers, own, chosen);
     let row = ctx.tokens.glass_row;
-    let tall = (shown + heads) as f32 * row + ctx.tokens.sm * 2.0;
-    let card = band(pane, -(ctx.tokens.sm + tall), tall);
-    ctx.layer();
-    glass_pane(ctx, card);
-    let mut room = card.pad(Edges::xy(0.0, ctx.tokens.sm));
+    let mut room = rect.pad(Edges::xy(0.0, ctx.tokens.sm));
     let widest = name_width(ctx, &offers[window.clone()]);
     for at in window {
         if at == own || (at == 0 && own > 0) {
@@ -41,7 +52,7 @@ pub(super) fn draw(ctx: &mut Ctx, (offers, own): (&[Offer], usize), chosen: usiz
             cap(ctx, &mut head, &format!("{word} · {count}"), Role::Ghost);
         }
         let line = from_top(&mut room, row, 0.0);
-        offer(ctx, line, (&offers[at], widest), (at, at == chosen));
+        offer(ctx, line, (&offers[at], widest), (at, at == chosen.min(offers.len() - 1)));
     }
 }
 

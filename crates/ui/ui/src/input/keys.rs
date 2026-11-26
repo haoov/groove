@@ -72,6 +72,9 @@ pub(super) fn key_input(
         let outcome = palette.key(key, app);
         return ui.closed_palette(outcome, app);
     }
+    if ui.prompting() && ui.focus == Focus::Agent {
+        return prompt::typed((key, mods), ui, app, (&keymap, seen.0));
+    }
     if ui.settings.open {
         return in_settings(key, mods, ui, app);
     }
@@ -165,7 +168,7 @@ fn to_focused(
     ),
 ) -> Vec<Command> {
     match ui.focus {
-        Focus::Agent => prompt::keyed((key, mods), ui, app, (keymap, seen.0)),
+        Focus::Agent => prompt::keyed((key, mods), ui, app),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),

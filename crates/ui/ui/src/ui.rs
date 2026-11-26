@@ -54,6 +54,8 @@ pub enum Overlay {
     Examining(groove_types::ApprovalId),
     /// A scope picker's panel: what the session holds, then what it could attach.
     Scope(views::session::resources::Scoping),
+    /// The agent's prompt, centred at the window's foot.
+    Prompt,
 }
 
 /// What the pointer's button holds while it is down.
@@ -190,6 +192,11 @@ impl Ui {
             Some(Overlay::Palette(one)) => Some(one),
             _ => None,
         }
+    }
+
+    /// Whether the agent's prompt stands open.
+    pub fn prompting(&self) -> bool {
+        matches!(self.overlay, Some(Overlay::Prompt))
     }
 
     pub fn menu(&self) -> Option<&Menu> {

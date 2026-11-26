@@ -29,7 +29,11 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Settings, pixels(tokens.row), hits);
         return Vec::new();
     }
-    if ui.overlay.is_some() {
+    if ui.prompting() && hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
+        agent(ui, delta, point, (hits, metrics));
+        return Vec::new();
+    }
+    if ui.overlay.is_some() && !ui.prompting() {
         return Vec::new();
     }
     if ui.showing(app) == Surface::Session && layout.alerts.contains(x, y) {

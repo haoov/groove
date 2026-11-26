@@ -55,6 +55,9 @@ fn sink(ui: &Ui, app: &AppState) -> Option<Sink> {
     if ui.palette().is_some() {
         return Some(Sink::Palette);
     }
+    if ui.prompting() && ui.focus == Focus::Agent {
+        return Some(Sink::Agent);
+    }
     if ui.settings.open {
         return Some(Sink::Settings);
     }
@@ -96,7 +99,10 @@ pub(super) fn pasted(text: &str, ui: &mut Ui, app: &AppState, seen: Seen) -> Vec
         Some(Sink::Settings) => return pasted_in_settings(text, ui, app),
         Some(Sink::Field(typed)) => return pasted_in_field(typed, text, ui),
         Some(Sink::Find) => return pasted_in_find(text, ui, app, seen),
-        Some(Sink::Agent) => ui.agent.prompt.edit(&lines(text)),
+        Some(Sink::Agent) => {
+            ui.agent.prompt.edit(&lines(text));
+            ui.overlay = Some(Overlay::Prompt);
+        }
         Some(Sink::Terminal) => return typed_at_shell(text, app),
         Some(Sink::Buffer) => return pasted_in_buffer(text, ui, app),
         None => {}

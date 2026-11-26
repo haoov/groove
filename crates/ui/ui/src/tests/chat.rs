@@ -19,6 +19,7 @@ use crate::{Focus, Surface, Ui};
 
 mod asked;
 mod blocks;
+mod prompt;
 mod reading;
 mod sent;
 
@@ -60,6 +61,14 @@ pub(super) fn chat_ui() -> Ui {
         surface: Surface::Session,
         focus: Focus::Agent,
         ..Ui::default()
+    }
+}
+
+/// The same, the prompt open.
+pub(super) fn prompt_ui() -> Ui {
+    Ui {
+        overlay: Some(crate::Overlay::Prompt),
+        ..chat_ui()
     }
 }
 
@@ -117,7 +126,7 @@ fn the_conversation_shows_in_the_agent_pane() {
 #[test]
 fn enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line() {
     let app = talking(Vec::new());
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("look", &mut ui, &app);
     let shift = Modifiers {
         shift: true,
@@ -137,7 +146,7 @@ fn enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line() {
 #[test]
 fn an_empty_prompt_sends_nothing() {
     let app = talking(Vec::new());
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("   ", &mut ui, &app);
     assert!(press(Key::Enter, Modifiers::default(), &mut ui, &app).is_empty());
 }
@@ -149,7 +158,7 @@ fn up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns() {
         Heard::Said("ok".into()),
         Heard::You("second".into()),
     ]);
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     let step = |key, ui: &mut Ui| {
         press(key, Modifiers::default(), ui, &app);
         ui.agent.prompt.text()
@@ -249,7 +258,7 @@ fn a_drag_over_the_conversation_copies_what_it_holds() {
 #[test]
 fn the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does() {
     let app = talking(Vec::new());
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     typed("one two ", &mut ui, &app);
     assert_eq!(ui.agent.prompt.text(), "one two ");
     press(Key::Char('a'), CTRL, &mut ui, &app);
@@ -270,7 +279,7 @@ fn the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does() {
 #[test]
 fn the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it() {
     let app = talking(Vec::new());
-    let mut ui = chat_ui();
+    let mut ui = prompt_ui();
     let shift = Modifiers {
         shift: true,
         ..Modifiers::default()

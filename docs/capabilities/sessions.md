@@ -102,9 +102,9 @@ namespaces under it. No health, no counts. A session with none has no clusters s
 
 ## Agent session
 
-**The pane draws the agent's conversation**; the agent runs headless and keys go to
-Groove's own prompt. A skill is sent from the prompt's `/` or from the palette. Auto-approve
-is a setting. An ask stands on the rail row and over the prompt.
+**The pane draws the agent's conversation**; the agent runs headless, and `alt+a` opens
+Groove's own prompt over the window. A skill is sent from the prompt's `/` or from the palette.
+Auto-approve is a setting. An ask stands on the rail row and at the pane's foot.
 
 **Skills are scoped per launch**: the `/` offers and the palette list exactly what this agent
 was started with. A skill saved later shows after a reload, from the palette.

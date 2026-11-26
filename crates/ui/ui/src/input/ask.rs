@@ -8,6 +8,7 @@ use crate::{Focus, Ui};
 pub(crate) fn asked(ui: &mut Ui, about: String) {
     ui.agent.prompt.edit(&Edit::Insert(about));
     ui.focus = Focus::Agent;
+    ui.overlay = Some(crate::Overlay::Prompt);
 }
 
 /// The command `name` in the prompt, ready for its arguments.
@@ -16,6 +17,7 @@ pub(crate) fn command(ui: &mut Ui, name: &str) {
     ui.agent.prompt.edit(&Edit::Insert(format!("/{name} ")));
     ui.agent.offered = 0;
     ui.focus = Focus::Agent;
+    ui.overlay = Some(crate::Overlay::Prompt);
 }
 
 /// `` `src/lib.rs:12-14` ``, its lines counted from one.
