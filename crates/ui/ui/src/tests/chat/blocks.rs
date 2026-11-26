@@ -41,8 +41,14 @@ fn edits_back_to_back_stand_in_one_block_each_file_a_link() {
     let app = talking(heard);
     let (frame, hits) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
     let texts = all_texts(&frame);
-    assert!(texts.iter().any(|one| one == "EDITED · 2 FILES"), "{texts:?}");
-    assert!(texts.iter().any(|one| one == "+6"), "the block's sum: {texts:?}");
+    assert!(
+        texts.iter().any(|one| one == "EDITED · 2 FILES"),
+        "{texts:?}"
+    );
+    assert!(
+        texts.iter().any(|one| one == "+6"),
+        "the block's sum: {texts:?}"
+    );
     for path in ["src/one.rs", "src/two.rs"] {
         let link = Target::Edited {
             path: format!("{WORKTREE}/{path}"),
@@ -98,7 +104,9 @@ fn back_undoes_the_last_pick_of_a_question() {
     press(Key::Char('2'), Modifiers::default(), &mut ui, &app);
     assert_eq!(ui.agent.picked("r1"), ["Coffee"]);
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let back = hits.rect_of(&Target::Answer(Answering::Back)).expect("back");
+    let back = hits
+        .rect_of(&Target::Answer(Answering::Back))
+        .expect("back");
     assert!(click(back, &mut ui, &app, &hits).is_empty());
     assert!(ui.agent.picked("r1").is_empty(), "the first question again");
 }
@@ -114,5 +122,9 @@ fn with_the_rail_folded_the_conversation_stays_clear_of_its_headers() {
     let texts = frame.layers().iter().flat_map(|one| one.texts.iter());
     let steps = texts.filter(|run| run.text.starts_with("step "));
     let outside = steps.filter(|run| run.clip.y < pane.y);
-    assert_eq!(outside.count(), 0, "no line reaches the bar room over the pane");
+    assert_eq!(
+        outside.count(),
+        0,
+        "no line reaches the bar room over the pane"
+    );
 }

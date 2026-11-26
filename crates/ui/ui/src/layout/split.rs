@@ -22,6 +22,8 @@ pub enum Edge {
     Manual,
     /// Between a maintenance task's alerts and the agent under them.
     Alerts,
+    /// Between the modes layout's middle and its sidebar, as the rail's edge mirrored.
+    Aside,
 }
 
 impl Edge {
@@ -113,6 +115,10 @@ impl Split {
                 self.manual = (height - at).clamp(MANUAL_MIN, most);
             }
             Edge::Alerts => self.alerts = at.clamp(FEED_MIN, (height - CODE_MIN).max(FEED_MIN)),
+            Edge::Aside => {
+                let most = (width - self.rail - AGENT_MIN).max(SIDEBAR_MIN);
+                self.sidebar = (width - x).clamp(SIDEBAR_MIN, most);
+            }
         }
     }
 
@@ -125,6 +131,7 @@ impl Split {
             Edge::Feed => height - self.feed,
             Edge::Manual => height - self.manual,
             Edge::Alerts => self.alerts,
+            Edge::Aside => width - self.sidebar,
         }
     }
 

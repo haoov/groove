@@ -8,6 +8,7 @@ use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::layout::{Boxes, Node, Spec};
 
 mod folds;
+mod modes;
 mod split;
 
 pub use folds::Folds;
@@ -46,6 +47,8 @@ pub struct Layout {
     pub lists: Rect,
     /// A maintenance task's alerts: their header in the bar over the agent, the agent's top open.
     pub alerts: Rect,
+    /// The modes layout's bar: the session's title and its tabs; empty otherwise.
+    pub top: Rect,
 }
 
 impl Layout {
@@ -93,6 +96,7 @@ impl Layout {
             work: opened(glass, header),
             manual: Rect::new(glass.x, window.h, glass.w, 0.0),
             alerts: Rect::new(window.w, window.h, 0.0, 0.0),
+            top: Rect::new(window.w, window.h, 0.0, 0.0),
         }
     }
 
@@ -101,6 +105,9 @@ impl Layout {
         let tokens = metrics.tokens();
         let mut held = Self::new(metrics.size, &tokens, ui.split, folds.sidebar);
         held = held.rail_folds(&tokens, folds);
+        if ui.modes {
+            return held.moded(&tokens, ui, folds);
+        }
         let stowing = folds.strip;
         // Open, the terminals keep the height they were given; under a folded strip they rise to
         // its header.

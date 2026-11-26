@@ -11,11 +11,12 @@ use crate::ctx::Ctx;
 use crate::hit::read::Typed;
 use crate::hit::{Scroller, Target};
 use crate::views::session::Prompt;
-use crate::views::session::agent_pane::{keycap, offered};
+use crate::views::session::agent_pane::offered;
 use crate::views::session::diff::wrap::{marked, pieces};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{band, from_bottom, from_top, top_rule};
 use groove_ui_kit::text::{Label, row};
+use groove_ui_kit::widgets::keycap;
 use groove_ui_kit::widgets::{focus_ring, glass_pane, typed_line};
 
 /// The most rows the prompt grows to; past them it scrolls.
@@ -36,7 +37,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: f32) {
     let tall = listed + typed_h + ctx.tokens.bar;
     let above = ctx.tokens.row + ctx.tokens.lg;
     let top = ctx.window.h - tall - above + ctx.tokens.sm * (1.0 - open);
-    let column = ctx.window.align((wide, ctx.window.h), Align::Center, Align::Start);
+    let column = ctx
+        .window
+        .align((wide, ctx.window.h), Align::Center, Align::Start);
     let panel = band(column, top, tall);
     ctx.layer();
     glass_pane(ctx, panel);
@@ -53,11 +56,19 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: f32) {
     let inside = room.pad(Edges::all(md));
     let prompt = &ui.agent.prompt;
     if prompt.is_empty() {
-        row(ctx, band(inside, 0.0, line), 0.0, HINT, ctx.styles.code(Role::Faint));
+        row(
+            ctx,
+            band(inside, 0.0, line),
+            0.0,
+            HINT,
+            ctx.styles.code(Role::Faint),
+        );
     }
     let scroll = scrolled(prompt, &rows, (shown, line));
     let typed = typed(ctx, prompt, (inside, scroll), (&rows, focused));
-    ctx.app.hits.scrolls(Scroller::Prompt, (rows.len() - shown) as f32 * line);
+    ctx.app
+        .hits
+        .scrolls(Scroller::Prompt, (rows.len() - shown) as f32 * line);
     ctx.app.hits.typing(typed);
 }
 
@@ -65,7 +76,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: f32) {
 fn keyed(ctx: &mut Ctx, app: &AppState, keys: Rect) {
     top_rule(ctx, keys, ctx.styles.panel_edge());
     let mut room = keys.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let said = [("close", &["ESC"][..]), ("new line", &["ENTER", "SHIFT"][..]), ("send", &["ENTER"][..])];
+    let said = [
+        ("close", &["ESC"][..]),
+        ("new line", &["ENTER", "SHIFT"][..]),
+        ("send", &["ENTER"][..]),
+    ];
     for (word, caps) in said {
         Label::new(word, ctx.styles.small(Role::Faint)).right(ctx, &mut room, ctx.tokens.xs);
         for cap in caps {

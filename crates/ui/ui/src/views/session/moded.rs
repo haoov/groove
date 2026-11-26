@@ -1,0 +1,64 @@
+//! The session while the modes layout is on: the bar of its title and tabs, the mode in the
+//! middle, its sidebar at the right, and the terminals' drawer at the middle's foot.
+
+use groove_controllers::AppState;
+use groove_controllers::session_service::Open;
+use groove_gfx::{Align, Edges};
+
+use super::{Mode, agent_pane, header, manual};
+use crate::Ui;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Side, Tab, tab_group};
+
+pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
+    match ui.session.mode {
+        Mode::Agent => agent_pane::draw(ctx, app, ui),
+        other => pending(ctx, other),
+    }
+    ctx.layer();
+    bar(ctx, app, ui, open);
+    if ui.session.mode == Mode::Agent {
+        let open = !ui.session.folded;
+        agent_pane::aside::draw(ctx, app, ctx.app.layout.sidebar, open);
+    }
+    manual::draw(ctx, app, ui, &open.session.id);
+    if crate::views::rail::over(app, ui) {
+        ctx.layer();
+        crate::views::rail::windows(ctx, app, ui);
+    }
+}
+
+/// The session's title at the left, its tabs at the right, the mode up held.
+fn bar(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
+    let line = ctx.app.layout.top;
+    let mut room = line;
+    let shown = Mode::ALL
+        .into_iter()
+        .filter(|one| *one != Mode::Kubernetes || open.holds_clusters());
+    let tabs: Vec<Tab<'static, Target>> = shown
+        .map(|one| Tab::new(one.label(), Target::ModeTab(one), one == ui.session.mode))
+        .collect();
+    tab_group(ctx, &mut room, tabs, (Side::Right, ctx.tokens.md));
+    let page = app
+        .task
+        .worked(&open.session)
+        .and_then(|one| one.url.as_deref());
+    header::titled(ctx, room, open, page);
+}
+
+/// A mode not yet drawn in this layout says so, and how to go back.
+fn pending(ctx: &mut Ctx, mode: Mode) {
+    let middle = ctx.app.layout.agent;
+    let said = format!("{} comes to this layout next.", mode.label());
+    let back = "Settings › Appearance › modes goes back to the workspace panel.";
+    let tall = ctx.tokens.row * 2.0;
+    let block = middle.align((middle.w, tall), Align::Center, Align::Center);
+    let block = block.pad(Edges::across(ctx.tokens.lg, ctx.tokens.lg));
+    let first = groove_ui_kit::shape::band(block, 0.0, ctx.tokens.row);
+    let second = groove_ui_kit::shape::band(block, ctx.tokens.row, ctx.tokens.row);
+    Label::new(&said, ctx.styles.body(Role::Muted)).draw(ctx, first);
+    Label::new(back, ctx.styles.small(Role::Faint)).draw(ctx, second);
+}

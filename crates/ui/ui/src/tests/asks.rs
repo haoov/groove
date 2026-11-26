@@ -103,13 +103,55 @@ fn refusing_from_the_sheet_drops_the_write_and_puts_the_sheet_away() {
 }
 
 #[test]
-fn escape_puts_the_sheet_away_without_deciding() {
+fn escape_refuses_the_write_on_the_sheet_and_enter_approves_it() {
+    let app = committing();
+    let id = ApprovalId::new("ap-1");
+    let mut ui = session_ui();
+    ui.examine(id.clone());
+    let refused = press(Key::Escape, Modifiers::default(), &mut ui, &app);
+    let refuse = agent::Command::Refuse { id: id.clone() };
+    assert_eq!(refused, [Command::Agent(refuse)]);
+    assert_eq!(ui.examining(), None);
+    ui.examine(id.clone());
+    let approved = press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert_eq!(approved, [Command::Agent(agent::Command::Approve { id })]);
+    assert_eq!(ui.examining(), None);
+}
+
+#[test]
+fn arriving_on_a_session_that_asks_opens_its_sheet_and_another_s_never_shows() {
     let app = committing();
     let mut ui = session_ui();
+    ui.settle(&app);
+    assert_eq!(
+        ui.examining(),
+        Some(&ApprovalId::new("ap-1")),
+        "on arriving"
+    );
+    ui.overlay = None;
+    ui.settle(&app);
+    assert_eq!(ui.examining(), None, "only on arriving, never while there");
+    ui.examine(ApprovalId::new("elsewhere"));
+    ui.settle(&app);
+    assert_eq!(
+        ui.examining(),
+        None,
+        "another session's write is not shown here"
+    );
+}
+
+#[test]
+fn with_modes_the_sheet_floats_over_the_middle() {
+    let app = committing();
+    let mut ui = Ui {
+        modes: true,
+        ..session_ui()
+    };
     ui.examine(ApprovalId::new("ap-1"));
-    let acted = press(Key::Escape, Modifiers::default(), &mut ui, &app);
-    assert!(acted.is_empty(), "nothing decided: {acted:?}");
-    assert_eq!(ui.examining(), None);
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let sheet = hits.rect_of(&Target::Sheet).expect("the sheet");
+    let middle = crate::layout::Layout::of(window(), &ui).agent;
+    assert!(middle.contains(sheet.x, sheet.y) && sheet.right() <= middle.right());
 }
 
 #[test]

@@ -16,6 +16,8 @@ mod panes;
 mod prompt;
 mod resources;
 mod scope;
+mod sheet;
+mod tabbed;
 mod worded;
 
 use groove_controllers::{AppState, Command};
@@ -47,6 +49,9 @@ pub(super) fn key_input(
     let keymap = Keymap::of(app.config.config.as_ref());
     if let Some(action) = ui.settings.binding {
         return bound(action, key, mods, ui, app);
+    }
+    if let Some(commands) = sheet::answered((key, mods), ui) {
+        return commands;
     }
     let asking = ui.examining().is_some() || ui.menu().is_some() || ui.losing().is_some();
     if asking && key == Key::Escape {

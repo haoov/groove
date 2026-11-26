@@ -1,5 +1,6 @@
 //! The agent pane: its transcript over Groove's own prompt.
 
+pub(crate) mod aside;
 mod asked;
 mod chat;
 mod dock;
@@ -8,6 +9,7 @@ mod entry;
 pub(crate) mod model;
 pub(crate) mod offered;
 mod parts;
+mod state;
 pub(crate) mod steps;
 mod subagent;
 
@@ -16,9 +18,10 @@ use groove_controllers::agent_service::Agent;
 use groove_controllers::session_service::Open;
 use groove_types::{AgentStatus, Worktree};
 
-pub(crate) use parts::{cap, keycap};
+pub use state::AgentUi;
 
 use crate::Ui;
+use groove_gfx::{Align, Edges, Rect};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
@@ -46,13 +49,16 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// it sent that still work.
 fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Open, &Agent)) {
     let chat = app.agent.chat(&open.session.id);
-    let foot = foot(ctx);
+    let foot = foot(ctx, ui.modes);
     let working = agent.activity.status == AgentStatus::Working;
     let first = agent.permissions.first();
     let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
     let place = placed(open);
     let over = asked::ends(ctx, asked, foot);
-    let docked = subagent::docked(chat);
+    let docked = match ui.modes {
+        true => Vec::new(),
+        false => subagent::docked(chat),
+    };
     let dock = dock::laid(ctx, &docked, ui.agent.docked, over, foot);
     let ends = dock.map_or(over, |one| one.y);
     let rows = docked.iter().filter(|_| !ui.agent.docked);
@@ -65,16 +71,27 @@ fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Ope
     if let Some(at) = dock {
         dock::draw(ctx, at, &docked, ui.agent.docked);
     }
-    model::line(ctx, chat, agent, foot);
+    if !ui.modes {
+        model::line(ctx, chat, agent, foot);
+    }
 }
 
-/// The usage line at the pane's foot, centred and no wider than the palette.
-fn foot(ctx: &Ctx) -> groove_gfx::Rect {
+/// The usage line at the pane's foot, centred and no wider than the palette; none with modes.
+fn foot(ctx: &Ctx, modes: bool) -> Rect {
     let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
-    let room = ctx.app.layout.agent.pad(groove_gfx::Edges::across(sm + xs, sm + xs));
+    let room = ctx
+        .app
+        .layout
+        .agent
+        .pad(Edges::across(sm + xs, sm + xs));
     let wide = room.w.min(ctx.tokens.palette);
-    let room = room.align((wide, room.h), groove_gfx::Align::Center, groove_gfx::Align::Start);
-    groove_ui_kit::shape::band(room, room.h - ctx.tokens.row - xs, ctx.tokens.row)
+    let room = room.align(
+        (wide, room.h),
+        Align::Center,
+        Align::Start,
+    );
+    let tall = if modes { 0.0 } else { ctx.tokens.row };
+    groove_ui_kit::shape::band(room, room.h - tall - xs, tall)
 }
 
 /// `groove · feat/x`: the session's first worktree, where an ask acts.

@@ -20,14 +20,6 @@ pub(super) fn acted(
         Target::Agent => Some(Vec::new()),
         Target::Chat => Some(reading(ui, hits, point)),
         Target::Prompt => Some(typing(ui, hits, point, metrics)),
-        Target::Commands(id) => {
-            let opened = &mut ui.agent.opened;
-            match opened.iter().position(|one| one == id) {
-                Some(at) => _ = opened.remove(at),
-                None => opened.push(id.clone()),
-            }
-            Some(Vec::new())
-        }
         Target::Subagent(id) => {
             if !ui.agent.opened.contains(id) {
                 ui.agent.opened.push(id.clone());
@@ -48,14 +40,28 @@ pub(super) fn acted(
             menu_over(ui, app, (hits, metrics), target);
             Some(Vec::new())
         }
-        Target::FoldAgents => {
-            ui.agent.docked = !ui.agent.docked;
-            Some(Vec::new())
-        }
         Target::Answer(button) => Some(crate::input::answer::answered(ui, app, button.clone())),
         Target::Edited { path, line } => Some(crate::input::reveal::opened(ui, app, path, *line)),
-        _ => None,
+        _ => toggled(target, ui).then(Vec::new),
     }
+}
+
+/// What a click opens or folds, a mode picked; whether the target was one of them.
+fn toggled(target: &Target, ui: &mut Ui) -> bool {
+    match target {
+        Target::Commands(id) => {
+            let opened = &mut ui.agent.opened;
+            match opened.iter().position(|one| one == id) {
+                Some(at) => _ = opened.remove(at),
+                None => opened.push(id.clone()),
+            }
+        }
+        Target::AsideFold => ui.session.folded = !ui.session.folded,
+        Target::ModeTab(mode) => ui.session.mode = *mode,
+        Target::FoldAgents => ui.agent.docked = !ui.agent.docked,
+        _ => return false,
+    }
+    true
 }
 
 /// A press on the conversation: a selection begins, or takes the word or run under a 2nd or 3rd click.
@@ -135,13 +141,19 @@ fn menu_over(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics), but
         return;
     };
     let now = groove_types::Timestamp::now();
-    let of = crate::views::session::agent_pane::model::models(app, session, now);
+    let mut of = crate::views::session::agent_pane::model::models(app, session, now);
+    if let Some(crate::Of::Models { gauges, .. }) = of.as_mut().filter(|_| ui.modes) {
+        gauges.clear();
+    }
     if let Some((of, rect)) = of.zip(hits.rect_of(button)) {
-        let menu = crate::Menu {
-            at: (rect.right(), rect.y - metrics.tokens().sm),
-            corner: groove_ui_kit::widgets::Corner::BottomRight,
-            of,
+        use groove_ui_kit::widgets::Corner;
+        let sm = metrics.tokens().sm;
+        let high = rect.y < metrics.size.rect().h / 2.0;
+        let (at, corner) = match high {
+            true => ((rect.right(), rect.bottom() + sm), Corner::TopRight),
+            false => ((rect.right(), rect.y - sm), Corner::BottomRight),
         };
+        let menu = crate::Menu { at, corner, of };
         ui.overlay = Some(crate::Overlay::Menu(menu));
     }
 }

@@ -7,16 +7,18 @@ pub(crate) mod files;
 pub mod find;
 pub mod header;
 mod manual;
+mod mode;
+mod moded;
 mod open_files;
 pub mod overview;
 pub mod resources;
 mod review;
-mod sheet;
+pub(crate) mod sheet;
 mod state;
 mod tab;
 
 pub use state::{
-    Asked, Bar, Face, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
+    Asked, Bar, Face, Mode, Naming, Noting, Pane, Prompt, SessionUi, Showing, Tab, Term, Writing,
 };
 
 use groove_controllers::AppState;
@@ -47,6 +49,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         header::draw(ctx, app, ui);
         empty(ctx, app);
         return crate::views::focus::draw(ctx, app, ui);
+    }
+    if let Some(open) = app.session.selected().filter(|_| ui.modes) {
+        moded::draw(ctx, app, ui, open);
+        crate::views::focus::draw(ctx, app, ui);
+        return sheet::draw(ctx, app, ui);
     }
     if !ctx.app.layout.workspace.is_empty() {
         header::info(ctx, app, ui);

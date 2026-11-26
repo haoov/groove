@@ -70,8 +70,8 @@ the rail only as its attention count.
   terminals, `ctrl+w` closes the one shown.
   Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs` and
   `in_a_terminal_ctrl_tab_steps_its_tabs_and_ctrl_w_closes_one`.
-- **The board walks too.** `alt+1`, `alt+2` and `alt+3` open it, from anywhere, on its
-  Live, Up next and Review columns; on the board `alt+r` is the rail. The arrows walk the column; Enter, or a click, opens the session and goes
+- **The board walks too.** On the board `alt+a`, `alt+o` and `alt+e` take its Live, Up next
+  and Review columns, and `alt+r` the rail. The arrows walk the column; Enter, or a click, opens the session and goes
   to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
   Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
@@ -283,6 +283,39 @@ The rail, then one ground for the agent with the workspace's strip standing on i
 | **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
 | **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
 | **Alerts** | a maintenance task's firing alerts, over the agent: their header alone while folded |
+
+**The modes layout is a switch.** *Modes*, in Settings › Appearance, turns it on; it is off by
+default and the workspace panel stays. On, the session keeps the rail at the left; a bar holds
+its title at the left and its tabs at the right, `OVERVIEW`, `AGENT`, `DIFF`, `FILES` and
+`KUBERNETES` while it holds a cluster; the tab up fills the middle under it, a sidebar stands at
+the right, and the terminals' drawer stands at the middle's foot: nothing while the session has
+no terminal, folded its head across the middle's width as a rail window's is: `TERMINALS` and
+their count, the fold, the tabs and the actions. The bar over the middle stands on nothing of its
+own, and the transcript stops at the middle's top; at its foot it scrolls on under the
+terminals' head and the feed's; scrolled to either end, no row stands under them. `alt+1` to `alt+5` pick the
+tabs; without modes they pick the workspace's tabs, and `alt+2` hands the keys to the agent. With
+modes `alt+o` hands the keys to the middle and `alt+e` folds the sidebar or opens it. The
+sidebar mirrors the rail: its window stands a gap inside the window's right edge, folds to its
+head in the bar's row, the middle then taking the width, and its left border drags as the rail's
+right one does. With both the rail's windows folded the middle runs left across the rail's
+column, their heads standing over it as the sidebar's does, the transcript scrolling on under
+the feed's. `AGENT` shows the
+conversation with no line at its foot; its sidebar holds the model, a click on it opening the
+models alone, the usage gauges and the agents it sent, each a click away from its block in the
+conversation; no dock stands over the foot. A tab not yet
+built in this layout says so and how to go back. Enforced by
+`the_switch_is_off_by_default_and_the_setting_turns_it_on`,
+`the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
+`a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so`,
+`alt_one_to_five_pick_the_tabs_and_the_sidebar_folds_to_its_head_and_drags`,
+`the_sidebar_s_edge_drags_as_the_rail_s_does`,
+`with_both_rail_windows_folded_the_middle_takes_the_rail_s_column`,
+`with_modes_the_sidebar_holds_the_model_and_the_usage_and_the_foot_stays_bare`,
+`with_modes_the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot`,
+`with_modes_alt_o_gives_the_keys_to_the_middle_and_alt_e_folds_the_sidebar`,
+`the_terminals_bar_shows_only_with_a_terminal_and_then_runs_the_middle_s_width`,
+`with_modes_the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_top_one`,
+`the_rail_s_folded_heads_stand_over_the_middle_as_the_sidebar_s_does`.
 
 **The agent pane draws the conversation.** Every agent runs headless: Claude Code's
 stream-json on its pipes, no pty. A message, a skill, an interrupt and a model switch go over
@@ -686,8 +719,12 @@ click of something ordinary.
 
 ### Review sheet
 
-An ask opens a sheet over the work half — workspace and sidebar. The agent
-pane stays visible. One frame for every op: the repo and the branch, then the text of the
+An ask opens a sheet over the work half — workspace and sidebar — or with modes over the
+middle's top, as tall as its text. It stands as the agent's own asks do: glass ringed in the
+ask's colour, a tinted head saying what it asks in small capitals with the session, the repo and
+the branch, the write in mono, then the answers. The agent pane stays visible. The sheet shows only an ask of the session
+selected: it opens on arriving at a session that asks, from its rail row or with `a` and `v`,
+never by itself while the user stays on a session, and never for another session's ask. One frame for every op: the repo and the branch, then the text of the
 write. No diff and no file list. A push goes to the worktree's own branch and nowhere else.
 
 | Op | Text shown |
@@ -699,7 +736,10 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 | task body | the task's title and the body |
 | task finish | the task's title and the worktrees torn down |
 
-**Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
+**Approve** in peach on `ENTER`, **Refuse** on `ESC`. No editing in the sheet. Enforced by
+`escape_refuses_the_write_on_the_sheet_and_enter_approves_it`,
+`arriving_on_a_session_that_asks_opens_its_sheet_and_another_s_never_shows` and
+`with_modes_the_sheet_floats_over_the_middle`.
 
 ### Cluster write
 

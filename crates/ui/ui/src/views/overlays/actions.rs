@@ -43,7 +43,9 @@ fn acts(of: &Of) -> &'static [Act] {
             Some(groove_types::Section::Paused) => &PAUSED,
             None => &CHILD,
         },
-        Of::Resource { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges | Of::Models { .. } => &[],
+        Of::Resource { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges | Of::Models { .. } => {
+            &[]
+        }
     }
 }
 

@@ -7,17 +7,22 @@ use groove_ui_kit::shape::{from_left, from_top, hairline};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Offer, glass_chosen, glass_hoverable};
 
-use crate::views::session::agent_pane::cap;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::widgets::cap;
 
 /// The offers in sight around the `chosen` one, and how many group heads stand among them.
 fn window(offers: &[Offer], own: usize, chosen: usize) -> (std::ops::Range<usize>, usize) {
     let shown = COMPLETION_ROWS.min(offers.len());
     let chosen = chosen.min(offers.len().saturating_sub(1));
-    let first = chosen.saturating_sub(shown.saturating_sub(1)).min(offers.len() - shown);
+    let first = chosen
+        .saturating_sub(shown.saturating_sub(1))
+        .min(offers.len() - shown);
     let window = first..first + shown;
-    let heads = [0, own].into_iter().filter(|at| window.contains(at)).count();
+    let heads = [0, own]
+        .into_iter()
+        .filter(|at| window.contains(at))
+        .count();
     let heads = heads - usize::from(own == 0 && window.contains(&0));
     (window, heads)
 }
@@ -52,13 +57,20 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (offers, own): (&[Offer], usize), 
             cap(ctx, &mut head, &format!("{word} · {count}"), Role::Ghost);
         }
         let line = from_top(&mut room, row, 0.0);
-        offer(ctx, line, (&offers[at], widest), (at, at == chosen.min(offers.len() - 1)));
+        offer(
+            ctx,
+            line,
+            (&offers[at], widest),
+            (at, at == chosen.min(offers.len() - 1)),
+        );
     }
 }
 
 fn name_width(ctx: &mut Ctx, offers: &[Offer]) -> f32 {
     let style = ctx.styles.code(Role::Text);
-    let widths = offers.iter().map(|one| ctx.measure(&format!("/{}", one.label), &style));
+    let widths = offers
+        .iter()
+        .map(|one| ctx.measure(&format!("/{}", one.label), &style));
     widths.collect::<Vec<_>>().into_iter().fold(0.0, f32::max)
 }
 

@@ -71,6 +71,7 @@ pub(in crate::input) fn nudged(ui: &mut Ui, (across, onward): (bool, bool), metr
     let edge = match (across, ui.focus) {
         (true, Focus::Rail) => Edge::Rail,
         (true, Focus::Agent | Focus::Workspace | Focus::Terminal) => Edge::Agent,
+        (true, Focus::Sidebar) if ui.modes => Edge::Aside,
         (true, Focus::Sidebar) => Edge::Sidebar,
         (false, Focus::Terminal) => Edge::Manual,
         (false, Focus::Workspace) if ui.session.manual => Edge::Manual,

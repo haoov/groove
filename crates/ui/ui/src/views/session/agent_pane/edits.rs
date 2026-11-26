@@ -8,9 +8,10 @@ use groove_ui_kit::shape::from_top;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{changes, glass_hoverable};
 
-use super::parts::{boxed, cap, cap_right, head};
+use super::parts::{boxed, head};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::widgets::{cap, cap_right};
 
 fn written(edits: &[Entry]) -> impl Iterator<Item = &Edit> {
     edits.iter().filter_map(|one| match one {

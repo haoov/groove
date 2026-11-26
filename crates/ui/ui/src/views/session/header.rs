@@ -77,7 +77,7 @@ pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
 }
 
 /// The session's kind and its title, cut where the actions begin, then what opens its page.
-fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
+pub(super) fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
     let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
     let mut room = line.pad(Edges::across(md, md));
     lead(

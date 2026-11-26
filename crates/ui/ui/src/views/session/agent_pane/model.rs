@@ -10,10 +10,10 @@ use groove_ui_kit::shape::from_left;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{glass_hoverable, meter};
 
-use super::parts::{cap, cap_right};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::menu::{Gauge, Of, Told};
+use groove_ui_kit::widgets::{cap, cap_right};
 
 use groove_ui_kit::base::tokens::GAUGE_HIGH as HIGH;
 
@@ -34,8 +34,8 @@ fn context(chat: Option<&Chat>, agent: &Agent) -> Option<(u64, Option<u64>)> {
 pub(super) fn line(ctx: &mut Ctx, chat: Option<&Chat>, agent: &Agent, rect: Rect) {
     glass_hoverable(ctx, rect, Target::ModelButton);
     let mut room = rect;
-    super::parts::keycap_left(ctx, &mut room, "ALT");
-    super::parts::keycap_left(ctx, &mut room, "A");
+    groove_ui_kit::widgets::keycap_left(ctx, &mut room, "ALT");
+    groove_ui_kit::widgets::keycap_left(ctx, &mut room, "A");
     Label::new("reply", ctx.styles.log(Role::Ghost)).left(ctx, &mut room, ctx.tokens.lg);
     if let Some(model) = current(chat, agent) {
         cap_right(ctx, &mut room, &model_name(model), Role::Faint);
@@ -55,6 +55,13 @@ pub(super) fn line(ctx: &mut Ctx, chat: Option<&Chat>, agent: &Agent, rect: Rect
     }
 }
 
+/// `opus 5.5`: the selected session's agent's model, when known.
+pub(crate) fn named(app: &AppState) -> Option<String> {
+    let session = app.session.selected.as_ref()?;
+    let agent = app.agent.agent(session)?;
+    current(app.agent.chat(session), agent).map(model_name)
+}
+
 /// `opus 5.5 · context 62%` for the selected session's agent, as far as it is known.
 pub(crate) fn summary(app: &AppState) -> String {
     let session = app.session.selected.as_ref();
@@ -70,7 +77,11 @@ pub(crate) fn summary(app: &AppState) -> String {
 }
 
 fn gauge_role(share: f32) -> Role {
-    if share >= HIGH { Role::Attention } else { Role::Faint }
+    if share >= HIGH {
+        Role::Attention
+    } else {
+        Role::Faint
+    }
 }
 
 /// The models a headless agent switches to, then the context and the plan's windows.
@@ -87,17 +98,35 @@ pub(crate) fn models(app: &AppState, session: &SessionId, now: Timestamp) -> Opt
             current: on == Some(*one),
         })
         .collect();
-    let mut gauges: Vec<Gauge> = context(chat, agent).into_iter().filter_map(contained).collect();
-    let windows = [("Five-hour window", agent.limits.five_hour), ("This week", agent.limits.week)];
-    let windows = windows.into_iter().filter_map(|(label, one)| Some((label, one?)));
+    let gauges = gauges(chat, agent, now);
+    let session = session.clone();
+    (!rows.is_empty() || !gauges.is_empty()).then_some(Of::Models {
+        session,
+        rows,
+        gauges,
+    })
+}
+
+/// The context, the five-hour window and the week, as far as each is known.
+pub(super) fn gauges(chat: Option<&Chat>, agent: &Agent, now: Timestamp) -> Vec<Gauge> {
+    let mut gauges: Vec<Gauge> = context(chat, agent)
+        .into_iter()
+        .filter_map(contained)
+        .collect();
+    let windows = [
+        ("Five-hour window", agent.limits.five_hour),
+        ("This week", agent.limits.week),
+    ];
+    let windows = windows
+        .into_iter()
+        .filter_map(|(label, one)| Some((label, one?)));
     gauges.extend(windows.map(|(label, one)| Gauge {
         label,
         value: percent(one.used),
         used: one.used,
         resets: one.resets.map(|at| resets(at, now)),
     }));
-    let session = session.clone();
-    (!rows.is_empty() || !gauges.is_empty()).then_some(Of::Models { session, rows, gauges })
+    gauges
 }
 
 /// `124k of 200k`; none while the window is not known.
@@ -121,21 +150,22 @@ fn windowed(window: Window, now: Timestamp) -> String {
 }
 
 pub(crate) use menu::draw as menu;
+pub(super) use menu::gauge;
 
 mod menu {
     //! The models' menu on glass: `MODEL` and its rows, then `USAGE` and its gauges.
 
-    use groove_gfx::Edges;
+    use groove_gfx::{Edges, Rect};
     use groove_ui_kit::base::style::Role;
     use groove_ui_kit::shape::{band, from_top, kept_in};
     use groove_ui_kit::text::Label;
     use groove_ui_kit::widgets::{glass_chosen, glass_hoverable, glass_pane, meter};
 
-    use super::super::parts::{cap, cap_right};
     use crate::ctx::Ctx;
     use crate::hit::Target;
     use crate::menu::{Gauge, Menu, Told};
     use groove_ui_kit::widgets::Corner;
+    use groove_ui_kit::widgets::{cap, cap_right};
 
     /// The menu with its corner at the menu's point, kept in the window.
     pub(crate) fn draw(ctx: &mut Ctx, open: &Menu, (rows, gauges): (&[Told], &[Gauge])) {
@@ -172,18 +202,26 @@ mod menu {
         }
         for one in gauges {
             let two = from_top(&mut room, row * 2.0, 0.0);
-            gauge(ctx, two.pad(Edges::across(ctx.tokens.md, ctx.tokens.md)), one);
+            gauge(
+                ctx,
+                two.pad(Edges::across(ctx.tokens.md, ctx.tokens.md)),
+                one,
+            );
         }
     }
 
-    fn head(ctx: &mut Ctx, room: &mut groove_gfx::Rect, word: &str) {
+    fn head(ctx: &mut Ctx, room: &mut Rect, word: &str) {
         let line = from_top(room, ctx.tokens.row, 0.0);
         let mut line = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         cap(ctx, &mut line, word, Role::Ghost);
     }
 
     /// Its label and value, the gauge under, and when it resets beside the value.
-    fn gauge(ctx: &mut Ctx, two: groove_gfx::Rect, one: &Gauge) {
+    pub(in crate::views::session::agent_pane) fn gauge(
+        ctx: &mut Ctx,
+        two: Rect,
+        one: &Gauge,
+    ) {
         let mut top = band(two, 0.0, ctx.tokens.row);
         let value = match &one.resets {
             Some(resets) => format!("{} · {resets}", one.value),

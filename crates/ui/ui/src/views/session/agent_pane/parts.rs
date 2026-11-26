@@ -1,7 +1,7 @@
-//! What the conversation's blocks share: a word in small capitals, a keycap, a ruled box and its
-//! head band, the steps' tally, and how long ago something was said.
+//! What the conversation's blocks share: a ruled box and its head band, a tint, the steps'
+//! tally, and who spoke how long ago.
 
-use groove_gfx::{Align, Edges, Rect};
+use groove_gfx::{Edges, Rect};
 use groove_types::Timestamp;
 use groove_types::chat::{Glance, Kind};
 use groove_ui_kit::base::style::Role;
@@ -9,41 +9,7 @@ use groove_ui_kit::shape::{Panel, hairline};
 use groove_ui_kit::text::{Label, ago};
 
 use crate::ctx::Ctx;
-
-/// `word` in small capitals at the left of `room`.
-pub(crate) fn cap(ctx: &mut Ctx, room: &mut Rect, word: &str, role: Role) -> Rect {
-    let word = word.to_uppercase();
-    Label::new(&word, ctx.styles.tag(role)).left(ctx, room, ctx.tokens.sm)
-}
-
-/// `word` in small capitals at the right of `room`.
-pub(super) fn cap_right(ctx: &mut Ctx, room: &mut Rect, word: &str, role: Role) -> Rect {
-    let word = word.to_uppercase();
-    Label::new(&word, ctx.styles.tag(role)).right(ctx, room, ctx.tokens.sm)
-}
-
-/// A key's name on a hairline cap at the right of `room`.
-pub(crate) fn keycap(ctx: &mut Ctx, room: &mut Rect, key: &str) {
-    capped(ctx, room, key, false);
-}
-
-/// The same at the left of `room`.
-pub(crate) fn keycap_left(ctx: &mut Ctx, room: &mut Rect, key: &str) {
-    capped(ctx, room, key, true);
-}
-
-fn capped(ctx: &mut Ctx, room: &mut Rect, key: &str, left: bool) {
-    let style = ctx.styles.tag(Role::Faint);
-    let wide = ctx.measure(key, &style) + ctx.tokens.sm;
-    let slot = match left {
-        true => groove_ui_kit::shape::from_left(room, wide, ctx.tokens.xs),
-        false => groove_ui_kit::shape::from_right(room, wide, ctx.tokens.sm),
-    };
-    let cap = slot.align((wide, ctx.tokens.line), Align::Center, Align::Center);
-    Panel::default().border(ctx.styles.line()).draw(ctx, cap);
-    let word = cap.align((wide - ctx.tokens.sm, cap.h), Align::Center, Align::Center);
-    Label::new(key, style).draw(ctx, word);
-}
+use groove_ui_kit::widgets::cap;
 
 /// A block's hairline box on the pane's own ground.
 pub(super) fn boxed(ctx: &mut Ctx, rect: Rect) {
@@ -53,7 +19,9 @@ pub(super) fn boxed(ctx: &mut Ctx, rect: Rect) {
 
 /// A block's head band across the top of `rect`, ruled under; returns the room inside it.
 pub(super) fn head(ctx: &mut Ctx, rect: Rect) -> Rect {
-    Panel::default().ground(ctx.styles.panel_head()).draw(ctx, rect);
+    Panel::default()
+        .ground(ctx.styles.panel_head())
+        .draw(ctx, rect);
     hairline(ctx, rect, ctx.styles.panel_edge());
     rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md))
 }

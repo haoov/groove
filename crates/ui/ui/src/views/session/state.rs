@@ -2,6 +2,7 @@
 
 use groove_types::DiffView;
 
+pub use super::mode::Mode;
 pub use super::tab::{Face, Tab};
 pub use noting::{Noting, Writing};
 pub use prompt::Prompt;
@@ -16,6 +17,8 @@ use groove_ui_kit::widgets::Field;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SessionUi {
     pub tab: Tab,
+    /// What the middle shows while the modes layout is on.
+    pub mode: Mode,
     /// The tab shown when last settled.
     pub settled: Tab,
     /// The tab to show once the repo asked for is selected and read, and its commit shown when one.
@@ -33,6 +36,10 @@ pub struct SessionUi {
     pub folded: bool,
     /// The manual section stands open under the tab.
     pub manual: bool,
+    /// The selected session has a terminal open.
+    pub terminals: bool,
+    /// The session the review sheet last settled on.
+    pub sheeted: Option<groove_types::SessionId>,
     /// The workspace is folded into its strip, the agent wide.
     pub stowed: bool,
     /// A commit is shown in place of the working tree.

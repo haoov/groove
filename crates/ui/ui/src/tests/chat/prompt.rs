@@ -17,11 +17,17 @@ fn alt_a_opens_the_prompt_and_alt_a_again_closes_it() {
     press(Key::Char('a'), ALT, &mut ui, &app);
     assert!(ui.prompting());
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(hits.rect_of(&Target::Prompt).is_some(), "drawn over everything");
+    assert!(
+        hits.rect_of(&Target::Prompt).is_some(),
+        "drawn over everything"
+    );
     press(Key::Char('a'), ALT, &mut ui, &app);
     assert!(!ui.prompting());
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(hits.rect_of(&Target::Prompt).is_none(), "the pane rests without one");
+    assert!(
+        hits.rect_of(&Target::Prompt).is_none(),
+        "the pane rests without one"
+    );
 }
 
 #[test]

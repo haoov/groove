@@ -23,7 +23,7 @@ fn bare_config() -> groove_types::Config {
 fn the_app_ring_is_heard_from_the_agent_pane_too() {
     let app = full_app();
     let mut ui = Ui::default();
-    assert!(press(Key::Char('2'), ALT_SHIFT, &mut ui, &app).is_empty());
+    assert!(press(Key::Char('3'), ALT, &mut ui, &app).is_empty());
     assert_eq!(ui.session.tab, Tab::Diff);
     press(Key::Char('\''), ALT, &mut ui, &app);
     assert!(ui.session.manual && ui.focus == crate::Focus::Terminal);

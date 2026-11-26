@@ -8,9 +8,10 @@ use groove_ui_kit::shape::{Panel, band, from_left, from_top, top_rule};
 use groove_ui_kit::text::{Label, lasted, row, wrapped};
 use groove_ui_kit::widgets::{fold, glass_hoverable};
 
-use super::parts::{boxed, cap, tally, tinted};
+use super::parts::{boxed, tally, tinted};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::widgets::cap;
 
 /// The last lines of a command's output an opened block shows.
 const OUTPUT_LINES: usize = 8;
@@ -46,7 +47,12 @@ pub(super) fn height(ctx: &Ctx, glance: &Glance, (live, opened): (bool, &[String
     }
     if opened.contains(&key(glance)) {
         let rows = glance.steps.len() as f32 * ctx.tokens.row;
-        let printed: f32 = glance.steps.iter().filter_map(output).map(|one| sunk(ctx, one)).sum();
+        let printed: f32 = glance
+            .steps
+            .iter()
+            .filter_map(output)
+            .map(|one| sunk(ctx, one))
+            .sum();
         tall += rows + printed;
     }
     tall + running_height(ctx, glance, live)
@@ -96,7 +102,6 @@ fn folded(ctx: &mut Ctx, block: Rect, glance: &Glance, open: bool) {
     }
 }
 
-
 /// A row for each step, its kind, target and time; a command's output in a sunk box under it.
 fn table(ctx: &mut Ctx, mut room: Rect, glance: &Glance) {
     for (at, step) in glance.steps.iter().enumerate() {
@@ -115,7 +120,11 @@ fn table(ctx: &mut Ctx, mut room: Rect, glance: &Glance) {
             let tall = sunk(ctx, text);
             let printed = from_top(&mut room, tall, 0.0);
             let indent = ctx.tokens.aside_near + ctx.tokens.sm;
-            let printed = printed.pad(Edges { left: indent, bottom: ctx.tokens.xs, ..Edges::all(0.0) });
+            let printed = printed.pad(Edges {
+                left: indent,
+                bottom: ctx.tokens.xs,
+                ..Edges::all(0.0)
+            });
             sunk_box(ctx, printed, text, failed);
         }
     }

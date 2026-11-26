@@ -167,7 +167,8 @@ fn a_second_press_folds_the_sidebar_away() {
 #[test]
 fn on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask() {
     use crate::input::Modifiers;
-    let app = crate::tests::agent::asking(vec![crate::tests::agent::ask("w1", "write", "src/lib.rs")]);
+    let app =
+        crate::tests::agent::asking(vec![crate::tests::agent::ask("w1", "write", "src/lib.rs")]);
     let mut ui = Ui {
         focus: Focus::Rail,
         ..Default::default()

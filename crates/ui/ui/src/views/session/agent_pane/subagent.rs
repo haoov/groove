@@ -7,9 +7,10 @@ use groove_ui_kit::shape::{Panel, from_right, from_top};
 use groove_ui_kit::text::{Label, lasted, row, wrapped};
 use groove_ui_kit::widgets::glass_hoverable;
 
-use super::parts::{boxed, cap, head, tally};
+use super::parts::{boxed, head, tally};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::widgets::cap;
 
 /// The lines of its answer a closed block shows.
 const ANSWER_LINES: usize = 2;
@@ -76,7 +77,9 @@ fn pill(ctx: &mut Ctx, room: &mut Rect, sent: Sent) {
     let wide = ctx.measure(&word, &style) + ctx.tokens.sm * 2.0;
     let slot = from_right(room, wide, ctx.tokens.sm);
     let ring = slot.align((wide, ctx.tokens.line), Align::Center, Align::Center);
-    Panel::default().border(ctx.styles.band_edge(role)).draw(ctx, ring);
+    Panel::default()
+        .border(ctx.styles.band_edge(role))
+        .draw(ctx, ring);
     let text = ring.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
     Label::new(&word, style).draw(ctx, text);
 }

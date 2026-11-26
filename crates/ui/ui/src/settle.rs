@@ -14,11 +14,19 @@ impl Ui {
             .selected()
             .is_some_and(|open| open.state.maintenance);
         self.alerts.shown = maintained;
+        self.modes = app.config.modes();
+        let shells = app
+            .session
+            .selected
+            .as_ref()
+            .and_then(|one| app.shell.shells(one));
+        self.session.terminals = shells.is_some_and(|one| !one.tabs.is_empty());
         if self.focus == crate::Focus::Alerts && !self.alerts.shown {
             self.focus = crate::Focus::Agent;
         }
         self.session.reading = app.workspace.commit.is_some();
         self.review(app);
+        self.sheeted(app);
         self.kept_resources(app);
         self.moved(app);
         self.left(app);
@@ -68,6 +76,22 @@ impl Ui {
         }
         (self.session.tab, self.session.stowed) = (Tab::Diff, false);
         self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
+    }
+
+    /// The sheet shows the selected session's write only: it closes on one of another session's,
+    /// and opens on arriving at a session that asks.
+    fn sheeted(&mut self, app: &AppState) {
+        let selected = app.session.selected.clone();
+        let arrived = std::mem::replace(&mut self.session.sheeted, selected.clone()) != selected;
+        let shown = self.examining().cloned();
+        if shown.is_some_and(|id| crate::views::session::sheet::found(app, &id).is_none()) {
+            self.close(|one| matches!(one, Overlay::Examining(_)));
+        }
+        let asks = selected.as_ref().and_then(|one| app.agent.activity(one));
+        let first = asks.and_then(|one| one.asks.iter().find(|ask| !ask.reviewed));
+        if let Some(ask) = first.filter(|_| arrived && self.overlay.is_none()) {
+            self.examine(ask.id.clone());
+        }
     }
 
     /// The find bar lets go of the keys on a tab change, and while no bar is drawn.

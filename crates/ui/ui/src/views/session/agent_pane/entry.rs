@@ -9,9 +9,10 @@ use groove_ui_kit::markdown::{self, prose};
 use groove_ui_kit::shape::{band, from_top, mid_rule, strip};
 use groove_ui_kit::text::{Label, ago, row, rows, wrapped};
 
-use super::parts::{cap, cap_right, tinted, who};
+use super::parts::{tinted, who};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::widgets::{cap, cap_right};
 
 /// A block the transcript draws: an entry with when it was said, a run of edits, or a message
 /// waiting for the agent's turn.
@@ -30,7 +31,11 @@ pub(super) enum Row<'a> {
 /// How a block is seen: the session, whether it is the live one, and the blocks opened.
 pub(super) type Seen<'a> = (&'a Open, bool, &'a [String]);
 
-pub(super) fn height(ctx: &mut Ctx, shown: Row, (width, live, opened): (f32, bool, &[String])) -> f32 {
+pub(super) fn height(
+    ctx: &mut Ctx,
+    shown: Row,
+    (width, live, opened): (f32, bool, &[String]),
+) -> f32 {
     let (entry, head) = match shown {
         Row::Queued(text) => return you_height(ctx, text, width),
         Row::Edits(edits) => return super::edits::height(ctx, edits),
@@ -75,7 +80,12 @@ fn who_height(ctx: &Ctx) -> f32 {
 }
 
 /// The agent's words, plain, under `AGENT · 2m` when they open its turn.
-fn said(ctx: &mut Ctx, (whole, visible): (Rect, Rect), text: &str, head: Option<Option<Timestamp>>) {
+fn said(
+    ctx: &mut Ctx,
+    (whole, visible): (Rect, Rect),
+    text: &str,
+    head: Option<Option<Timestamp>>,
+) {
     let mut room = whole;
     if let Some(at) = head {
         let line = from_top(&mut room, ctx.tokens.line, ctx.tokens.xs);
@@ -130,8 +140,16 @@ fn interrupted(ctx: &mut Ctx, whole: Rect, at: Option<Timestamp>) {
     let middle = whole.align((wide, whole.h), Align::Center, Align::Center);
     let edge = ctx.styles.panel_edge();
     mid_rule(ctx, strip(whole, 0.0, (whole.w - wide) / 2.0), edge);
-    mid_rule(ctx, strip(whole, (whole.w + wide) / 2.0, (whole.w - wide) / 2.0), edge);
-    let text = middle.align((wide - ctx.tokens.md * 2.0, whole.h), Align::Center, Align::Center);
+    mid_rule(
+        ctx,
+        strip(whole, (whole.w + wide) / 2.0, (whole.w - wide) / 2.0),
+        edge,
+    );
+    let text = middle.align(
+        (wide - ctx.tokens.md * 2.0, whole.h),
+        Align::Center,
+        Align::Center,
+    );
     Label::new(&said, style).draw(ctx, text);
 }
 

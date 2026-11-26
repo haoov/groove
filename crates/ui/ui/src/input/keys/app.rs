@@ -22,7 +22,6 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::Settings if ui.settings.open => return ui.close_settings(),
         Action::Settings => return ui.open_settings(),
         Action::Board => return board(ui),
-        Action::BoardLive | Action::BoardNext | Action::BoardReview => return column(action, ui),
         Action::NewExplorer => return new_explorer(),
         Action::CloseSession => {
             let close = selected.map(|session| session::Command::Close { session });
@@ -40,6 +39,8 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         }
         Action::FocusRail => rail(ui),
         Action::FocusAgent => super::prompt::toggled(ui, app),
+        Action::FocusWorkspace if ui.modes => ui.focus = Focus::Agent,
+        Action::FocusSidebar if ui.modes => ui.session.folded = !ui.session.folded,
         Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
         Action::FocusAlerts if ui.alerts.shown => alerts(ui),
@@ -50,10 +51,9 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             }
             ui.session.tab = stepped_tab(ui.session.tab, forward, holds_clusters(app));
         }
-        Action::Overview => ui.session.tab = Tab::Overview,
-        Action::Diff => ui.session.tab = Tab::Diff,
-        Action::Files => ui.session.tab = Tab::Files,
-        Action::Resources if holds_clusters(app) => ui.session.tab = Tab::Resources,
+        Action::Overview | Action::AgentTab | Action::Diff | Action::Files | Action::Resources => {
+            super::tabbed::tabbed(action, ui, app)
+        }
         Action::Terminals => terminals(ui),
         Action::NewTerminal => return new_terminal(ui, selected),
         Action::Reload => return vec![Command::Workspace(workspace::Command::Load)],
@@ -76,22 +76,6 @@ fn on_board(action: Action, ui: &mut Ui) {
         Some(_) => Focus::Workspace,
         None => Focus::Rail,
     };
-}
-
-/// The board up on one of its columns, the keys on it.
-fn column(action: Action, ui: &mut Ui) -> Vec<Command> {
-    use crate::views::board::List;
-    let list = match action {
-        Action::BoardLive => List::Live,
-        Action::BoardNext => List::Next,
-        _ => List::Review,
-    };
-    let reads = match ui.surface {
-        Surface::Board => Vec::new(),
-        Surface::Session => crate::input::pointer::board_reads(),
-    };
-    (ui.surface, ui.board.list, ui.focus) = (Surface::Board, Some(list), Focus::Workspace);
-    reads
 }
 
 /// The palette, or closed when it stands open.

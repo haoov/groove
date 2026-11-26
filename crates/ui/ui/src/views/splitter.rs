@@ -34,6 +34,7 @@ fn shown(surface: Surface) -> &'static [Edge] {
             Edge::Manual,
             Edge::Feed,
             Edge::Alerts,
+            Edge::Aside,
         ],
         Surface::Board => &[Edge::Rail, Edge::Feed],
     }
@@ -52,10 +53,19 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
         Edge::Agent => {
             let layout = &ctx.app.layout;
             let column = !layout.workspace.is_empty() || layout.manual.h > ctx.tokens.bar;
+            let column = column && !layout.strip.is_empty();
             column.then(|| upright(layout.strip.x))
         }
         // The sidebar's room starts a hairline past its separator, where the edge is grabbed.
-        Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x - ctx.tokens.hairline)),
+        Edge::Sidebar => {
+            let moded = !ctx.app.layout.top.is_empty();
+            (!aside.is_empty() && !moded).then(|| upright(aside.x - ctx.tokens.hairline))
+        }
+        // On the sidebar's window's left border, as the rail's is on its windows' right one.
+        Edge::Aside => {
+            let moded = !ctx.app.layout.top.is_empty();
+            (moded && aside.h > ctx.tokens.bar).then(|| upright(aside.x))
+        }
         Edge::Alerts => {
             let alerts = ctx.app.layout.alerts;
             let open = alerts.h > ctx.tokens.bar;
@@ -64,7 +74,8 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
         Edge::Manual => {
             let manual = ctx.app.layout.manual;
             // Under a folded strip the drawer reaches its header: no line to drag.
-            let open = manual.h > ctx.tokens.bar && !ctx.app.layout.workspace.is_empty();
+            let room = !ctx.app.layout.workspace.is_empty() || !ctx.app.layout.top.is_empty();
+            let open = manual.h > ctx.tokens.bar && room;
             open.then(|| groove_ui_kit::shape::band(manual, -grab / 2.0, grab))
         }
         // On the feed's top, both windows open.

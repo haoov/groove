@@ -126,8 +126,12 @@ fn an_interrupt_is_a_rule_across_the_column_and_nothing_runs_after_it() {
     app.agent.agents[0].1.activity.status = AgentStatus::Working;
     let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
     let texts = all_texts(&frame);
-    let rule = texts.iter().any(|one| one.starts_with("Interrupted by you"));
+    let rule = texts
+        .iter()
+        .any(|one| one.starts_with("Interrupted by you"));
     assert!(rule, "{texts:?}");
-    let live = ["RUNNING", "WORKING"].iter().any(|word| texts.iter().any(|one| one == word));
+    let live = ["RUNNING", "WORKING"]
+        .iter()
+        .any(|word| texts.iter().any(|one| one == word));
     assert!(!live, "{texts:?}");
 }

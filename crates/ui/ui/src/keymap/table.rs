@@ -61,7 +61,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, List, Terminal};
 
-pub const TABLE: [Spec; 57] = [
+pub const TABLE: [Spec; 55] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -121,9 +121,6 @@ pub const TABLE: [Spec; 57] = [
         &["alt+shift+right"],
     ),
     pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+r"]),
-    pane(A::BoardLive, ("board.live", "board live"), &["alt+1"]),
-    pane(A::BoardNext, ("board.next", "board up next"), &["alt+2"]),
-    pane(A::BoardReview, ("board.review", "board review"), &["alt+3"]),
     pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+a"]),
     pane(
         A::FocusAlerts,
@@ -173,17 +170,14 @@ pub const TABLE: [Spec; 57] = [
         ("open.previous", "previous open tab"),
         &["ctrl+shift+tab", "ctrl+pageup"],
     ),
-    pane(
-        A::Overview,
-        ("tab.overview", "overview tab"),
-        &["alt+shift+1"],
-    ),
-    pane(A::Diff, ("tab.diff", "diff tab"), &["alt+shift+2"]),
-    pane(A::Files, ("tab.files", "files tab"), &["alt+shift+3"]),
+    pane(A::Overview, ("tab.overview", "overview tab"), &["alt+1"]),
+    pane(A::AgentTab, ("tab.agent", "agent tab"), &["alt+2"]),
+    pane(A::Diff, ("tab.diff", "diff tab"), &["alt+3"]),
+    pane(A::Files, ("tab.files", "files tab"), &["alt+4"]),
     pane(
         A::Resources,
         ("tab.resources", "kubernetes tab"),
-        &["alt+shift+4"],
+        &["alt+5"],
     ),
     pane(
         A::SelectNamespace,

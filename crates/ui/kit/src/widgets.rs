@@ -2,6 +2,7 @@
 
 mod badge;
 mod button;
+mod caps;
 pub mod code;
 mod completions;
 mod counts;
@@ -29,6 +30,7 @@ mod typed;
 
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
+pub use caps::{answer, cap, cap_right, keycap, keycap_left};
 pub use completions::{Offer, completions};
 pub use counts::{changes, changes_room, counts, counts_room, faults, faults_room};
 pub use field::Field;

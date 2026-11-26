@@ -73,6 +73,21 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let layout = ctx.app.layout;
     ground_under(ctx, layout.rail, Ground::Deep);
     groove_ui_kit::widgets::ground_lattice(ctx, layout.rail);
+    if !over(app, ui) {
+        windows(ctx, app, ui);
+    }
+}
+
+/// Both windows folded under the modes layout: the session's middle runs across the column, and
+/// their heads stand over it, drawn after it as the sidebar's is.
+pub fn over(app: &AppState, ui: &Ui) -> bool {
+    let session = ui.showing(app) == Surface::Session && app.session.selected().is_some();
+    ui.modes && session && ui.rail.stowed && ui.rail.folded
+}
+
+/// The two windows on the rail's ground.
+pub fn windows(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
+    let layout = ctx.app.layout;
     solid_pane(ctx, layout.sessions);
     solid_pane(ctx, layout.feed);
     let [head, board, rows] = parts_of(&ctx.tokens, layout.sessions);

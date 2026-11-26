@@ -88,15 +88,13 @@ pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
 
-/// How much of a carried row's place still shows, and of the raised ground under a selection.
+/// A carried row's ghost, a selection's raised ground, and the share a gauge turns peach at.
 pub const GHOST: f32 = 0.3;
 pub const HELD: f32 = 0.8;
-/// Past this share of a window, a gauge turns to the ask's colour.
 pub const GAUGE_HIGH: f32 = 0.8;
 /// How far a panel's header band stands from its base toward the theme's first surface.
 pub const PANEL_HEAD: f32 = 0.45;
-/// The hex lattice a defense theme lays on its deepest ground — its hexes' corner radius in logical
-/// pixels, its alpha dark then light — and the radii of a neuron's body and halo firing on it.
+/// A defense theme's hex lattice: its corner radius, its alpha dark then light; a neuron's radii.
 pub const HEX: f32 = 18.0;
 pub const LATTICE_ALPHA: (u8, u8) = (5, 44);
 pub const NEURON: (f32, f32) = (3.0, 12.0);

@@ -4,7 +4,7 @@ use groove_types::{SessionId, WorktreeId};
 
 use groove_types::DiffView;
 
-use super::{Cursor, NoteButton, Picks};
+use super::{Answering, NoteButton, Picks};
 use crate::layout::Edge;
 use crate::views::session::{Tab, Term};
 
@@ -247,6 +247,10 @@ pub enum Target {
     View(DiffView),
     /// The agent's pane.
     Agent,
+    /// One tab of the modes layout's bar.
+    ModeTab(crate::views::session::Mode),
+    /// The head of the modes layout's sidebar, which folds it.
+    AsideFold,
     /// The conversation's column, the file an edit wrote at its hunk's first line, and the prompt.
     Chat,
     Edited {
@@ -270,40 +274,4 @@ pub enum Target {
     Note(groove_types::NoteOrigin, NoteButton),
     /// What the composer of the note being typed offers.
     Compose(super::Composing),
-}
-
-impl Target {
-    /// What the pointer says over it: a row is a pointer, and these are not.
-    pub(super) fn cursor(&self) -> Cursor {
-        match self {
-            Target::Term(_)
-            | Target::Finding
-            | Target::Message
-            | Target::Code
-            | Target::Prompt => Cursor::Text,
-            Target::Agent
-            | Target::Chat
-            | Target::Shell(_)
-            | Target::Pinned
-            | Target::Palette
-            | Target::Overview => Cursor::Default,
-            Target::Map | Target::Place(_) => Cursor::RowResize,
-            Target::ResourceEdge(_) | Target::AlertEdge(_) => Cursor::ColResize,
-            Target::Split(edge) => match edge.upright() {
-                true => Cursor::ColResize,
-                false => Cursor::RowResize,
-            },
-            _ => Cursor::Pointer,
-        }
-    }
-}
-
-/// What answers a headless agent's ask: leave to run the tool, a refusal, or one option of its question.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Answering {
-    Allow,
-    Refuse,
-    Pick(String),
-    /// The question before, its pick undone.
-    Back,
 }

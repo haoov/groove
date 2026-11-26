@@ -66,7 +66,9 @@ fn the_open_prompt_stands_in_the_ring() {
         ..Ui::default()
     };
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let prompt = hits.rect_of(&crate::hit::Target::Prompt).expect("the prompt");
+    let prompt = hits
+        .rect_of(&crate::hit::Target::Prompt)
+        .expect("the prompt");
     let ring = in_colour(&frame, styles(&app).focus());
     assert!(ring.iter().any(|one| prompt.contains(one.x, one.y)));
 }

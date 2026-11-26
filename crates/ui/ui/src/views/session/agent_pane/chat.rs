@@ -2,8 +2,8 @@
 
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
-use groove_types::chat::{Chat, Entry, Glance};
 use groove_types::Timestamp;
+use groove_types::chat::{Chat, Entry, Glance};
 use groove_ui_kit::base::ctx::Run;
 use groove_ui_kit::widgets::text_band;
 
@@ -26,8 +26,8 @@ pub(super) fn draw(
     (ends, wanted): (f32, &[&str]),
 ) {
     let pane = ctx.app.layout.agent;
-    let room = pane;
-    ctx.hit(room, Target::Chat);
+    let room = under_bars(ctx);
+    ctx.hit(pane, Target::Chat);
     let none: &[String] = &[];
     let (entries, queued) = chat.map_or((&[][..], none), |one| (one.entries(), one.queued()));
     let sent = chat.map_or(none, Chat::sent);
@@ -45,7 +45,11 @@ pub(super) fn draw(
             let waiting = queued.iter().chain(sent).rev();
             let shown = waiting.map(|one| Row::Queued(one));
             let now = chat.and_then(Chat::now);
-            let pending = pending.iter().map(|entry| Row::Entry { entry, at: now, head: false });
+            let pending = pending.iter().map(|entry| Row::Entry {
+                entry,
+                at: now,
+                head: false,
+            });
             let laid = blocks(chat);
             let shown = shown.chain(pending).chain(laid.into_iter().rev());
             let live = working.then_some(queued.len() + sent.len());
@@ -61,6 +65,21 @@ pub(super) fn draw(
         .collect();
     ctx.app.hits.reading(lines);
     held(ctx, ui, room);
+}
+
+/// Where the rows show: the pane, and with modes the room under it too, so the rows scroll on
+/// under the bottom bar.
+fn under_bars(ctx: &Ctx) -> Rect {
+    let layout = &ctx.app.layout;
+    let (pane, top) = (layout.agent, layout.top);
+    if top.is_empty() {
+        return pane;
+    }
+    let floor = layout.manual.bottom().max(pane.bottom());
+    pane.pad(Edges {
+        bottom: pane.bottom() - floor,
+        ..Edges::all(0.0)
+    })
 }
 
 /// The rows from the end up, as far as the room reaches; returns how far they scroll.
@@ -79,7 +98,11 @@ fn rows<'a>(
         if top < room.bottom() - body.y && foot > room.y - body.y {
             entry::draw(ctx, (open, lit, opened), one, (band(body, top, tall), room));
         }
-        if let Row::Entry { entry: Entry::Subagent(sub), .. } = one {
+        if let Row::Entry {
+            entry: Entry::Subagent(sub),
+            ..
+        } = one
+        {
             let scroll = content + (tall - body.h).max(0.0);
             ctx.app.hits.sent_at(&sub.id, scroll);
             found += usize::from(wanted.contains(&sub.id.as_str()));
@@ -118,7 +141,9 @@ fn blocks(chat: Option<&Chat>) -> Vec<Row<'_>> {
     let mut out = Vec::with_capacity(entries.len());
     let mut at = 0;
     while at < entries.len() {
-        let edits = entries[at..].iter().take_while(|one| matches!(one, Entry::Edit(_)));
+        let edits = entries[at..]
+            .iter()
+            .take_while(|one| matches!(one, Entry::Edit(_)));
         let count = edits.count();
         if count > 0 {
             out.push(Row::Edits(&entries[at..at + count]));
@@ -127,7 +152,11 @@ fn blocks(chat: Option<&Chat>) -> Vec<Row<'_>> {
         }
         let head = at == 0 || opens(&entries[at - 1]);
         let stamp: Option<Timestamp> = chat.stamp(at);
-        out.push(Row::Entry { entry: &entries[at], at: stamp, head });
+        out.push(Row::Entry {
+            entry: &entries[at],
+            at: stamp,
+            head,
+        });
         at += 1;
     }
     out
@@ -135,7 +164,10 @@ fn blocks(chat: Option<&Chat>) -> Vec<Row<'_>> {
 
 /// Whether the agent's words after `before` open its turn.
 fn opens(before: &Entry) -> bool {
-    matches!(before, Entry::You(_) | Entry::Interrupted | Entry::Failed(_))
+    matches!(
+        before,
+        Entry::You(_) | Entry::Interrupted | Entry::Failed(_)
+    )
 }
 
 /// A run drawn, with where each of its characters starts.

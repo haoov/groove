@@ -7,10 +7,10 @@ use groove_ui_kit::shape::{band, from_top};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{fold, glass_hoverable, glass_pane};
 
-use super::parts::{cap, cap_right};
 use super::subagent;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::widgets::{cap, cap_right};
 
 /// The dock standing on `under`, its rows or only its head when `folded`; none without an agent.
 pub(super) fn laid(
@@ -49,7 +49,12 @@ pub(super) fn draw(ctx: &mut Ctx, dock: Rect, docked: &[&Subagent], folded: bool
 /// `agents · 2 working · 1 done`, by each state some agent stands in.
 fn counts(docked: &[&Subagent]) -> String {
     let states = [Sent::Working, Sent::Done, Sent::Failed, Sent::Stopped];
-    let counted = states.map(|state| (docked.iter().filter(|one| one.state == state).count(), state));
+    let counted = states.map(|state| {
+        (
+            docked.iter().filter(|one| one.state == state).count(),
+            state,
+        )
+    });
     let shown = counted.iter().filter(|(count, _)| *count > 0);
     let parts = shown.map(|(count, state)| format!(" · {count} {}", subagent::state(*state).0));
     std::iter::once("agents".to_string()).chain(parts).collect()

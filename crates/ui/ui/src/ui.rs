@@ -6,6 +6,8 @@ use crate::{
     BoardUi, Drag, Focus, Menu, RailUi, SessionUi, Split, Surface, Target, palette, views,
 };
 
+pub use views::session::agent_pane::AgentUi;
+
 /// What is the ui's alone: each view's part, focus, the overlay, the pointer, the caches. Never in `AppState`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ui {
@@ -23,6 +25,8 @@ pub struct Ui {
     pub agent: AgentUi,
     pub alerts: views::alerts::AlertsUi,
     pub split: Split,
+    /// The session's middle switches between modes, as the setting says.
+    pub modes: bool,
     /// What the pointer's button holds while it is down.
     pub held: Option<Held>,
     /// The last press, for the next one to know whether it carries on the same click.
@@ -92,49 +96,6 @@ pub enum Held {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Grid {
     Shell(u64),
-}
-
-/// The agent pane: its conversation, the prompt, and what the pointer does to them.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct AgentUi {
-    /// Wheel pixels not yet worth a line.
-    pub carried: f32,
-    /// Shift was held: the selection is ours even where the program reads the mouse.
-    pub bypassed: bool,
-    pub prompt: views::session::Prompt,
-    /// How far the conversation is scrolled up from its end, in pixels.
-    pub scroll: f32,
-    /// What a drag holds of the conversation: where it started and where it is, the scroll taken out.
-    pub reading: Option<((f32, f32), (f32, f32))>,
-    /// The glances whose commands show whole, by their first command.
-    pub opened: Vec<String>,
-    /// The dock of agents at work shows only its head.
-    pub docked: bool,
-    /// The command `/` offers that Enter or Tab takes.
-    pub offered: usize,
-    /// Escape put the offers away until the prompt changes.
-    pub hushed: bool,
-    /// The options picked so far for the ask that id names, one per question.
-    pub picked: Option<(String, Vec<String>)>,
-}
-
-impl AgentUi {
-    /// The options picked for the ask `id`; none for any other.
-    pub fn picked(&self, id: &str) -> Vec<String> {
-        let held = self.picked.as_ref().filter(|(one, _)| one == id);
-        held.map(|(_, picked)| picked.clone()).unwrap_or_default()
-    }
-
-    /// A point on the screen as one of the conversation's own, its scroll taken out.
-    pub fn unscrolled(&self, (x, y): (f32, f32)) -> (f32, f32) {
-        (x, y - self.scroll)
-    }
-
-    /// The ends of what a drag holds of the conversation, on the screen at its scroll.
-    pub fn held(&self) -> Option<((f32, f32), (f32, f32))> {
-        let ((a, b), (c, d)) = self.reading?;
-        Some(((a, b + self.scroll), (c, d + self.scroll)))
-    }
 }
 
 /// What is asked before a change is thrown away, or a cluster written to.

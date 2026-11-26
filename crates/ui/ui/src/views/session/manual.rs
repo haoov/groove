@@ -22,6 +22,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
         return;
     }
     let shells = app.shell.shells(session);
+    if !ui.session.manual && ui.modes {
+        return across(ctx, rect, ui, shells);
+    }
     if !ui.session.manual {
         return folded(ctx, rect, shells);
     }
@@ -60,6 +63,24 @@ fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
         .map(|(name, id, on)| tab(name, *id, *on))
         .collect();
     tab_group(ctx, &mut room, shown, (Side::Left, ctx.tokens.xs));
+}
+
+/// Folded to its head across the middle's width, as a rail window or the sidebar folds: a click
+/// on it opens the drawer, its tabs and actions at the right.
+fn across(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
+    solid_pane(ctx, line);
+    panel_head(ctx, line, true);
+    let row = groove_ui_kit::widgets::flat_row(ctx, line, Target::ShellFold, false);
+    let mut room = row.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
+    actions(ctx, &mut room);
+    let held = tabs(shells);
+    let shown: Vec<_> = held
+        .iter()
+        .map(|(name, id, on)| tab(name, *id, *on))
+        .collect();
+    tab_group(ctx, &mut room, shown, (Side::Right, ctx.tokens.md));
+    let heading = groove_ui_kit::widgets::Heading::new("terminals").count(held.len());
+    heading.fold(ui.session.manual).within(ctx, row, room);
 }
 
 /// The bar alone, as narrow as what it holds, at the drawer's right end: its pane and band laid

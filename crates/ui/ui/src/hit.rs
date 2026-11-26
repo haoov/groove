@@ -1,11 +1,13 @@
 //! What the pointer can reach: the last rect registered over a point wins.
 
 mod note;
+mod pointing;
 pub mod read;
 mod target;
 
 pub use note::{Composing, NoteButton};
-pub use target::{Answering, Target};
+pub use pointing::Answering;
+pub use target::Target;
 
 use groove_gfx::Rect;
 

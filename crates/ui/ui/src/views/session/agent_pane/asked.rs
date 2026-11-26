@@ -7,9 +7,9 @@ use groove_ui_kit::shape::{Panel, band, from_bottom, from_left, from_top};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, glass_hoverable, glass_pane};
 
-use super::parts::{cap, keycap};
 use crate::ctx::Ctx;
 use crate::hit::{Answering, Target};
+use groove_ui_kit::widgets::{cap, keycap};
 
 /// Where the conversation ends: over the card while one asks, else over the prompt.
 pub(super) fn ends(ctx: &Ctx, asked: Option<(&Permission, usize)>, prompt: Rect) -> f32 {
@@ -35,14 +35,21 @@ fn card(ctx: &Ctx, prompt: Rect, asked: &Permission, picked: usize) -> Rect {
 }
 
 /// The first ask, its question `picked` stands on, over the prompt.
-pub(super) fn draw(ctx: &mut Ctx, asked: &Permission, picked: usize, (prompt, place): (Rect, &str)) {
+pub(super) fn draw(
+    ctx: &mut Ctx,
+    asked: &Permission,
+    picked: usize,
+    (prompt, place): (Rect, &str),
+) {
     let card = card(ctx, prompt, asked, picked);
     glass_pane(ctx, card);
     let ring = Panel::default().border(ctx.styles.band_edge(Role::Attention));
     ring.draw(ctx, card);
     let mut room = card;
     let top = from_top(&mut room, ctx.tokens.row, 0.0);
-    Panel::default().ground(ctx.styles.band_tint(Role::Attention)).draw(ctx, top);
+    Panel::default()
+        .ground(ctx.styles.band_tint(Role::Attention))
+        .draw(ctx, top);
     let mut top = top.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let room = room.pad(Edges::all(ctx.tokens.md));
     match asked.questions.get(picked) {
@@ -71,19 +78,16 @@ fn leave(ctx: &mut Ctx, mut room: Rect, asked: &Permission) {
     let detail = asked.detail.as_deref().unwrap_or_default();
     Label::new(detail, ctx.styles.code(Role::Text)).draw(ctx, inside);
     answer(ctx, &mut acts, ("Allow", "ENTER"), (Answering::Allow, true));
-    answer(ctx, &mut acts, ("Refuse", "ESC"), (Answering::Refuse, false));
+    answer(
+        ctx,
+        &mut acts,
+        ("Refuse", "ESC"),
+        (Answering::Refuse, false),
+    );
 }
 
-/// One answer at the right of `room`: its word and its key's cap; the first in the ask's colour.
-fn answer(ctx: &mut Ctx, room: &mut Rect, (word, key): (&str, &str), (said, first): (Answering, bool)) {
-    keycap(ctx, room, key);
-    let (role, ground) = match first {
-        true => (Role::Attention, ctx.styles.band_tint(Role::Attention)),
-        false => (Role::Text, ctx.styles.hover()),
-    };
-    let button = Button::new(word, Target::Answer(said), role, ground);
-    let edge = if first { ctx.styles.band_edge(role) } else { ctx.styles.line() };
-    button.edged(edge).squared().right(ctx, room, ctx.tokens.md);
+fn answer(ctx: &mut Ctx, room: &mut Rect, words: (&str, &str), (said, first): (Answering, bool)) {
+    groove_ui_kit::widgets::answer(ctx, room, words, (Target::Answer(said), first));
 }
 
 /// The question, its options each on its digit with what it means, then how to answer.
@@ -105,8 +109,15 @@ fn asking(ctx: &mut Ctx, mut room: Rect, question: &Question, picked: usize) {
         Label::new(about, ctx.styles.small(Role::Faint)).draw(ctx, second);
     }
     if picked > 0 {
-        let back = Button::new("Back", Target::Answer(Answering::Back), Role::Text, ctx.styles.hover());
-        back.edged(ctx.styles.line()).squared().right(ctx, &mut acts, ctx.tokens.md);
+        let back = Button::new(
+            "Back",
+            Target::Answer(Answering::Back),
+            Role::Text,
+            ctx.styles.hover(),
+        );
+        back.edged(ctx.styles.line())
+            .squared()
+            .right(ctx, &mut acts, ctx.tokens.md);
     }
     Label::new("A digit picks.", ctx.styles.small(Role::Faint)).draw(ctx, acts);
 }
