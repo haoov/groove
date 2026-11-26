@@ -179,10 +179,9 @@ section to it, and a second click opens it. A folded section's rows are not walk
 `a_section_s_heading_folds_its_sessions_away_and_opens_them_again`.
 
 One action, `session.place`, puts a session at an index of a section. Drag and drop, the
-palette and the row's menu all send it. A move to the other section writes `paused` or
-`back to active` to the session's log; a move inside a section writes nothing. Enforced by
-`pausing_moves_the_session_keeps_it_on_disk_and_logs_it` and
-`a_move_within_its_section_logs_nothing`.
+palette and the row's menu all send it. Enforced by
+`pausing_moves_the_session_and_keeps_it_on_disk` and
+`a_move_within_its_section_reorders_it`.
 
 **Drag and drop.** A row pressed and moved past the click's slop lifts on glass and follows the
 pointer, held where it was gripped; its place stays ghosted, the section under the pointer lights, and a rule marks where

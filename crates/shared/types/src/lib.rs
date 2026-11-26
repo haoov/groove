@@ -98,7 +98,7 @@ pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use review::{ReviewMr, review_for, review_of};
 pub use routine::{Action, Routine, RoutineKind, Trigger};
 pub use secret::Secret;
-pub use session::{LogEntry, Section, Session, SessionKind, SessionState, Skill};
+pub use session::{Section, Session, SessionKind, SessionState, Skill};
 pub use sought::{Sought, ranked, runs, sought, spans};
 pub use syntax::{Capture, Highlight, spans_within};
 pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours};

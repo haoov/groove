@@ -1,4 +1,4 @@
-//! A session placed on the rail by hand: kept in the slice, on disk, and in its log.
+//! A session placed on the rail by hand: kept in the slice and on disk.
 
 use groove_types::{Section, SessionId};
 
@@ -29,11 +29,6 @@ fn placed(
     send(state, services, spawner, crate::Command::Session(command));
 }
 
-fn logged(state: &AppState, id: &SessionId) -> Vec<String> {
-    let open = state.session.get(id).unwrap();
-    open.log.iter().map(|one| one.what.clone()).collect()
-}
-
 #[test]
 fn a_new_session_lands_on_top_of_active() {
     let (_home, spawner, services, mut state) = fixture::fresh();
@@ -49,7 +44,7 @@ fn a_new_session_lands_on_top_of_active() {
 }
 
 #[test]
-fn pausing_moves_the_session_keeps_it_on_disk_and_logs_it() {
+fn pausing_moves_the_session_and_keeps_it_on_disk() {
     let (_home, spawner, services, mut state) = fixture::fresh();
     let first = fixture::explorer(&mut state, &services, &spawner);
     let second = fixture::explorer(&mut state, &services, &spawner);
@@ -59,7 +54,6 @@ fn pausing_moves_the_session_keeps_it_on_disk_and_logs_it() {
         stored(&spawner, &services, &first),
         (Section::Paused, Some(0))
     );
-    assert_eq!(logged(&state, &first), ["paused"]);
 
     placed(&mut state, &services, &spawner, &first, Section::Active, 1);
     let tops: Vec<_> = state
@@ -73,11 +67,10 @@ fn pausing_moves_the_session_keeps_it_on_disk_and_logs_it() {
         stored(&spawner, &services, &first),
         (Section::Active, Some(1))
     );
-    assert_eq!(logged(&state, &first), ["back to active", "paused"]);
 }
 
 #[test]
-fn a_move_within_its_section_logs_nothing() {
+fn a_move_within_its_section_reorders_it() {
     let (_home, spawner, services, mut state) = fixture::fresh();
     let first = fixture::explorer(&mut state, &services, &spawner);
     let second = fixture::explorer(&mut state, &services, &spawner);
@@ -88,6 +81,5 @@ fn a_move_within_its_section_logs_nothing() {
         .iter()
         .map(|one| one.session.id.clone())
         .collect();
-    assert_eq!(tops, [first.clone(), second]);
-    assert!(logged(&state, &first).is_empty());
+    assert_eq!(tops, [first, second]);
 }

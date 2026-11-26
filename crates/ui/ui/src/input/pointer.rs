@@ -172,7 +172,6 @@ fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
-        Some(Target::LogRemove(entry)) => removed(app, entry),
         one => staging(one, ui, app),
     }
 }
@@ -190,15 +189,6 @@ fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> 
         Some(Target::Block(line)) => surface::fold(ui, app, line),
         _ => Vec::new(),
     }
-}
-
-/// One entry off the selected session's log.
-fn removed(app: &AppState, entry: i64) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
-    let remove = groove_controllers::session::Command::RemoveLogEntry { session, entry };
-    vec![Command::Session(remove)]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {

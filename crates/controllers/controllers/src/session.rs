@@ -6,7 +6,6 @@ mod clusters;
 pub(crate) use clusters::{attach as attach_cluster, detach as detach_cluster};
 mod delete;
 pub(crate) mod feed;
-mod log;
 mod open;
 mod place;
 mod rail;
@@ -20,7 +19,6 @@ use crate::asker::Asker;
 pub use children::set_maintenance;
 pub(crate) use children::{Child, spawn_child};
 pub use delete::{delete, delete_local, force_delete};
-pub(crate) use log::{Logged, log_work};
 pub(crate) use open::{Start, begun, begun_with};
 pub use open::{close, open, open_explorer, restore, select};
 pub use place::place;
@@ -128,9 +126,7 @@ pub enum Command {
     SetMaintenance { session: SessionId, on: bool },
     /// `session.spawn_child`: an explorer spawned from a maintenance task, selected.
     SpawnChild { parent: SessionId },
-    /// `session.remove_log_entry`: one entry off the session's log.
-    RemoveLogEntry { session: SessionId, entry: i64 },
-    /// `session.place`: a session put at `index` of a rail section; a section change is logged.
+    /// `session.place`: a session put at `index` of a rail section.
     Place {
         session: SessionId,
         section: Section,
@@ -163,7 +159,6 @@ impl Command {
             Command::DetachCluster { .. } => "session.detach_cluster",
             Command::SetMaintenance { .. } => "session.set_maintenance",
             Command::SpawnChild { .. } => "session.spawn_child",
-            Command::RemoveLogEntry { .. } => "session.remove_log_entry",
             Command::Place { .. } => "session.place",
         }
     }

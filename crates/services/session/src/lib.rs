@@ -138,7 +138,6 @@ impl State {
         open.status = contents.status;
         open.clusters = contents.clusters;
         open.children = contents.children;
-        open.log = contents.log;
         open.alerted = contents.alerted;
         for (worktree, path) in contents.read {
             open.mark(&worktree, &path, true);
@@ -201,7 +200,6 @@ impl State {
             read: BTreeMap::new(),
             clusters: Vec::new(),
             children: Vec::new(),
-            log: Vec::new(),
             alerted: Vec::new(),
         });
     }

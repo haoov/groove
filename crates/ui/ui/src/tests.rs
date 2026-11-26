@@ -310,7 +310,6 @@ fn open(id: &str, title: &str) -> Open {
         read: Default::default(),
         clusters: vec![],
         children: vec![],
-        log: vec![],
         alerted: vec![],
     }
 }

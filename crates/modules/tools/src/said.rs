@@ -23,7 +23,6 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "log_task_hours" => joined("the hours the clock measured", &said("task")),
         "adopt_task" => said("task"),
         "spawn_session" => joined(&said("title"), &said("brief")),
-        "log_work" => joined(&said("what"), &said("why")),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
         "kube_exec" => joined(&said("target"), &said("shown")),
         "kube_patch" | "kube_delete" | crate::APPLY_EDIT => joined(&said("target"), &said("diff")),

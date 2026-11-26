@@ -5,7 +5,7 @@ One line a term. The other docs link here at a term's first use.
 ## The work
 
 ### Session
-One unit of work in the window: its repos, worktrees, agent, terminals and log. Its kind is task, explorer or review.
+One unit of work in the window: its repos, worktrees, agent and terminals. Its kind is task, explorer or review.
 
 ### Task
 A session that works a ticket from a provider. It has a branch and usually ends in an MR.
@@ -17,7 +17,7 @@ A session with no ticket yet. Filing a ticket and adopting it turns it into a ta
 A session on someone else's MR, checked out to read and annotate.
 
 ### Maintenance task
-A task the user marked as maintenance in Groove. It spawns children, and their entries land on its log.
+A task the user marked as maintenance in Groove. It spawns children.
 
 ### Child session
 An explorer a maintenance task spawned, which starts from a brief. It keeps its parent when it becomes a task.

@@ -18,8 +18,6 @@ pub struct Open {
     pub clusters: Vec<groove_types::Attached>,
     /// The sessions it spawned, the oldest first.
     pub children: Vec<Session>,
-    /// What it and its children did, the newest first.
-    pub log: Vec<groove_types::LogEntry>,
     /// The children it spawned for alerts, by the alert as it stood then.
     pub alerted: Vec<groove_types::AlertChild>,
 }

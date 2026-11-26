@@ -75,11 +75,6 @@ A task the user marked as maintenance (`maintenance` in `get_active_task`) holds
 unrelated actions. Hand each one to a child with `spawn_session`: the brief is all
 the child gets. A child has a `parent`.
 
-`log_work` keeps the session's log, which the user reads when they come back to
-the task. Call it only from `groove:save-task` or when the user asks, and only for
-what matters to that reader: the work landed, a decision, a settled question.
-A child's newest entry goes to its parent's log when the child closes.
-
 ## The skills are the procedures
 
 `groove:*` skills are the app's own procedure for the work it asks for —

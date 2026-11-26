@@ -157,8 +157,6 @@ pub enum Target {
     SessionsFold,
     /// A section's heading on the rail, which folds it to itself.
     SectionFold(groove_types::Section),
-    /// A log entry's remove button, by the entry's id.
-    LogRemove(i64),
     /// The alerts' header, which folds their window to it.
     AlertsFold,
     /// A firing alert's button: its child opened, or one spawned on it.
