@@ -76,7 +76,9 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) {
     surface::rows(ctx, body, app, ui, inline);
     let numbers = surface::numbers(app, ui, ui.session.face());
     pinned::draw(ctx, body, app, ui, (inline, numbers));
-    finder::draw(ctx, body, ui);
+    if !ui.modes {
+        finder::draw(ctx, body, ui);
+    }
 }
 
 /// The buffer the editor shows, whole, in `body`: what an object's YAML tab draws.

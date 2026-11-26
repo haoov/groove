@@ -321,6 +321,9 @@ stands under the band. The `FILES` sidebar heads on the repo, then holds `OPEN Â
 open file that a click shows and the middle button or its menu closes, then `WORKTREE`, the
 worktree's tree with the changed files marked with their letter. A file opened from
 elsewhere brings `FILES` up.
+After the title, the bar names the worktree every tab follows, `repo Â· branch`; a click on it
+opens the worktree picker, as `alt+w` does. On `DIFF` and `FILES`, `ctrl+f` opens the search in a
+row over the file's band, as wide as it.
 A tab not yet built in this layout says so and how to go back. Enforced by
 `the_switch_is_off_by_default_and_the_setting_turns_it_on`,
 `the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
@@ -345,6 +348,8 @@ A tab not yet built in this layout says so and how to go back. Enforced by
 `the_file_s_head_and_its_switches_share_one_band_over_its_rows`,
 `a_commit_says_so_over_the_file_and_offers_the_working_tree_back`,
 `a_press_low_on_the_sidebar_s_scrollbar_takes_the_list_to_its_end`,
+`ctrl_f_opens_the_search_in_a_row_over_the_file_s_band_as_wide_as_it`,
+`the_bar_names_the_worktree_after_the_title_and_a_click_picks_another`,
 `with_modes_an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk`,
 `the_overview_s_sidebar_heads_on_the_session_s_kind_and_folds`,
 `alt_one_to_five_pick_the_tabs_and_the_sidebar_folds_to_its_head_and_drags`,

@@ -129,7 +129,7 @@ pub(super) fn kinds(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 }
 
 /// The palette on the session's worktrees, as `repo/branch`, or on the other open sessions.
-fn flowed(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(crate) fn flowed(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let open = app.session.selected();
     let flow = match action {
         Action::SelectSession => {

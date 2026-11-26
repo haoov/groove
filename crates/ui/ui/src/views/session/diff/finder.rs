@@ -1,4 +1,4 @@
-//! The glass bar that floats over the rows while a search of them is live.
+//! The bar of a live search of the rows: glass over them, or with modes a row over the file's band.
 
 use groove_gfx::{Edges, Rect};
 
@@ -7,9 +7,24 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in, row_in};
-use groove_ui_kit::shape::from_right;
+use groove_ui_kit::shape::{Panel, from_right, from_top};
 use groove_ui_kit::text::row;
 use groove_ui_kit::widgets::{Search, glass_pane};
+
+/// With modes, the search's own row from the top of `column`, a hairline around it.
+pub(super) fn above(ctx: &mut Ctx, column: &mut Rect, ui: &Ui) {
+    let Some(find) = ui.session.find.as_ref() else {
+        return;
+    };
+    let bar = from_top(column, ctx.tokens.bar, ctx.tokens.sm);
+    Panel::default()
+        .border(ctx.styles.panel_edge())
+        .draw(ctx, bar);
+    let field = bar.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
+    let search = Search::new(&find.query, Target::Finding, find.typing);
+    search.code().faint(Role::Faint).draw(ctx, field);
+    count(ctx, field, &find.count());
+}
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     let Some(find) = ui.session.find.as_ref() else {

@@ -234,3 +234,46 @@ fn a_fault_s_popup_heads_on_its_kind_and_line() {
     assert!(warning < hover, "the fault first: {said:?}");
 }
 
+#[test]
+fn ctrl_f_opens_the_search_in_a_row_over_the_file_s_band_as_wide_as_it() {
+    let app = opened();
+    let mut ui = filing(&app);
+    ui.focus = crate::Focus::Workspace;
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..Default::default()
+    };
+    press(Key::Char('f'), ctrl, &mut ui, &app);
+    assert!(ui.session.find.is_some());
+    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let bar = hits.rect_of(&Target::Finding).expect("the search's row");
+    let middle = Layout::of(window(), &ui).agent;
+    let column = middle.w - window().tokens().xl * 2.0;
+    assert!(
+        bar.w > column / 2.0,
+        "as wide as the band, not a floating box"
+    );
+    let runs = frame.layers().iter().flat_map(|one| one.texts.iter());
+    let mut path = runs.filter(|run| run.text == "b.md" && middle.contains(run.clip.x, run.clip.y));
+    let band = path.next().expect("the band's path");
+    assert!(bar.bottom() <= band.clip.y, "over the band: {bar:?}");
+}
+
+#[test]
+fn the_bar_names_the_worktree_after_the_title_and_a_click_picks_another() {
+    let app = opened();
+    let mut ui = filing(&app);
+    let (said, hits) = texts(&app, &ui);
+    assert!(
+        said.iter().any(|one| one == "kiwi · explorer/alpha"),
+        "{said:?}"
+    );
+    let label = hits
+        .rect_of(&Target::Picker(crate::hit::Picks::Branch))
+        .expect("the worktree's label");
+    click(label, &mut ui, &app, &hits);
+    assert!(
+        matches!(ui.overlay, Some(crate::Overlay::Palette(ref one)) if one.flow.is_some()),
+        "the worktree picker opens"
+    );
+}

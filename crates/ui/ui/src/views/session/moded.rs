@@ -53,7 +53,8 @@ fn bar(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
         .task
         .worked(&open.session)
         .and_then(|one| one.url.as_deref());
-    header::titled(ctx, room, open, page);
+    let rest = header::titled_rest(ctx, room, open, page);
+    header::worktree_of(ctx, rest, open);
 }
 
 /// A mode not yet drawn in this layout says so, and how to go back.

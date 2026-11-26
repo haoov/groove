@@ -28,7 +28,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 
 /// The Files tab: the open file's band over its rows, the thin map beside them.
 pub fn file(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let column = area.pad(Edges::xy(ctx.tokens.xl, ctx.tokens.sm));
+    let mut column = area.pad(Edges::xy(ctx.tokens.xl, ctx.tokens.sm));
+    super::finder::above(ctx, &mut column, ui);
     let tall = |height: f32| Spec::default().height(height);
     let [band, _, body] = column_in(
         column,
@@ -81,7 +82,8 @@ fn committed(ctx: &mut Ctx, band: Rect, one: &CommitEntry) {
 }
 
 /// The band and the file's rows in `column`, which the cluster write's band may stand over.
-pub fn body(ctx: &mut Ctx, app: &AppState, ui: &Ui, column: Rect) {
+pub fn body(ctx: &mut Ctx, app: &AppState, ui: &Ui, mut column: Rect) {
+    super::finder::above(ctx, &mut column, ui);
     let tall = |height: f32| Spec::default().height(height);
     let [band, _, body] = column_in(
         column,

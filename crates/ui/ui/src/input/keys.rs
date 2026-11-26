@@ -2,7 +2,7 @@
 
 mod agent;
 mod alerts;
-mod app;
+pub(crate) mod app;
 mod bar;
 mod board;
 mod copy;

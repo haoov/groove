@@ -42,6 +42,10 @@ pub(super) fn acted(
         }
         Target::Answer(button) => Some(crate::input::answer::answered(ui, app, button.clone())),
         Target::Edited { path, line } => Some(crate::input::reveal::opened(ui, app, path, *line)),
+        Target::Picker(_) if ui.modes => {
+            let pick = crate::keymap::Action::SelectWorktree;
+            Some(crate::input::keys::app::flowed(pick, ui, app))
+        }
         _ => toggled(target, ui).then(Vec::new),
     }
 }
