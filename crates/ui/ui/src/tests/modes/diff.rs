@@ -215,3 +215,106 @@ fn a_cluster_write_takes_the_session_to_diff_and_back_once_answered() {
     ui.settle(&app);
     assert_eq!(ui.session.mode, Mode::Agent, "back to the mode it stood on");
 }
+
+#[test]
+fn the_file_s_head_and_its_switches_share_one_band_over_its_rows() {
+    let mut app = two();
+    let ui = diffing(&mut app);
+    let (_, hits) = texts(&app, &ui);
+    let read = hits
+        .rect_of(&Target::Read("src/a/alpha.rs".into()))
+        .expect("its read box");
+    let view = hits
+        .rect_of(&Target::View(groove_types::DiffView::Split))
+        .expect("the views");
+    let middle = |one: groove_gfx::Rect| one.y + one.h / 2.0;
+    assert!(
+        (middle(read) - middle(view)).abs() < 1.0,
+        "one band: {read:?} {view:?}"
+    );
+    assert!(
+        hits.rect_of(&Target::Head("src/a/alpha.rs".into()))
+            .is_none(),
+        "no head row folds it"
+    );
+}
+
+#[test]
+fn a_commit_says_so_over_the_file_and_offers_the_working_tree_back() {
+    let mut app = two();
+    let ui = diffing(&mut app);
+    app.workspace.commit = Some(groove_types::CommitEntry {
+        sha: "3f2a91c0".into(),
+        short_sha: "3f2a91c".into(),
+        message: "fix(ui): light tints\n".into(),
+        author: "Alex".into(),
+        at: groove_types::Timestamp::new(0),
+        is_base: false,
+    });
+    let (said, hits) = texts(&app, &ui);
+    assert!(said.iter().any(|one| one == "3f2a91c"), "{said:?}");
+    let back = hits.rect_of(&Target::Working).expect("the way back");
+    let mut ui = ui;
+    let asked = click(back, &mut ui, &app, &hits);
+    assert_eq!(
+        asked.first().map(Command::id),
+        Some("workspace.leave_commit")
+    );
+}
+
+#[test]
+fn a_press_low_on_the_sidebar_s_scrollbar_takes_the_list_to_its_end() {
+    let names: Vec<String> = (0..60).map(|at| format!("src/f{at:02}.rs")).collect();
+    let files: Vec<(&str, &str, &str)> = names
+        .iter()
+        .map(|one| (one.as_str(), "a\n", "b\n"))
+        .collect();
+    let mut app = changed(&files);
+    let mut ui = diffing(&mut app);
+    let (_, hits) = texts(&app, &ui);
+    let track = hits
+        .rect_of(&Target::Thumb(crate::hit::Scroller::Files))
+        .expect("a scrollbar while the list runs past the sidebar");
+    let mut low = track;
+    low.y = track.bottom() - 1.0;
+    low.h = 1.0;
+    click(low, &mut ui, &app, &hits);
+    let end = hits.extent(crate::hit::Scroller::Files);
+    assert!(end > 0.0);
+    assert_eq!(ui.offset(crate::hit::Scroller::Files), end);
+}
+
+#[test]
+fn the_arrows_walk_the_sidebar_s_rows_as_it_draws_them() {
+    use crate::input::{Key, Modifiers};
+    let mut app = two();
+    let mut ui = diffing(&mut app);
+    ui.focus = crate::Focus::Sidebar;
+    let (_, hits) = texts(&app, &ui);
+    let mut walked = Vec::new();
+    for _ in 0..6 {
+        let input = Input::Key {
+            key: Key::Down,
+            mods: Modifiers::default(),
+        };
+        handle(input, &mut ui, &app, &hits, window());
+        let Some(at) = ui.hover.clone() else {
+            panic!("a row is stood on");
+        };
+        assert!(hits.rect_of(&at).is_some(), "a drawn row: {at:?}");
+        if walked.last() != Some(&at) {
+            walked.push(at);
+        }
+    }
+    let files: Vec<&Target> = walked
+        .iter()
+        .filter(|one| matches!(one, Target::File(_)))
+        .collect();
+    assert_eq!(
+        files,
+        [
+            &Target::File("src/a/alpha.rs".into()),
+            &Target::File("src/b/beta.rs".into())
+        ]
+    );
+}

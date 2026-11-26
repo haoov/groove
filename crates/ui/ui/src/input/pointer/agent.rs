@@ -63,7 +63,7 @@ fn toggled(target: &Target, ui: &mut Ui) -> bool {
                 shut.insert(key.clone());
             }
         }
-        Target::ModeTab(mode) => ui.session.mode = *mode,
+        Target::ModeTab(mode) => (ui.session.mode, ui.aside) = (*mode, 0.0),
         Target::FoldAgents => ui.agent.docked = !ui.agent.docked,
         _ => return false,
     }

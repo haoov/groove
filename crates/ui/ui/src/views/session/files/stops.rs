@@ -20,6 +20,9 @@ pub(crate) struct Stop {
 pub(crate) fn stops(app: &AppState, ui: &Ui, tokens: &Tokens) -> Vec<Stop> {
     let mut rows = Rows::default();
     let row = tokens.row;
+    if ui.modes && !super::moded::diffing(ui) {
+        return Vec::new();
+    }
     match ui.session.pane {
         Pane::Commits => {
             for one in &app.workspace.log {
@@ -43,6 +46,7 @@ pub(crate) fn stops(app: &AppState, ui: &Ui, tokens: &Tokens) -> Vec<Stop> {
                 rows.push(Some(target), row);
             }
         }
+        Pane::Files if super::moded::diffing(ui) => moded(&mut rows, app, ui, row),
         Pane::Files if browsing(ui) => tree(&mut rows, app, ui, row),
         Pane::Files => changed(&mut rows, app, ui, row),
     }
@@ -78,6 +82,18 @@ fn tree(rows: &mut Rows, app: &AppState, ui: &Ui, row: f32) {
         let target = match one.dir {
             true => Target::Dir(one.path),
             false => Target::File(one.path),
+        };
+        rows.push(Some(target), row);
+    }
+}
+
+/// The modes Diff's changed files, as its tree or its flat list draws them.
+fn moded(rows: &mut Rows, app: &AppState, ui: &Ui, row: f32) {
+    let files: Vec<&groove_types::FileDiff> = super::changed(app).iter().collect();
+    for one in super::moded::tree::lines(&files, ui.session.flat, &ui.session.closed) {
+        let target = match one.kind {
+            super::moded::tree::Kind::Dir(..) => Target::Group(one.path),
+            super::moded::tree::Kind::File(file, _) => Target::File(file.path.clone()),
         };
         rows.push(Some(target), row);
     }

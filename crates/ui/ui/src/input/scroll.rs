@@ -106,6 +106,9 @@ fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
 
 /// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
 fn beside(ui: &Ui) -> Scroller {
+    if ui.modes && ui.session.mode != crate::views::session::Mode::Diff {
+        return Scroller::Aside;
+    }
     match ui.session.tab {
         Tab::Resources => Scroller::Kinds,
         _ => Scroller::Files,

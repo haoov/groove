@@ -3,6 +3,8 @@
 mod faults;
 mod gutter;
 mod head;
+
+pub use head::read_box;
 mod outline;
 mod paint;
 

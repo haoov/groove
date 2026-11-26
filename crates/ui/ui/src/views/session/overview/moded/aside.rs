@@ -8,34 +8,19 @@ use groove_types::{MrThread, SessionKind};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::from_top;
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{Heading, cap, cap_right, flat_row, panel_head, solid_pane};
+use groove_ui_kit::widgets::{cap, cap_right};
 
 use super::super::{children, clusters, task};
 use crate::ctx::Ctx;
-use crate::hit::Target;
 
-/// The sidebar in `rect`, its head folding it.
-pub fn draw(ctx: &mut Ctx, app: &AppState, open: &Open, (rect, shown): (Rect, bool)) {
-    solid_pane(ctx, rect);
-    let mut room = rect;
-    let top = from_top(&mut room, ctx.tokens.bar, 0.0);
-    panel_head(ctx, top, !shown);
-    let row = flat_row(ctx, top, Target::AsideFold, false);
-    let kind = match open.session.kind {
-        SessionKind::Review { .. } => "review",
-        SessionKind::Explorer => "explorer",
-        _ => "task",
-    };
-    Heading::new(kind).fold(shown).draw(ctx, row);
-    if !shown {
-        return;
-    }
-    let mut room = room.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+/// The sidebar's body from the top of `room`: the task's fields or the review's threads, then
+/// the clusters and the children.
+pub fn body(ctx: &mut Ctx, app: &AppState, open: &Open, room: &mut Rect) {
     match open.session.kind {
-        SessionKind::Review { .. } => reviewed(ctx, app, open, &mut room),
-        _ => fields(ctx, app, open, &mut room),
+        SessionKind::Review { .. } => reviewed(ctx, app, open, room),
+        _ => fields(ctx, app, open, room),
     }
-    held(ctx, app, open, &mut room);
+    held(ctx, app, open, room);
 }
 
 /// Each field the task has a value for, its name over the value's column.

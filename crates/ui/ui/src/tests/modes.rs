@@ -278,16 +278,53 @@ fn with_modes_the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot() {
 }
 
 #[test]
-fn with_modes_alt_o_gives_the_keys_to_the_middle_and_alt_e_folds_the_sidebar() {
+fn with_modes_alt_o_gives_the_keys_to_the_middle_and_alt_e_to_the_sidebar_then_folds_it() {
     use crate::input::Key;
     use crate::tests::{ALT, press};
-    let app = talking(Vec::new());
+    let mut app = talking(Vec::new());
+    app.config.config.as_mut().expect("a config").ui.modes = true;
     let mut ui = moded();
     ui.focus = crate::Focus::Rail;
     press(Key::Char('o'), ALT, &mut ui, &app);
     assert_eq!(ui.focus, crate::Focus::Agent);
+    ui.session.mode = Mode::Diff;
+    press(Key::Char('o'), ALT, &mut ui, &app);
+    assert_eq!(ui.focus, crate::Focus::Workspace, "on DIFF, the code");
+    ui.session.mode = Mode::Overview;
     press(Key::Char('e'), ALT, &mut ui, &app);
-    assert!(ui.session.folded);
+    ui.settle(&app);
+    assert_eq!(
+        ui.focus,
+        crate::Focus::Sidebar,
+        "the keys first, on a tab with nothing to pick"
+    );
+    assert!(!ui.session.folded);
+    press(Key::Char('e'), ALT, &mut ui, &app);
+    assert!(ui.session.folded, "then folded");
+    assert_eq!(ui.focus, crate::Focus::Agent, "the keys back to the middle");
     press(Key::Char('e'), ALT, &mut ui, &app);
     assert!(!ui.session.folded);
+    assert_eq!(ui.focus, crate::Focus::Sidebar);
+}
+
+#[test]
+fn every_tab_s_sidebar_scrolls_under_one_scrollbar() {
+    let sent = (0..60).map(|at| Heard::Subagent {
+        id: format!("a{at}"),
+        kind: "Explore".into(),
+        task: format!("look {at}"),
+    });
+    let app = talking(sent.collect());
+    let mut ui = moded();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let track = hits
+        .rect_of(&Target::Thumb(crate::hit::Scroller::Aside))
+        .expect("the agent's sidebar runs past its room");
+    let mut low = track;
+    low.y = track.bottom() - 1.0;
+    low.h = 1.0;
+    click(low, &mut ui, &app, &hits);
+    let end = hits.extent(crate::hit::Scroller::Aside);
+    assert!(end > 0.0);
+    assert_eq!(ui.offset(crate::hit::Scroller::Aside), end);
 }

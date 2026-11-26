@@ -69,6 +69,8 @@ pub enum Scroller {
     Prompt,
     /// One of the board's columns.
     Column(u8),
+    /// The modes layout's sidebar, on a tab whose body is not a list.
+    Aside,
     /// A maintenance task's alerts.
     Alerts,
 }
@@ -89,13 +91,14 @@ impl Scroller {
             Scroller::Alerts => 9,
             Scroller::Chat => 10,
             Scroller::Prompt => 11,
+            Scroller::Aside => 12,
             Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
 
 /// The scrollers ahead of the board's columns.
-const OWN: usize = 12;
+const OWN: usize = 13;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]

@@ -304,3 +304,42 @@ fn the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it() {
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(hits.typed().scroll < followed, "the wheel moves the rows");
 }
+
+#[test]
+fn with_modes_an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk() {
+    let mut app = talking(edit(&format!("{WORKTREE}/src/lib.rs"), 30));
+    let before: String = (1..=40).map(|n| format!("line {n}\n")).collect();
+    let after = before.replace("line 30\n", "line thirty\nline 30b\n");
+    changed_files(
+        &mut app,
+        &[("src/a.rs", "x\n", "y\n"), ("src/lib.rs", &before, &after)],
+    );
+    let (files, changes) = (
+        std::mem::take(&mut app.workspace.files),
+        std::mem::take(&mut app.workspace.changes),
+    );
+    app.workspace
+        .loaded(WorktreeId::new("wt-1"), files, changes);
+    app.config.config.as_mut().expect("a config").ui.modes = true;
+    let mut ui = crate::Ui {
+        modes: true,
+        ..chat_ui()
+    };
+    app.workspace.changes.focus(Some("src/a.rs".into()));
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let link = Target::Edited {
+        path: format!("{WORKTREE}/src/lib.rs"),
+        line: 30,
+    };
+    click(hits.rect_of(&link).expect("the link"), &mut ui, &app, &hits);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Diff);
+    let asked = crate::views::session::files::moded::focused(&app, &ui);
+    let Some(Command::Workspace(workspace::Command::Focus { path })) = asked else {
+        panic!("the edited file is shown: {asked:?}");
+    };
+    assert_eq!(path.as_deref(), Some("src/lib.rs"));
+    app.workspace.changes.focus(path);
+    crate::input::reveal(&mut ui, &app, window());
+    assert!(ui.session.diff > 0.0, "scrolled to the hunk");
+    assert!(ui.session.revealing.is_none());
+}

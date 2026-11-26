@@ -246,6 +246,8 @@ pub enum Target {
     ModeTab(crate::views::session::Mode),
     /// The head of the modes layout's sidebar, which folds it.
     AsideFold,
+    /// A list's scrollbar, its thumb dragged along it.
+    Thumb(super::Scroller),
     /// The head of a card on the modes Overview, which folds it, by key.
     CardFold(String),
     /// The modes Diff's list of changed files, under its rows.

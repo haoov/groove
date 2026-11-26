@@ -23,7 +23,8 @@ pub(super) enum Item {
     Note(usize),
 }
 
-pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
+/// The filters, then the threads; returns the list's room and how far it scrolls.
+pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> (Rect, f32) {
     let strip = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [strip, body] = column_in(body, [strip, Spec::fill()]);
     filters(ctx, strip, app, ui.session.showing);
@@ -31,11 +32,12 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     if items.is_empty() {
         let style = ctx.styles.small(Role::Faint);
         let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-        return row(ctx, line, ctx.tokens.md, said(ui.session.showing), style);
+        row(ctx, line, ctx.tokens.md, said(ui.session.showing), style);
+        return (body, 0.0);
     }
     let (head, note) = (ctx.tokens.row, ctx.tokens.row + ctx.tokens.line);
     let at = (Scroller::Files, ui.offset(Scroller::Files));
-    crate::offsets::listed(
+    let extent = crate::offsets::listed(
         ctx,
         body,
         at,
@@ -49,6 +51,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
             Item::Note(at) => one(ctx, line, app, *at),
         },
     );
+    (body, extent)
 }
 
 /// Open, resolved, all: each counted, the one shown lit.

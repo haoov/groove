@@ -50,8 +50,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let [strip, column] = column_in(column, [tall(ctx.tokens.row + ctx.tokens.sm), Spec::fill()]);
     panes(ctx, strip, app, ui);
     match (ui.session.pane, ui.session.tab) {
-        (Pane::Notes, _) => notes::draw(ctx, column, app, ui),
-        (Pane::Commits, Tab::Diff) => commits::draw(ctx, column, app, ui),
+        (Pane::Notes, _) => _ = notes::draw(ctx, column, app, ui),
+        (Pane::Commits, Tab::Diff) => _ = commits::draw(ctx, column, app, ui),
         _ => changed_files(ctx, column, app, ui),
     }
 }

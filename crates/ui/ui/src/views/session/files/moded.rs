@@ -6,12 +6,8 @@ use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::shape::from_top;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{
-    Heading, changes, flat_row, folder, glass_hoverable, marked_glass_tabs, panel_head, scrollbar,
-    solid_pane,
-};
+use groove_ui_kit::widgets::{Heading, changes, folder, glass_hoverable, marked_glass_tabs};
 
 use super::super::state::Pane;
 use crate::Ui;
@@ -22,13 +18,8 @@ pub(crate) mod tree;
 
 use tree::{Kind, Line};
 
-/// The sidebar in `rect`, its head folding it.
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, (rect, shown): (Rect, bool)) {
-    solid_pane(ctx, rect);
-    let mut room = rect;
-    let top = from_top(&mut room, ctx.tokens.bar, 0.0);
-    panel_head(ctx, top, !shown);
-    let row = flat_row(ctx, top, Target::AsideFold, false);
+/// The head's words: `DIFF · 3 files`, the change's counts at the right.
+pub fn head(ctx: &mut Ctx, app: &AppState, row: Rect, shown: bool) {
     let files = super::changed(app);
     let added: u32 = files.iter().map(|one| one.added).sum();
     let deleted: u32 = files.iter().map(|one| one.deleted).sum();
@@ -44,18 +35,18 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, (rect, shown): (Rect, bool))
         .note(&said)
         .fold(shown)
         .within(ctx, row, inner);
-    if !shown {
-        return;
-    }
+}
+
+/// The strip that picks the list, then the list; returns its room and how far it scrolls.
+pub fn body(ctx: &mut Ctx, app: &AppState, ui: &Ui, room: Rect) -> (Rect, f32) {
     let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [strip, body] = column_in(room, [tall, Spec::fill()]);
     panes(ctx, strip, app, ui);
-    let extent = match ui.session.pane {
-        Pane::Notes => return super::notes::draw(ctx, body, app, ui),
-        Pane::Commits => return super::commits::draw(ctx, body, app, ui),
-        Pane::Files => listed(ctx, body, app, ui),
-    };
-    scrollbar(ctx, body, (ui.offset(Scroller::Files), extent));
+    match ui.session.pane {
+        Pane::Notes => super::notes::draw(ctx, body, app, ui),
+        Pane::Commits => (body, super::commits::draw(ctx, body, app, ui)),
+        Pane::Files => (body, listed(ctx, body, app, ui)),
+    }
 }
 
 /// Files, commits, threads: each counted, the one up lit.
@@ -153,11 +144,13 @@ fn file_row(ctx: &mut Ctx, mut room: Rect, (file, name, dir): Named, read: bool)
 /// A changed file, the name its row reads as, and its folder in the flat list.
 type Named<'a> = (&'a FileDiff, &'a str, Option<&'a str>);
 
-/// The focus the change needs: the chosen file, else the list's first; none with modes off.
+/// The focus the change needs: the file revealed, the chosen, the first; none with modes off.
 pub(crate) fn focused(app: &AppState, ui: &Ui) -> Option<groove_controllers::Command> {
     let now = app.workspace.changes.focused();
     let files: Vec<&FileDiff> = super::changed(app).iter().collect();
-    let kept = now.filter(|path| files.iter().any(|one| one.path == *path));
+    let held = |path: &&str| files.iter().any(|one| one.path == *path);
+    let revealed = ui.session.revealing.as_ref().map(|(path, _)| path.as_str());
+    let kept = revealed.filter(held).or(now.filter(held));
     let first = || {
         tree::order(&files, ui.session.flat)
             .first()

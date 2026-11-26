@@ -27,11 +27,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
     ctx.layer();
     bar(ctx, app, ui, open);
     let (aside, shown) = (ctx.app.layout.sidebar, !ui.session.folded);
-    match ui.session.mode {
-        Mode::Agent => agent_pane::aside::draw(ctx, app, aside, shown),
-        Mode::Overview => super::overview::moded::aside::draw(ctx, app, open, (aside, shown)),
-        Mode::Diff => super::files::moded::draw(ctx, app, ui, (aside, shown)),
-        _ => {}
+    if matches!(ui.session.mode, Mode::Agent | Mode::Overview | Mode::Diff) {
+        super::aside::draw(ctx, app, ui, open, (aside, shown));
     }
     manual::draw(ctx, app, ui, &open.session.id);
     if crate::views::rail::over(app, ui) {

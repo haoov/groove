@@ -18,6 +18,9 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, path: &str, line: u32) -> Vec<
         return Vec::new();
     };
     (ui.session.tab, ui.session.going) = (Tab::Diff, None);
+    if ui.modes {
+        ui.session.mode = crate::views::session::Mode::Diff;
+    }
     ui.session.stowed = false;
     ui.focus = crate::Focus::Workspace;
     ui.session.revealing = Some((inside, line));

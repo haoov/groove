@@ -27,6 +27,8 @@ pub struct Ui {
     pub split: Split,
     /// The session's middle switches between modes, as the setting says.
     pub modes: bool,
+    /// How far the modes layout's sidebar is scrolled, in pixels.
+    pub aside: f32,
     /// What the pointer's button holds while it is down.
     pub held: Option<Held>,
     /// The last press, for the next one to know whether it carries on the same click.
@@ -71,6 +73,8 @@ pub enum Held {
     Text,
     /// The change map's lens.
     Lens,
+    /// A list's scrollbar thumb.
+    Thumb(crate::hit::Scroller),
     /// A task of the plan, carried to another line.
     Task(groove_types::ExternalId),
     /// A session of the rail, pressed at `from`, `grip` below its row's top, the pointer now at `at`.

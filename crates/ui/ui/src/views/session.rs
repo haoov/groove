@@ -1,6 +1,7 @@
 //! The session surface: the agent pane, and the workspace's strip with its header and tabs.
 
 pub mod agent_pane;
+mod aside;
 pub mod diff;
 mod face;
 pub(crate) mod files;

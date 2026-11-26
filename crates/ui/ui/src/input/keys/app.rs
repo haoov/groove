@@ -39,8 +39,8 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         }
         Action::FocusRail => rail(ui),
         Action::FocusAgent => super::prompt::toggled(ui, app),
-        Action::FocusWorkspace if ui.modes => ui.focus = Focus::Agent,
-        Action::FocusSidebar if ui.modes => ui.session.folded = !ui.session.folded,
+        Action::FocusWorkspace if ui.modes => ui.focus = middle(ui),
+        Action::FocusSidebar if ui.modes => aside(ui),
         Action::FocusWorkspace => workspace(ui),
         Action::FocusSidebar => sidebar(ui),
         Action::FocusAlerts if ui.alerts.shown => alerts(ui),
@@ -168,6 +168,24 @@ fn board(ui: &mut Ui) -> Vec<Command> {
 }
 
 /// The workspace unfolded, then given the keys, then folded away under the agent.
+/// What holds the keys in the modes layout's middle: the code on Diff, else the agent.
+fn middle(ui: &Ui) -> Focus {
+    match ui.session.mode {
+        crate::views::session::Mode::Diff => Focus::Workspace,
+        _ => Focus::Agent,
+    }
+}
+
+/// The modes layout's sidebar given the keys, opened if folded; folded when it has them.
+fn aside(ui: &mut Ui) {
+    let held = !ui.session.folded && ui.focus == Focus::Sidebar;
+    ui.session.folded = held;
+    ui.focus = match held {
+        true => middle(ui),
+        false => Focus::Sidebar,
+    };
+}
+
 fn workspace(ui: &mut Ui) {
     let held = !ui.session.stowed && ui.focus == Focus::Workspace;
     ui.session.stowed = held;

@@ -91,6 +91,7 @@ pub(super) fn moved(
         Some(Held::Task(_)) => carried(x, y, ui, app, metrics),
         Some(Held::Session { .. }) => rail::carried(y, ui, app, metrics),
         Some(Held::Lens) => lensed(y, ui, app, hits, metrics),
+        Some(Held::Thumb(which)) => ui.thumbed(*which, y, hits, metrics.tokens().row),
         Some(Held::Clicking(_) | Held::Selecting(_)) => {
             return selection::carried(ui, app, (x, y), hits, metrics);
         }
@@ -154,6 +155,11 @@ fn acted(
         Some(Target::Found(at)) => reached(ui, app, (hits, metrics), at),
         Some(Target::FoundIn(path)) => shut(ui, path),
         Some(Target::Map) => mapping(point.1, ui, app, hits, metrics),
+        Some(Target::Thumb(which)) => {
+            ui.held = Some(Held::Thumb(which));
+            ui.thumbed(which, point.1, hits, metrics.tokens().row);
+            Vec::new()
+        }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(target @ (Target::Pane(_) | Target::Showing(_))) => paned(ui, target),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),

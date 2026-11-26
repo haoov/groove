@@ -24,7 +24,7 @@ pub(super) fn tabbed(action: Action, ui: &mut Ui, app: &AppState) {
         return;
     }
     if ui.modes {
-        return ui.session.mode = mode;
+        return (ui.session.mode, ui.aside) = (mode, 0.0);
     }
     ui.session.tab = match mode {
         Mode::Agent => return ui.focus = Focus::Agent,

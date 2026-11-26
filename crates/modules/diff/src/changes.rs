@@ -56,11 +56,11 @@ impl Changes {
             if focus.as_ref().is_some_and(|one| *one != file.path) {
                 continue;
             }
-            let shown = match shut.contains(&file.path) {
-                true => 0,
-                false => file.len(),
+            rows += match (focus.is_some(), shut.contains(&file.path)) {
+                (true, _) => file.len(),
+                (false, true) => HEAD_ROWS,
+                (false, false) => file.len() + HEAD_ROWS,
             };
-            rows += shown + HEAD_ROWS;
         }
         let digits = files.iter().map(widest).max().unwrap_or(1);
         Self {
@@ -97,6 +97,14 @@ impl Changes {
     /// The one file that takes rows, when one is focused.
     pub fn focused(&self) -> Option<&str> {
         self.focus.as_deref()
+    }
+
+    /// The rows a file's head takes; none while one file is focused.
+    pub fn heads(&self) -> usize {
+        match self.focus {
+            Some(_) => 0,
+            None => HEAD_ROWS,
+        }
     }
 
     /// Whether this file takes rows: every file without a focus, else the focused one alone.
@@ -144,7 +152,8 @@ impl Changes {
 
     /// How many of a file's rows the surface draws.
     pub fn shown(&self, file: &Aligned) -> usize {
-        match self.is_folded(&file.path) || !self.placed_here(&file.path) {
+        let shut = self.focus.is_none() && self.is_folded(&file.path);
+        match shut || !self.placed_here(&file.path) {
             true => 0,
             false => file.len(),
         }
@@ -177,22 +186,22 @@ impl Changes {
             .partition_point(|start| *start <= row)
             .checked_sub(1)?;
         let file = self.files.get(at)?;
-        let head = self.starts[at];
-        match row < head + HEAD_ROWS {
+        let (head, heads) = (self.starts[at], self.heads());
+        match row < head + heads {
             true => Some(At::Head(file)),
-            false => Some(At::Row(file, row - head - HEAD_ROWS)),
+            false => Some(At::Row(file, row - head - heads)),
         }
     }
 
     /// The row a file's new-side line stands on; a folded or an unfocused file shows none.
     pub fn row_of(&self, path: &str, line: u32) -> Option<usize> {
         let at = self.files.iter().position(|file| file.path == path)?;
-        if self.is_folded(path) || !self.placed_here(path) {
+        if self.shown(&self.files[at]) == 0 || !self.placed_here(path) {
             return None;
         }
         let head = self.starts[at];
         let row = self.files[at].hunked.layout.position(line)?;
-        Some(head + HEAD_ROWS + row)
+        Some(head + self.heads() + row)
     }
 
     /// The row this file's own head sits on; an unfocused file has none.

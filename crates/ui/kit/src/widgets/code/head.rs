@@ -36,11 +36,11 @@ pub(super) fn head<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, code: &Code<'_, A::
     Label::new(folder, ctx.styles.body(Role::Faint))
         .cut_start()
         .draw(ctx, room);
-    box_(ctx, head_mark(ctx, whole), code.read);
+    read_box(ctx, head_mark(ctx, whole), code.read);
 }
 
 /// The box that says whether a file is read, ticked once it is.
-fn box_<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, read: bool) {
+pub fn read_box<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, read: bool) {
     let square = rect.pad(Edges::all(ctx.tokens.xs / 2.0));
     let role = match read {
         true => Role::Text,

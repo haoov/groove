@@ -36,6 +36,7 @@ fn region(ctx: &Ctx, app: &AppState, ui: &Ui) -> Option<Rect> {
         Focus::Workspace if session && !ui.session.stowed && !ui.session.reviewing => {
             Some(layout.strip)
         }
+        Focus::Sidebar if session && ui.modes => Some(layout.sidebar),
         // The sidebar's box, its border the separator; none while it is folded away.
         Focus::Sidebar if session && !layout.sidebar.is_empty() => {
             Some(aside_bounds(&ctx.tokens, layout.sidebar))

@@ -53,7 +53,7 @@ pub use neurons::{NEURON_MS, neurons};
 pub use pane::{Side, aside_bounds, glass_aside};
 pub use popup::{Piece, Said, popup};
 pub use question::{Steps, question};
-pub use scrolled::{scrollbar, scrolled};
+pub use scrolled::{flowed, scrollbar, scrolled, thumb_height};
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};
 pub use tabs::{Tab, glass_tabs, group_width, marked_glass_tabs, tab_group};

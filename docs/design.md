@@ -292,7 +292,8 @@ their count, the fold, the tabs and the actions. The bar over the middle stands 
 own, and the transcript stops at the middle's top; at its foot it scrolls on under the
 terminals' head and the feed's; scrolled to either end, no row stands under them. `alt+1` to `alt+5` pick the
 tabs; without modes they pick the workspace's tabs, and `alt+2` hands the keys to the agent. With
-modes `alt+o` hands the keys to the middle and `alt+e` folds the sidebar or opens it. The
+modes `alt+o` hands the keys to the middle and `alt+e` to the sidebar, opening it when folded; a
+second `alt+e` folds it. Every tab's sidebar scrolls under one scrollbar whose thumb drags. The
 sidebar mirrors the rail: its window stands a gap inside the window's right edge, folds to its
 head in the bar's row, the middle then taking the width, and its left border drags as the rail's
 right one does. With both the rail's windows folded the middle runs left across the rail's
@@ -306,11 +307,14 @@ its name and remote, then a row for each worktree with its changes, MR and pipel
 a card's head folds it, and the column keeps the conversation's gutter. Its sidebar holds the
 task's fields, the status in its colour, or the review's MR threads and pipeline, then the
 clusters and the children. `DIFF` shows one changed file at a time, the first in the sidebar's
-order until a click picks another: a band of the views and the modes over its rows, on the
-ground, and a thin map of that file beside them. Its sidebar heads on the whole change, its
+order until a click picks another. One band over its rows holds the file's name, folder and
+counts, then the views, the modes and its read box; no head row folds it. A thin map of that
+file stands beside the rows, all on the ground. A commit shown says so in a band over the file,
+with what puts the working tree back. Its sidebar heads on the whole change, its
 files and what it added and removed, then the strip of files, commits and the MR's threads; the
-files stand as a tree whose directories fold, or as a list, a right click switching the two. A
-cluster write takes the session to `DIFF` until it is answered, then back.
+files stand as a tree whose directories fold, or as a list, a right click switching the two; its
+scrollbar's thumb drags. An edit's link in the conversation opens `DIFF` on that file at its hunk.
+A cluster write takes the session to `DIFF` until it is answered, then back.
 A tab not yet built in this layout says so and how to go back. Enforced by
 `the_switch_is_off_by_default_and_the_setting_turns_it_on`,
 `the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
@@ -324,13 +328,19 @@ A tab not yet built in this layout says so and how to go back. Enforced by
 `a_directory_of_the_tree_folds_its_files`,
 `the_wheel_over_the_middle_scrolls_the_code`,
 `a_cluster_write_takes_the_session_to_diff_and_back_once_answered`,
+`the_file_s_head_and_its_switches_share_one_band_over_its_rows`,
+`a_commit_says_so_over_the_file_and_offers_the_working_tree_back`,
+`a_press_low_on_the_sidebar_s_scrollbar_takes_the_list_to_its_end`,
+`with_modes_an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk`,
 `the_overview_s_sidebar_heads_on_the_session_s_kind_and_folds`,
 `alt_one_to_five_pick_the_tabs_and_the_sidebar_folds_to_its_head_and_drags`,
 `the_sidebar_s_edge_drags_as_the_rail_s_does`,
+`every_tab_s_sidebar_scrolls_under_one_scrollbar`,
+`the_arrows_walk_the_sidebar_s_rows_as_it_draws_them`,
 `with_both_rail_windows_folded_the_middle_takes_the_rail_s_column`,
 `with_modes_the_sidebar_holds_the_model_and_the_usage_and_the_foot_stays_bare`,
 `with_modes_the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot`,
-`with_modes_alt_o_gives_the_keys_to_the_middle_and_alt_e_folds_the_sidebar`,
+`with_modes_alt_o_gives_the_keys_to_the_middle_and_alt_e_to_the_sidebar_then_folds_it`,
 `the_terminals_bar_shows_only_with_a_terminal_and_then_runs_the_middle_s_width`,
 `with_modes_the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_top_one`,
 `the_rail_s_folded_heads_stand_over_the_middle_as_the_sidebar_s_does`.

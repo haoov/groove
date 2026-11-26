@@ -107,7 +107,7 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<
     if ui.session.face() == Face::File {
         return scoped(ctx, body, app, ui, inline);
     }
-    if ui.session.scroll() <= 0.0 {
+    if ui.session.scroll() <= 0.0 || app.workspace.changes.heads() == 0 {
         return Vec::new();
     }
     file_under(ctx, app, ui, inline, HEAD_ROWS)

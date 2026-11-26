@@ -1,4 +1,4 @@
-use crate::{At, Changes, HEAD_ROWS, aligned};
+use crate::{At, Changes, aligned};
 
 fn three() -> Changes {
     Changes::new(vec![
@@ -9,11 +9,12 @@ fn three() -> Changes {
 }
 
 #[test]
-fn a_focused_file_alone_takes_rows() {
+fn a_focused_file_alone_takes_rows_and_no_head() {
     let mut changes = three();
     changes.focus(Some("src/b.rs".into()));
     let b = changes.get("src/b.rs").expect("b").len();
-    assert_eq!(changes.rows(), b + HEAD_ROWS);
+    assert_eq!(changes.rows(), b, "a focused file takes no head rows");
+    assert_eq!(changes.heads(), 0);
     assert_eq!(changes.head_of("src/b.rs"), Some(0));
     assert_eq!(
         changes.head_of("src/a.rs"),
@@ -58,8 +59,15 @@ fn the_focus_outlives_a_fold_and_a_read_again() {
     let mut again = three();
     again.refold(changes.folds(), changes.focused().map(str::to_string));
     assert_eq!(again.focused(), Some("src/a.rs"));
-    assert_eq!(
-        again.rows(),
-        again.get("src/a.rs").expect("a").len() + HEAD_ROWS
-    );
+    assert_eq!(again.rows(), again.get("src/a.rs").expect("a").len());
+}
+
+#[test]
+fn a_fold_leaves_the_focused_file_shown() {
+    let mut changes = three();
+    changes.focus(Some("src/b.rs".into()));
+    changes.fold("src/b.rs");
+    let b = changes.get("src/b.rs").expect("b").len();
+    assert_eq!(changes.rows(), b);
+    assert!(changes.row_of("src/b.rs", 1).is_some());
 }

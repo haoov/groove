@@ -43,7 +43,11 @@ impl Ui {
         if self.session.tab != self.session.settled || working {
             self.session.stowed = false;
         }
-        if !self.session.sidebar() && self.focus == crate::Focus::Sidebar {
+        let aside = match self.modes {
+            true => !self.session.folded,
+            false => self.session.sidebar(),
+        };
+        if !aside && self.focus == crate::Focus::Sidebar {
             self.focus = crate::Focus::Workspace;
         }
         self.unfound();
