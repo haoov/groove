@@ -89,7 +89,11 @@ impl Glance {
     /// How long step `at` took: until the next began, or until the glance's last record.
     pub fn took(&self, at: usize) -> Option<std::time::Duration> {
         let since = self.steps.get(at)?.at?;
-        let next = self.steps.get(at + 1).and_then(|one| one.at).or(self.until)?;
+        let next = self
+            .steps
+            .get(at + 1)
+            .and_then(|one| one.at)
+            .or(self.until)?;
         Some(since.age_at(next))
     }
 }

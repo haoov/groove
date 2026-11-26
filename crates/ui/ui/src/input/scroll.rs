@@ -25,15 +25,7 @@ pub(super) fn scroll(
     let layout = Layout::of(metrics, ui);
     let tokens = metrics.tokens();
     let pixels = |height: f32| delta.down(height);
-    if ui.settings.open {
-        ui.wheeled(Scroller::Settings, pixels(tokens.row), hits);
-        return Vec::new();
-    }
-    if ui.prompting() && hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
-        agent(ui, delta, point, (hits, metrics));
-        return Vec::new();
-    }
-    if ui.overlay.is_some() && !ui.prompting() {
+    if overlaid(ui, delta, point, (hits, metrics)) {
         return Vec::new();
     }
     if ui.showing(app) == Surface::Session && layout.alerts.contains(x, y) {
@@ -62,6 +54,24 @@ pub(super) fn scroll(
     }
     in_tab(ui, hits, delta, &tokens);
     Vec::new()
+}
+
+/// The wheel over the settings, the floating prompt or another overlay; whether one took it.
+fn overlaid(
+    ui: &mut Ui,
+    delta: Delta,
+    point: (f32, f32),
+    (hits, metrics): (&Hits, Metrics),
+) -> bool {
+    if ui.settings.open {
+        ui.wheeled(Scroller::Settings, delta.down(metrics.tokens().row), hits);
+        return true;
+    }
+    if ui.prompting() && hits.at(point.0, point.1) == Some(Target::Prompt) {
+        agent(ui, delta, point, (hits, metrics));
+        return true;
+    }
+    ui.overlay.is_some() && !ui.prompting()
 }
 
 /// The open tab's own column.

@@ -86,19 +86,18 @@ fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
 }
 
 #[test]
-fn alt_shift_4_opens_the_resources_tab_while_the_session_holds_a_cluster() {
-    let alt_shift = crate::input::Modifiers {
+fn alt_5_opens_the_resources_tab_while_the_session_holds_a_cluster() {
+    let alt = crate::input::Modifiers {
         alt: true,
-        shift: true,
         ..Default::default()
     };
     let mut ui = Ui::default();
-    crate::tests::press(Key::Char('4'), alt_shift, &mut ui, &full_app());
+    crate::tests::press(Key::Char('5'), alt, &mut ui, &full_app());
     assert_eq!(
         ui.session.tab,
         crate::views::session::Tab::Overview,
         "no cluster, no tab"
     );
-    crate::tests::press(Key::Char('4'), alt_shift, &mut ui, &attaching());
+    crate::tests::press(Key::Char('5'), alt, &mut ui, &attaching());
     assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
 }

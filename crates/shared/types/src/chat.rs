@@ -35,6 +35,8 @@ pub struct Chat {
     sent: Vec<String>,
     /// When the last record was written.
     now: Option<Timestamp>,
+    /// When the agent began thinking, until its next row.
+    thought: Option<Timestamp>,
     model: Option<String>,
     context: Option<u64>,
 }
@@ -79,7 +81,7 @@ impl Chat {
             | Heard::Background { .. }
             | Heard::Ended { .. }
             | Heard::Reported { .. }) => return self.followed_agent(sent),
-            Heard::Thought => return,
+            Heard::Thought => return self.thought = self.thought.or(self.now),
             Heard::Look(at) => return self.looked(Kind::Read, at),
             Heard::Searched(at) => return self.looked(Kind::Searched, at),
             Heard::Ran { id, command, about } => {
@@ -128,7 +130,11 @@ impl Chat {
     }
 
     fn ran(&mut self, (id, tool, command): (String, Option<String>, String), doing: String) {
-        let kind = if tool.is_some() { Kind::Called } else { Kind::Ran };
+        let kind = if tool.is_some() {
+            Kind::Called
+        } else {
+            Kind::Ran
+        };
         let target = match tool.as_deref() {
             Some(name) => mcp_target(name),
             None => first_line(&command),
@@ -161,7 +167,7 @@ impl Chat {
 
     fn glanced(&mut self, add: impl FnOnce(&mut Glance)) {
         if !matches!(self.entries.last(), Some(Entry::Glance(_))) {
-            let (since, until) = (self.now, self.now);
+            let (since, until) = (self.thought.or(self.now), self.now);
             self.push(Entry::Glance(Glance {
                 since,
                 until,
@@ -218,6 +224,7 @@ impl Chat {
         }
         self.entries.push(entry);
         self.stamps.push(self.now);
+        self.thought = None;
     }
 }
 

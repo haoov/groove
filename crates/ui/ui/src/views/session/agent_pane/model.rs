@@ -217,11 +217,7 @@ mod menu {
     }
 
     /// Its label and value, the gauge under, and when it resets beside the value.
-    pub(in crate::views::session::agent_pane) fn gauge(
-        ctx: &mut Ctx,
-        two: Rect,
-        one: &Gauge,
-    ) {
+    pub(in crate::views::session::agent_pane) fn gauge(ctx: &mut Ctx, two: Rect, one: &Gauge) {
         let mut top = band(two, 0.0, ctx.tokens.row);
         let value = match &one.resets {
             Some(resets) => format!("{} · {resets}", one.value),

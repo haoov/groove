@@ -166,7 +166,7 @@ fn a_click_on_an_offered_command_takes_it() {
 }
 
 #[test]
-fn under_the_prompt_the_usage_line_opens_the_models_over_three_gauges() {
+fn at_rest_the_usage_line_opens_the_models_over_three_gauges() {
     let used = Heard::Used {
         model: "claude-opus-5-5".into(),
         context: 82_002,
@@ -180,10 +180,10 @@ fn under_the_prompt_the_usage_line_opens_the_models_over_three_gauges() {
         week: Some(window(0.09)),
     };
     let mut ui = chat_ui();
+    ui.session.stowed = true;
     let (frame, hits) = crate::view(&app, &ui, window_size(), &mut Fonts::embedded());
-    let prompt = hits.rect_of(&Target::Prompt).expect("the prompt");
+    assert!(hits.rect_of(&Target::Prompt).is_none(), "no prompt at rest");
     let line = hits.rect_of(&Target::ModelButton).expect("the usage line");
-    assert!(line.y >= prompt.bottom(), "under the prompt");
     let texts = all_texts(&frame);
     for said in ["CONTEXT", "8%", "5H WINDOW", "48%"] {
         assert!(texts.iter().any(|one| one == said), "{said}: {texts:?}");

@@ -21,9 +21,9 @@ use groove_types::{AgentStatus, Worktree};
 pub use state::AgentUi;
 
 use crate::Ui;
-use groove_gfx::{Align, Edges, Rect};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_gfx::{Align, Edges, Rect};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
 
@@ -79,17 +79,9 @@ fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Ope
 /// The usage line at the pane's foot, centred and no wider than the palette; none with modes.
 fn foot(ctx: &Ctx, modes: bool) -> Rect {
     let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
-    let room = ctx
-        .app
-        .layout
-        .agent
-        .pad(Edges::across(sm + xs, sm + xs));
+    let room = ctx.app.layout.agent.pad(Edges::across(sm + xs, sm + xs));
     let wide = room.w.min(ctx.tokens.palette);
-    let room = room.align(
-        (wide, room.h),
-        Align::Center,
-        Align::Start,
-    );
+    let room = room.align((wide, room.h), Align::Center, Align::Start);
     let tall = if modes { 0.0 } else { ctx.tokens.row };
     groove_ui_kit::shape::band(room, room.h - tall - xs, tall)
 }

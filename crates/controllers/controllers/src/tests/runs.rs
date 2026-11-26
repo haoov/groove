@@ -36,9 +36,7 @@ fn explorer(
     };
     dispatch(Command::Session(open), state, services, spawner);
     let id = state.session.selected.clone().expect("a session");
-    until(spawner, services, state, |s| {
-        s.agent.stream(&id).is_some()
-    });
+    until(spawner, services, state, |s| s.agent.stream(&id).is_some());
     id
 }
 

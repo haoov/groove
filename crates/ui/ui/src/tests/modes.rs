@@ -206,6 +206,7 @@ fn with_modes_the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_to
     let said = (0..60).map(|at| Heard::Said(format!("step {at} done")));
     let app = talking(said.collect());
     let mut ui = moded();
+    ui.session.terminals = true;
     ui.agent.scroll = window().tokens().row * 10.0;
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
@@ -228,6 +229,7 @@ fn the_rail_s_folded_heads_stand_over_the_middle_as_the_sidebar_s_does() {
     let app = talking(said.collect());
     let mut ui = moded();
     (ui.rail.stowed, ui.rail.folded) = (true, true);
+    ui.agent.scroll = window().tokens().row * 10.0;
     let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let layout = Layout::of(window(), &ui);
     let head = layout.sessions;

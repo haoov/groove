@@ -251,10 +251,7 @@ fn a_subagent_folds_its_own_steps_and_its_answer_ends_it() {
     };
     let chat = heard([sent("a1"), within.clone(), Heard::Said("meanwhile".into())]);
     let sub = subagent(&chat, 0);
-    assert_eq!(
-        Kind::ALL.map(|kind| sub.steps.count(kind)),
-        [1, 0, 1, 0]
-    );
+    assert_eq!(Kind::ALL.map(|kind| sub.steps.count(kind)), [1, 0, 1, 0]);
     assert_eq!(sub.steps.doing.as_deref(), Some("rg Counter"));
     assert_eq!(sub.state, crate::chat::Sent::Working);
     let chat = heard([sent("a1"), within, answer]);
