@@ -113,10 +113,10 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     }
 
     fn pad<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> f32 {
-        if self.tight {
-            ctx.tokens.sm
-        } else {
-            ctx.tokens.md
+        match (self.tight, self.text) {
+            (true, _) => ctx.tokens.sm,
+            (false, Text::Body) => ctx.tokens.lg,
+            (false, _) => ctx.tokens.md,
         }
     }
 
@@ -154,7 +154,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     /// The tab in `box_`, its box edged when it stands alone.
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, box_: Rect, edged: bool) {
-        let pill = segment(ctx, box_);
+        let pill = segment(ctx, box_, self.text == Text::Body);
         let on = ctx.interact(pill, self.target.clone());
         let ground = match (self.selected, on) {
             (true, _) => Some(ctx.chosen()),
@@ -232,7 +232,7 @@ pub fn marked_glass_tabs<A: App>(
     }
     if let (Some(first), Some(last)) = (slots.first(), slots.last()) {
         let whole = Rect::new(first.x, first.y, last.right() - first.x, first.h);
-        edge(ctx, segment(ctx, whole));
+        edge(ctx, segment(ctx, whole, false));
     }
     slots
 }
@@ -246,6 +246,7 @@ pub fn tab_group<A: App>(
     (side, gap): (crate::widgets::Side, f32),
 ) -> Rect {
     let wide: Vec<f32> = tabs.iter().map(|tab| tab.width(ctx)).collect();
+    let big = tabs.first().is_some_and(|one| one.text == Text::Body);
     let total: f32 = wide.iter().sum();
     let whole = crate::shape::stand(room, total, gap, side);
     let mut lay = whole;
@@ -254,7 +255,7 @@ pub fn tab_group<A: App>(
         tab.draw(ctx, slot, false);
     }
     if !whole.is_empty() {
-        edge(ctx, segment(ctx, whole));
+        edge(ctx, segment(ctx, whole, big));
     }
     whole
 }
@@ -264,9 +265,13 @@ pub fn group_width<A: App>(ctx: &mut Ctx<'_, A>, tabs: &[Tab<'_, A::Target>]) ->
     tabs.iter().map(|tab| tab.width(ctx)).sum()
 }
 
-/// The band a tab stands in inside its box: a little under a row, in the middle.
-fn segment<A: App>(ctx: &Ctx<'_, A>, box_: Rect) -> Rect {
-    let tall = (ctx.tokens.row - ctx.tokens.xs).min(box_.h);
+/// The band a tab stands in inside its box, in the middle: a little under a row, or under a bar.
+fn segment<A: App>(ctx: &Ctx<'_, A>, box_: Rect, big: bool) -> Rect {
+    let tall = match big {
+        true => ctx.tokens.bar - ctx.tokens.sm,
+        false => ctx.tokens.row - ctx.tokens.xs,
+    };
+    let tall = tall.min(box_.h);
     crate::shape::band(box_, (box_.h - tall) / 2.0, tall)
 }
 

@@ -47,8 +47,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// The conversation, and over it what the agent asks.
 fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Open, &Agent)) {
     let chat = app.agent.chat(&open.session.id);
-    let foot = foot(ctx);
     let working = agent.activity.status == AgentStatus::Working;
+    let foot = foot(ctx, super::working::works(app, open));
     let first = agent.permissions.first();
     let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
     let place = placed(open);
@@ -62,13 +62,18 @@ fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Ope
     }
 }
 
-/// The pane's foot, centred and no wider than the palette.
-fn foot(ctx: &Ctx) -> Rect {
+/// The pane's foot, centred and no wider than the palette; over the agent's bar while it works.
+fn foot(ctx: &Ctx, working: bool) -> Rect {
     let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
+    let bar = if working {
+        super::working::tall(ctx)
+    } else {
+        0.0
+    };
     let room = ctx.app.layout.agent.pad(Edges::across(sm + xs, sm + xs));
     let wide = room.w.min(ctx.tokens.palette);
     let room = room.align((wide, room.h), Align::Center, Align::Start);
-    groove_ui_kit::shape::band(room, room.h - xs, 0.0)
+    groove_ui_kit::shape::band(room, room.h - xs - bar, 0.0)
 }
 
 /// `groove · feat/x`: the session's first worktree, where an ask acts.

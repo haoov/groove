@@ -3,7 +3,7 @@
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::Timestamp;
-use groove_types::chat::{Chat, Entry, Glance};
+use groove_types::chat::{Chat, Entry};
 use groove_ui_kit::base::ctx::Run;
 use groove_ui_kit::widgets::text_band;
 
@@ -34,8 +34,7 @@ pub(super) fn draw(
     let mut body = pane;
     from_bottom(&mut body, pane.bottom() - ends + ctx.tokens.md, 0.0);
     let body = body.pad(Edges::xy(ctx.tokens.xl, ctx.tokens.sm));
-    let pending = pending(chat, working);
-    if entries.is_empty() && queued.is_empty() && sent.is_empty() && pending.is_none() {
+    if entries.is_empty() && queued.is_empty() && sent.is_empty() && !working {
         let style = ctx.styles.body(Role::Faint);
         return row(ctx, band(body, 0.0, ctx.tokens.row), 0.0, EMPTY, style);
     }
@@ -44,14 +43,8 @@ pub(super) fn draw(
         ctx.clipped(room, |ctx| {
             let waiting = queued.iter().chain(sent).rev();
             let shown = waiting.map(|one| Row::Queued(one));
-            let now = chat.and_then(Chat::now);
-            let pending = pending.iter().map(|entry| Row::Entry {
-                entry,
-                at: now,
-                head: false,
-            });
             let laid = blocks(chat);
-            let shown = shown.chain(pending).chain(laid.into_iter().rev());
+            let shown = shown.chain(laid.into_iter().rev());
             let live = working.then_some(queued.len() + sent.len());
             let seen = (open, live, &ui.agent.opened[..]);
             extent = rows(ctx, (seen, shown, wanted), ui.agent.scroll, (body, room))
@@ -114,18 +107,6 @@ fn rows<'a>(
 
 /// The session, the row that is live, by its place from the end, and the glances opened.
 type Seen<'a> = (&'a Open, Option<usize>, &'a [String]);
-
-/// While the agent works past its last glance and was not stopped, a glance of its own that runs until a record says more.
-fn pending(chat: Option<&Chat>, working: bool) -> Option<Entry> {
-    let last = chat.and_then(|one| one.entries().last());
-    if !working || matches!(last, Some(Entry::Glance(_) | Entry::Interrupted)) {
-        return None;
-    }
-    Some(Entry::Glance(Glance {
-        since: chat.and_then(Chat::now),
-        ..Glance::default()
-    }))
-}
 
 /// The transcript as blocks, oldest first: edits back to back as one, the agent's words marked
 /// where they open its turn.

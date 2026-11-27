@@ -24,6 +24,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
         Mode::Files => super::diff::moded::file(ctx, app, ui, ctx.app.layout.agent),
         Mode::Kubernetes => super::resources::moded::draw(ctx, app, ui, ctx.app.layout.agent),
     }
+    super::working::draw(ctx, app, open);
     ctx.layer();
     bar(ctx, app, ui, open);
     let (aside, shown) = (ctx.app.layout.sidebar, !ui.session.folded);
@@ -43,7 +44,10 @@ fn bar(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
         .into_iter()
         .filter(|one| *one != Mode::Kubernetes || open.holds_clusters());
     let tabs: Vec<Tab<'static, Target>> = shown
-        .map(|one| Tab::new(one.label(), Target::ModeTab(one), one == ui.session.mode))
+        .map(|one| {
+            Tab::new(one.label(), Target::ModeTab(one), one == ui.session.mode)
+                .text(groove_ui_kit::widgets::Text::Body)
+        })
         .collect();
     tab_group(ctx, &mut room, tabs, (Side::Right, ctx.tokens.md));
     let page = app

@@ -15,6 +15,7 @@ pub mod resources;
 mod review;
 pub(crate) mod sheet;
 mod state;
+mod working;
 
 pub use state::{Asked, Face, Mode, Naming, Noting, Pane, Prompt, SessionUi, Showing};
 

@@ -316,6 +316,12 @@ terminals' head and the feed's; scrolled to either end, no row stands under them
 `plus_opens_the_section_with_a_terminal_its_grid_holds` and
 `the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_top_one`.
 
+**The agent at work shows on every mode.** While the agent works, one bar stands at the middle's
+foot on every mode, `AGENT` included: the running row the conversation drew, `RUNNING` or
+`WORKING` in the accent, the step it runs and how long it has run. The transcript and an ask rest
+above it. A click on it brings `AGENT` up. Enforced by
+`while_the_agent_works_one_bar_at_the_middle_s_foot_says_what_it_does_on_every_tab`.
+
 **`AGENT` shows the conversation** with no line at its foot. Its sidebar holds the model, a
 click on it opening the models alone, the usage gauges, and the agents it sent, each a click
 away from its block in the conversation. Enforced by
@@ -442,8 +448,8 @@ text can be copied into it, and the wheel scrolls what stands under the pointer;
 over the window, undimmed, as wide as the palette and centred over the window's foot, in the
 focus ring while it has the keys. It holds
 the commands `/` offers, the agent's then Groove's, each group under its head; then what is
-typed, growing to eight rows and then scrolling; then its keys, with the model and the
-context. Escape keeps the draft. Enter sends, shift+Enter breaks the line, Up in an empty
+typed, growing to eight rows and then scrolling; then the model and the context, with no
+key hints. Escape keeps the draft. Enter sends, shift+Enter breaks the line, Up in an empty
 prompt brings back the user's last message. *Ask the agent*, in the menu of the diff's lines,
 puts where they stand in the prompt and opens it. A drag over the transcript selects text and
 copies it.

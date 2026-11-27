@@ -1,5 +1,5 @@
 //! The agent's prompt, glass over everything near the window's foot, centred as wide as the
-//! palette: the commands `/` offers, what is typed, and its keys.
+//! palette: the commands `/` offers, what is typed, and the model with its context.
 
 mod commands;
 
@@ -16,7 +16,6 @@ use crate::views::session::diff::wrap::{marked, pieces};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{band, from_bottom, from_top, top_rule};
 use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::keycap;
 use groove_ui_kit::widgets::{focus_ring, glass_pane, typed_line};
 
 /// The most rows the prompt grows to; past them it scrolls.
@@ -72,22 +71,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: f32) {
     ctx.app.hits.typing(typed);
 }
 
-/// The prompt's keys on their caps, the model and the context at the left.
+/// The model and the context, under a rule.
 fn keyed(ctx: &mut Ctx, app: &AppState, keys: Rect) {
     top_rule(ctx, keys, ctx.styles.panel_edge());
-    let mut room = keys.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let said = [
-        ("close", &["ESC"][..]),
-        ("new line", &["ENTER", "SHIFT"][..]),
-        ("send", &["ENTER"][..]),
-    ];
-    for (word, caps) in said {
-        Label::new(word, ctx.styles.small(Role::Faint)).right(ctx, &mut room, ctx.tokens.xs);
-        for cap in caps {
-            keycap(ctx, &mut room, cap);
-        }
-        room = room.pad(Edges::across(0.0, ctx.tokens.md));
-    }
+    let room = keys.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let used = crate::views::session::agent_pane::model::summary(app);
     Label::new(&used, ctx.styles.log(Role::Ghost)).draw(ctx, room);
 }

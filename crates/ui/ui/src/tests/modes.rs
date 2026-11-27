@@ -314,3 +314,40 @@ fn every_tab_s_sidebar_scrolls_under_one_scrollbar() {
     assert!(end > 0.0);
     assert_eq!(ui.offset(crate::hit::Scroller::Aside), end);
 }
+
+#[test]
+fn while_the_agent_works_one_bar_at_the_middle_s_foot_says_what_it_does_on_every_tab() {
+    let mut app = talking(vec![Heard::Look("src/dock.rs".into())]);
+    app.agent.agents[0].1.activity.status = groove_types::AgentStatus::Working;
+    let mut ui = moded();
+    let shown = |app: &groove_controllers::AppState, ui: &crate::Ui| {
+        let (frame, hits) = crate::view(app, ui, window(), &mut Fonts::embedded());
+        let middle = Layout::of(window(), ui).agent;
+        let foot = (
+            middle.x + middle.w / 2.0,
+            middle.bottom() - window().tokens().bar / 2.0 - window().tokens().sm,
+        );
+        let said = all_texts(&frame)
+            .iter()
+            .any(|one| one == "read src/dock.rs");
+        (
+            said && hits.at(foot.0, foot.1) == Some(Target::ModeTab(Mode::Agent)),
+            hits,
+            foot,
+        )
+    };
+    assert!(shown(&app, &ui).0, "on AGENT too");
+    ui.session.mode = Mode::Overview;
+    let (bar, hits, foot) = shown(&app, &ui);
+    assert!(bar, "a bar over the middle's foot");
+    let spot = groove_gfx::Rect::new(foot.0, foot.1, 1.0, 1.0);
+    click(spot, &mut ui, &app, &hits);
+    assert_eq!(
+        ui.session.mode,
+        Mode::Agent,
+        "a click brings the conversation up"
+    );
+    app.agent.agents[0].1.activity.status = groove_types::AgentStatus::Idle;
+    ui.session.mode = Mode::Overview;
+    assert!(!shown(&app, &ui).0, "no bar once it rests");
+}

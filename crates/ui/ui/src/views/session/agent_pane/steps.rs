@@ -40,7 +40,7 @@ fn sunk(ctx: &Ctx, text: &str) -> f32 {
     tail(text).len() as f32 * ctx.tokens.code_line + ctx.tokens.sm * 2.0 + ctx.tokens.xs
 }
 
-pub(super) fn height(ctx: &Ctx, glance: &Glance, (live, opened): (bool, &[String])) -> f32 {
+pub(super) fn height(ctx: &Ctx, glance: &Glance, (_, opened): (bool, &[String])) -> f32 {
     let mut tall = 0.0;
     if !glance.steps.is_empty() {
         tall += ctx.tokens.row + ctx.tokens.line + ctx.tokens.xs;
@@ -55,30 +55,13 @@ pub(super) fn height(ctx: &Ctx, glance: &Glance, (live, opened): (bool, &[String
             .sum();
         tall += rows + printed;
     }
-    tall + running_height(ctx, glance, live)
+    tall
 }
 
-/// The step running now while it is `live`, then the block.
-pub(super) fn draw(ctx: &mut Ctx, whole: Rect, glance: &Glance, (live, opened): (bool, &[String])) {
-    let mut room = whole;
-    if runs(glance, live) {
-        let line = from_top(&mut room, ctx.tokens.row, ctx.tokens.sm);
-        running(ctx, line, glance);
-    }
+/// The block; what runs now stands in the agent's bar at the middle's foot.
+pub(super) fn draw(ctx: &mut Ctx, whole: Rect, glance: &Glance, (_, opened): (bool, &[String])) {
     if !glance.steps.is_empty() {
-        folded(ctx, room, glance, opened.contains(&key(glance)));
-    }
-}
-
-/// Whether the step running now shows over the block.
-fn runs(glance: &Glance, live: bool) -> bool {
-    live && (glance.running || glance.steps.is_empty())
-}
-
-fn running_height(ctx: &Ctx, glance: &Glance, live: bool) -> f32 {
-    match runs(glance, live) {
-        true => ctx.tokens.row + ctx.tokens.sm,
-        false => 0.0,
+        folded(ctx, whole, glance, opened.contains(&key(glance)));
     }
 }
 
@@ -146,7 +129,7 @@ fn sunk_box(ctx: &mut Ctx, rect: Rect, text: &str, failed: bool) {
 }
 
 /// `RUNNING` in the accent, what the agent does now, and how long it has run.
-fn running(ctx: &mut Ctx, line: Rect, glance: &Glance) {
+pub(crate) fn running(ctx: &mut Ctx, line: Rect, glance: &Glance) {
     tinted(ctx, line, Role::Accent);
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let since = glance.steps.last().and_then(|one| one.at).or(glance.since);
