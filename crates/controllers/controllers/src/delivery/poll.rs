@@ -131,6 +131,6 @@ pub(crate) fn took(
 
 /// What reads the MRs: the surface's notes and the attention rules.
 fn moved(state: &mut AppState) {
-    super::notes::show(state);
+    super::show(state);
     crate::task::attention::reread(state, Timestamp::now());
 }

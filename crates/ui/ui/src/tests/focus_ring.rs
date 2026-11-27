@@ -6,7 +6,7 @@ use groove_ui_kit::base::tokens::Tokens;
 
 use crate::layout::Layout;
 use crate::tests::{full_app, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui, view};
 
 /// Where a region stands in the layout.
@@ -29,12 +29,9 @@ fn in_colour(frame: &Frame, color: Color) -> Vec<Rect> {
 fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
     let app = full_app();
     let focus = styles(&app).focus();
-    let cases: [(Focus, Around); 4] = [
+    let cases: [(Focus, Around); 3] = [
         (Focus::Rail, |one| one.sessions),
-        (Focus::Workspace, |one| one.strip),
-        (Focus::Sidebar, |one| {
-            groove_ui_kit::widgets::aside_bounds(&Tokens::new(1.0), one.sidebar)
-        }),
+        (Focus::Sidebar, |one| one.sidebar),
         (Focus::Terminal, |one| one.manual),
     ];
     for (keys, around) in cases {
@@ -42,7 +39,7 @@ fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
             focus: keys,
             ..Ui::default()
         };
-        ui.session.tab = Tab::Diff;
+        ui.session.mode = Mode::Diff;
         ui.session.manual = true;
         let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
         let expected = around(&Layout::of(window(), &ui));
@@ -56,33 +53,21 @@ fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
 }
 
 #[test]
-fn the_agent_has_no_ring_and_its_caret_takes_the_accent() {
-    let mut app = crate::tests::screen::asking(Vec::new());
-    crate::tests::agent::reading_mouse(&mut app);
-    let styles = styles(&app);
-    let accent = styles.color(Role::Accent);
-    let caret_ground = |keys: Focus| {
-        let ui = Ui {
-            surface: crate::Surface::Session,
-            focus: keys,
-            ..Ui::default()
-        };
-        let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-        let ringed = in_colour(&frame, styles.focus());
-        let grid = frame
-            .layers()
-            .iter()
-            .flat_map(|one| one.grids.iter())
-            .next();
-        let grid = grid.expect("the agent's screen").clone();
-        let lit = grid.cells.iter().any(|cell| cell.bg == accent);
-        (ringed, lit)
+fn the_open_prompt_stands_in_the_ring() {
+    let mut app = crate::tests::agent::asking(Vec::new());
+    crate::tests::agent::headless(&mut app);
+    let ui = Ui {
+        surface: crate::Surface::Session,
+        focus: Focus::Agent,
+        overlay: Some(crate::Overlay::Prompt),
+        ..Ui::default()
     };
-    let (ringed, lit) = caret_ground(Focus::Agent);
-    assert!(ringed.is_empty(), "no ring around the agent: {ringed:?}");
-    assert!(lit, "the caret on the accent");
-    let (_, lit) = caret_ground(Focus::Rail);
-    assert!(!lit, "not while another region has the keys");
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let prompt = hits
+        .rect_of(&crate::hit::Target::Prompt)
+        .expect("the prompt");
+    let ring = in_colour(&frame, styles(&app).focus());
+    assert!(ring.iter().any(|one| prompt.contains(one.x, one.y)));
 }
 
 #[test]

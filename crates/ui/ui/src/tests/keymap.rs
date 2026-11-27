@@ -1,6 +1,6 @@
 //! The keymap: its rings, the keys it leaves to a terminal, and a chord rebound from Settings.
 
-use groove_controllers::{Command, agent, config};
+use groove_controllers::{Command, config};
 use groove_gfx::Fonts;
 use groove_types::Chord;
 
@@ -8,7 +8,7 @@ use super::*;
 use crate::hit::Target;
 use crate::keymap::{Action, Keymap};
 use crate::view;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 
 fn chord(text: &str) -> Chord {
     Chord::parse(text).expect(text)
@@ -20,22 +20,11 @@ fn bare_config() -> groove_types::Config {
 }
 
 #[test]
-fn an_alt_key_groove_does_not_claim_reaches_the_agent() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    let sent = press(Key::Char('b'), ALT, &mut ui, &app);
-    let Some(Command::Agent(agent::Command::Send { bytes, .. })) = sent.first() else {
-        panic!("the shell's word back: {sent:?}");
-    };
-    assert_eq!(bytes, b"\x1bb");
-}
-
-#[test]
 fn the_app_ring_is_heard_from_the_agent_pane_too() {
     let app = full_app();
     let mut ui = Ui::default();
-    assert!(press(Key::Char('2'), ALT_SHIFT, &mut ui, &app).is_empty());
-    assert_eq!(ui.session.tab, Tab::Diff);
+    assert!(press(Key::Char('3'), ALT, &mut ui, &app).is_empty());
+    assert_eq!(ui.session.mode, Mode::Diff);
     press(Key::Char('\''), ALT, &mut ui, &app);
     assert!(ui.session.manual && ui.focus == crate::Focus::Terminal);
 }

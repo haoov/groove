@@ -7,7 +7,7 @@ use groove_ui_kit::text::ago;
 
 use super::row::Drawn;
 use crate::ctx::Ctx;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui};
 
 /// A line of the open buffer, at one revision of it.
@@ -28,7 +28,7 @@ pub struct Said {
 /// The line the caret stands on, while the code surface holds the keyboard.
 pub(crate) fn spot(ui: &Ui, app: &AppState) -> Option<Spot> {
     let here = ui.focus == Focus::Workspace && !ui.session.typing();
-    let code = matches!(ui.session.tab, Tab::Diff | Tab::Files);
+    let code = matches!(ui.session.mode, Mode::Diff | Mode::Files);
     if !here || !code || app.workspace.readonly() {
         return None;
     }

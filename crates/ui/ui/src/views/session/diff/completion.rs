@@ -6,7 +6,7 @@ use groove_types::{Caret, Completion, Edit, Motion};
 use groove_ui_kit::widgets::{Offer, completions};
 
 use crate::ctx::Ctx;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui};
 
 /// The offer standing at the caret, narrowed to the word typed before it.
@@ -22,7 +22,7 @@ pub(crate) struct Shown<'a> {
 /// The offer at the caret of the open file while the keyboard is on it; none once nothing matches.
 pub(crate) fn shown<'a>(app: &'a AppState, ui: &Ui) -> Option<Shown<'a>> {
     let offered = app.workspace.servers.offered.as_ref()?;
-    let code = matches!(ui.session.tab, Tab::Diff | Tab::Files);
+    let code = matches!(ui.session.mode, Mode::Diff | Mode::Files);
     let open = app.workspace.active()?;
     let caret = open.new.caret();
     let here = open.path == offered.path && caret == offered.at;

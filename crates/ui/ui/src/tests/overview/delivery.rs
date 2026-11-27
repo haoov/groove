@@ -9,7 +9,7 @@ use groove_types::{
 };
 
 use crate::tests::{full_app, metrics};
-use crate::{Ui, view};
+use crate::view;
 use groove_ui_kit::base::style::{Role, Styles};
 use groove_ui_kit::base::tokens::Tokens;
 
@@ -85,14 +85,19 @@ fn open_with(ci: Option<CiState>) -> AppState {
 fn drawn(app: &AppState) -> (Vec<String>, Vec<Icon>) {
     let (frame, _) = view(
         app,
-        &Ui::default(),
+        &super::overviewed(),
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    let layer = &frame.layers()[0];
+    let layers = frame.layers().iter();
     (
-        layer.texts.iter().map(|t| t.text.clone()).collect(),
-        layer.icons.iter().map(|i| i.icon).collect(),
+        layers
+            .clone()
+            .flat_map(|layer| layer.texts.iter().map(|t| t.text.clone()))
+            .collect(),
+        layers
+            .flat_map(|layer| layer.icons.iter().map(|i| i.icon))
+            .collect(),
     )
 }
 
@@ -109,7 +114,7 @@ fn an_open_mr_shows_its_number_and_its_notes() {
 fn colour_of(app: &AppState, word: &str) -> Option<groove_gfx::Color> {
     let (frame, _) = view(
         app,
-        &Ui::default(),
+        &super::overviewed(),
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
@@ -142,7 +147,7 @@ fn ci_stands_on_a_rounded_ground_and_edge_of_its_colour() {
     let bad = role(&app, Role::Bad).expect("a colour");
     let (frame, _) = view(
         &app,
-        &Ui::default(),
+        &super::overviewed(),
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
@@ -273,11 +278,11 @@ fn a_comment_nobody_can_resolve_is_not_an_open_note() {
 #[test]
 fn the_mr_stands_after_the_branch_and_opens_its_page() {
     let app = open_with(None);
-    let mut ui = Ui::default();
+    let mut ui = super::overviewed();
     let window = metrics(1280, 800, 1.0);
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let info = crate::layout::Layout::of(window, &ui).info;
+    let info = crate::layout::Layout::of(window, &ui).agent;
     let mut branches = frame.layers()[0].texts.iter();
     let branch = branches
         .find(|run| run.text == "explorer/alpha" && info.contains(run.x, run.y + 1.0))
@@ -317,11 +322,11 @@ fn a_long_branch_is_cut_so_the_row_never_reaches_past_its_area() {
     let window = metrics(1280, 800, 1.0);
     let (frame, _) = view(
         &app,
-        &Ui::default(),
+        &super::overviewed(),
         window,
         &mut groove_gfx::Fonts::embedded(),
     );
-    let workspace = crate::layout::Layout::of(window, &Ui::default()).workspace;
+    let workspace = crate::layout::Layout::of(window, &super::overviewed()).agent;
     let layer = &frame.layers()[0];
     let over = layer
         .texts
@@ -338,34 +343,6 @@ fn a_long_branch_is_cut_so_the_row_never_reaches_past_its_area() {
 }
 
 #[test]
-fn the_header_offers_to_read_the_mr_again() {
-    let app = open_with(None);
-    let mut ui = Ui::default();
-    let window = metrics(1280, 800, 1.0);
-    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let box_ = hits
-        .rect_of(&crate::hit::Target::Refresh)
-        .expect("the refresh button");
-    let commands = crate::input::handle(
-        crate::input::Input::Press {
-            x: box_.x + box_.w / 2.0,
-            y: box_.y + box_.h / 2.0,
-            mods: Default::default(),
-        },
-        &mut ui,
-        &app,
-        &hits,
-        window,
-    );
-    assert_eq!(
-        commands,
-        vec![groove_controllers::Command::Delivery(
-            groove_controllers::delivery::Command::RefreshMr
-        )]
-    );
-}
-
-#[test]
 fn a_review_s_overview_reads_the_mr_s_description() {
     let mut read = snapshot(MrState::Open, None);
     read.details.description = "Reads the checks off the head commit.".into();
@@ -377,7 +354,6 @@ fn a_review_s_overview_reads_the_mr_s_description() {
         };
     }
     let (texts, _) = drawn(&app);
-    assert!(texts.iter().any(|t| t == "DESCRIPTION"), "{texts:?}");
     assert!(
         texts
             .iter()

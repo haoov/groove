@@ -1,6 +1,6 @@
-//! The whole change as one surface: every file's alignment, and no document behind it.
+//! The change: every file's alignment, one of them focused on the surface.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::ops::Range;
 use std::path::Path;
 
@@ -17,23 +17,11 @@ pub use build::{aligned, from_pairs, from_sides, unified};
 
 use build::merge;
 
-/// How many rows a file's head takes.
-pub const HEAD_ROWS: usize = 2;
-
-/// Where a row of the whole surface belongs.
-#[derive(Debug, PartialEq, Eq)]
-pub enum At<'a> {
-    Head(&'a Aligned),
-    Row(&'a Aligned, usize),
-}
-
 #[derive(Debug, Default)]
 pub struct Changes {
     files: Vec<Aligned>,
-    /// Where each file's own rows begin, the chrome above them included.
-    starts: Vec<usize>,
-    /// The files whose rows are hidden under their own head.
-    shut: BTreeSet<String>,
+    /// The one file that takes rows; with none, no file does.
+    focus: Option<String>,
     /// The old-side lines each file's gaps have given up.
     opened: BTreeMap<String, Vec<Range<u32>>>,
     rows: usize,
@@ -42,36 +30,40 @@ pub struct Changes {
 
 impl Changes {
     pub fn new(files: Vec<Aligned>) -> Self {
-        Self::indexed(files, BTreeSet::new())
+        Self::indexed(files, None)
     }
 
-    fn indexed(files: Vec<Aligned>, shut: BTreeSet<String>) -> Self {
-        let mut starts = Vec::with_capacity(files.len());
-        let mut rows = 0;
-        for file in &files {
-            starts.push(rows);
-            let shown = match shut.contains(&file.path) {
-                true => 0,
-                false => file.len(),
-            };
-            rows += shown + HEAD_ROWS;
-        }
+    fn indexed(files: Vec<Aligned>, focus: Option<String>) -> Self {
+        let focus = focus.filter(|path| files.iter().any(|file| &file.path == path));
+        let focused = files.iter().find(|file| Some(&file.path) == focus.as_ref());
+        let rows = focused.map_or(0, Aligned::len);
         let digits = files.iter().map(widest).max().unwrap_or(1);
         Self {
             files,
-            starts,
-            shut,
+            focus,
             opened: BTreeMap::new(),
             rows,
             digits,
         }
     }
 
-    /// Hides a file's rows under its own head, or shows them again.
-    pub fn fold(&mut self, path: &str) {
-        let mut shut = std::mem::take(&mut self.shut);
-        groove_types::toggle(&mut shut, path.to_string());
-        *self = Self::indexed(std::mem::take(&mut self.files), shut);
+    /// The change indexed again, its focus kept.
+    fn reindexed(&mut self) {
+        let focus = self.focus.take();
+        let opened = std::mem::take(&mut self.opened);
+        *self = Self::indexed(std::mem::take(&mut self.files), focus);
+        self.opened = opened;
+    }
+
+    /// Only this file takes rows; none takes none. A path the change lacks is none.
+    pub fn focus(&mut self, path: Option<String>) {
+        self.focus = path;
+        self.reindexed();
+    }
+
+    /// The one file that takes rows, when one is focused.
+    pub fn focused(&self) -> Option<&str> {
+        self.focus.as_deref()
     }
 
     /// A gap gives up a run of its old-side lines, and the file lines up again.
@@ -81,13 +73,12 @@ impl Changes {
         spans.push(span);
         spans.sort_by_key(|one| one.start);
         merge(spans);
+        self.opened = opened;
         let Some(at) = self.files.iter().position(|file| file.path == path) else {
             return;
         };
-        let mut files = std::mem::take(&mut self.files);
-        files[at] = from_sides(path, old, new, &opened[path]);
-        *self = Self::indexed(files, std::mem::take(&mut self.shut));
-        self.opened = opened;
+        self.files[at] = from_sides(path, old, new, &self.opened[path]);
+        self.reindexed();
     }
 
     /// What this file's gaps have already given up.
@@ -95,37 +86,12 @@ impl Changes {
         self.opened.get(path).map(Vec::as_slice).unwrap_or_default()
     }
 
-    /// The folds carried over from the change this one replaces.
-    pub fn refold(&mut self, shut: BTreeSet<String>) {
-        let kept = shut
-            .into_iter()
-            .filter(|path| self.files.iter().any(|file| &file.path == path))
-            .collect();
-        *self = Self::indexed(std::mem::take(&mut self.files), kept);
-    }
-
-    pub fn folds(&self) -> BTreeSet<String> {
-        self.shut.clone()
-    }
-
-    pub fn is_folded(&self, path: &str) -> bool {
-        self.shut.contains(path)
-    }
-
-    /// How many of a file's rows the surface draws.
-    pub fn shown(&self, file: &Aligned) -> usize {
-        match self.is_folded(&file.path) {
-            true => 0,
-            false => file.len(),
-        }
-    }
-
     /// How wide the line numbers stand, over the whole change.
     pub fn digits(&self) -> usize {
         self.digits
     }
 
-    /// How many rows the whole change stands.
+    /// How many rows the focused file stands.
     pub fn rows(&self) -> usize {
         self.rows
     }
@@ -138,46 +104,18 @@ impl Changes {
         self.files.is_empty()
     }
 
-    pub fn at(&self, row: usize) -> Option<At<'_>> {
-        if row >= self.rows {
-            return None;
-        }
-        let at = self
-            .starts
-            .partition_point(|start| *start <= row)
-            .checked_sub(1)?;
-        let file = self.files.get(at)?;
-        let head = self.starts[at];
-        match row < head + HEAD_ROWS {
-            true => Some(At::Head(file)),
-            false => Some(At::Row(file, row - head - HEAD_ROWS)),
-        }
+    /// The focused file, and the row of its own this row of the surface stands on.
+    pub fn at(&self, row: usize) -> Option<(&Aligned, usize)> {
+        let file = self.get(self.focus.as_deref()?)?;
+        (row < self.rows).then_some((file, row))
     }
 
-    /// The row a file's new-side line stands on; a folded file shows none.
+    /// The row a file's new-side line stands on; a file not focused shows none.
     pub fn row_of(&self, path: &str, line: u32) -> Option<usize> {
-        let at = self.files.iter().position(|file| file.path == path)?;
-        if self.is_folded(path) {
+        if self.focus.as_deref() != Some(path) {
             return None;
         }
-        let head = self.starts[at];
-        let row = self.files[at].hunked.layout.position(line)?;
-        Some(head + HEAD_ROWS + row)
-    }
-
-    /// The row this file's own head sits on.
-    pub fn head_of(&self, path: &str) -> Option<usize> {
-        let at = self.files.iter().position(|file| file.path == path)?;
-        Some(self.starts[at])
-    }
-
-    /// Every file with the row its own block begins on, and the rows it shows.
-    pub fn placed(&self) -> impl Iterator<Item = (usize, usize, &Aligned)> {
-        self.starts
-            .iter()
-            .copied()
-            .zip(self.files.iter())
-            .map(|(start, file)| (start, self.shown(file), file))
+        self.get(path)?.hunked.layout.position(line)
     }
 
     pub fn get(&self, path: &str) -> Option<&Aligned> {
@@ -189,11 +127,9 @@ impl Changes {
         let Some(at) = self.files.iter().position(|one| one.path == path) else {
             return;
         };
-        let opened = std::mem::take(&mut self.opened);
-        self.files[at].edited(edit, new, opened.get(path).map_or(&[], Vec::as_slice));
-        let shut = std::mem::take(&mut self.shut);
-        *self = Self::indexed(std::mem::take(&mut self.files), shut);
-        self.opened = opened;
+        let opened = self.opened.get(path).map_or(&[][..], Vec::as_slice);
+        self.files[at].edited(edit, new, opened);
+        self.reindexed();
     }
 
     /// One file aligned again, for a buffer that has moved under it.
@@ -202,8 +138,7 @@ impl Changes {
             return;
         };
         self.files[at] = file;
-        let shut = std::mem::take(&mut self.shut);
-        *self = Self::indexed(std::mem::take(&mut self.files), shut);
+        self.reindexed();
     }
 }
 

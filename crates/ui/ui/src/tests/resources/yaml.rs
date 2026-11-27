@@ -21,7 +21,7 @@ fn the_yaml_view_reads_as_a_file_and_closing_the_tab_brings_the_list_back() {
         ))
         .expect("the yaml view");
     click(yaml, &mut ui, &app, &hits);
-    let (texts, hits) = drawn(&app, &ui);
+    let (texts, _hits) = drawn(&app, &ui);
     for shown in ["1", "2", "3", "4"] {
         assert!(
             texts.iter().any(|one| one == shown),
@@ -46,6 +46,8 @@ fn the_yaml_view_reads_as_a_file_and_closing_the_tab_brings_the_list_back() {
         styles.color(groove_ui_kit::base::style::Role::Text),
         "the key coloured"
     );
+    ui.hover = Some(Target::ResourceTab(0));
+    let (_, hits) = drawn(&app, &ui);
     let close = hits
         .rect_of(&Target::ResourceClose(0))
         .expect("the tab's close mark");

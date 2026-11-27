@@ -85,39 +85,20 @@ pub(crate) fn relisted(state: &mut AppState, read: groove_types::Result<Vec<Skil
     }
 }
 
-/// One skill typed into the agent's prompt, then the return a beat later, once its menu settles.
-pub fn send(
-    state: &mut AppState,
-    spawner: &dyn Spawner,
-    session: &SessionId,
-    id: &str,
-    args: Option<&str>,
-) {
-    let said = format!("/{id} {}", args.unwrap_or_default());
-    super::send(state, session, said.as_bytes());
-    entered(spawner, session);
-}
-
-/// Words pasted into the agent's prompt, then the return that submits them.
-pub(crate) fn typed(state: &mut AppState, spawner: &dyn Spawner, session: &SessionId, words: &str) {
-    if let Some(terminal) = state.agent.terminal(session) {
-        let _ = terminal.paste(words);
+/// Words said to the agent, as its prompt.
+pub(crate) fn typed(state: &mut AppState, session: &SessionId, words: &str) {
+    if let Some(stream) = state.agent.stream(session) {
+        let _ = stream.say(words);
     }
-    entered(spawner, session);
 }
 
-fn entered(spawner: &dyn Spawner, session: &SessionId) {
-    let session = session.clone();
-    spawner.spawn(Box::pin(async move {
-        tokio::time::sleep(SETTLES).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            super::send(state, &session, b"\r");
-        }) as Continuation
-    }));
+/// One skill sent to the agent as its prompt.
+pub fn send(state: &mut AppState, session: &SessionId, id: &str, args: Option<&str>) {
+    let said = format!("/{id} {}", args.unwrap_or_default());
+    if let Some(stream) = state.agent.stream(session) {
+        let _ = stream.say(said.trim_end());
+    }
 }
-
-/// How long the agent's own menu takes to settle before the return lands.
-const SETTLES: std::time::Duration = std::time::Duration::from_millis(120);
 
 /// One skill of the user's own written, and the list read again.
 pub fn save(

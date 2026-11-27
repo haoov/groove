@@ -7,9 +7,9 @@ use super::super::{Key, Modifiers};
 use crate::hit::{Hits, Scroller, Target};
 use crate::input::follow::across_at;
 use crate::keymap::{Action, Keymap};
+use crate::views::session::Face;
 use crate::views::session::diff::Inline;
 use crate::views::session::find::Finding;
-use crate::views::session::{Face, Term};
 use crate::{Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::widgets::Field;
@@ -144,82 +144,4 @@ fn centred(row: usize, line: f32, hits: &Hits, same: bool) -> f32 {
         true => top.clamp(0.0, hits.extent(Scroller::Code).max(0.0)),
         false => top.max(0.0),
     }
-}
-
-/// The bar open on one term, on the tab that shows it; the board has none.
-pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
-    if ui.showing(app) != crate::Surface::Session {
-        return;
-    }
-    use crate::views::session::Tab;
-    if !matches!(ui.session.tab, Tab::Diff | Tab::Files) {
-        ui.session.tab = Tab::Diff;
-    }
-    ui.session.folded = false;
-    ui.session.bar.open(term);
-}
-
-/// What a keystroke asks of the bar: a term narrowed, the search run again, or a file opened.
-pub(super) fn in_bar(
-    key: Key,
-    mods: Modifiers,
-    ui: &mut Ui,
-    app: &AppState,
-    keymap: &Keymap,
-) -> Vec<Command> {
-    let Some(term) = ui.session.bar.typing else {
-        return Vec::new();
-    };
-    match key {
-        Key::Escape => ui.session.bar.shut(),
-        Key::Tab => ui.session.bar.open(other(term)),
-        key if keymap.is(Action::OpenPath, key, mods) => ui.session.bar.open(Term::Path),
-        key if keymap.is(Action::SearchFiles, key, mods) => ui.session.bar.open(Term::Text),
-        Key::Enter if ui.session.bar.greps() => ui.session.bar.typing = None,
-        Key::Enter => {
-            let first = crate::views::session::files::narrowed(app, ui)
-                .first()
-                .map(|file| file.path.clone());
-            ui.session.bar.typing = None;
-            let Some(path) = first else {
-                return Vec::new();
-            };
-            if app.workspace.changes.head_of(&path).is_none() {
-                ui.session.tab = crate::views::session::Tab::Files;
-            }
-            return vec![Command::Workspace(workspace::Command::OpenFile {
-                path,
-                at: None,
-            })];
-        }
-        key => {
-            if typing(key, mods, ui.session.bar.of(term)) {
-                return searches(ui);
-            }
-        }
-    }
-    Vec::new()
-}
-
-fn other(term: Term) -> Term {
-    match term {
-        Term::Path => Term::Text,
-        Term::Text => Term::Path,
-    }
-}
-
-/// What the bar asks for: the worktree's files, and the search while it holds text.
-pub(in crate::input) fn searches(ui: &Ui) -> Vec<Command> {
-    let bar = &ui.session.bar;
-    let mut asks = Vec::new();
-    if bar.path.text().chars().count() == 1 {
-        asks.push(Command::Workspace(workspace::Command::ListPaths));
-    }
-    if bar.greps() {
-        asks.push(Command::Workspace(workspace::Command::Grep {
-            query: bar.text.text().to_string(),
-            under: bar.path.text().to_string(),
-        }));
-    }
-    asks
 }

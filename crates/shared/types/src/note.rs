@@ -1,4 +1,4 @@
-use crate::{AnnotationId, Timestamp};
+use crate::Timestamp;
 
 /// Where a note sits in a file, on the new side.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
@@ -34,14 +34,7 @@ impl Anchor {
     }
 }
 
-/// Whose note it is: this session's own, or a thread on the merge request.
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-pub enum NoteOrigin {
-    Local(AnnotationId),
-    Thread(String),
-}
-
-/// One thing said in a note: an annotation says one, a thread says several.
+/// One thing said in a thread of the merge request.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Said {
     pub author: String,
@@ -49,28 +42,17 @@ pub struct Said {
     pub at: Timestamp,
 }
 
-/// A note to act on; `anchor` is absent on a comment on the MR itself.
+/// A thread of the merge request to act on; `anchor` is absent on a comment on the MR itself.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Note {
-    pub origin: NoteOrigin,
+    /// The forge's id of the thread.
+    pub thread: String,
     pub anchor: Option<Anchor>,
     pub resolved: bool,
     pub said: Vec<Said>,
 }
 
 impl Note {
-    pub fn is_local(&self) -> bool {
-        matches!(self.origin, NoteOrigin::Local(_))
-    }
-
-    /// The note's own id, for the writes that take one.
-    pub fn id(&self) -> Option<&AnnotationId> {
-        match &self.origin {
-            NoteOrigin::Local(id) => Some(id),
-            NoteOrigin::Thread(_) => None,
-        }
-    }
-
     /// What the list shows first: the words it opens with.
     pub fn opening(&self) -> Option<&Said> {
         self.said.first()

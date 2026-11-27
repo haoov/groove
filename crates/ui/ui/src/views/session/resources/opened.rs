@@ -138,6 +138,21 @@ impl super::ResourcesUi {
         };
     }
 
+    /// What a row of an open object's menu closes: it, the others, or all.
+    pub fn closed(&mut self, at: usize, act: Option<crate::views::overlays::actions::Act>) {
+        use crate::views::overlays::actions::Act;
+        match act {
+            Some(Act::Close) => self.close(at),
+            Some(Act::CloseOthers) if at < self.opened.len() => {
+                let kept = self.opened.swap_remove(at);
+                self.showing = self.showing.map(|_| 0);
+                self.opened = vec![kept];
+            }
+            Some(Act::CloseAll) => (self.opened, self.showing) = (Vec::new(), None),
+            _ => {}
+        }
+    }
+
     pub fn tab(&self) -> Option<&Opened> {
         self.opened.get(self.showing?)
     }

@@ -1,4 +1,4 @@
-//! The note being typed is a buffer: its caret, what it holds, its undo, the clipboard.
+//! The reply being typed is a buffer: its caret, what it holds, its undo, the clipboard.
 
 use super::*;
 use crate::tests::typed;
@@ -23,17 +23,6 @@ fn shift() -> Modifiers {
     }
 }
 
-/// A note open on line 1 of the file view, with `text` typed in it.
-fn noting(text: &str) -> (AppState, Ui) {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
-    typed(text, &mut ui, &app);
-    (app, ui)
-}
-
 fn said(ui: &Ui) -> String {
     ui.session
         .noting
@@ -44,7 +33,7 @@ fn said(ui: &Ui) -> String {
 
 #[test]
 fn the_caret_moves_across_the_lines_and_types_where_it_stands() {
-    let (app, mut ui) = noting("ab");
+    let (app, mut ui) = replying("ab");
     chord(Key::Enter, shift(), &mut ui, &app);
     typed("cd", &mut ui, &app);
     press(Key::Up, &mut ui, &app);
@@ -63,7 +52,7 @@ fn the_caret_moves_across_the_lines_and_types_where_it_stands() {
 
 #[test]
 fn a_selection_cuts_to_the_clipboard_and_an_undo_brings_it_back() {
-    let (app, mut ui) = noting("issue: leaks");
+    let (app, mut ui) = replying("issue: leaks");
     for _ in 0..5 {
         chord(Key::Left, shift(), &mut ui, &app);
     }
@@ -90,7 +79,7 @@ fn a_selection_cuts_to_the_clipboard_and_an_undo_brings_it_back() {
 
 #[test]
 fn a_paste_lands_at_the_caret_with_its_lines() {
-    let (app, mut ui) = noting("ab");
+    let (app, mut ui) = replying("ab");
     press(Key::Left, &mut ui, &app);
     let paste = Input::Paste("one\r\ntwo\n".into());
     handle(paste, &mut ui, &app, &crate::hit::Hits::default(), window());
@@ -99,7 +88,7 @@ fn a_paste_lands_at_the_caret_with_its_lines() {
 
 #[test]
 fn the_row_draws_the_caret_and_what_is_held_the_way_the_commit_box_does() {
-    let (app, mut ui) = noting("leaks");
+    let (app, mut ui) = replying("leaks");
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let count = |ui: &Ui, color: groove_gfx::Color| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
@@ -127,8 +116,8 @@ fn the_row_draws_the_caret_and_what_is_held_the_way_the_commit_box_does() {
 }
 
 #[test]
-fn ctrl_moves_the_caret_and_deletes_in_a_note_as_the_key_alone_does() {
-    let (app, mut ui) = noting("abc");
+fn ctrl_moves_the_caret_and_deletes_in_a_reply_as_the_key_alone_does() {
+    let (app, mut ui) = replying("abc");
     chord(Key::Left, ctrl(), &mut ui, &app);
     chord(Key::Backspace, ctrl(), &mut ui, &app);
     assert_eq!(said(&ui), "ac");
@@ -143,61 +132,48 @@ fn ctrl_moves_the_caret_and_deletes_in_a_note_as_the_key_alone_does() {
 }
 
 #[test]
-fn a_note_on_a_tab_not_shown_takes_no_keys_and_keeps_its_words() {
-    let (app, mut ui) = noting("half");
-    ui.session.tab = crate::views::session::Tab::Overview;
+fn a_reply_on_a_tab_not_shown_takes_no_keys_and_keeps_its_words() {
+    let (app, mut ui) = replying("half");
+    ui.session.mode = crate::views::session::Mode::Overview;
     typed("x", &mut ui, &app);
     let posted = chord(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert!(
         !posted.iter().any(|one| matches!(one, Command::Delivery(_))),
         "{posted:?}"
     );
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     assert_eq!(said(&ui), "half", "the words wait for the tab");
 }
 
 #[test]
-fn a_note_on_another_file_than_the_open_one_takes_no_keys() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.noting = Some(Noting::new(Anchor::line("src/other.rs", 0)));
-    ui.focus = crate::Focus::Workspace;
+fn a_reply_on_another_file_than_the_open_one_takes_no_keys() {
+    let (app, mut ui) = replying("");
+    if let Some(noting) = ui.session.noting.as_mut() {
+        noting.anchor = Anchor::line("src/other.rs", 0);
+    }
     typed("x", &mut ui, &app);
     let posted = chord(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert!(
         !posted.iter().any(|one| matches!(one, Command::Delivery(_))),
         "{posted:?}"
     );
-    assert_eq!(said(&ui), "", "the note is not drawn");
+    assert_eq!(said(&ui), "", "the reply is not drawn");
 }
 
 #[test]
-fn a_click_on_another_pane_takes_the_keys_from_a_note_and_keeps_its_words() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
-    typed("half", &mut ui, &app);
-    for (pane, focus) in [
-        (Target::Agent, crate::Focus::Agent),
-        (
-            Target::Session(groove_types::SessionId::new("a")),
-            crate::Focus::Rail,
-        ),
-    ] {
-        let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-        click(hits.rect_of(&pane).expect("the pane"), &mut ui, &app, &hits);
-        assert_eq!(ui.focus, focus);
-        let posted = press(Key::Enter, &mut ui, &app);
-        assert!(
-            !posted
-                .iter()
-                .any(|one| matches!(one, groove_controllers::Command::Delivery(_))),
-            "{focus:?}: Enter posts no note: {posted:?}"
-        );
-    }
+fn a_click_on_another_pane_takes_the_keys_from_a_reply_and_keeps_its_words() {
+    let (app, mut ui) = replying("half");
+    let rail = Target::Session(groove_types::SessionId::new("a"));
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    click(hits.rect_of(&rail).expect("the rail"), &mut ui, &app, &hits);
+    assert_eq!(ui.focus, crate::Focus::Rail);
+    let posted = press(Key::Enter, &mut ui, &app);
+    assert!(
+        !posted
+            .iter()
+            .any(|one| matches!(one, groove_controllers::Command::Delivery(_))),
+        "Enter sends no reply: {posted:?}"
+    );
     let said = |ui: &Ui| ui.session.noting.as_ref().map(|one| one.buffer.text());
     assert_eq!(said(&ui).as_deref(), Some("half"), "the draft is kept");
 

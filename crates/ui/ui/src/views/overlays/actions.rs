@@ -16,7 +16,7 @@ pub use picked::picked;
 pub const TAB: [Act; 3] = [Act::Close, Act::CloseOthers, Act::CloseAll];
 
 /// What the lines under a click offer.
-pub const LINE: [Act; 1] = [Act::Note];
+pub const LINE: [Act; 1] = [Act::Ask];
 
 /// The actions of one path of the explorer.
 pub const PATH: [Act; 5] = [
@@ -35,7 +35,7 @@ pub const CHILD: [Act; 1] = [Act::Close];
 /// The actions a menu of fixed rows offers; none for a menu whose rows come with it.
 fn acts(of: &Of) -> &'static [Act] {
     match of {
-        Of::Tab { .. } => &TAB,
+        Of::Tab { .. } | Of::Object(_) => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
         Of::Session { section, .. } => match section {
@@ -43,7 +43,12 @@ fn acts(of: &Of) -> &'static [Act] {
             Some(groove_types::Section::Paused) => &PAUSED,
             None => &CHILD,
         },
-        Of::Resource { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
+        Of::Resource { .. }
+        | Of::Mapping(_)
+        | Of::Hues(_)
+        | Of::LogRanges
+        | Of::Listing(_)
+        | Of::Models { .. } => &[],
     }
 }
 
@@ -67,16 +72,23 @@ pub fn rows(of: &Of) -> Vec<&str> {
             .map(|one| one.name())
             .collect(),
         Of::LogRanges => crate::views::session::resources::RANGES.to_vec(),
+        Of::Listing(true) => vec!["Show as a tree"],
+        Of::Listing(false) => vec!["Show as a list"],
+        Of::Models { rows, .. } => rows.iter().map(|one| one.label.as_str()).collect(),
         _ => acts(of).iter().map(|one| one.label()).collect(),
     }
 }
 
 pub fn draw(ctx: &mut Ctx, open: &Menu) {
+    if let Of::Models { rows, .. } = &open.of {
+        return crate::views::session::agent_pane::model::menu(ctx, open, rows);
+    }
     let within = ctx.window;
     let rows = rows(&open.of);
     let (wide, tall) = glass_size(ctx, &rows);
     let at = match open.corner {
         Corner::TopLeft => open.at,
+        Corner::TopRight => (open.at.0 - wide, open.at.1),
         Corner::BottomLeft => (open.at.0, open.at.1 - tall),
         Corner::BottomRight => (open.at.0 - wide, open.at.1 - tall),
     };

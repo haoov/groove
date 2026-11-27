@@ -23,6 +23,7 @@ pub fn panel_at<A: App>(
     let (width, height) = size;
     let (x, y) = match corner {
         Corner::TopLeft => at,
+        Corner::TopRight => (at.0 - width, at.1),
         Corner::BottomLeft => (at.0, at.1 - height),
         Corner::BottomRight => (at.0 - width, at.1 - height),
     };
@@ -170,6 +171,7 @@ fn lifted<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
     TopLeft,
+    TopRight,
     BottomLeft,
     BottomRight,
 }

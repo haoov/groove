@@ -71,14 +71,3 @@ fn followed(
     let offset = ui.board.scroll(list).min(*top).max(top + tall - room);
     ui.board.scrolled(list, offset.clamp(0.0, extent.max(0.0)));
 }
-
-/// The offset that shows row `at`, moved as little as it can be.
-pub(super) fn kept(offset: f32, (at, row): (usize, f32), (count, extent): (usize, f32)) -> f32 {
-    if extent <= 0.0 {
-        return 0.0;
-    }
-    let room = count as f32 * row - extent;
-    let top = at as f32 * row;
-    let offset = offset.min(top);
-    offset.max(top + row - room).clamp(0.0, extent)
-}

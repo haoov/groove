@@ -23,6 +23,7 @@ enum Over {
     Palette,
     Menu,
     Scope,
+    Prompt,
 }
 
 impl Over {
@@ -31,6 +32,7 @@ impl Over {
             Overlay::Palette(_) => Some(Over::Palette),
             Overlay::Menu(_) => Some(Over::Menu),
             Overlay::Scope(_) => Some(Over::Scope),
+            Overlay::Prompt => Some(Over::Prompt),
             Overlay::Losing(_) | Overlay::Examining(_) => None,
         }
     }

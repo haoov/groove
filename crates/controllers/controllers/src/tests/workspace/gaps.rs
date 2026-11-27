@@ -22,8 +22,10 @@ fn a_gap_gives_up_its_lines_from_the_end_that_was_asked() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.changes.rows() > 1
+        s.workspace.changes.get("a.txt").is_some()
     });
+    focused(&mut state, &services, &spawner, "a.txt");
+    assert!(state.workspace.changes.rows() > 1);
     dispatch(
         Cmd::Workspace(workspace::Command::Show {
             rows: 0..state.workspace.changes.rows(),
@@ -71,12 +73,25 @@ fn a_gap_gives_up_its_lines_from_the_end_that_was_asked() {
     assert!(gap_row(&state).is_none(), "nothing is hidden any more");
 }
 
+/// Only this file takes rows, as the Diff focuses it.
+fn focused(
+    state: &mut crate::AppState,
+    services: &crate::Services,
+    spawner: &SyncSpawner,
+    path: &str,
+) {
+    let focus = workspace::Command::Focus {
+        path: Some(path.to_string()),
+    };
+    dispatch(Cmd::Workspace(focus), state, services, spawner);
+}
+
 /// The first row of the change that hides lines.
 fn gap_row(state: &crate::AppState) -> Option<usize> {
     (0..state.workspace.changes.rows()).find(|row| {
         matches!(
             state.workspace.changes.at(*row),
-            Some(groove_workspace_service::At::Row(file, at))
+            Some((file, at))
                 if file.row(at).is_some_and(|one| matches!(one.kind, groove_types::RowKind::Gap(_)))
         )
     })
@@ -92,6 +107,7 @@ fn reading_a_file_keeps_the_colours_the_others_already_have() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.changes.files().len() == 2
     });
+    focused(&mut state, &services, &spawner, "b.rs");
 
     let before = state.workspace.stamp;
     dispatch(
@@ -103,7 +119,7 @@ fn reading_a_file_keeps_the_colours_the_others_already_have() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.coloured.len() == 2
+        s.workspace.coloured.contains_key("b.rs")
     });
     assert_eq!(
         state.workspace.stamp, before,
@@ -120,6 +136,7 @@ fn opening_a_file_the_stream_holds_runs_no_job() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.changes.files().iter().any(|f| f.path == "b.rs")
     });
+    focused(&mut state, &services, &spawner, "b.rs");
     dispatch(
         Cmd::Workspace(workspace::Command::Show {
             rows: 0..state.workspace.changes.rows(),
@@ -164,6 +181,7 @@ fn a_change_loaded_again_under_the_same_rows_reads_its_files() {
             .iter()
             .any(|f| f.path == "a.txt")
     });
+    focused(&mut state, &services, &spawner, "a.txt");
     let rows = 0..40;
     dispatch(
         Cmd::Workspace(workspace::Command::Show { rows: rows.clone() }),
@@ -185,6 +203,7 @@ fn a_change_loaded_again_under_the_same_rows_reads_its_files() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.changes.files().iter().any(|f| f.path == "b.rs")
     });
+    focused(&mut state, &services, &spawner, "b.rs");
     dispatch(
         Cmd::Workspace(workspace::Command::Show { rows }),
         &mut state,
@@ -206,6 +225,7 @@ fn a_file_changed_on_disk_is_never_opened_from_what_was_read_before() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.changes.files().iter().any(|f| f.path == "b.rs")
     });
+    focused(&mut state, &services, &spawner, "b.rs");
     dispatch(
         Cmd::Workspace(workspace::Command::Show { rows: 0..40 }),
         &mut state,
@@ -289,6 +309,7 @@ fn a_gap_in_a_committed_change_keeps_the_change_it_stands_in() {
     until(&spawner, &services, &mut state, |s| {
         s.pending.is_empty() && s.workspace.changes.get("a.txt").is_some()
     });
+    focused(&mut state, &services, &spawner, "a.txt");
     dispatch(
         Cmd::Workspace(workspace::Command::Show { rows: 0..80 }),
         &mut state,
@@ -341,6 +362,7 @@ fn a_committed_change_opened_and_edited_keeps_what_it_changed() {
     until(&spawner, &services, &mut state, |s| {
         s.pending.is_empty() && s.workspace.changes.get("a.txt").is_some()
     });
+    focused(&mut state, &services, &spawner, "a.txt");
     dispatch(
         Cmd::Workspace(workspace::Command::Show { rows: 0..80 }),
         &mut state,

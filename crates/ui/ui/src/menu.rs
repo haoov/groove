@@ -39,11 +39,37 @@ pub enum Of {
     Hues(String),
     /// Where a pod's logs start, from the logs view's range picker.
     LogRanges,
+    /// An object open in the Kubernetes sidebar, by its place.
+    Object(usize),
+    /// The modes Diff's changed files, listed flat while `true`, else as a tree.
+    Listing(bool),
     /// A session's row on the rail, with the section it stands in; none for a child.
     Session {
         session: groove_types::SessionId,
         section: Option<groove_types::Section>,
     },
+    /// The models the agent switches to, from its row in the sidebar.
+    Models {
+        session: groove_types::SessionId,
+        rows: Vec<Told>,
+    },
+}
+
+/// One row of the models' menu: a model to switch to, marked while current.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Told {
+    pub label: String,
+    pub model: Option<String>,
+    pub current: bool,
+}
+
+/// One gauge of the agent's usage: what is used, how much, its share, and when it starts again.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Gauge {
+    pub label: &'static str,
+    pub value: String,
+    pub used: f32,
+    pub resets: Option<String>,
 }
 
 /// One skill a menu row stands for, with what it is sent.

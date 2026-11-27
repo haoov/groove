@@ -1,8 +1,8 @@
 //! What a tool answers, in the names the agent reads.
 
 use groove_types::{
-    Annotation, CiStatus, CommitEntry, FileDiff, Mr, MrThread, PoolEntry, Repo, Session,
-    SessionState, Skill, Task, Worktree, WorktreeStatus,
+    CiStatus, CommitEntry, FileDiff, Mr, MrThread, PoolEntry, Repo, Session, SessionState, Skill,
+    Task, Worktree, WorktreeStatus,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -118,10 +118,6 @@ pub fn counted(key: &str, items: Vec<Value>) -> Value {
 
 pub fn file(path: &str, commit: Option<&str>, text: &str) -> Value {
     json!({ "path": path, "commit": commit, "text": text })
-}
-
-pub fn annotations(notes: &[Annotation]) -> Value {
-    json!({ "annotations": notes })
 }
 
 pub fn mr(stored: Option<&Mr>) -> Value {

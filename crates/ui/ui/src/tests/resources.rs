@@ -8,14 +8,14 @@ use groove_types::{Attached, KubeKind, ObjectRow, SessionId, TableColumn, WatchK
 use super::drawn;
 use super::*;
 use crate::hit::Target;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 
 mod argo;
 mod argo_find;
 mod argo_links;
 mod argo_sync;
 mod copy;
-mod fixture;
+pub(super) mod fixture;
 mod keys;
 mod kinds;
 mod list;
@@ -114,7 +114,7 @@ pub(super) fn listing() -> (AppState, Ui) {
             .apply(&key, Batch::Reset { columns, rows });
     }
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Resources;
+    ui.session.mode = Mode::Kubernetes;
     (app, ui)
 }
 
@@ -122,9 +122,9 @@ pub(super) fn listing() -> (AppState, Ui) {
 fn the_tab_stands_only_while_the_session_holds_a_cluster() {
     let (app, ui) = listing();
     let (_, hits) = drawn(&app, &ui);
-    assert!(hits.rect_of(&Target::Tab(Tab::Resources)).is_some());
+    assert!(hits.rect_of(&Target::ModeTab(Mode::Kubernetes)).is_some());
     let (_, hits) = drawn(&full_app(), &Ui::default());
-    assert!(hits.rect_of(&Target::Tab(Tab::Resources)).is_none());
+    assert!(hits.rect_of(&Target::ModeTab(Mode::Kubernetes)).is_none());
 }
 
 #[test]
@@ -147,13 +147,7 @@ fn the_list_tab_names_the_kind_and_its_count_over_rows_told_apart_by_namespace()
         !texts.iter().any(|one| one == "IP"),
         "a wide column stays out: {texts:?}"
     );
-    for heading in [
-        "WORKLOADS",
-        "Deployments",
-        "CLUSTER",
-        "Nodes",
-        "all namespaces",
-    ] {
+    for heading in ["WORKLOADS", "Deployments", "CLUSTER", "Nodes"] {
         assert!(
             texts.iter().any(|one| one == heading),
             "{heading}: {texts:?}"
@@ -254,14 +248,14 @@ fn a_lone_context_picked_wears_its_hue_in_its_picker() {
 
 /// The focus where a session opens it, then a click on the Resources tab, as the user gives it.
 fn clicked_in(app: &AppState, ui: &mut Ui) {
-    if ui.session.tab == Tab::Resources && !ui.session.stowed {
+    if ui.session.mode == Mode::Kubernetes {
         ui.focus = crate::Focus::Workspace;
         return;
     }
     ui.focus = crate::Focus::Agent;
     let (_, hits) = drawn(app, ui);
     let tab = hits
-        .rect_of(&Target::Tab(Tab::Resources))
+        .rect_of(&Target::ModeTab(Mode::Kubernetes))
         .expect("the Kubernetes tab");
     click(tab, ui, app, &hits);
 }

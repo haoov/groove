@@ -9,7 +9,7 @@ use groove_controllers::workspace::Way;
 
 use super::notes::Slot;
 use super::row::Drawn;
-use crate::components::{Gutters, head_mark, head_of};
+use crate::components::Gutters;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::Face;
@@ -53,19 +53,7 @@ fn marked(
     }
     if let RowKind::Gap(_) = row.kind {
         gap_marks(ctx, line, *at, numbers.0, numbers.1, numbers.2);
-        return;
     }
-    let split = numbers.1 == Face::Stream(DiffView::Split);
-    let Some(path) = row.file.as_ref().filter(|_| row.head && !split) else {
-        return;
-    };
-    head_hits(ctx, head_of(line, row.part), path);
-}
-
-/// A head folds its file on a click, and its box marks the file read.
-pub(super) fn head_hits(ctx: &mut Ctx, whole: Rect, path: &str) {
-    ctx.hit(whole, Target::Head(path.to_string()));
-    ctx.hit(head_mark(ctx, whole), Target::Read(path.to_string()));
 }
 
 /// The arrows a gap wears: down where the old line stands, up where the new one does.

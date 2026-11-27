@@ -2,23 +2,23 @@
 
 use super::*;
 use crate::hit::{Hits, Scroller};
-use crate::input::Key;
 use groove_controllers::{Command, workspace};
 use groove_types::{Caret, Edit, Motion};
 
-/// The file view of a file whose last line runs 400 characters.
+/// The file view of a file whose last line runs 400 characters, in a middle narrower than its lines.
 fn wide() -> (AppState, Ui) {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.tab = Tab::Files;
+    ui.session.mode = Mode::Files;
     ui.focus = crate::Focus::Workspace;
+    ui.split.sidebar = 700.0;
     (app, ui)
 }
 
 fn sideways(across: f32, ui: &mut Ui, app: &AppState, hits: &Hits) {
-    let workspace = crate::layout::Layout::of(window(), ui).workspace;
+    let code = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
     let delta = Delta::Pixels { across, down: 0.0 };
-    let (x, y) = (workspace.x + 1.0, workspace.y + 1.0);
+    let (x, y) = (code.x + 1.0, code.y + 1.0);
     handle(Input::Scroll { x, y, delta }, ui, app, hits, window());
 }
 
@@ -113,28 +113,4 @@ fn a_caret_that_did_not_move_leaves_the_view_where_the_wheel_put_it() {
     ui.session.file_across = 80.0;
     crate::input::follow(&mut ui, &app, &hits, window());
     assert_eq!((ui.session.scroll(), ui.session.across()), (400.0, 80.0));
-}
-
-#[test]
-fn a_found_match_far_along_its_line_opens_scrolled_to_it() {
-    let (mut app, mut ui) = wide();
-    let text = format!("{}o", " ".repeat(300));
-    app.workspace.found = vec![groove_controllers::workspace_service::Found {
-        path: "src/lib.rs".into(),
-        line: 150,
-        text,
-        at: (300, 301),
-    }];
-    ui.session.file_across = 0.0;
-    crate::tests::press(Key::Char('f'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    crate::tests::press(Key::Char('o'), Default::default(), &mut ui, &app);
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let row = hits
-        .rect_of(&Target::Found(0))
-        .expect("the match is listed");
-    click(row, &mut ui, &app, &hits);
-    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let chars = hits.chars();
-    let room = code.right() - chars.left - Tokens::new(1.0).md;
-    assert_eq!(ui.session.file_across, 302.0 * chars.advance - room);
 }

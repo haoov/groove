@@ -1,7 +1,7 @@
 # Sessions
 
-Keep a task's repos, worktrees and agent together. Surface: the session's overview and
-agent pane, as [../design.md](../design.md#session--small-scope) draws them.
+Keep a task's repos, worktrees and agent together. Surface: the session's `OVERVIEW` and
+`AGENT` modes, as [../design.md](../design.md#session--small-scope) draws them.
 
 Three kinds — [task](../glossary.md#task), [explorer](../glossary.md#explorer) and
 [review](../glossary.md#review) — on one provisioning path.
@@ -58,15 +58,6 @@ user from the palette. Enforced by `a_task_not_marked_as_maintenance_spawns_no_c
 one. Enforced by `a_child_adopted_as_a_task_keeps_its_parent` and
 `a_deleted_parent_leaves_its_children_without_one`.
 
-**A session keeps a log of what it did**, which the user reads when they come back: what,
-why when it is not plain, and the MR when that work opened it. The agent writes it with
-`log_work` only from `groove:save-task` or when the user asks, and only what matters to that
-reader. A child keeps its own log; when it closes,
-its newest entry goes to its parent's log, named after the child: one entry per child. Groove
-keeps the log, and each entry's button on the overview takes a wrong one off it.
-Enforced by `a_closed_child_hands_its_newest_entry_to_its_parent`,
-`a_log_entry_removed_leaves_the_log_and_the_store` and `an_entry_s_button_removes_it_from_the_log`.
-
 **A maintenance task reads the Platform team's firing alerts** from incident.io's API, at the
 interval Settings › Alerts gives. incident.io filters them on the `Team` attribute's Platform entry, whose
 ids Groove holds. The key is the one `inc auth login` left: Groove asks `inc` for it and stores
@@ -86,25 +77,26 @@ when Settings knows the cluster. Enforced by
 
 ## Overview
 
-One overview for task, explorer and review sessions: the task's properties, the repos
-with their worktree rows, the clusters it holds, then the body. An explorer has neither properties nor body.
+One overview for task, explorer and review sessions: the task, or the MR under review, on a
+card with its body, then the repos with their worktree rows; its sidebar holds the task's
+properties and the clusters it holds. An explorer has neither properties nor body.
 
 A worktree row joins its git status to its MR. Its skill button sends the skill that
 fits the row's state, with `agent.send_skill`. Finish is a palette row.
 
-A maintenance task adds its children, each with its agent's state or `closed`. A task or an
-explorer then shows its log, the newest entry first, `Nothing logged yet.` while it is empty.
-Enforced by `a_maintenance_task_lists_its_children_and_the_log_shows_who_wrote_each_entry` and
-`a_task_not_marked_shows_no_children_and_an_empty_log`.
+A maintenance task adds its children, each with its agent's state or `closed`.
+Enforced by `a_maintenance_task_lists_its_children` and `a_task_not_marked_shows_no_children`.
 
 The clusters name what is attached and nothing else: each context once, in its hue, its
 namespaces under it. No health, no counts. A session with none has no clusters section.
 
+A maintenance task's firing alerts are read and kept, and none is drawn yet.
+
 ## Agent session
 
-**The pane draws the agent's terminal**; keys go to the pty as bytes. Escape reaches the
-agent's TUI like any key. The terminal takes the whole pane: no bar stands under it, and a
-skill is sent from the palette. Auto-approve is a setting. An ask stands on the rail row alone.
+**The pane draws the agent's conversation**; the agent runs headless, and `alt+a` opens
+Groove's own prompt over the window. A skill is sent from the prompt's `/` or from the palette.
+Auto-approve is a setting. An ask stands on the rail row and at the conversation's foot.
 
-**Skills are scoped per launch**: the palette lists exactly what this agent was
-started with. A skill saved later shows after a reload, from the palette.
+**Skills are scoped per launch**: the `/` offers and the palette list exactly what this agent
+was started with. A skill saved later shows after a reload, from the palette.

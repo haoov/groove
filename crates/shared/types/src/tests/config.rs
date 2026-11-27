@@ -71,6 +71,13 @@ fn a_file_naming_the_agent_font_reads_it_as_the_mono_font() {
 }
 
 #[test]
+fn a_file_holding_the_old_layout_switch_still_loads() {
+    let file = r#"{ "font_size": 15, "modes": true }"#;
+    let ui: crate::UiConfig = serde_json::from_str(file).unwrap();
+    assert_eq!(ui.font_size, 15.0);
+}
+
+#[test]
 fn a_name_alone_reads_as_a_list_of_one() {
     let file = FILE
         .replace(r#""ready": ["Ready"]"#, r#""ready": "Ready for sprint""#)

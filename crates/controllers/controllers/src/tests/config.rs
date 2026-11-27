@@ -137,7 +137,7 @@ fn the_window_s_boundaries_are_kept_for_the_next_run() {
     spawner.drain(&mut state, &services);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     let kept = std::fs::read_to_string(state.env.data_dir.join("panes.json")).unwrap();
-    assert!(kept.contains("480"), "{kept}");
+    assert!(kept.contains("300"), "{kept}");
 }
 
 #[test]

@@ -1,12 +1,14 @@
-//! The Resources tab: the kinds of what the session holds, and the list of the one picked.
+//! The Kubernetes mode: the kinds of what the session holds, and the list of the one picked.
 
 mod argo;
 mod around;
 mod health;
 mod list;
 mod logs;
+pub(crate) mod moded;
 mod opened;
-mod scope;
+pub mod pins;
+pub(crate) mod scope;
 mod scoping;
 mod sidebar;
 mod tab;
@@ -14,15 +16,14 @@ mod written;
 
 pub use argo::{ArgoUi, Filter};
 pub use around::row_link;
-pub use list::{draw, uids as row_uids};
+pub use list::uids as row_uids;
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
 pub use opened::{Link, Opens, Section};
 pub use scope::{
-    Columns, Dragged, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, held, kind, offered,
-    shown_contexts, shows, wants,
+    Columns, Dragged, ResourcesUi, WHOLE_MARK, WHOLE_NAME, contexts, kind, shows, wants,
 };
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
-pub use sidebar::{Line, draw as sidebar, served, shown};
+pub use sidebar::served;
 pub use tab::{due as tab_due, wants as tab_wants};
 pub use written::{Write, Written, desired};
 

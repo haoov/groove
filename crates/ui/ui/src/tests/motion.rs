@@ -13,7 +13,7 @@ fn at(tick: u64) -> groove_ui_kit::base::ctx::Metrics {
 }
 
 fn configured(still: bool) -> AppState {
-    let mut app = crate::tests::screen::sourced(full_app(), true, true);
+    let mut app = crate::tests::agent::sourced(full_app(), true, true);
     let mut config = app.config.config.clone().expect("a config");
     config.ui.reduce_motion = still;
     app.config.config = Some(config);
@@ -25,12 +25,13 @@ fn a_fold_stands_at_once() {
     let app = configured(false);
     let mut ui = Ui::default();
     ui.animate(&app, 0);
-    ui.session.stowed = true;
+    ui.session.folded = true;
     ui.animate(&app, 1000);
     assert!(!ui.motion.moving(1001), "no frames asked for");
     assert_eq!(
-        Layout::of(at(1001), &ui).strip.h,
-        Layout::of(at(1001), &ui).header.h
+        Layout::of(at(1001), &ui).sidebar.h,
+        at(1001).tokens().bar,
+        "the sidebar stands folded to its head"
     );
 }
 

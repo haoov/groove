@@ -1,6 +1,6 @@
-//! Keys on their way to the agent's terminal, as the bytes a terminal sends.
+//! Keys on their way to a shell's terminal, as the bytes a terminal sends.
 
-use groove_controllers::{AppState, Command, agent};
+use groove_controllers::{AppState, Command};
 
 use super::super::{Key, Modifiers};
 
@@ -14,12 +14,6 @@ pub(super) fn to_shell(key: Key, mods: Modifiers, app: &AppState) -> Option<Comm
         id,
         bytes,
     }))
-}
-
-pub(super) fn to_agent(key: Key, mods: Modifiers, app: &AppState) -> Option<Command> {
-    let session = app.session.selected.clone()?;
-    let bytes = encode(key, mods)?;
-    Some(Command::Agent(agent::Command::Send { session, bytes }))
 }
 
 /// The bytes a terminal sends for a key. `None` for a key a terminal has no word for.

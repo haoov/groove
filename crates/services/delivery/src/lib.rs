@@ -1,10 +1,9 @@
-//! The delivery capability: what the forge says of each worktree, and the session's notes.
+//! The delivery capability: what the forge says of each worktree, its threads included.
 
 mod facts;
 pub use facts::Clock;
 
-/// Who a note says left it: the user, or the agent.
-pub const BY_USER: &str = "you";
+/// The decoration on what the agent posts.
 pub const BY_AGENT: &str = "agent";
 mod held;
 mod notes;
@@ -16,11 +15,10 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-pub use groove_annotations::New as NewNote;
 pub use groove_browser::browse;
 pub use groove_forge::{Github, Remote, Snapshot, Token};
 pub use held::Held;
-pub use notes::merged;
+pub use notes::listed;
 pub use poll::Polling;
 pub use propose::{Text, text_of};
 pub use service::{Connect, Delivered, Said, Service};

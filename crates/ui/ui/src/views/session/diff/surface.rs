@@ -39,7 +39,6 @@ fn beside(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) {
     groove_ui_kit::shape::side_rule(ctx, body, left.right(), rule);
     surface(ctx, left, app, ui, inline, (Side::Old, false));
     surface(ctx, right, app, ui, inline, (Side::New, true));
-    super::heads::across(ctx, body, app, ui, inline);
 }
 
 /// Draws the rows the surface has room for, and says where a click can land.
@@ -70,7 +69,6 @@ fn surface(
         first: code_rows.start,
         notes: side != Side::Old,
         said: said.as_ref(),
-        heads: view != Face::Stream(DiffView::Split),
     };
     let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, ui, view);
@@ -154,8 +152,6 @@ struct Held<'a> {
     notes: bool,
     /// The blame of the line the caret rests on.
     said: Option<&'a super::blame::Said>,
-    /// Whether this side draws the heads; split leaves them to one row across both sides.
-    heads: bool,
 }
 
 /// Every row of the window as the code widget takes it.
@@ -171,9 +167,6 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 Line::new("")
             }
             Slot::Code(at) => match held.rows.get(at - held.first) {
-                Some(row) if row.head && (!held.heads || row.part.0 > 0 && on > 0) => {
-                    Line::covered()
-                }
                 Some(row) => lined(ctx, row, &held.gutters[at - held.first])
                     .noted(held.marks[on].0)
                     .tile(held.marks[on].1.clone().filter(|_| held.notes))
@@ -185,12 +178,12 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 said(&held.words[on], resolved)
             }
             Slot::Pad { room } => Line::pad(*room),
-            Slot::Chips | Slot::Footer { .. } => match held.words[on].composed.clone() {
-                Some(composed) => Line::composed(composed),
-                None => Line::new(""),
-            },
+            Slot::Footer => Line::footer(),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
-                Some(note) => Line::acting(acting_of(app, note)),
+                Some(note) => Line::acting(Acting {
+                    thread: note.thread.clone(),
+                    resolved: note.resolved,
+                }),
                 None => Line::new(""),
             },
             Slot::Typed { .. } => said(&held.words[on], false)
@@ -215,29 +208,8 @@ fn said(words: &Words, resolved: bool) -> Line<'_> {
     Line::note(&words.body, noted)
 }
 
-/// What a note's own row of buttons acts on.
-fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
-    Acting {
-        origin: note.origin.clone(),
-        resolved: note.resolved,
-        thread: !note.is_local(),
-        post: app
-            .session
-            .selected_worktree()
-            .is_some_and(|worktree| app.delivery.has_mr(&worktree.id)),
-    }
-}
-
-/// One row as the code widget takes it: a head, a gap, or a line of text.
+/// One row as the code widget takes it: a gap, or a line of text.
 fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> {
-    if row.head {
-        return Line::head(&row.text)
-            .folded(row.folded)
-            .read(row.read)
-            .part(row.part)
-            .counts(row.counts)
-            .tally(row.tally);
-    }
     if let RowKind::Gap(_) = row.kind {
         return Line::banner(&row.text);
     }

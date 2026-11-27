@@ -1,51 +1,41 @@
-//! What the user dragged: every column's width but the workspace's, and the heights across.
+//! What the user dragged: the rail's and the sidebar's widths, and the heights across.
 
 use groove_types::Panes;
 
 use groove_ui_kit::base::tokens::{
-    AGENT_MIN, ALERTS_TALL, CODE_MIN, FEED_MIN, MANUAL_MIN, MANUAL_TALL, RAIL_MIN, SESSIONS_MIN,
-    SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
+    CODE_MIN, FEED_MIN, MANUAL_MIN, MANUAL_TALL, MIDDLE_MIN, RAIL_MIN, SESSIONS_MIN, SIDEBAR_MIN,
+    Tokens,
 };
 
 /// A boundary the user drags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Edge {
-    /// Between the rail and the agent pane.
+    /// Between the rail and the session's middle.
     Rail,
-    /// Between the agent pane and the workspace.
-    Agent,
-    /// Between the workspace and the sidebar.
-    Sidebar,
     /// Between the rail's own rows and the feed under them.
     Feed,
-    /// Between the workspace's tab and the manual section under it.
+    /// Between the session's middle and the terminals under it.
     Manual,
-    /// Between a maintenance task's alerts and the agent under them.
-    Alerts,
+    /// Between the session's middle and its sidebar, as the rail's edge mirrored.
+    Aside,
 }
 
 impl Edge {
-    /// Every boundary: the three columns, then the ones across the sidebar and the workspace.
-    pub const ALL: [Edge; 4] = [Edge::Rail, Edge::Agent, Edge::Sidebar, Edge::Manual];
-
     /// Whether the boundary is a vertical line, which the pointer moves sideways.
     pub fn upright(self) -> bool {
-        !matches!(self, Edge::Feed | Edge::Manual | Edge::Alerts)
+        !matches!(self, Edge::Feed | Edge::Manual)
     }
 }
 
-/// Every column's width but the workspace's, which takes the rest, in logical pixels.
+/// The rail's and the sidebar's widths, the middle taking the rest, in logical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Split {
     pub rail: f32,
-    pub agent: f32,
     pub sidebar: f32,
     /// How tall the rail's feed stands, the footer under it included.
     pub feed: f32,
     /// How tall the manual section stands open.
     pub manual: f32,
-    /// How far down the alerts reach open, from the window's top.
-    pub alerts: f32,
 }
 
 impl Default for Split {
@@ -53,11 +43,9 @@ impl Default for Split {
         let tokens = Tokens::default();
         Self {
             rail: tokens.rail,
-            agent: tokens.agent,
             sidebar: tokens.sidebar,
             feed: FEED_MIN * 2.0,
             manual: MANUAL_TALL,
-            alerts: ALERTS_TALL,
         }
     }
 }
@@ -67,42 +55,28 @@ impl Split {
     pub fn of(panes: Panes) -> Self {
         Self {
             rail: panes.rail.max(RAIL_MIN),
-            agent: panes.agent.max(AGENT_MIN),
             sidebar: panes.sidebar.max(SIDEBAR_MIN),
             feed: panes.feed.max(FEED_MIN),
             manual: panes.manual.max(MANUAL_MIN),
-            alerts: panes.alerts.max(FEED_MIN),
         }
     }
 
     pub fn panes(&self) -> Panes {
         Panes {
             rail: self.rail,
-            agent: self.agent,
             sidebar: self.sidebar,
             feed: self.feed,
             manual: self.manual,
-            alerts: self.alerts,
         }
     }
 
-    /// Puts `edge` at `x`, moving only its two columns and none under its minimum.
-    pub fn drag(&mut self, edge: Edge, at: f32, window: (f32, f32), sidebar: bool) {
+    /// Puts `edge` at `at`, the middle never under its minimum.
+    pub fn drag(&mut self, edge: Edge, at: f32, window: (f32, f32)) {
         let (width, height) = window;
-        let x = at;
         match edge {
             Edge::Rail => {
-                let held = self.rail + self.agent;
-                self.rail = x.clamp(RAIL_MIN, (held - AGENT_MIN).max(RAIL_MIN));
-                self.agent = held - self.rail;
-            }
-            Edge::Agent => {
-                let most = (self.room(width, sidebar) - WORKSPACE_MIN).max(AGENT_MIN);
-                self.agent = (x - self.rail).clamp(AGENT_MIN, most);
-            }
-            Edge::Sidebar => {
-                let most = (width - self.rail - self.agent - WORKSPACE_MIN).max(SIDEBAR_MIN);
-                self.sidebar = (width - x).clamp(SIDEBAR_MIN, most);
+                let most = (width - self.sidebar - MIDDLE_MIN).max(RAIL_MIN);
+                self.rail = at.clamp(RAIL_MIN, most);
             }
             Edge::Feed => {
                 let most = (height - SESSIONS_MIN).max(FEED_MIN);
@@ -112,30 +86,20 @@ impl Split {
                 let most = (height - CODE_MIN).max(MANUAL_MIN);
                 self.manual = (height - at).clamp(MANUAL_MIN, most);
             }
-            Edge::Alerts => self.alerts = at.clamp(FEED_MIN, (height - CODE_MIN).max(FEED_MIN)),
+            Edge::Aside => {
+                let most = (width - self.rail - MIDDLE_MIN).max(SIDEBAR_MIN);
+                self.sidebar = (width - at).clamp(SIDEBAR_MIN, most);
+            }
         }
     }
 
-    pub fn edge_at(&self, edge: Edge, window: (f32, f32), sidebar: bool) -> f32 {
+    pub fn edge_at(&self, edge: Edge, window: (f32, f32)) -> f32 {
         let (width, height) = window;
         match edge {
             Edge::Rail => self.rail,
-            Edge::Agent => self.rail + self.agent,
-            Edge::Sidebar => width - self.aside(sidebar),
             Edge::Feed => height - self.feed,
             Edge::Manual => height - self.manual,
-            Edge::Alerts => self.alerts,
-        }
-    }
-
-    fn room(&self, width: f32, sidebar: bool) -> f32 {
-        (width - self.rail - self.aside(sidebar)).max(1.0)
-    }
-
-    pub(super) fn aside(&self, sidebar: bool) -> f32 {
-        match sidebar {
-            true => self.sidebar,
-            false => 0.0,
+            Edge::Aside => width - self.sidebar,
         }
     }
 }

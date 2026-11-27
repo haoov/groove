@@ -55,6 +55,5 @@ id!(SessionId);
 id!(WorktreeId);
 id!(RepoId);
 id!(MrId);
-id!(AnnotationId);
 id!(ApprovalId);
 id!(ExternalId);

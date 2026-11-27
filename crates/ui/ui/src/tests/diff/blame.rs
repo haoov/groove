@@ -16,7 +16,7 @@ fn resting() -> (AppState, Ui) {
     let open = app.workspace.active_mut().expect("the open file");
     open.new.edit(&Edit::Move(Motion::To(Caret::new(1, 0))));
     let mut ui = on_diff();
-    ui.session.tab = Tab::Files;
+    ui.session.mode = Mode::Files;
     ui.focus = crate::Focus::Workspace;
     (app, ui)
 }
@@ -129,5 +129,5 @@ fn a_click_on_the_blame_shows_its_commit() {
         commands,
         [Command::Workspace(workspace::Command::OpenCommit { sha })]
     );
-    assert_eq!(ui.session.tab, Tab::Diff, "the commit shows as a change");
+    assert_eq!(ui.session.mode, Mode::Diff, "the commit shows as a change");
 }

@@ -72,13 +72,13 @@ fn session(command: Session) -> Command {
 /// The pairs the list reads.
 fn held(app: &AppState, ui: &Ui) -> Vec<String> {
     let open = app.session.selected().expect("the session");
-    let pairs = crate::views::session::resources::held(open, &ui.session.resources);
+    let pairs = crate::views::session::resources::scope::held(open, &ui.session.resources);
     let label = |pair: &Attached| ScopeLine::Namespace(pair.clone()).label();
     pairs.iter().map(label).collect()
 }
 
 #[test]
-fn the_scope_line_only_tells_and_alt_n_opens_the_panel_from_any_tab() {
+fn the_scope_only_tells_and_alt_n_opens_the_panel_from_any_mode() {
     let app = holding(vec![on("staging", None)]);
     let mut ui = on_kubernetes();
     let (texts, hits) = drawn(&app, &ui);
@@ -86,7 +86,7 @@ fn the_scope_line_only_tells_and_alt_n_opens_the_panel_from_any_tab() {
     for which in [Picks::Contexts, Picks::Namespaces] {
         assert!(hits.rect_of(&Target::Picker(which)).is_none(), "{which:?}");
     }
-    ui.session.tab = crate::views::session::Tab::Diff;
+    ui.session.mode = crate::views::session::Mode::Overview;
     let opened = picker(&app, &mut ui, Picks::Namespaces);
     let list = cluster::Command::ListNamespaces {
         context: "staging".into(),
@@ -94,7 +94,7 @@ fn the_scope_line_only_tells_and_alt_n_opens_the_panel_from_any_tab() {
     assert_eq!(opened, [Command::Cluster(list)]);
     assert!(matches!(ui.overlay, Some(Overlay::Scope(_))));
     chose(&app, &mut ui, "staging/shop", false);
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Kubernetes);
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn alt_c_opens_the_context_panel_and_again_shuts_it() {
 
 fn on_kubernetes() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = crate::views::session::Tab::Resources;
+    ui.session.mode = crate::views::session::Mode::Kubernetes;
     ui
 }
 
@@ -170,7 +170,7 @@ fn alt_n_then_a_ranked_query_and_enter_shows_that_namespace_alone_and_space_adds
     );
     press(Key::Enter, Default::default(), &mut ui, &app);
     assert!(ui.overlay.is_none(), "shown alone, the panel shuts");
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Kubernetes);
     assert_eq!(ui.focus, crate::Focus::Workspace, "the list takes the keys");
     assert_eq!(held(&app, &ui), ["staging/cnpg"]);
     press(Key::Char('n'), ALT, &mut ui, &app);
@@ -311,34 +311,5 @@ fn the_scope_panel_stands_as_the_palette_does_on_its_band_with_headings_in_capit
     assert!(
         texts.iter().any(|one| one == "IN THIS SESSION \u{b7} 1"),
         "{texts:?}"
-    );
-}
-
-#[test]
-fn on_the_kubernetes_tab_the_info_line_holds_the_scope_in_the_worktree_s_place() {
-    let app = holding(vec![on("staging", None)]);
-    let ui = on_kubernetes();
-    let fonts = &mut groove_gfx::Fonts::embedded();
-    let (frame, _) = crate::view(&app, &ui, crate::tests::window(), fonts);
-    let info = crate::layout::Layout::of(crate::tests::window(), &ui).info;
-    let texts: Vec<_> = frame
-        .layers()
-        .iter()
-        .flat_map(|one| one.texts.iter())
-        .collect();
-    let scope = texts
-        .iter()
-        .find(|one| one.text == "staging")
-        .expect("the scope");
-    assert!(
-        scope.y >= info.y && scope.y < info.bottom(),
-        "on the info line"
-    );
-    let open = app.session.selected().expect("the session");
-    let branch = open.selected_worktree().map(|one| one.branch.clone());
-    let branch = branch.expect("the fixture's worktree");
-    assert!(
-        !texts.iter().any(|one| one.text == branch),
-        "no worktree line"
     );
 }

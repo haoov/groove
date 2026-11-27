@@ -5,14 +5,10 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{
-    Aligned, At, Colours, HEAD_ROWS, Opened, display_of, shown,
-};
+use groove_controllers::workspace_service::{Aligned, Colours, Opened, display_of, shown};
 use groove_types::{Caret, DiffView, Highlight, Row, RowKind};
 
-use super::{
-    Drawn, Side, caret, columns_in, counted, held, is_read, matched, open, standing, text_of,
-};
+use super::{Drawn, Side, caret, columns_in, held, matched, open, standing, text_of};
 use crate::Ui;
 
 /// Every changed file's rows, each under a row naming the file.
@@ -27,8 +23,7 @@ pub(super) fn streamed(
     let colours = coloured(app, ui, window.clone());
     window
         .map(|row| match changes.at(row) {
-            Some(At::Head(file)) => head(app, file, row),
-            Some(At::Row(file, at)) => {
+            Some((file, at)) => {
                 let side = file.row(at).map_or(side, |one| source(&one, view, side));
                 one(
                     app,
@@ -54,7 +49,7 @@ fn coloured<'a>(
     let changes = &app.workspace.changes;
     let mut bounds: BTreeMap<&str, (Range<usize>, Range<usize>)> = BTreeMap::new();
     for row in window {
-        let Some(At::Row(file, at)) = changes.at(row) else {
+        let Some((file, at)) = changes.at(row) else {
             continue;
         };
         let Some(one) = file.row(at) else {
@@ -92,23 +87,6 @@ fn stretch(range: &mut Range<usize>, line: Option<u32>) {
         true => at..at + 1,
         false => range.start.min(at)..range.end.max(at + 1),
     };
-}
-
-/// The row that names a file, standing above its own rows.
-fn head(app: &AppState, file: &Aligned, row: usize) -> Drawn {
-    let changes = &app.workspace.changes;
-    let at = changes.head_of(&file.path).map_or(0, |head| row - head);
-    Drawn {
-        text: file.path.clone(),
-        head: true,
-        folded: changes.is_folded(&file.path),
-        read: is_read(app, &file.path),
-        part: (at, HEAD_ROWS),
-        counts: counted(app, &file.path),
-        tally: super::super::faults::tally(app, &file.path),
-        file: Some(file.path.clone()),
-        ..Drawn::default()
-    }
 }
 
 /// One row of one file, read from the side the view asks for.

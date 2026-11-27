@@ -1,16 +1,14 @@
 //! Finding text in the surface: the bar, its matches, and where they take you.
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::DiffView;
 
 use crate::input::{Key, Modifiers};
 use crate::tests::{changed_files, full_app, press, shows, typed, window};
-use crate::views::session::{Tab, Term};
+use crate::views::session::Mode;
 use crate::{Focus, Ui, view};
 use groove_ui_kit::base::tokens::Tokens;
-
-mod worktree;
 
 const FILES: [(&str, &str, &str); 2] = [
     ("src/a.rs", "let one = 1;\n", "let one = 11;\n"),
@@ -32,7 +30,7 @@ fn app() -> AppState {
 
 fn on_code() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     ui.focus = Focus::Workspace;
     ui
 }
@@ -48,11 +46,7 @@ fn the_bar_opens_on_the_chord_and_finds_as_it_is_typed() {
 
     typed("one", &mut ui, &app);
     let find = ui.session.find.as_ref().expect("still there");
-    assert_eq!(
-        find.count(),
-        "1 / 3",
-        "both sides of a.rs and b.rs's new line"
-    );
+    assert_eq!(find.count(), "1 / 2", "both sides of the focused a.rs");
     assert_eq!(find.here().map(|hit| hit.path.as_str()), Some("src/a.rs"));
 }
 
@@ -70,11 +64,9 @@ fn enter_and_shift_enter_step_the_matches_and_wrap() {
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(at(&ui), 1);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    assert_eq!(at(&ui), 2);
-    press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(at(&ui), 0, "the last match wraps to the first");
     press(Key::Enter, shift, &mut ui, &app);
-    assert_eq!(at(&ui), 2, "and back the other way");
+    assert_eq!(at(&ui), 1, "and back the other way");
     let find = ui.session.find.as_ref().expect("the bar stays up");
     assert!(find.typing, "and keeps the keys");
 }
@@ -90,23 +82,11 @@ fn escape_takes_the_bar_and_its_marks_away() {
 }
 
 #[test]
-fn a_match_in_another_file_opens_it_there() {
-    let mut app = app();
-    shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
-    changed_files(&mut app, &FILES);
-    let mut ui = on_code();
-    press(Key::Char('f'), ctrl(), &mut ui, &app);
-    typed("22", &mut ui, &app);
-    let commands = press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    assert_eq!(commands.len(), 1, "{commands:?}");
-    assert_eq!(commands[0].id(), "workspace.open_file");
-}
-
-#[test]
 fn a_match_on_a_line_that_went_takes_no_caret() {
     let mut app = app();
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
     changed_files(&mut app, &FILES);
+    app.workspace.changes.focus(Some(FILES[1].0.into()));
     let mut ui = on_code();
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("two", &mut ui, &app);
@@ -146,7 +126,7 @@ fn the_file_view_searches_only_the_file_it_shows() {
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
     changed_files(&mut app, &FILES);
     let mut ui = on_code();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("one", &mut ui, &app);
     let find = ui.session.find.as_ref().expect("the bar");
@@ -167,7 +147,7 @@ fn the_match_stands_in_the_middle_of_the_rows_at_the_window_s_scale() {
     let after = before.replace("value_60 = 60", "value_60 = 61");
     shows(&mut app, "src/lib.rs", &before, &after);
     let mut ui = on_code();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let window = crate::tests::metrics(2560, 1600, 2.0);
     let (_, hits) = view(&app, &ui, window, &mut Fonts::embedded());
     let keys = std::iter::once((Key::Char('f'), ctrl())).chain(
@@ -194,6 +174,7 @@ fn the_match_it_stands_on_reads_as_a_selection_even_on_a_line_that_went() {
     let mut app = app();
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
     changed_files(&mut app, &FILES);
+    app.workspace.changes.focus(Some(FILES[1].0.into()));
     let mut ui = on_code();
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("two", &mut ui, &app);
@@ -248,7 +229,7 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
     changed_files(&mut app, &FILES);
     let mut ui = on_code();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let carets = |ui: &Ui| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
         let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
@@ -276,16 +257,6 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
 }
 
 #[test]
-fn the_bar_floats_over_the_rows_on_glass() {
-    let app = app();
-    let mut ui = on_code();
-    press(Key::Char('f'), ctrl(), &mut ui, &app);
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let above = frame.layers().last().expect("a layer over the rows");
-    assert!(!above.glass.is_empty(), "the bar stands on glass");
-}
-
-#[test]
 fn every_match_is_marked_under_the_text() {
     let mut app = app();
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
@@ -299,8 +270,8 @@ fn every_match_is_marked_under_the_text() {
     let count = |color| quads.iter().filter(|quad| quad.color == color).count();
     assert_eq!(
         count(styles.found()),
-        3,
-        "one under every match the change holds"
+        2,
+        "one under every match the focused file holds"
     );
     assert_eq!(
         count(styles.standing()),
@@ -340,7 +311,7 @@ fn a_paste_in_the_bar_finds_as_typing_does() {
         window(),
     );
     let find = ui.session.find.as_ref().expect("the bar stands");
-    assert_eq!(find.count(), "1 / 3");
+    assert_eq!(find.count(), "1 / 2");
 }
 
 #[test]
@@ -349,7 +320,7 @@ fn a_find_bar_not_drawn_takes_no_key_and_no_paste() {
     let mut ui = on_code();
     ui.settle(&app);
     press(Key::Char('f'), ctrl(), &mut ui, &app);
-    ui.session.tab = Tab::Overview;
+    ui.session.mode = Mode::Overview;
     typed("x", &mut ui, &app);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     crate::input::handle(

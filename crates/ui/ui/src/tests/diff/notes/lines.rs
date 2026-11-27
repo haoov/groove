@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn a_note_says_which_lines_it_is_about() {
-    let mut one = own(1, "issue: this leaks");
+    let mut one = note(1, "reviewer", "issue: this leaks");
     one.anchor = Some(Anchor {
         path: "src/lib.rs".into(),
         start_line: 0,
@@ -20,7 +20,7 @@ fn a_note_says_which_lines_it_is_about() {
 
 #[test]
 fn a_note_on_one_line_says_that_line() {
-    let app = noted(vec![own(1, "issue: this leaks")]);
+    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|text| text == "2"), "{drawn:?}");
 }
@@ -44,7 +44,8 @@ fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
                 and nothing ever closes it";
     let app = noted(vec![note(1, "reviewer", body)]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
+    ui.split.sidebar = 700.0;
     let drawn = row_texts(&app, &ui);
     let words = groove_types::labelled(body).expect("a label").rest;
     assert!(
@@ -78,7 +79,7 @@ fn a_note_wraps_to_the_width_of_the_frame_that_draws_it() {
                 and nothing ever closes it, so a long session runs out of handles";
     let app = noted(vec![note(1, "reviewer", body)]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let drawn_at = |width: u32| {
         let metrics = crate::tests::metrics(width, WINDOW.1, 1.0);
         let (frame, hits) = view(&app, &ui, metrics, &mut Fonts::embedded());

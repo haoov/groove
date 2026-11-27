@@ -79,7 +79,7 @@ fn a_field_draws_its_caret_as_a_bar_and_its_text_alone() {
         &[("src/a.rs", "let one = 1;\n", "let one = 2;\n")],
     );
     let mut ui = crate::Ui::default();
-    ui.session.tab = crate::views::session::Tab::Diff;
+    ui.session.mode = crate::views::session::Mode::Diff;
     ui.focus = crate::Focus::Workspace;
     let ctrl = Modifiers {
         ctrl: true,

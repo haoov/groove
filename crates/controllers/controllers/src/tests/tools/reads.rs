@@ -372,57 +372,6 @@ fn a_template_asked_of_a_source_that_is_not_set_up_is_refused() {
 }
 
 #[test]
-fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
-    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    fixture::pooled_clone(home.path());
-    let (id, worktree, _) = changed(&mut state, &services, &spawner);
-    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
-    let note =
-        json!({ "worktree_id": worktree, "path": "a.txt", "line": 1, "content": "issue: one" });
-    asked(
-        &mut state,
-        &services,
-        &spawner,
-        &id,
-        "create_annotation",
-        note,
-    );
-    fixture::until(&spawner, &services, &mut state, |s| {
-        !s.delivery
-            .notes_of(&groove_types::SessionId::new(&id))
-            .unwrap_or_default()
-            .is_empty()
-    });
-
-    let answer = asked(
-        &mut state,
-        &services,
-        &spawner,
-        &id,
-        "get_annotations",
-        json!({}),
-    );
-    let notes = said(&answer)["annotations"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    assert_eq!(notes.len(), 1, "{notes:?}");
-    assert_eq!(
-        notes[0]["id"],
-        state
-            .delivery
-            .notes_of(&groove_types::SessionId::new(&id))
-            .unwrap_or_default()[0]
-            .id
-            .as_str()
-    );
-    assert_eq!(
-        notes[0]["content"], "issue (agent): one",
-        "the agent's own note says so"
-    );
-}
-
-#[test]
 fn the_forge_reads_name_a_worktree_of_an_open_session() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());

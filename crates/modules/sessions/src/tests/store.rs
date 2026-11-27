@@ -265,3 +265,41 @@ async fn a_session_holds_each_cluster_and_namespace_once_and_lets_them_go_with_i
     store.remove(&session.id).await.unwrap();
     assert!(store.clusters_of(&session.id).await.unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn a_session_keeps_each_pinned_list_once_in_order_and_lets_it_go() {
+    use groove_types::{Attached, KubeKind, Pin};
+    let store = Store::in_memory().await.unwrap();
+    let session = explorer("explorer-1", 10);
+    store.create_explorer(&session).await.unwrap();
+    let kind = |name: &str, plural: &str| KubeKind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: name.into(),
+        plural: plural.into(),
+        namespaced: true,
+        watchable: true,
+        short_names: vec!["po".into()],
+    };
+    let on = |context: &str, namespace: Option<&str>| Attached {
+        context: context.into(),
+        namespace: namespace.map(str::to_string),
+    };
+    let pods = Pin::new(
+        &kind("Pod", "pods"),
+        [on("staging", Some("shop")), on("hub", None)],
+    );
+    let services = Pin::new(&kind("Service", "services"), [on("hub", None)]);
+    for (one, at) in [(&pods, 1), (&services, 2), (&pods, 3)] {
+        store
+            .pin(&session.id, one, Timestamp::new(at))
+            .await
+            .unwrap();
+    }
+    let kept = store.pins_of(&session.id).await.unwrap();
+    assert_eq!(kept, [pods.clone(), services.clone()]);
+    store.unpin(&session.id, &pods).await.unwrap();
+    assert_eq!(store.pins_of(&session.id).await.unwrap(), [services]);
+    store.remove(&session.id).await.unwrap();
+    assert!(store.pins_of(&session.id).await.unwrap().is_empty());
+}

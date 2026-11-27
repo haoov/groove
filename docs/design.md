@@ -33,53 +33,50 @@ the rail only as its attention count.
   square, the one under the pointer lit; the others' labels are faint. A label is small and mono,
   a word in capitals — `DIFF`, `ALL` — and a name as it is given: a file, a terminal, an object,
   a container. Enforced by `a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box`.
-- **Focus is a ring**: the region that has the keys — the sessions' window, the strip, the
-  sidebar, the terminals — stands in a thin ring in the accent, read as half its strength on
-  either theme. The agent's screen has no edge to ring: its cursor turns a solid block in the
-  accent while it has the keys. A terminal shows them by a solid cursor too. Enforced by
+- **Focus is a ring**: the region that has the keys — the sessions' window, the sidebar, the
+  terminals — stands in a thin ring in the accent, read as half its strength on either theme.
+  The middle has no edge to ring: the agent's prompt, open, takes the ring, and the code its
+  caret. A terminal shows them by a solid cursor. Enforced by
   `the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else`,
-  `the_agent_has_no_ring_and_its_caret_takes_the_accent` and
+  `the_open_prompt_stands_in_the_ring` and
   `a_selection_stays_neutral_in_the_region_that_has_the_keys`.
 - **A region is one chord away.** `alt+r`, `alt+a`, `alt+o` and `alt+e` hand the keys to the
-  rail, the agent, the workspace and the sidebar; `alt+i` hands them to a maintenance task's
-  alerts; the terminals keep their own chord. The
-  workspace, the sidebar and the alerts unfold first, and a press while they hold the keys folds them
-  away. `ctrl+alt` with `h`, `j`, `k` or `l` moves the boundary of the region that holds the keys
-  that way.
+  rail, the agent, the middle and the sidebar; the terminals keep their own chord.
+  `alt+shift` with the arrows walks the rail, the middle and the sidebar. The sidebar unfolds
+  first, and a press while it holds the keys folds it away. `ctrl+alt` with `h`, `j`, `k` or
+  `l` moves the boundary of the region that holds the keys that way.
   Enforced by `alt_and_a_region_s_letter_hand_it_the_keys`,
   `a_second_press_folds_the_sidebar_away`,
-  `alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it` and
-  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way` and
-  `alt_i_unfolds_the_alerts_gives_them_the_keys_then_folds_them`.
+  `the_chord_walks_the_panes_left_to_right`,
+  `alt_o_gives_the_keys_to_the_middle_and_alt_e_to_the_sidebar_then_folds_it` and
+  `ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way`.
 - **Alt reaches the session, ctrl what is in it.** An `alt` chord works from every region,
   the agent and the terminals included: a palette, a region, the board on `alt+shift+b`,
   closing the session on `alt+shift+q`. A `ctrl` chord acts inside the region and leaves the
-  agent's and the terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
+  terminals' keys to them, except `ctrl+w` and `ctrl+tab`.
   Enforced by `alt_shift_q_closes_the_session`.
 - **A list walks from the keyboard.** `ctrl+j` and `ctrl+k` step down and up any list, a
   palette's included, as the arrows do. Enforced by
   `ctrl_j_and_ctrl_k_walk_a_list_as_the_arrows_do`. In the sidebar the arrows step through the rows, Enter
-  does what a click does, Space stages a changed file, Left and Right fold a folder, and
-  `[` and `]` change the list.
-  Enforced by `the_arrows_walk_the_changed_files_and_space_stages_one`.
-- **The rail and the terminals answer too.** On the rail, Enter goes to the workspace and
+  does what a click does, Left and Right fold a folder, and `[` and `]` change the list.
+  Enforced by `the_arrows_walk_the_changed_files_and_enter_hands_over_the_keys`.
+- **The rail and the terminals answer too.** On the rail, Enter hands the keys to the middle and
   `a` and `v` approve or show the agent's ask. `alt+]` and `alt+[` step through the
-  workspace's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask`.
-- **Kubernetes walks from the keyboard too.** The kinds answer the arrows, a letter opens
-  the kind palette on it. In the list the arrows walk the rows; Enter opens one on Describe, `y` on
+  session's tabs, or the terminals' tabs while they have the keys. Enforced by `on_the_rail_enter_hands_the_keys_to_the_middle_and_a_and_v_answer_the_ask`.
+- **Kubernetes walks from the keyboard too.** In the list the arrows walk the rows; Enter opens one on Describe, `y` on
   its YAML, `l` on its logs. `ctrl+tab` and `ctrl+shift+tab` walk the open files, objects or
   terminals, `ctrl+w` closes the one shown.
   Enforced by `the_list_s_rows_walk_and_open_on_describe_yaml_or_logs` and
   `in_a_terminal_ctrl_tab_steps_its_tabs_and_ctrl_w_closes_one`.
-- **The board walks too.** `alt+1`, `alt+2` and `alt+3` open it, from anywhere, on its
-  Live, Up next and Review columns; on the board `alt+r` is the rail. The arrows walk the column; Enter, or a click, opens the session and goes
+- **The board walks too.** On the board `alt+a`, `alt+o` and `alt+e` take its Live, Up next
+  and Review columns, and `alt+r` the rail. The arrows walk the column; Enter, or a click, opens the session and goes
   to it, `ctrl+Enter` or `ctrl+click` opens it and stays on the board.
   Enforced by `the_board_s_columns_walk_by_key_and_enter_goes_or_stays`.
 
 - **Long lines wrap on a toggle.** With *wrap long lines* on (Settings › Appearance or the
   palette), the editor wraps each line to its width; the arrows step row by row, a click
-  lands along the line, and nothing scrolls sideways. A note wraps in its card and while it
-  is typed. Without wrap, the diff and the editor scroll sideways to keep the caret in view.
+  lands along the line, and nothing scrolls sideways. A note wraps in its card, and a reply
+  while it is typed. Without wrap, the diff and the editor scroll sideways to keep the caret in view.
   Enforced by `down_steps_along_a_wrapped_line_before_the_next_one`.
 - **The editor shows each scope's shape.** A block the syntax tree opens takes a guide down
   its indent, in the comment colour, and a caret in the column after the line numbers. A
@@ -104,14 +101,14 @@ the rail only as its attention count.
 
 ## Board — large scope
 
-The board replaces the agent pane, the workspace and the sidebar; the rail stays. Three
+The board replaces the session's bar, middle and sidebar; the rail stays. Three
 columns, one per list, each scrolling on its own, on the deep ground. The page has no title.
 
 **No header.** The columns' headings stand at the top; the board has no filter and no
-button. An explorer starts from the rail or the palette. The columns keep the agent's room:
-clear of a bar's height above and below, and across the rail's column once both its windows
-are folded. Enforced by `the_board_opens_straight_on_its_columns_headings` and
-`the_board_keeps_the_agent_s_room_and_with_the_rail_folded_takes_its_width`.
+button. An explorer starts from the rail or the palette. The columns stand clear of a bar's
+height above and below, and across the rail's column once both its windows are folded.
+Enforced by `the_board_opens_straight_on_its_columns_headings` and
+`the_board_keeps_a_bar_s_room_above_and_below_and_with_the_rail_folded_takes_its_width`.
 
 | Column | Holds | Sort |
 |---|---|---|
@@ -163,7 +160,7 @@ opens a new explorer; a rule sets the header and the Board row apart. Enforced b
 A click on the header folds the window to it, as the feed folds to its own: the feed takes
 the column up to its header, nothing left to drag between them; a second click opens it as it was. `alt+r`
 opens it and hands it the keys; pressed while it has them, it folds it and hands them to the
-agent, as the workspace's chord does. Enforced by
+agent, as the sidebar's chord does. Enforced by
 `a_click_on_the_sessions_header_folds_the_window_to_it_and_the_feed_takes_the_column`,
 `both_folded_the_rail_is_its_two_headers`,
 `the_rail_s_chord_opens_the_folded_sessions_and_hands_them_the_keys` and
@@ -180,10 +177,9 @@ section to it, and a second click opens it. A folded section's rows are not walk
 `a_section_s_heading_folds_its_sessions_away_and_opens_them_again`.
 
 One action, `session.place`, puts a session at an index of a section. Drag and drop, the
-palette and the row's menu all send it. A move to the other section writes `paused` or
-`back to active` to the session's log; a move inside a section writes nothing. Enforced by
-`pausing_moves_the_session_keeps_it_on_disk_and_logs_it` and
-`a_move_within_its_section_logs_nothing`.
+palette and the row's menu all send it. Enforced by
+`pausing_moves_the_session_and_keeps_it_on_disk` and
+`a_move_within_its_section_reorders_it`.
 
 **Drag and drop.** A row pressed and moved past the click's slop lifts on glass and follows the
 pointer, held where it was gripped; its place stays ghosted, the section under the pointer lights, and a rule marks where
@@ -274,100 +270,232 @@ Enforced by `a_line_is_its_age_its_code_and_its_text_in_three_mono_columns`,
 
 ## Session — small scope
 
-The rail, then one ground for the agent with the workspace's strip standing on it.
+The rail at the left, then the session: a bar of its title and its tabs, the
+[mode](glossary.md#mode) up in the middle under it, the sidebar at the right and the terminals' drawer at the middle's foot.
 
 | Part | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's pty, a bar's room left over it and under it |
-| **Strip** | header · info line · the selected tab · the sidebar |
-| **Sidebar** | inside the strip: contextual list for the selected tab; folds away |
-| **Terminals** | a drawer under the strip: a capsule while folded, the grids open |
-| **Alerts** | a maintenance task's firing alerts, over the agent: their header alone while folded |
+| **Bar** | the session's title, the worktree it follows, the tabs |
+| **Middle** | the mode up: the agent's conversation, the overview, the diff, a file or the cluster |
+| **Sidebar** | the mode's own list, at the window's right edge; folds to its head |
+| **Terminals** | a drawer at the middle's foot: their bar alone while folded, the grids open |
 
-**The strip folds to its header.** A click on the open tab folds it: the header alone stays
-at the top right, a capsule as narrow as its title and tabs, and the agent takes the
-ground's whole width. A click on any tab opens it again on that tab. The agent's terminal
-takes its new size at once. Folding the terminals leaves a folded strip folded. Enforced by
-`a_click_on_the_open_tab_folds_the_strip_and_widens_the_agent`,
-`any_tab_opens_the_folded_strip_on_itself`,
-`the_folded_strip_is_a_capsule_as_narrow_as_its_title_and_tabs` and
-`folding_the_drawer_leaves_the_strip_folded`.
-The agent's screen leaves a bar's room over it, where the folded header's capsule stands, and one
-under it. The header, open or folded, and the terminals' drawer stand a layer over the screen,
-never under its text. Enforced by
-`the_folded_header_stands_a_layer_over_the_agent_s_screen`. With both the rail's windows folded, the
-screen runs left across the rail's column to the window's edge, its two headers in the rooms over
-and under it; the wheel there scrolls the agent and the rail's edge is not dragged. Enforced by
-`with_both_rail_windows_folded_the_agent_takes_the_whole_width`.
+**The bar picks the mode.** Its title stands at the left, then the worktree every mode
+follows, `repo · branch`, which a click opens the worktree picker on, as `alt+w` does; a long
+title is cut before the worktree is. Its tabs stand at the right: `OVERVIEW`, `AGENT`, `DIFF`,
+`FILES`, and `KUBERNETES` while the session holds a cluster. `alt+1` to `alt+5` pick them,
+`alt+]` and `alt+[` step through them. The bar stands on nothing of its own. Enforced by
+`the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
+`a_tab_switches_the_middle_and_no_tab_says_it_comes_next`,
+`the_bar_names_the_worktree_after_the_title_and_a_click_picks_another`,
+`a_long_title_is_cut_so_the_worktree_stays_inside_the_header`,
+`alt_brackets_step_through_the_modes_elsewhere` and
+`alt_one_to_five_pick_the_tabs_and_the_sidebar_folds_to_its_head_and_drags`.
 
-**A maintenance task's alerts stand over the agent.** Open, they take the bar's free room over
-the agent, down to the foot the user drags, the agent under them. Folded, they are their header alone in
-the bar over the agent; with everything folded, that header stands after the sessions' header
-and before the strip's capsule. The header counts the alerts by rank. They list on the kit's grid, one
-line each: the priority in its colour, the alert, its environment, its cluster in its hue, its
-namespace, its age, its child's state, then an Investigate or Open button. A header orders the
-rows and its edge drags the column's width. A click on a row selects it and gives the alerts the
-keys: the arrows step through the rows and Enter investigates; only the button or Enter spawns or
-opens a child. A resolved alert stays,
-greyed, while its child is on the rail. Enforced by
-`open_the_alerts_stand_over_the_agent_which_keeps_the_rest_of_its_height`,
-`folded_the_alerts_are_their_header_in_the_bar_over_the_agent`,
-`with_everything_folded_the_alerts_take_the_bar_between_the_sessions_header_and_the_strip`,
-`the_alerts_count_by_rank_and_list_on_one_line_of_a_grid_with_a_button_to_investigate`,
-`an_alerts_column_drags_its_width_and_its_header_orders_the_rows`,
-`a_row_takes_the_keys_and_only_its_button_or_enter_investigates`,
-`the_alerts_foot_is_dragged_and_the_agent_follows` and `a_session_not_marked_has_no_alerts`.
+**The sidebar mirrors the rail.** Its window stands a gap inside the window's right edge, folds
+to its head in the bar's row, the middle then taking the width, and its left border drags as the
+rail's right one does. Every mode's sidebar scrolls under one scrollbar whose thumb drags, and
+the arrows walk its rows as it draws them. `alt+o` hands the keys to the middle and `alt+e` to
+the sidebar, opening it when folded; a second `alt+e` folds it. With both the rail's windows
+folded the middle runs left across the rail's column, their heads standing over it as the
+sidebar's does. Enforced by `the_sidebar_s_edge_drags_as_the_rail_s_does`,
+`every_tab_s_sidebar_scrolls_under_one_scrollbar`,
+`the_arrows_walk_the_sidebar_s_rows_as_it_draws_them`,
+`alt_o_gives_the_keys_to_the_middle_and_alt_e_to_the_sidebar_then_folds_it`,
+`with_both_rail_windows_folded_the_middle_takes_the_rail_s_column`,
+`with_both_rail_windows_folded_the_agent_takes_the_whole_width` and
+`the_rail_s_folded_heads_stand_over_the_middle_as_the_sidebar_s_does`.
 
-**The terminals rise from the foot.** Their drawer is an opaque panel under the strip.
-Folded, it is a capsule at the bottom right, as narrow as its bar. Open, it rises to the
-height the user dragged and the strip ends a gap above it; with the strip folded it rises to
-the strip's header, its column's edge still dragged, and the agent gives it the column until it
-folds again. A panel open beside a folded one takes the room it leaves.
-Enforced by `the_folded_drawer_is_a_capsule_as_narrow_as_its_bar`,
-`an_open_drawer_rises_its_height_and_the_strip_ends_above_it` and
-`an_open_drawer_rises_to_the_folded_strip_s_header_beside_the_agent`.
+**The terminals rise from the middle's foot.** Their drawer is nothing while the session has no
+terminal; folded, it is its head across the middle's width as a rail window's is: `TERMINALS`
+and their count, the fold, the tabs and the actions. Open, it rises to the height the user
+dragged. The transcript stops at the middle's top; at its foot it scrolls on under the
+terminals' head and the feed's; scrolled to either end, no row stands under them. Enforced by
+`the_terminals_bar_shows_only_with_a_terminal_and_then_runs_the_middle_s_width`,
+`plus_opens_the_section_with_a_terminal_its_grid_holds` and
+`the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_top_one`.
 
-The rail, the agent pane and the sidebar each have a width the user drags, kept between
-runs. The strip takes what is left, folded or open. A boundary moves the two parts it stands
-between and nothing else. The sidebar folds from the info line's far end or with
-`alt+e`.
+**The agent at work shows on every mode.** While the agent works, one bar stands at the middle's
+foot on every mode, `AGENT` included: the running row the conversation drew, `RUNNING` or
+`WORKING` in the accent, the step it runs and how long it has run. The transcript and an ask rest
+above it. A click on it brings `AGENT` up. Enforced by
+`while_the_agent_works_one_bar_at_the_middle_s_foot_says_what_it_does_on_every_tab`.
+
+**`AGENT` shows the conversation** with no line at its foot. Its sidebar holds the model, a
+click on it opening the models alone, the usage gauges, and the agents it sent, each a click
+away from its block in the conversation. Enforced by
+`the_sidebar_holds_the_model_and_the_usage_and_the_foot_stays_bare`,
+`the_sidebar_holds_three_gauges_and_its_model_row_opens_the_models` and
+`the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot`.
+
+**`OVERVIEW` shows the session's task, or the MR under review, on a card**, then each repo apart
+on a card of its own: its name and remote, then a row for each worktree with its changes, MR and
+pipeline; a click on a card's head folds it, and the column keeps the conversation's gutter. Its
+sidebar holds the task's fields, the status in its colour, a missing one left out, or the
+review's MR threads and pipeline, then the clusters, each context in its hue with its
+namespaces, and a maintenance task's children. Enforced by
+`the_overview_shows_each_repo_apart_with_its_worktree_in_a_row`,
+`a_card_s_head_folds_the_card_on_the_overview`,
+`the_overview_s_sidebar_heads_on_the_session_s_kind_and_folds`,
+`a_property_the_task_lacks_is_left_out` and
+`the_overview_names_each_context_once_with_its_namespaces_under_it`.
+
+**`DIFF` shows one changed file at a time**, the first in the sidebar's order until a click
+picks another. One band over its rows holds the file's name, folder and counts, then the views,
+the modes and its read box. A thin map of that file stands beside the rows, all on the ground. A
+commit shown says so in a band over the file, with what puts the working tree back. Its sidebar
+heads on the whole change, its files and what it added and removed, then the strip of files,
+commits and the MR's threads; the files stand as a tree whose directories fold, or as a list, a
+right click switching the two. An edit's link in the conversation opens `DIFF` on that file at
+its hunk, and a thread of the list opens it at its line. A cluster write takes the session to
+`DIFF` until it is answered, then back. Enforced by
+`the_middle_shows_the_first_file_alone_when_none_is_chosen`,
+`a_click_on_a_file_in_the_sidebar_shows_it_in_the_middle`,
+`the_sidebar_s_head_holds_the_whole_change_s_totals`,
+`the_list_switches_between_tree_and_list_by_its_right_click`,
+`a_directory_of_the_tree_folds_its_files`,
+`the_wheel_over_the_middle_scrolls_the_code`,
+`the_file_s_head_and_its_switches_share_one_band_over_its_rows`,
+`a_commit_says_so_over_the_file_and_offers_the_working_tree_back`,
+`a_press_low_on_the_sidebar_s_scrollbar_takes_the_list_to_its_end`,
+`an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk`,
+`a_note_of_the_list_opens_the_line_it_stands_on` and
+`a_cluster_write_takes_the_session_to_diff_and_back_once_answered`.
+
+**`FILES` shows the open file on the ground under one band**: its path, then its unsaved dot,
+counts, faults and language servers. Its sidebar heads on the repo, then holds `OPEN · n`, a row
+each open file that a click shows and the middle button or its menu closes, then `WORKTREE`, the
+worktree's tree with the changed files marked with their letter. A file opened from elsewhere
+brings `FILES` up. Enforced by
+`the_middle_shows_the_open_file_under_its_band_and_no_strip_of_tabs`,
+`a_click_on_a_file_of_the_tree_opens_it_in_the_middle`,
+`the_open_rows_list_the_open_files_and_a_click_shows_one`,
+`the_middle_button_or_the_menu_closes_an_open_row`,
+`a_directory_of_the_tree_opens_and_folds`,
+`alt_o_on_files_gives_the_keys_to_the_code`,
+`the_arrows_walk_the_open_rows_then_the_tree_as_drawn` and
+`the_wheel_over_the_open_file_scrolls_it`.
+
+**`KUBERNETES` shows the list or the object open on the ground under one band**, a thin rule
+under it. The list's band names the kind and its count, then each context in its hue with its
+namespaces, then the pin at the right. An object's band holds its name, its kind, context and
+namespace, its status badges, then its views at the right; the logs' containers, run and range,
+and an Application's filters, stand on a second row under it. Its sidebar heads on the contexts,
+then holds `LISTS · n`, the pinned lists, `OPEN · n`, a row each open object that a click shows
+and its cross, the middle button or its menu closes, then `KINDS`. The arrows walk the sidebar
+as drawn, and an object opened from elsewhere brings `KUBERNETES` up. Enforced by
+`the_list_band_names_the_kind_its_count_and_its_scope`,
+`a_click_on_a_row_opens_the_object_under_open_and_the_middle_shows_it_with_its_views`,
+`an_open_row_shows_its_object_and_its_cross_middle_button_or_menu_close_it`,
+`the_arrows_walk_lists_open_and_kinds_as_drawn_and_left_folds_a_heading`,
+`alt_o_on_kubernetes_gives_the_middle_the_keys_and_the_arrows_walk_its_rows`,
+`the_logs_second_row_holds_the_containers_the_run_and_the_range_under_the_band` and
+`the_wheel_over_the_middle_scrolls_the_list_and_over_the_sidebar_its_rows`.
+
+On `DIFF` and `FILES` a thin rule stands under the band, and `ctrl+f` opens the search in a row
+over it, as wide as it; on `KUBERNETES` it opens the list's find row there. Enforced by
+`ctrl_f_opens_the_search_in_a_row_over_the_file_s_band_as_wide_as_it`.
+
+**The agent pane draws the conversation.** Every agent runs headless: Claude Code's
+stream-json on its pipes, no pty. A message, a skill, an interrupt and a model switch go over
+that stream, and the transcript draws the blocks. It is a transcript, not a chat: no bubbles,
+no avatars. The user's turn is a block across the column on a quiet ground under `YOU` and how
+long ago; the agent's words are plain text, under `AGENT` once a turn. A kind is a word in
+small capitals; the only marks are the fold chevron. Enforced by
+`the_conversation_shows_in_the_agent_pane` and `the_agent_speaks_under_its_name_once_a_turn`.
+
+**Steps fold into one block.** Reads, searches, commands and MCP calls back to back are
+counted in words, `Read 3 · Searched 2 · Ran 1`, with the time they took and the last step
+under. A thought says nothing and shows nothing. A click opens a row for each: its kind, its
+target and its time, a command's last lines in a sunk box under it. While the agent works, a
+line tinted in the accent stands over the block and says what runs and for how long. Enforced by `a_click_on_the_steps_opens_each_step_with_what_it_printed` and
+`while_the_agent_works_past_its_last_record_a_working_line_says_so`.
+
+**Edits are one block.** Files written back to back stand under `EDITED · N FILES` and their
+sum; each file is a link to its hunk in the Diff with its `+N -N`. Enforced by
+`edits_back_to_back_stand_in_one_block_each_file_a_link`,
+`a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff` and
+`an_edit_in_another_worktree_selects_it_first`.
+
+**What asks stands over the pane's foot.** A tool Claude asks leave for is glass ringed in the ask's
+colour: `BASH ASKS LEAVE` and where, what it runs in a sunk box, *Refuse* on `ESC` and *Allow*
+on `ENTER`. A question shows one at a time, its options on their digits with what each means,
+and *Back* undoes the last pick. While the pane has the keys and the prompt is shut, Enter
+allows, Escape refuses and a digit picks. With nothing asked, Escape interrupts the turn. Enforced by
+`a_tool_s_ask_is_let_or_refused_from_its_card_and_from_an_empty_prompt`,
+`a_question_s_options_are_picked_one_question_at_a_time_then_sent_together`,
+`back_undoes_the_last_pick_of_a_question` and
+`escape_on_an_empty_prompt_interrupts_the_agent_when_nothing_is_asked`.
+
+**What goes wrong is red.** An API error, a reached limit or the agent ending by itself is a
+red-tinted block: its title in small capitals, then what it printed. An interrupt is a rule
+across the column, and nothing runs after it. A message typed while the agent works waits faint
+and says so. Enforced by `what_went_wrong_shows_in_the_conversation` and
+`an_interrupt_is_a_rule_across_the_column_and_nothing_runs_after_it`.
+
+**An agent the agent sends is a block**: its type, its task, its state and its time, its steps
+counted, its answer cut to two lines until a click. The sidebar holds one row for each agent
+still working, and for each one done since the user last spoke; a click opens its block and
+scrolls to it. Enforced by
+`a_working_agent_keeps_a_row_in_the_sidebar_that_opens_its_card_far_up_the_conversation` and
+`a_finished_agent_leaves_the_sidebar_once_the_user_speaks_again`.
+
+**The prompt opens over everything.** At rest the pane has no prompt: the transcript runs to its
+foot. `alt+a` opens the prompt, `alt+a` again closes it,
+as do Escape and a send. A click or a chord elsewhere leaves it open, the keys going there, so
+text can be copied into it, and the wheel scrolls what stands under the pointer; `alt+a` or a click on it takes the keys back. It is glass a layer
+over the window, undimmed, as wide as the palette and centred over the window's foot, in the
+focus ring while it has the keys. It holds
+the commands `/` offers, the agent's then Groove's, each group under its head; then what is
+typed, growing to eight rows and then scrolling; then the model and the context, with no
+key hints. Escape keeps the draft. Enter sends, shift+Enter breaks the line, Up in an empty
+prompt brings back the user's last message. *Ask the agent*, in the menu of the diff's lines,
+puts where they stand in the prompt and opens it. A drag over the transcript selects text and
+copies it.
+Enforced by `alt_a_opens_the_prompt_and_alt_a_again_closes_it`,
+`escape_closes_the_prompt_and_keeps_its_draft`,
+`enter_sends_the_message_and_closes_the_prompt`,
+`the_prompt_stays_open_while_the_keys_go_elsewhere_and_alt_a_takes_them_back`,
+`with_the_prompt_open_the_wheel_still_scrolls_the_transcript`,
+`enter_sends_the_prompt_to_the_agent_and_shift_enter_breaks_its_line`,
+`up_in_an_empty_prompt_steps_back_through_what_was_sent_and_down_returns`,
+`picking_a_model_switches_the_agent_to_it`,
+`a_slash_offers_the_agent_s_commands_and_tab_takes_the_chosen_one`,
+`the_slash_offers_the_agent_s_commands_then_groove_s_under_their_heads`,
+`asking_the_agent_about_lines_puts_where_they_stand_in_its_prompt`,
+`a_long_line_of_code_the_agent_shows_wraps_instead_of_running_out_of_sight`,
+`a_drag_over_the_conversation_copies_what_it_holds`,
+`a_double_click_takes_a_word_and_a_triple_click_its_line`,
+`ctrl_and_a_click_follow_a_link_or_open_a_file_at_its_line`,
+`the_prompt_keeps_its_spaces_and_selects_and_copies_as_a_note_does`,
+`a_double_click_in_the_prompt_takes_its_word` and
+`the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it`.
+
+The rail and the sidebar each have a width the user drags, kept between runs; the middle takes
+what is left and never less than its minimum. A boundary moves the two parts it stands between
+and nothing else. Enforced by `a_press_on_a_boundary_takes_hold_of_it`,
+`a_drag_never_starves_a_column` and `the_sidebar_edge_leaves_the_middle_its_minimum`.
 
 ### Workspace
 
-**Header.** One line at the strip's top: the type icon and the title, then the tabs. Each tab
-is a rounded row on the glass, held while open, lit under the pointer; the terminals' tabs
-share it. Finishing the task and deleting the session here are palette rows. A button that
-is one icon alone is a circle. Enforced by
-`a_task_or_a_review_is_deleted_here_from_the_palette_and_an_explorer_is_not`.
+**Actions are palette rows.** Finishing the task and deleting the session here are palette
+rows. A button that is one icon alone is a circle. Enforced by
+`a_task_or_a_review_is_deleted_here_from_the_palette_and_an_explorer_is_not` and
+`an_icon_alone_is_a_circle_under_the_pointer`.
 
-**Info line.** Under the header while the strip is open: the selected repo and worktree,
-which every tab and the terminals follow, with the worktree's MR and CI and a refresh
-button, and the sidebar's fold at the far end. A git mark leads it. It only tells: `alt+w`
-opens the palette on every worktree as `repo/branch`, the best fuzzy match first, and Enter
-selects one. On the Kubernetes tab that line holds the tab's scope in the worktree's place,
-led by a cluster mark: the contexts shown, a lone one in its hue, then the namespaces
-(`on_the_kubernetes_tab_the_info_line_holds_the_scope_in_the_worktree_s_place`). It only tells: `alt+c`
-opens the context panel and `alt+n` the namespace panel, from any tab, where the palette
-stands, with a search and the first line stood on. The context panel holds the session's
-contexts, a check to show one and a × to detach it, then what it could attach; a pick
-there attaches the whole cluster. The namespace panel lists `context/namespace` for every
-context held, `context/*` for the whole cluster, the best fuzzy match first: space shows
-one more, Enter shows one alone and gives the list the keys. Either choice turns to the
-Kubernetes tab. A title or a
-label too long for its line is cut with an ellipsis; no line wraps; a tab's status badges
-keep their room before the cut, and a badge with no room left is dropped.
+**The scope only tells.** `alt+c` opens the context panel and `alt+n` the namespace panel,
+from any mode, where the palette stands, with a search and the first line stood on. The context
+panel holds the session's contexts, a check to show one and a × to detach it, then what it could
+attach; a pick there attaches the whole cluster. The namespace panel lists `context/namespace`
+for every context held, `context/*` for the whole cluster, the best fuzzy match first: space
+shows one more, Enter shows one alone and gives the list the keys. Either choice brings
+`KUBERNETES` up. Enforced by
+`the_scope_only_tells_and_alt_n_opens_the_panel_from_any_mode`. A title or a label too long
+for its line is cut with an ellipsis; no line wraps; an object's status badges keep their room
+before the cut, and a badge with no room left is dropped.
 
-**Tabs.** `Overview · Diff · Files · Kubernetes`, the last while the session holds a cluster.
-
-| Tab | Shows | Sidebar |
-|---|---|---|
-| overview | sections, each a card set into the panel, a step below its base, inset from its sides and headed by its band — the section's name and, where it counts, how many — its rows ruled apart: the task's properties in columns, each name over its value — status, priority, dates, the hours logged — a missing one left out, sized to what they hold; the repos, each with its worktrees as rows read from the left — the branch, git's counts, then the MR's number, verdict, CI status and notes, zero counts and an absent MR omitted; the clusters it holds, each context in its hue with its namespaces after it; the body as text. Enforced by `each_section_stands_in_its_own_card_inset_from_the_panel` | folded |
-| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | one search field, always there, a hairline box with no ground, for a path or for text, a click on the other term's name switching it; then a strip that picks the list, its rows lit and held on square grounds edge to edge as the rail's are (enforced by `one_search_field_always_stands_over_the_strip_and_switches_its_term`): files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, open, resolved or all, under the file each stands on and the MR's own last, two lines a note; a note scrolls to its line, a resolved one opened |
-| files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then a strip that picks the list: notes — the diff's own list, a note opening its file at its line; files — the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
-| kubernetes | the list tab, titled by its kind and its count, and a tab for each object opened from it; [Kubernetes tab](#kubernetes-tab) draws both | the kinds the contexts serve, under headings that fold |
-
-**One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
+**One code surface.** The Files mode's editor and the Diff's two views are one surface,
 which the gutter holds together.
 
 | Mode | Shows | Gutter |
@@ -381,10 +509,12 @@ quiet. Enforced by
 `a_changed_row_wears_one_tint_across_its_gutter_and_its_numbers_stay_quiet`.
 In split, a side with no line is hatched, gutter included.
 
-Over the diff, a band holds the whole change from the left — how many files, what it added
-and removed — then the inline and split switch and the base and working modes as rounded tabs. Over a file, the band names the file from the left, then what stands beside it: unsaved,
-changed, faults, servers (enforced by `a_file_s_band_reads_from_the_left_its_counts_right_after_its_path`). No rule stands between the gutter and the code; a run of unchanged lines stands between two
-rules, its arrows icon buttons. A file's head is a square band across the surface whole, pinned or not. Enforced by
+Over the diff, the band names the focused file, then the inline and split switch and the base
+and working modes as rounded tabs. Over a file, the band names the file from the left, then what
+stands beside it: unsaved, changed, faults, servers. Enforced by
+`a_file_s_band_reads_from_the_left_its_counts_right_after_its_path` and
+`the_file_s_band_counts_its_errors_and_names_its_server`. No rule stands between the gutter and
+the code; a run of unchanged lines stands between two rules, its arrows icon buttons. Enforced by
 `no_rule_stands_between_the_gutters_and_the_code` and `a_gap_reads_as_a_band_across_the_rows`.
 
 The new side is editable in every mode. A caret lives in the document, never in a row, so
@@ -401,29 +531,22 @@ move, shift holds, `ctrl+c/x/v` carry, `ctrl+z` undoes, `ctrl+s` writes. Enter o
 next line at the indent of the one it left. Tab writes what the language's own formatter
 writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
-**Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
-surface, `ctrl+f` floats a glass bar at the top right of the rows, with the count at its
-end; enter and shift+enter step to the next and the previous match, esc ends it and leaves
-the caret on the match. `ctrl+p` opens a file by its path, `alt+f` the palette on the
-worktree's files. Enforced by `enter_and_shift_enter_step_the_matches_and_wrap` and
+**Search.** In the surface, `ctrl+f` opens a row over the band with the count at its end; it
+finds in the file shown. Enter and shift+enter step to the next and the previous match, esc ends
+it and leaves the caret on the match. `alt+f` opens the palette on the worktree's files.
+Enforced by `enter_and_shift_enter_step_the_matches_and_wrap` and
 `alt_f_opens_the_palette_on_the_worktree_s_files`.
 
 **Finding your way in a big change.** Three answers, and none of them is a bigger tree:
 
-- **The path, once.** The file list strips the whole change's common root and shows it
-  once, then collapses every directory chain with a single child. A file reads as its name
-  first and the rest of its path behind it, dimmed. Where the name carries no meaning,
-  `mod.rs` and its like, the directory is the name.
-- **Where am I.** In the diff, each file opens on a head two rows tall: its name, its
-  folder dimmed after it, then its counts and its read box at its end. The head of the
-  file the rows stand in pins at the top, over a soft shadow, until the next file's head
-  pushes it out. In the file view, the scopes
-  the visible rows sit in pin instead, stacked as they nest, read from the syntax tree.
-- **What is left.** One column down the edge holds the whole change: a band per file, its
-  height its diff's length, its hunks as marks, the viewport as a lens that drags. A file
-  marked read dims. What is left is what is still bright.
-  A file is marked read by the user, never by scrolling past it. The marks belong to the
-  session and outlive the window.
+- **One file at a time.** The Diff shows the focused file alone; the sidebar's tree, or its
+  flat list, picks the next.
+- **Where am I.** In the file view, the scopes the visible rows sit in pin at the top, stacked
+  as they nest, read from the syntax tree.
+- **What is left.** One column down the edge holds the focused file: its band, its hunks as
+  marks, the viewport as a lens that drags. A file marked read dims. A file is marked read by
+  the user, never by scrolling past it. The marks belong to the session and outlive the window.
+  Enforced by `the_map_holds_the_focused_file_s_band_and_a_lens_over_the_rows`.
 
 **Manual section.** Where the user acts by hand, as the agent pane is where the agent acts.
 Terminals for the session, opened in its own directory, splittable, resizable, collapsible;
@@ -433,14 +556,14 @@ its bar alone when collapsed.
 own actions. No box in the window commits: the agent or a terminal
 does.
 
-**One deep ground, panels on it.** The deepest ground the theme has holds the session
-under the agent and the strip, the terminal widget, the board and Settings. The panels that
-stand beside each other on it — the rail's two windows, the strip and its folded capsule, the
-terminals' drawer, Settings' sections — are opaque: the theme's base, edged by a hairline.
+**One deep ground, panels on it.** The deepest ground the theme has holds the session's
+middle, the terminal widget, the board and Settings. The panels that stand beside each other on
+it — the rail's two windows, the sidebar, the terminals' drawer, Settings' sections — are
+opaque: the theme's base, edged by a hairline.
 Nothing passes under a panel, so glass would only show the same ground through it.
 The defense themes, dark and light, lay a hex lattice on that deepest ground: the faint edges of
 hexes 18 pixels from centre to corner, pointy at the top, counted from the window's corner, under
-everything — the panels cover it, and it runs faintly behind the agent's screen. No other theme
+everything — the panels cover it, and it runs faintly behind the agent's conversation. No other theme
 lays one. Enforced by `the_defense_themes_lay_a_hex_lattice_on_the_deep_ground_and_the_others_none`.
 While the session's agent works, signals fire across the session's lattice: each starts at a corner
 anywhere on the ground, runs the hexes' edges down, fires the corner it reaches and branches on, the edges it
@@ -448,32 +571,36 @@ crossed glowing behind it and fading. When the agent stops, so do they. Enforced
 `signals_fire_across_the_lattice_only_while_the_session_s_agent_works`.
 Each panel is headed by its band — a step from its base toward the theme's first surface —
 ruled off under it by a hairline; a panel folded to its header is that band alone, laid before
-what stands on it. Enforced by `every_open_panel_is_headed_by_its_band_ruled_off_under_it` and
-`a_folded_capsule_is_its_band_and_what_it_holds_stands_on_it`. A note floats over the rows it takes as one pane of glass, on the layer
-the sticky file head uses, its replies and its buttons ruled off on it; a note being written
-does the same, its field a rounded field. Enforced by
+what stands on it. Enforced by `every_open_panel_is_headed_by_its_band_ruled_off_under_it`. A
+note floats over the rows it takes as one pane of glass, its replies and its buttons ruled off
+on it; a reply being written stands in that pane, its field a rounded field. Enforced by
 `a_read_note_floats_over_its_rows_as_one_pane_of_glass` and
-`a_note_being_written_stands_on_glass_as_a_read_one_does`.
-The sidebar is a box a step below its panel's base, from the info line's rule to the panel's
-edges, its rows lit and held across it whole; its own border is its separator, and the ring goes
-around that box when the sidebar has the keys. The diff's map runs the column's whole height,
-square-cornered, its lens too, and a changed row says so by its ground alone, its
-numbers left quiet.
+`a_reply_being_written_stands_on_glass_as_a_read_note_does`.
+The sidebar's rows are lit and held across it whole, and the ring goes around its window when
+it has the keys. The diff's map runs the column's whole height, square-cornered, its lens too,
+and a changed row says so by its ground alone, its numbers left quiet.
 
 **Glass only where it floats.** What stands over something is glass: the palette, every
-menu, the cluster scope panel, and the language servers' popup
-the diff's sticky file heads and its notes: the work below shows through them, blurred
+menu, the cluster scope panel, the agent's prompt and what it asks, the language servers' popup,
+the pinned scopes and the notes: the work below shows through them, blurred
 under the theme's tint; nothing bends, magnifies or lights them. The completion
 list stays solid. A row on glass takes a rounded, see-through ground under the pointer and when selected; a row of the rail, a sidebar or a table takes its square, edge to edge. A button on
 glass is a pill of glass, lit whole under the pointer. Enforced by
 `the_rail_stands_as_two_opaque_windows_inside_its_place`,
-`the_strip_stands_as_an_opaque_panel_on_the_agent_s_ground`,
+`a_flat_button_lights_on_a_rounded_ground_and_a_worktree_row_on_a_square_one`,
 `the_palette_is_glass`,
 `a_menu_is_glass`,
 `the_panel_stands_on_glass`,
 `the_hover_popup_is_glass`,
 `the_completion_list_stays_solid` and
 `a_palette_row_under_the_pointer_takes_a_square_see_through_ground`.
+
+**The code's popups are cards.** The language servers' popup is ringed and tinted in the worst
+diagnostic's colour, muted without one. Each diagnostic stands under a head in small capitals,
+its kind and line in its colour, `WARNING · LINE 31`, then its message; the hover stands under
+its own head. The completion list keeps its rows under a tinted head that counts them. Enforced
+by `a_fault_s_popup_heads_on_its_kind_and_line` and
+`a_diagnostic_heads_on_its_kind_and_line_in_its_colour_then_its_title_details_and_source`.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
@@ -514,24 +641,21 @@ Enforced by `alt_s_picks_another_open_session_by_its_title_or_its_id`,
 `alt_c_opens_the_context_panel_and_again_shuts_it`.
 
 **`#` searches files.** A query that starts with `#` lists the selected worktree's files, a
-match in the file name first, and opens the one picked on the Files tab.
+match in the file name first, and opens the one picked in `FILES`.
 Enforced by `a_hash_searches_the_worktree_files_and_opens_the_one_picked`.
 
 **Git and the MR go through the palette.** Push, pull, and
 create, update, comment on, approve or close the MR are palette rows of the selected
 worktree. No box in the window holds them.
 
-**A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,
-or unstage — where its counts were. Everything else is behind the right button.
-
-**A question takes the place of what asked it.** Closing a tab with unsaved edits, deleting
-a path or a write on a resource's row turns that line into the question, square across its
+**A question takes the place of what asked it.** Closing an open file with unsaved edits,
+deleting a path or a write on a resource's row turns that line into the question, square across its
 whole width. Its two answers follow the words, no modal, and nothing destructive within a
 click of something ordinary.
 
-### Kubernetes tab
+### Kubernetes mode
 
-- **List.** The list tab, titled by its kind and its count, over the rows of every context
+- **List.** The list, under its band of its kind and its count, over the rows of every context
   and namespace in scope: the server's Table columns `kubectl get` shows, behind a cluster
   column and a namespace column where those tell rows apart; a status and a ready count in
   the colour of how the object stands. A time cell, the age or a last schedule, counts up
@@ -542,14 +666,12 @@ click of something ordinary.
   on. `alt+c` opens the context panel, `alt+n` the namespace panel, `alt+k` the kind palette. The table
   is a grid: its header in capitals on a band, a hairline between the columns and under each
   row; a row under the pointer or selected is tinted square, edge to edge. Enforced by
-  `a_gridded_table_bands_its_header_and_rules_each_column_and_row`. The list's tab
-  and each open object's are glass tabs as the Files tab's are, an object's with its ×, no
-  rule under them; the find bar is a rounded field.
-- **Object.** A row opens its object in a tab of its own beside the list, `describe ·
-  yaml`, and `logs` for a pod. The tab reads the object, its events and its owners by name,
-  and a pod's usage every 15 s, while it shows. As YAML it is the file editor's own view of
-  the object, read-only. Its heading holds the object's status badges, then its views as
-  glass tabs at the end, and no rule stands under it.
+  `a_gridded_table_bands_its_header_and_rules_each_column_and_row`. The find bar is a rounded
+  field.
+- **Object.** A row opens its object under `OPEN` in the sidebar, `describe · yaml`, and
+  `logs` for a pod. The object is read, with its events and its owners by name, and a pod's
+  usage every 15 s, while it shows. As YAML it is the file editor's own view of the object,
+  read-only.
 - **Describe.** Described, it is one column of sections, each folding under its heading:
   conditions, a summary of facts a line each, a pod's containers, labels, annotations,
   relations and events. Its relations are the list's table under headings that fold (what
@@ -581,7 +703,7 @@ click of something ordinary.
   sources, a line each with the revision it synced to. The summary names the context the
   destination stands on: the Application's own for the in-cluster address, else the one
   added whose server matches, read once from the kubeconfig without a sign-in check. A
-  resource's row opens its tab there. A row's right-click offers the skills of its kind, as
+  resource's row opens its object there. A row's right-click offers the skills of its kind, as
   a list row's does. The find key opens a find bar under its filters, as over the list: its
   words narrow the rows by name, and the filters count what they hold, the bar aside. A git source's address, ctrl+clicked, opens the
   files on its repo, selected in the session or added from the pool, cut from the branch
@@ -597,17 +719,28 @@ click of something ordinary.
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
-- **Sidebar.** The kinds the contexts serve, indented under headings that fold: workloads,
-  network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by its
-  name, then cluster for the built-in kinds not namespaced. ↑ and ↓ step through the
-  headings and the kinds; Enter folds a heading or lists a kind. No counts, no health
-  marks. A heading or a kind under the pointer lights on glass, and the kind shown stands
-  on a rounded ground.
+- **Pins.** **A pinned list keeps its kind and its scope, and belongs to the session.** The
+  list's pin keeps it under `LISTS` in the sidebar: the kind, and the contexts and
+  namespaces it reads as the list shows them. A click on it brings that list back; the pin
+  again or its cross lets it go. A list not pinned stands in the middle alone, and picking a
+  kind replaces it. Pins outlive the window. Enforced by
+  `pin_keeps_the_list_under_lists_a_click_brings_it_back_and_pin_or_its_cross_lets_it_go`
+  and `a_pinned_list_comes_back_with_its_session_and_an_unpinned_one_does_not`.
+- **Kinds.** Under `KINDS`, the kinds the contexts serve, indented under headings that fold:
+  workloads, network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by
+  its name, then cluster for the built-in kinds not namespaced. No counts, no health marks. A
+  heading or a kind under the pointer lights, and the kind listed stands on a square held
+  ground. Enforced by `a_crd_stands_under_its_own_group_and_the_rbac_kinds_under_theirs`,
+  `the_kind_listed_stands_on_a_square_held_ground` and
+  `the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight`.
 
 ### Review sheet
 
-An ask opens a sheet over the work half — workspace and sidebar. The agent
-pane stays visible. One frame for every op: the repo and the branch, then the text of the
+An ask opens a sheet over the middle's top, as tall as its text. It stands as the agent's own asks do: glass ringed in the
+ask's colour, a tinted head saying what it asks in small capitals with the session, the repo and
+the branch, the write in mono, then the answers. The rest of the middle stays visible. The sheet shows only an ask of the session
+selected: it opens on arriving at a session that asks, from its rail row or with `a` and `v`,
+never by itself while the user stays on a session, and never for another session's ask. One frame for every op: the repo and the branch, then the text of the
 write. No diff and no file list. A push goes to the worktree's own branch and nowhere else.
 
 | Op | Text shown |
@@ -619,12 +752,15 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 | task body | the task's title and the body |
 | task finish | the task's title and the worktrees torn down |
 
-**Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
+**Approve** in peach on `ENTER`, **Refuse** on `ESC`. No editing in the sheet. Enforced by
+`escape_refuses_the_write_on_the_sheet_and_enter_approves_it`,
+`arriving_on_a_session_that_asks_opens_its_sheet_and_another_s_never_shows` and
+`the_sheet_floats_over_the_middle`.
 
 ### Cluster write
 
-**A session waiting on a cluster write answers it first, in its Diff tab.** The workspace
-stands on the Diff tab, ringed in peach, whatever tab is asked. A band on a dim attention
+**A session waiting on a cluster write answers it first, on its Diff.** The session stands on
+`DIFF` whatever tab is asked. A band on a dim attention
 tint holds what the write asks, in capitals, then the object, with **Refuse** and
 **Approve** at its right once the change is shown, bordered words in capitals, Approve
 edged in peach. Under it, the
@@ -633,9 +769,9 @@ of the worktree's until the write is decided, then the worktree's is read again.
 stands over it: Esc, Enter, the `a` key and the palette decide nothing, and closing,
 deleting or reloading the session is refused until it is answered. Another session can be
 selected meanwhile; back on this one, the change shows again. Once the write is answered,
-the session goes back to the tab it stood on. Enforced by
-`the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked`,
-`once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on`,
+the session goes back to the mode it stood on. Enforced by
+`the_diff_holds_the_ask_then_the_change_whatever_tab_was_asked`,
+`once_the_write_is_answered_the_session_goes_back_to_the_mode_it_stood_on`,
 `a_on_the_rail_neither_approves_nor_opens_a_sheet_over_the_ask`,
 `only_the_band_s_approve_button_lets_a_cluster_write_through`,
 `a_write_is_answered_only_once_its_change_is_shown`,
@@ -649,12 +785,14 @@ the session goes back to the tab it stood on. Enforced by
 question. A scale shows the count the row wants between **−** and **+**, no **−** at none,
 and sends the count set to the `scale` subresource. A restart stamps the pod template, as
 `kubectl rollout restart` does. A delete takes the object's dependents after it. **keep**
-sends nothing; the timeline says what landed. An object's tab offers no menu. Enforced by
+sends nothing; the timeline says what landed. An open object's row offers its own menu, not
+the skills. Enforced by
 `a_deployment_s_row_asks_its_restart_in_its_place_and_restart_sends_it`,
 `keep_leaves_the_deployment_as_it_is`,
 `a_scale_starts_from_the_count_the_row_wants_and_steps_before_it_is_sent`,
 `a_scale_to_none_offers_no_step_down`,
-`a_pod_s_row_offers_its_shell_then_its_delete_asked_in_its_place`, `an_object_tab_opens_no_menu`,
+`a_pod_s_row_offers_its_shell_then_its_delete_asked_in_its_place`,
+`an_open_object_s_row_opens_its_own_menu_and_not_the_skills`,
 `a_restart_stamps_the_pod_template_of_a_workload_and_refuses_a_pod`,
 `a_scale_patches_the_scale_subresource_of_a_deployment_and_refuses_a_daemonset` and
 `a_dry_run_delete_says_so_in_its_body_on_the_version_seen`.
@@ -669,7 +807,7 @@ first, and a context set read-only refuses it; a shell already open stays. Enfor
 `a_read_only_context_refuses_a_pod_s_shell` and
 `a_shell_in_a_pod_takes_the_keys_on_a_terminal`.
 
-**An object's YAML is edited from its bar.** A bar between the object's tabs and its YAML
+**An object's YAML is edited from its bar.** A bar between the object's band and its YAML
 starts with **EDIT**: until it is pressed the YAML is read-only and no key changes it.
 **EDIT**, where the session may write and the context is not read-only, starts a draft from
 the YAML as it stands; every key, a paste included, then edits it. **EDIT** gives its place
@@ -677,7 +815,7 @@ to **APPLY** and **DISCARD**, which throws the draft away; all are bordered word
 is. The draft stands while the object moves on, the bar saying so. **APPLY** reads the
 draft back as a merge patch, refused when it does not read, changes nothing or touches what
 the server writes, and tries it on the version the draft started from: an object that moved
-since is refused there. The edit then waits as a cluster write does, on the Diff tab under
+since is refused there. The edit then waits as a cluster write does, on the Diff under
 **APPLY EDIT TO A CLUSTER OBJECT**; **Approve** makes it on that version and ends the draft,
 **Refuse** keeps it. Enforced by
 `an_edit_of_the_yaml_is_reviewed_then_lands_on_its_version_and_ends_the_draft`,

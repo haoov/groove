@@ -33,7 +33,7 @@ pub use render::{ages_due, code_size, fires, frame_commands, spins, view};
 pub use ui::{AgentUi, Click, Grid, Held, Losing, Overlay, Ui};
 pub use views::board::BoardUi;
 pub use views::rail::RailUi;
-pub use views::session::{Asked, Naming, SessionUi, Tab};
+pub use views::session::{Asked, Mode, Naming, SessionUi};
 
 /// What the window shows beside the rail.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -49,32 +49,11 @@ pub enum Focus {
     Rail,
     #[default]
     Agent,
+    /// The middle, on the code or the cluster's list.
     Workspace,
     /// The manual section's selected terminal.
     Terminal,
     Sidebar,
-    /// A maintenance task's alerts.
-    Alerts,
-}
-
-impl Focus {
-    /// The panes left to right, for a chord that moves between them.
-    pub const ALL: [Focus; 4] = [Focus::Rail, Focus::Agent, Focus::Workspace, Focus::Sidebar];
-
-    /// The pane beside this one, or this one at the edge.
-    pub fn beside(self, right: bool) -> Self {
-        let from = match self {
-            Focus::Terminal => Focus::Workspace,
-            Focus::Alerts => Focus::Agent,
-            one => one,
-        };
-        let at = Self::ALL.iter().position(|it| *it == from).unwrap_or(1);
-        let next = match right {
-            true => at + 1,
-            false => at.saturating_sub(1),
-        };
-        Self::ALL.get(next).copied().unwrap_or(from)
-    }
 }
 
 /// A boundary under the pointer: which one, and where the pointer took hold of it.

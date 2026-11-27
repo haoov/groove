@@ -3,11 +3,11 @@
 mod activity;
 mod aging;
 mod alert;
-mod annotation;
 mod approval;
 mod argo;
 mod attention;
 mod cells;
+pub mod chat;
 mod chord;
 mod cluster;
 mod config;
@@ -29,6 +29,7 @@ mod naming;
 mod narrowing;
 mod note;
 mod panes;
+mod pinned;
 mod quantity;
 mod repo;
 mod review;
@@ -49,7 +50,6 @@ mod tests;
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
 pub use aging::{Aging, agings, human_age, tells_time};
 pub use alert::{Alert, AlertChild, AlertsConfig};
-pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use argo::{
     AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
@@ -68,7 +68,7 @@ pub use config::{
     Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap,
     ThemeName, UiConfig,
 };
-pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
+pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use described::{
     Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage, Used,
 };
@@ -81,7 +81,7 @@ pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
 pub use health::{Health, count_health, ready_health, status_health};
-pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
+pub use ids::{ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use logs::{Level, LogKey, LogLine, LogRange, LogSource, LogTime, level, log_time};
 pub use mapping::{Kind, Mapped, Mapping, Property};
 pub use mr::{
@@ -89,15 +89,16 @@ pub use mr::{
     ReviewState, ReviewVerdict, Reviewer,
 };
 pub use naming::{explorer_branch, is_explorer_branch, names_session};
-pub use narrowing::{fuzzy, narrows, occurrences, score};
-pub use note::{Anchor, LABELS, Labelled, Note, NoteOrigin, Said, decorated, labelled};
+pub use narrowing::{fuzzy, occurrences, score};
+pub use note::{Anchor, LABELS, Labelled, Note, Said, decorated, labelled};
 pub use panes::Panes;
+pub use pinned::Pin;
 pub use quantity::{Gauge, Pressure, bytes, cores, gauge, quantity};
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use review::{ReviewMr, review_for, review_of};
 pub use routine::{Action, Routine, RoutineKind, Trigger};
 pub use secret::Secret;
-pub use session::{LogEntry, Section, Session, SessionKind, SessionState, Skill};
+pub use session::{Section, Session, SessionKind, SessionState, Skill};
 pub use sought::{Sought, ranked, runs, sought, spans};
 pub use syntax::{Capture, Highlight, spans_within};
 pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours};

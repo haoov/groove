@@ -4,7 +4,7 @@ use groove_types::SessionId;
 
 use crate::keymap::Action;
 use crate::tests::{full_app, typed};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Losing, Overlay, Ui};
 
 #[test]
@@ -13,7 +13,7 @@ fn a_question_about_a_session_left_behind_goes_with_it() {
     let mut ui = Ui::default();
     ui.settle(&app);
     ui.overlay = Some(Overlay::Losing(Losing::Tab("a.rs".into())));
-    ui.session.going = Some((Tab::Diff, None));
+    ui.session.going = Some((Mode::Diff, None));
     ui.settle(&app);
     assert!(ui.overlay.is_some(), "it stands while nothing moves");
 
@@ -52,7 +52,7 @@ fn find_matches_follow_an_edit_of_the_file() {
     let mut app = full_app();
     crate::tests::shows(&mut app, "src/a.rs", "let one = 1;\n", "let one = 1;\n");
     let mut ui = Ui::default();
-    (ui.session.tab, ui.focus) = (Tab::Files, crate::Focus::Workspace);
+    (ui.session.mode, ui.focus) = (Mode::Files, crate::Focus::Workspace);
     let ctrl = Modifiers {
         ctrl: true,
         ..Modifiers::default()
@@ -80,10 +80,10 @@ fn a_tab_waiting_on_a_commit_that_failed_to_read_stops_waiting_and_stays() {
     let app = full_app();
     let mut ui = Ui::default();
     ui.settle(&app);
-    ui.session.going = Some((Tab::Diff, Some("0123456".into())));
+    ui.session.going = Some((Mode::Diff, Some("0123456".into())));
     ui.settle(&app);
     assert_eq!(ui.session.going, None);
-    assert_ne!(ui.session.tab, Tab::Diff, "nothing to show there");
+    assert_ne!(ui.session.mode, Mode::Diff, "nothing to show there");
 }
 
 #[test]
@@ -96,20 +96,14 @@ fn a_draft_with_no_field_steps_nowhere() {
 
 #[test]
 fn a_folded_sidebar_keeps_its_fields_but_gives_them_no_keys() {
-    use crate::views::session::{Asked, Naming, Term};
+    use crate::views::session::{Asked, Naming};
     let app = full_app();
     let mut ui = Ui {
         focus: crate::Focus::Workspace,
         ..Ui::default()
     };
     ui.session.folded = true;
-
-    ui.session.tab = Tab::Diff;
-    ui.session.bar.open(Term::Path);
-    typed("x", &mut ui, &app);
-    assert_eq!(ui.session.bar.path.text(), "", "the bar is folded away");
-
-    ui.session.tab = Tab::Files;
+    ui.session.mode = Mode::Files;
     ui.session.naming = Some(Naming::new(Asked::File, "src", ""));
     typed("x", &mut ui, &app);
     let named = ui

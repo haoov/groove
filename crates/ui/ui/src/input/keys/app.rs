@@ -7,7 +7,7 @@ use super::panes::{in_rail, rail};
 use crate::hit::Picks;
 use crate::keymap::Action;
 use crate::palette::{Action as FlowAction, Flow, Palette};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::views::session::resources::Scoping;
 use crate::{Focus, Overlay, Surface, Ui};
 
@@ -22,7 +22,6 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::Settings if ui.settings.open => return ui.close_settings(),
         Action::Settings => return ui.open_settings(),
         Action::Board => return board(ui),
-        Action::BoardLive | Action::BoardNext | Action::BoardReview => return column(action, ui),
         Action::NewExplorer => return new_explorer(),
         Action::CloseSession => {
             let close = selected.map(|session| session::Command::Close { session });
@@ -31,7 +30,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::NextSession => return in_rail(Key::Down, ui, app),
         Action::PreviousSession => return in_rail(Key::Up, ui, app),
         Action::FocusLeft | Action::FocusRight => {
-            ui.focus = ui.focus.beside(action == Action::FocusRight);
+            ui.focus = beside(ui, action == Action::FocusRight);
         }
         Action::FocusRail | Action::FocusAgent | Action::FocusWorkspace | Action::FocusSidebar
             if ui.showing(app) == Surface::Board =>
@@ -39,21 +38,19 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             on_board(action, ui);
         }
         Action::FocusRail => rail(ui),
-        Action::FocusAgent => ui.focus = Focus::Agent,
-        Action::FocusWorkspace => workspace(ui),
-        Action::FocusSidebar => sidebar(ui),
-        Action::FocusAlerts if ui.alerts.shown => alerts(ui),
+        Action::FocusAgent => super::prompt::toggled(ui, app),
+        Action::FocusWorkspace => ui.focus = middle(ui),
+        Action::FocusSidebar => aside(ui),
         Action::NextTab | Action::PreviousTab => {
             let forward = action == Action::NextTab;
             if ui.focus == Focus::Terminal {
                 return terminal_tab(app, forward);
             }
-            ui.session.tab = stepped_tab(ui.session.tab, forward, holds_clusters(app));
+            ui.session.mode = stepped(ui.session.mode, forward, holds_clusters(app));
         }
-        Action::Overview => ui.session.tab = Tab::Overview,
-        Action::Diff => ui.session.tab = Tab::Diff,
-        Action::Files => ui.session.tab = Tab::Files,
-        Action::Resources if holds_clusters(app) => ui.session.tab = Tab::Resources,
+        Action::Overview | Action::AgentTab | Action::Diff | Action::Files | Action::Resources => {
+            super::tabbed::tabbed(action, ui, app)
+        }
         Action::Terminals => terminals(ui),
         Action::NewTerminal => return new_terminal(ui, selected),
         Action::Reload => return vec![Command::Workspace(workspace::Command::Load)],
@@ -76,22 +73,6 @@ fn on_board(action: Action, ui: &mut Ui) {
         Some(_) => Focus::Workspace,
         None => Focus::Rail,
     };
-}
-
-/// The board up on one of its columns, the keys on it.
-fn column(action: Action, ui: &mut Ui) -> Vec<Command> {
-    use crate::views::board::List;
-    let list = match action {
-        Action::BoardLive => List::Live,
-        Action::BoardNext => List::Next,
-        _ => List::Review,
-    };
-    let reads = match ui.surface {
-        Surface::Board => Vec::new(),
-        Surface::Session => crate::input::pointer::board_reads(),
-    };
-    (ui.surface, ui.board.list, ui.focus) = (Surface::Board, Some(list), Focus::Workspace);
-    reads
 }
 
 /// The palette, or closed when it stands open.
@@ -145,7 +126,7 @@ pub(super) fn kinds(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 }
 
 /// The palette on the session's worktrees, as `repo/branch`, or on the other open sessions.
-fn flowed(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(crate) fn flowed(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let open = app.session.selected();
     let flow = match action {
         Action::SelectSession => {
@@ -183,24 +164,38 @@ fn board(ui: &mut Ui) -> Vec<Command> {
     }
 }
 
-/// The workspace unfolded, then given the keys, then folded away under the agent.
-fn workspace(ui: &mut Ui) {
-    let held = !ui.session.stowed && ui.focus == Focus::Workspace;
-    ui.session.stowed = held;
+/// What holds the keys in the middle: the code or the cluster's, else the agent.
+pub(super) fn middle(ui: &Ui) -> Focus {
+    use crate::views::session::files::moded::{coding, kubing};
+    match coding(ui) || kubing(ui) {
+        true => Focus::Workspace,
+        false => Focus::Agent,
+    }
+}
+
+/// The sidebar given the keys, opened if folded; folded when it has them.
+fn aside(ui: &mut Ui) {
+    let held = !ui.session.folded && ui.focus == Focus::Sidebar;
+    ui.session.folded = held;
     ui.focus = match held {
-        true => Focus::Agent,
-        false => Focus::Workspace,
+        true => middle(ui),
+        false => Focus::Sidebar,
     };
 }
 
-/// The alerts unfolded and given the keys, or folded away when they have them.
-fn alerts(ui: &mut Ui) {
-    let held = ui.alerts.open && ui.focus == Focus::Alerts;
-    ui.alerts.open = !held;
-    ui.focus = match held {
-        true => Focus::Agent,
-        false => Focus::Alerts,
+/// The pane beside the one with the keys: the rail, the middle, the sidebar; this one at the edge.
+fn beside(ui: &Ui, right: bool) -> Focus {
+    let panes = [Focus::Rail, middle(ui), Focus::Sidebar];
+    let from = match ui.focus {
+        Focus::Terminal | Focus::Agent | Focus::Workspace => middle(ui),
+        one => one,
     };
+    let at = panes.iter().position(|one| *one == from).unwrap_or(1);
+    let next = match right {
+        true => at + 1,
+        false => at.saturating_sub(1),
+    };
+    panes.get(next).copied().unwrap_or(from)
 }
 
 /// The palette on the selected worktree's files.
@@ -211,27 +206,13 @@ fn files(ui: &mut Ui) -> Vec<Command> {
     vec![Command::Workspace(workspace::Command::ListPaths)]
 }
 
-/// The sidebar unfolded and given the keys, or folded away when it has them.
-fn sidebar(ui: &mut Ui) {
-    if !ui.session.tab.has_sidebar() {
-        return;
-    }
-    let held = !ui.session.folded && ui.focus == Focus::Sidebar;
-    ui.session.folded = held;
-    ui.focus = match held {
-        true => Focus::Workspace,
-        false => Focus::Sidebar,
-    };
-}
-
 /// The terminals up and given the keys, or folded away when they have them.
 fn terminals(ui: &mut Ui) {
     let held = ui.session.manual && ui.focus == Focus::Terminal;
     ui.session.manual = !held;
-    ui.focus = match (held, ui.session.stowed) {
-        (true, true) => Focus::Agent,
-        (true, false) => Focus::Workspace,
-        (false, _) => Focus::Terminal,
+    ui.focus = match held {
+        true => middle(ui),
+        false => Focus::Terminal,
     };
 }
 
@@ -255,13 +236,13 @@ fn holds_clusters(app: &AppState) -> bool {
         .is_some_and(|open| open.holds_clusters())
 }
 
-/// The workspace tab beside `tab`, from the last back to the first.
-fn stepped_tab(tab: Tab, forward: bool, clusters: bool) -> Tab {
-    let up: Vec<Tab> = Tab::ALL
+/// The mode beside `mode`, from the last back to the first.
+fn stepped(mode: Mode, forward: bool, clusters: bool) -> Mode {
+    let up: Vec<Mode> = Mode::ALL
         .into_iter()
-        .filter(|one| *one != Tab::Resources || clusters)
+        .filter(|one| *one != Mode::Kubernetes || clusters)
         .collect();
-    let at = up.iter().position(|one| *one == tab).unwrap_or(0);
+    let at = up.iter().position(|one| *one == mode).unwrap_or(0);
     let len = up.len();
     match forward {
         true => up[(at + 1) % len],

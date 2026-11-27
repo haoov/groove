@@ -9,11 +9,9 @@ mod tests;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use groove_controllers::agent_service::Event as AgentEvent;
 use groove_controllers::{Continuation, Deliver, Env, Event, Services, TokioSpawner};
 use groove_db::Store as _;
 use groove_hooks::{Post, Receiver};
-use groove_types::Timestamp;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 /// What crosses from the pool and the outside world into the loop.
@@ -85,12 +83,11 @@ async fn services(
     let plan = groove_plan::Plan::new(db.clone());
     let ledger = groove_ledger::Ledger::new(db.clone());
     let mrs = groove_mrs::Store::new(db.clone());
-    let notes = groove_annotations::Store::new(db.clone());
     let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {
         session: groove_controllers::session_service::Service::new(store, pool),
         task: groove_controllers::task_service::Service::new(plan, ledger),
-        delivery: groove_controllers::delivery_service::Service::new(mrs, notes),
+        delivery: groove_controllers::delivery_service::Service::new(mrs),
         config: groove_controllers::config_service::Keeper::default(),
         alert: groove_controllers::alert_service::Service::incident_io()?,
         clipboard: groove_controllers::workspace_service::Clipboard::system(),
@@ -142,19 +139,18 @@ fn tools(
     Ok(server)
 }
 
-/// The loopback every agent's hooks post to. Each post is one event in the loop.
+/// The loopback every agent's hooks post to. Each post is applied on the loop.
 fn hooks(
     handle: &tokio::runtime::Handle,
     proxy: EventLoopProxy<Message>,
 ) -> Result<Receiver, Box<dyn std::error::Error>> {
     let receiver = groove_hooks::serve(handle, move |post: Post| {
-        let event = Event::Agent(AgentEvent::Hook {
-            session: post.session,
-            kind: post.kind,
-            tool: post.tool,
-            at: Timestamp::now(),
-        });
-        let _ = proxy.send_event(Message::Event(event));
+        let heard = Box::new(
+            move |state: &mut _, _: &Services, spawner: &dyn groove_controllers::Spawner| {
+                groove_controllers::agent::hooked(state, spawner, post);
+            },
+        ) as Continuation;
+        let _ = proxy.send_event(Message::Continue(heard));
     })?;
     Ok(receiver)
 }

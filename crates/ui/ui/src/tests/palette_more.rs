@@ -45,7 +45,7 @@ fn the_input_line_stands_taller_than_a_row_and_hints_at_files() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let layer = &frame.layers()[1];
+    let layer = frame.layers().last().expect("the palette's layer");
     let hint = layer
         .texts
         .iter()
@@ -66,7 +66,15 @@ fn the_input_line_stands_taller_than_a_row_and_hints_at_files() {
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    assert!(frame.layers()[1].texts.iter().any(|t| t.text == "Files"));
+    assert!(
+        frame
+            .layers()
+            .last()
+            .expect("the palette's layer")
+            .texts
+            .iter()
+            .any(|t| t.text == "Files")
+    );
 }
 
 #[test]
@@ -98,7 +106,10 @@ fn a_file_found_in_pieces_lights_each_piece_and_the_whole_run_ranks_first() {
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
-    let lit: Vec<String> = frame.layers()[1]
+    let lit: Vec<String> = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
         .texts
         .iter()
         .filter(|t| t.style.color == accent)
@@ -127,7 +138,10 @@ fn a_picker_lights_its_fuzzy_letters() {
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
-    let lit: Vec<String> = frame.layers()[1]
+    let lit: Vec<String> = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
         .texts
         .iter()
         .filter(|t| t.style.color == accent)
@@ -149,5 +163,5 @@ fn the_palette_reads_the_diff_against_the_base_or_the_local_changes() {
     let mode = groove_types::DiffMode::Working;
     let set = groove_controllers::workspace::Command::SetMode { mode };
     assert_eq!(asked, [groove_controllers::Command::Workspace(set)]);
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Diff);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Diff);
 }

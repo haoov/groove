@@ -4,9 +4,8 @@ use groove_types::{SessionId, WorktreeId};
 
 use groove_types::DiffView;
 
-use super::{Cursor, NoteButton, Picks};
+use super::{Answering, NoteButton, Picks};
 use crate::layout::Edge;
-use crate::views::session::{Tab, Term};
 
 /// A thing on screen the pointer can act on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,8 +14,6 @@ pub enum Target {
     Session(SessionId),
     /// What the change is read against.
     Mode(groove_types::DiffMode),
-    /// A tab of the workspace.
-    Tab(Tab),
     /// One of the header's pickers.
     Picker(Picks),
     /// An overview row.
@@ -81,8 +78,7 @@ pub enum Target {
     ClusterSet(String, groove_types::ClusterChange),
     /// A context's dot, which opens the hues it can take.
     ClusterHue(String),
-    /// The Resources tab's list tab, a kind in its sidebar, its search, and one row of its list.
-    ResourceList,
+    /// A kind in the Kubernetes sidebar, the list's search, and one row of the list.
     ResourceKind(groove_types::KubeKind),
     ResourceSearch,
     /// An Application's find bar, which a click types in.
@@ -92,10 +88,14 @@ pub enum Target {
     /// A column of the list, by its label: its header sorts by it, its edge drags its width.
     ResourceSort(String),
     ResourceEdge(String),
-    /// An object's tab in the strip, the mark that closes it, and its view.
+    /// An open object's row in the sidebar, the mark that closes it, and its view.
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// The band's pin toggle, a pinned list's row, and its cross.
+    ResourcePin,
+    PinnedList(Box<groove_types::Pin>),
+    Unpin(Box<groove_types::Pin>),
     /// An object's YAML made writable, or read-only again, its draft thrown away; and the draft applied.
     YamlWrite(bool),
     YamlApply,
@@ -157,17 +157,6 @@ pub enum Target {
     SessionsFold,
     /// A section's heading on the rail, which folds it to itself.
     SectionFold(groove_types::Section),
-    /// A log entry's remove button, by the entry's id.
-    LogRemove(i64),
-    /// The alerts' header, which folds their window to it.
-    AlertsFold,
-    /// A firing alert's button: its child opened, or one spawned on it.
-    Investigate(String),
-    /// A firing alert's row, which it selects.
-    AlertRow(String),
-    AlertColumn(String),
-    /// The boundary after an alerts column, dragged to its width.
-    AlertEdge(String),
     /// A line of the feed, and the session it belongs to.
     FeedLine(SessionId),
     /// A folded run of the feed, opened or folded again.
@@ -183,8 +172,6 @@ pub enum Target {
     Review(String, u64),
     /// A column heading of the review table, which orders it.
     SortReview(crate::views::board::review::By),
-    /// What reads the selected worktree's MR again.
-    Refresh,
     /// An MR's number, a link to its page.
     MrPage(String),
     /// What opens the task's own page at its source.
@@ -195,29 +182,19 @@ pub enum Target {
     NewExplorer,
     /// A boundary between two columns.
     Split(Edge),
-    /// What folds the sidebar away.
-    Fold,
     /// A file's row in the sidebar.
     File(String),
-    /// What a row offers while the pointer is on it.
-    Stage(String),
-    Unstage(String),
     /// The two answers to what is asked before a change is thrown away.
     Discard,
     Keep,
     /// The count a row's question sets, one step down or up.
     Step(i32),
-    /// What the commit box offers beyond committing.
-    Actions,
     /// A row of the menu the right button opens.
     MenuRow(usize),
     /// A scope panel: its body, a line of it, and a held line's ×.
     ScopePanel,
     ScopeLine(usize),
     ScopeDetach(usize),
-    /// The commit message, and what the box does now.
-    Message,
-    Do,
     /// The open file's rows.
     Code,
     /// The lines standing above them.
@@ -227,7 +204,6 @@ pub enum Target {
     /// What marks a file read, at the end of its head row.
     Read(String),
     /// The row a file starts on, which folds it.
-    Head(String),
     /// The caret that folds the block a line of the open file opens.
     Block(usize),
     /// The lines a gap hides, and which end gives them up.
@@ -235,41 +211,41 @@ pub enum Target {
         row: usize,
         way: groove_controllers::workspace::Way,
     },
-    /// One line a search across the worktree found, by its place in the list.
-    Found(usize),
-    /// The row naming a file the search found lines in, which folds them.
-    FoundIn(String),
-    /// One term of the sidebar's search bar.
-    Term(Term),
     /// The bar over the rows while a search of them is live.
     Finding,
     /// One of the three views of the open file.
     View(DiffView),
     /// The agent's pane.
     Agent,
-    /// One button of a note's own row.
-    Note(groove_types::NoteOrigin, NoteButton),
-    /// What the composer of the note being typed offers.
+    /// One tab of the session's bar.
+    ModeTab(crate::views::session::Mode),
+    /// The head of the session's sidebar, which folds it.
+    AsideFold,
+    /// A list's scrollbar, its thumb dragged along it.
+    Thumb(super::Scroller),
+    /// The head of a card on the modes Overview, which folds it, by key.
+    CardFold(String),
+    /// The modes Diff's list of changed files, under its rows.
+    Listing,
+    /// The conversation's column, the file an edit wrote at its hunk's first line, and the prompt.
+    Chat,
+    Edited {
+        path: String,
+        line: u32,
+    },
+    Prompt,
+    /// A block that opens and folds: steps by their key, a sent agent by its id.
+    Commands(String),
+    /// An answer to what the headless agent asks.
+    Answer(Answering),
+    /// The line of usage under the prompt, which opens the models' menu.
+    ModelButton,
+    /// One of the commands `/` offers, by its place in the offers.
+    Offered(usize),
+    /// An agent's row in the sidebar: its card, opened and in sight.
+    Subagent(String),
+    /// One button of a thread's own row, by the thread's id.
+    Note(String, NoteButton),
+    /// What the composer of the reply being typed offers.
     Compose(super::Composing),
-}
-
-impl Target {
-    /// What the pointer says over it: a row is a pointer, and these are not.
-    pub(super) fn cursor(&self) -> Cursor {
-        match self {
-            Target::Term(_) | Target::Finding | Target::Message | Target::Code => Cursor::Text,
-            Target::Agent
-            | Target::Shell(_)
-            | Target::Pinned
-            | Target::Palette
-            | Target::Overview => Cursor::Default,
-            Target::Map | Target::Place(_) => Cursor::RowResize,
-            Target::ResourceEdge(_) | Target::AlertEdge(_) => Cursor::ColResize,
-            Target::Split(edge) => match edge.upright() {
-                true => Cursor::ColResize,
-                false => Cursor::RowResize,
-            },
-            _ => Cursor::Pointer,
-        }
-    }
 }

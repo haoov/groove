@@ -23,7 +23,7 @@ use groove_types::Described;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Badge, Tab};
+use groove_ui_kit::widgets::Badge;
 
 pub use wants::{due, wants};
 
@@ -31,14 +31,10 @@ use super::View;
 use super::health::{colour, status_colour};
 use super::opened::Opened;
 use crate::ctx::Ctx;
-use crate::hit::Target;
 
-pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &Opened)) {
-    let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm * 2.0);
-    let [top, rest] = column_in(body, [tall, Spec::fill()]);
-    let object = tab.link.read(app);
-    heading(ctx, top, tab, object.map(|one| &**one));
-    let Some(object) = object else {
+/// The view shown under the heading, or why the object holds nothing yet.
+pub(super) fn shown(ctx: &mut Ctx, rest: Rect, app: &AppState, (ui, tab): (&crate::Ui, &Opened)) {
+    let Some(object) = tab.link.read(app) else {
         return standing(ctx, rest, app, tab);
     };
     match tab.view {
@@ -60,21 +56,9 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
     }
 }
 
-/// The status in its colour, then the views.
-fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) {
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.sm));
+/// The object's status badges from the left of `room`, as many as fit.
+pub(super) fn badges(ctx: &mut Ctx, room: Rect, object: Option<&Described>) {
     let gap = ctx.tokens.sm;
-    let views: &[View] = match object {
-        Some(one) if one.pod.is_some() => &[View::Logs, View::Yaml, View::Describe],
-        Some(one) if one.app.is_some() => &[View::Yaml, View::Resources, View::Describe],
-        _ => &[View::Yaml, View::Describe],
-    };
-    let shown: Vec<_> = views
-        .iter()
-        .map(|view| Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view).tight())
-        .collect();
-    let side = groove_ui_kit::widgets::Side::Right;
-    groove_ui_kit::widgets::tab_group(ctx, &mut room, shown, (side, ctx.tokens.xs));
     let mut at = room.x;
     for (said, role) in object.map(stands).unwrap_or_default() {
         let badge = Badge::new(&said, role);
@@ -82,6 +66,15 @@ fn heading(ctx: &mut Ctx, line: Rect, tab: &Opened, object: Option<&Described>) 
             break;
         }
         at = badge.at(ctx, room, at).right() + gap;
+    }
+}
+
+/// The views the object offers, from the right.
+pub(super) fn views(object: Option<&Described>) -> &'static [View] {
+    match object {
+        Some(one) if one.pod.is_some() => &[View::Logs, View::Yaml, View::Describe],
+        Some(one) if one.app.is_some() => &[View::Yaml, View::Resources, View::Describe],
+        _ => &[View::Yaml, View::Describe],
     }
 }
 

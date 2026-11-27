@@ -1,18 +1,19 @@
-//! What a session says on its MR: a posted note, a thread answered or resolved, a verdict.
+//! What a session says on its MR: a thread opened, answered or resolved, a verdict.
 
 use groove_delivery_service::Said;
-use groove_types::{AnnotationId, ReviewVerdict, TimelineKind};
+use groove_types::{Anchor, ReviewVerdict, TimelineKind};
 
 use super::Whose;
 use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// One write the forge answers, on a note or a thread.
+/// One write the forge answers, on a thread.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ThreadAct {
-    /// The session's note posted on the MR, and resolved here.
-    Post {
-        id: AnnotationId,
+    /// A new thread on lines of the diff.
+    Comment {
+        anchor: Anchor,
+        body: String,
     },
     Reply {
         thread: String,
@@ -27,7 +28,7 @@ pub enum ThreadAct {
 impl ThreadAct {
     pub fn id(&self) -> &'static str {
         match self {
-            ThreadAct::Post { .. } => "delivery.post_note",
+            ThreadAct::Comment { .. } => "delivery.comment_lines",
             ThreadAct::Reply { .. } => "delivery.reply_thread",
             ThreadAct::Resolve { .. } => "delivery.resolve_thread",
         }
@@ -36,7 +37,7 @@ impl ThreadAct {
     /// What it did, in the words the agent reads back.
     fn said(&self) -> &'static str {
         match self {
-            ThreadAct::Post { .. } => "posted the note",
+            ThreadAct::Comment { .. } => "opened a thread",
             ThreadAct::Reply { .. } => "answered the thread",
             ThreadAct::Resolve { resolve: true, .. } => "resolved the thread",
             ThreadAct::Resolve { resolve: false, .. } => "opened the thread again",
@@ -45,7 +46,7 @@ impl ThreadAct {
 
     fn label(&self) -> &'static str {
         match self {
-            ThreadAct::Post { .. } => "posting the note",
+            ThreadAct::Comment { .. } => "opening a thread",
             ThreadAct::Reply { .. } => "replying to the thread",
             ThreadAct::Resolve { .. } => "resolving the thread",
         }
@@ -53,7 +54,7 @@ impl ThreadAct {
 
     fn kind(&self) -> TimelineKind {
         match self {
-            ThreadAct::Post { .. } => TimelineKind::Note,
+            ThreadAct::Comment { .. } => TimelineKind::Note,
             _ => TimelineKind::Review,
         }
     }
@@ -101,7 +102,7 @@ pub(super) fn here(
     }
 }
 
-/// One write the forge answers, then the session's notes and its MR read again.
+/// One write the forge answers, then the MR read again.
 pub(crate) fn thread(
     state: &mut AppState,
     services: &Services,
@@ -110,17 +111,18 @@ pub(crate) fn thread(
     whose: Whose,
     asker: Asker,
 ) {
-    let Some(call) = call_of(state, &whose, act.clone()) else {
-        return asker.refused(state, "this session left no note by that id");
-    };
     let (service, job) = (services.delivery.clone(), state.begin(act.label()));
-    let told = act;
+    let told = act.clone();
     spawner.spawn(Box::pin(async move {
         let (repo, at) = (&whose.repo, &whose.worktree.id);
-        let done = match call {
-            Call::Post(note) => service.post_note(repo, at, &note).await,
-            Call::Reply { thread, body } => service.reply_thread(repo, at, &thread, &body).await,
-            Call::Resolve { thread, resolve } => {
+        let done = match act {
+            ThreadAct::Comment { anchor, body } => {
+                service.comment_lines(repo, at, &anchor, &body).await
+            }
+            ThreadAct::Reply { thread, body } => {
+                service.reply_thread(repo, at, &thread, &body).await
+            }
+            ThreadAct::Resolve { thread, resolve } => {
                 service.resolve_thread(repo, &thread, resolve).await
             }
         };
@@ -138,22 +140,7 @@ pub(crate) fn thread(
     }));
 }
 
-/// The act with the note it posts in hand.
-enum Call {
-    Post(groove_types::Annotation),
-    Reply { thread: String, body: String },
-    Resolve { thread: String, resolve: bool },
-}
-
-fn call_of(state: &AppState, whose: &Whose, act: ThreadAct) -> Option<Call> {
-    Some(match act {
-        ThreadAct::Post { id } => Call::Post(state.delivery.note(&whose.session, &id)?.clone()),
-        ThreadAct::Reply { thread, body } => Call::Reply { thread, body },
-        ThreadAct::Resolve { thread, resolve } => Call::Resolve { thread, resolve },
-    })
-}
-
-/// A comment or a verdict on the selected worktree's MR, carrying the session's notes.
+/// A comment or a verdict on the selected worktree's MR.
 pub(super) fn say_here(state: &mut AppState, services: &Services, spawner: &dyn Spawner, say: Say) {
     let Some(whose) = Whose::selected(state) else {
         return;
@@ -169,7 +156,7 @@ pub(super) fn say_here(state: &mut AppState, services: &Services, spawner: &dyn 
     );
 }
 
-/// A comment, or a verdict carrying every note of the session the forge has not seen.
+/// A comment, or a verdict.
 pub(crate) fn say_as(
     state: &mut AppState,
     services: &Services,
@@ -179,12 +166,11 @@ pub(crate) fn say_as(
     whose: Whose,
     asker: Asker,
 ) {
-    let notes = state.delivery.unposted(&whose.session, &whose.repo.id);
     let verdict = match &say {
         Say::Comment => None,
         Say::Review(verdict) => Some(*verdict),
     };
-    if let Err(e) = Said::empty(verdict, &body, &notes) {
+    if let Err(e) = Said::empty(verdict, &body) {
         return asker.failed(state, e);
     }
     let (service, job) = (services.delivery.clone(), state.begin(say.label()));
@@ -196,7 +182,6 @@ pub(crate) fn say_as(
                 let said = Said {
                     verdict,
                     body: &body,
-                    notes: &notes,
                 };
                 service.review(repo, at, said).await
             }
@@ -225,8 +210,7 @@ fn spoke(
     landed(state, services, spawner, whose);
 }
 
-/// The session's notes read again, and its MR with them: a thread only the forge holds.
+/// The MR read again, its threads with it.
 fn landed(state: &mut AppState, services: &Services, spawner: &dyn Spawner, whose: &Whose) {
-    super::notes::list(state, services, spawner, &whose.session);
     super::poll::refresh(state, services, spawner, &whose.worktree.id);
 }

@@ -40,7 +40,7 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     out
 }
 
-/// Long lines wrapping, and motion reduced.
+/// Long lines wrapping, motion reduced, and the main region's modes.
 fn switches(ui: &groove_types::UiConfig) -> Vec<Row> {
     let section = Section::Appearance;
     let wrap = Value::Toggle {

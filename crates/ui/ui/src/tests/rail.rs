@@ -14,13 +14,7 @@ use groove_ui_kit::text::ago;
 
 /// Every text the rail drew, with where it drew it.
 fn rail_texts(app: &AppState, ui: &Ui) -> Vec<TextRun> {
-    let rail = crate::layout::Layout::new(
-        groove_gfx::Size::new(WINDOW.0, WINDOW.1),
-        &groove_ui_kit::base::tokens::Tokens::new(1.0),
-        ui.split,
-        false,
-    )
-    .rail;
+    let rail = crate::layout::Layout::of(window(), ui).rail;
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
     frame.layers()[0]
         .texts
@@ -43,7 +37,12 @@ fn stands(app: &mut AppState, id: &str, status: AgentStatus, changed_at: i64) {
         seen_at: None,
     };
     let agent = Agent {
-        terminal: None,
+        stream: None,
+        permissions: Vec::new(),
+        commands: Vec::new(),
+        limits: Default::default(),
+        windows: Vec::new(),
+        chosen: None,
         activity,
         started_at: Timestamp::new(0),
         launch: 0,

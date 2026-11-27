@@ -1,31 +1,12 @@
 //! The overview's clusters: each context the session holds in its hue, its namespaces after it.
 
-use groove_controllers::AppState;
-use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::Hue;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
 
-use super::Part;
 use crate::ctx::Ctx;
 use crate::views::session::resources::WHOLE_NAME;
-
-/// A context once, in the order first attached, with each of its namespaces.
-pub(super) fn parts<'a>(app: &AppState, open: &'a Open) -> Vec<Part<'a>> {
-    crate::views::session::resources::contexts(open)
-        .into_iter()
-        .map(|context| {
-            let hue = app.config.cluster(context).map(|one| one.hue);
-            let held = open.clusters.iter().filter(|one| one.context == context);
-            Part::Cluster(
-                context,
-                hue,
-                held.map(|one| one.namespace.as_deref()).collect(),
-            )
-        })
-        .collect()
-}
 
 /// The context in its hue, faint once Settings no longer knows it, then its namespaces; no mark.
 pub(super) fn draw(

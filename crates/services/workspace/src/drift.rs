@@ -58,19 +58,19 @@ pub async fn prepared(pairs: Vec<(String, String, String)>) -> groove_types::Res
 }
 
 impl State {
-    /// The drift shown in place of the worktree's change, its folds and scroll kept for the same Application.
+    /// The drift shown in place of the worktree's change, its focus and scroll kept for the same
+    /// Application, else its first file focused.
     pub fn drifted(&mut self, (app, at): (DriftKey, String), prepared: Prepared) {
         let same = self.drift.as_ref().is_some_and(|one| one.app == app);
-        let shut = if same {
-            self.changes.folds()
-        } else {
-            Default::default()
-        };
         self.moved();
         self.commit = None;
         self.files = prepared.files;
+        let kept = self.changes.focused().map(str::to_string);
         self.changes = prepared.changes;
-        self.changes.refold(shut);
+        let held = kept.filter(|one| self.changes.get(one).is_some());
+        let first = || self.changes.files().first().map(|one| one.path.clone());
+        let focus = held.or_else(first);
+        self.changes.focus(focus);
         self.coloured = prepared.coloured;
         if !same {
             self.showing = 0..0;

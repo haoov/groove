@@ -2,6 +2,7 @@
 
 mod badge;
 mod button;
+mod caps;
 pub mod code;
 mod completions;
 mod counts;
@@ -13,6 +14,7 @@ mod input;
 mod inset;
 mod list;
 mod menu;
+mod meter;
 mod modal;
 mod neurons;
 mod pane;
@@ -28,8 +30,9 @@ mod typed;
 
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
+pub use caps::{answer, cap, cap_right, keycap, keycap_left};
 pub use completions::{Offer, completions};
-pub use counts::{changes, counts, counts_room, faults, faults_room};
+pub use counts::{changes, changes_room, counts, counts_room, faults, faults_room};
 pub use field::Field;
 pub use fold::{caret, fold, fold_turn, folder};
 pub use heading::Heading;
@@ -41,6 +44,7 @@ pub use inset::{
 };
 pub use list::{Row, glass_list, list};
 pub use menu::{glass_menu, glass_size};
+pub use meter::meter;
 pub use modal::{
     Corner, Material, floating_pane, glass_button, glass_pane, glass_pill, ground_lattice,
     ground_under, modal, panel_at, panel_head, solid_pane, sunk_pane,
@@ -48,8 +52,8 @@ pub use modal::{
 pub use neurons::{NEURON_MS, neurons};
 pub use pane::{Side, aside_bounds, glass_aside};
 pub use popup::{Piece, Said, popup};
-pub use question::{Steps, offer, question};
-pub use scrolled::scrolled;
+pub use question::{Steps, question};
+pub use scrolled::{flowed, scrollbar, scrolled, thumb_height};
 pub use search::Search;
 pub use table::{Act, Band, Cell, Column, Laid, Line, Rows, Shown, Slot, Sorted, Table, Width};
 pub use tabs::{Tab, glass_tabs, group_width, marked_glass_tabs, tab_group};

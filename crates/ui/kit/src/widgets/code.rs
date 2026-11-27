@@ -1,8 +1,10 @@
-//! A row of the code surface: a line of code, a banner across the width, or a file's head.
+//! A row of the code surface: a line of code, or a banner across the width.
 
 mod faults;
 mod gutter;
-mod head;
+mod read;
+
+pub use read::read_box;
 mod outline;
 mod paint;
 
@@ -33,18 +35,10 @@ pub struct Code<'a, T> {
     /// A bar at the row's left edge, for what a gutter number cannot say.
     pub mark: Option<Color>,
     pub banner: bool,
-    pub head: bool,
-    /// Which of its head's rows this one is, and how many the head takes.
-    pub part: (usize, usize),
-    /// What a head's file added and removed, and its errors and warnings.
-    pub counts: Option<(u32, u32)>,
-    pub tally: Option<(u32, u32)>,
     /// The notes a line carries, in its marks' column, and what a click on them opens.
     pub tile: Option<(Tile, Option<T>)>,
     /// A side of a split row with no line on it.
     pub empty: bool,
-    pub folded: bool,
-    pub read: bool,
     /// In characters.
     pub caret: Option<usize>,
     /// From, to, and whether it runs past the line.
@@ -89,26 +83,8 @@ pub fn draw<A: App>(
     gutter: Block,
     across: f32,
 ) {
-    if code.head {
-        return head::head(ctx, line, code);
-    }
     if code.banner {
         return paint::banner(ctx, line, code.text);
     }
     paint::coded(ctx, line, code, gutter, across);
-}
-
-/// The whole head a head row is part `at` of, `rows` rows tall.
-pub fn head_of(line: Rect, (at, rows): (usize, usize)) -> Rect {
-    Rect {
-        y: line.y - at as f32 * line.h,
-        h: line.h * rows.max(1) as f32,
-        ..line
-    }
-}
-
-/// Where a head row carries the mark that says its file is read.
-pub fn head_mark<A: App>(ctx: &Ctx<'_, A>, line: Rect) -> Rect {
-    let size = ctx.tokens.icon;
-    crate::shape::box_in(line, line.right() - ctx.tokens.md - size, size)
 }

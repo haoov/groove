@@ -125,15 +125,6 @@ pub fn top_rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     );
 }
 
-/// A hairline just above `rect`, outside it.
-pub fn rule_above<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
-    let thickness = ctx.tokens.hairline;
-    ctx.quad(
-        Rect::new(rect.x, rect.y - thickness, rect.w, thickness),
-        color,
-    );
-}
-
 /// A hairline down `rect`'s height, its left side at `x`.
 pub fn side_rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, x: f32, color: Color) {
     ctx.quad(Rect::new(x, rect.y, ctx.tokens.hairline, rect.h), color);
@@ -238,13 +229,6 @@ pub fn shadow_under<A: App>(ctx: &mut Ctx<'_, A>, band: Rect) {
     );
     let color = ctx.styles.shadow();
     ctx.shadow(rect, color, blur);
-}
-
-/// One row of a card: its ground and its sides, and its top or bottom edge where it has one.
-pub fn card_row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
-    let (ground, line) = (ctx.styles.band(), ctx.styles.line());
-    ctx.quad(rect, ground);
-    framed(ctx, rect, (false, false), line);
 }
 
 /// One row of a frame in `line`: its sides, and its top or bottom edge where it has one.

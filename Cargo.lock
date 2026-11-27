@@ -1279,7 +1279,6 @@ dependencies = [
 name = "groove"
 version = "1.0.0-beta.2"
 dependencies = [
- "groove-annotations",
  "groove-config",
  "groove-controllers",
  "groove-db",
@@ -1318,12 +1317,27 @@ name = "groove-agent-service"
 version = "1.0.0-beta.2"
 dependencies = [
  "groove-agent-launch",
+ "groove-agent-stream",
  "groove-approvals",
  "groove-hooks",
  "groove-mcp",
  "groove-sync",
  "groove-terminal",
  "groove-tools",
+ "groove-transcript",
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "groove-agent-stream"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-agent-launch",
+ "groove-exec",
+ "groove-transcript",
  "groove-types",
  "serde_json",
  "tempfile",
@@ -1348,17 +1362,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "wiremock",
-]
-
-[[package]]
-name = "groove-annotations"
-version = "1.0.0-beta.2"
-dependencies = [
- "groove-db",
- "groove-types",
- "sqlx",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1466,7 +1469,6 @@ dependencies = [
 name = "groove-delivery-service"
 version = "1.0.0-beta.2"
 dependencies = [
- "groove-annotations",
  "groove-browser",
  "groove-forge",
  "groove-git",
@@ -1861,6 +1863,16 @@ dependencies = [
  "groove-types",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "groove-transcript"
+version = "1.0.0-beta.2"
+dependencies = [
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

@@ -9,7 +9,7 @@ use super::{clustered, key, on, pods};
 use crate::hit::Target;
 use crate::tests::click;
 use crate::tests::drawn;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 
 #[test]
 fn a_session_holding_no_cluster_shows_its_overview_not_the_last_object() {
@@ -24,7 +24,7 @@ fn a_session_holding_no_cluster_shows_its_overview_not_the_last_object() {
     assert!(asked.contains(&select), "{asked:?}");
     app.session.select(&b, Timestamp::new(0));
     ui.settle(&app);
-    assert_eq!(ui.session.tab, Tab::Overview);
+    assert_eq!(ui.session.mode, Mode::Agent);
     let (texts, _) = drawn(&app, &ui);
     assert!(!texts.iter().any(|one| one == "CONDITIONS"), "{texts:?}");
 }

@@ -9,16 +9,13 @@ fn a_resolved_note_takes_no_row_and_its_tick_opens_and_closes_it() {
     one.resolved = true;
     let (bare, app) = (opened(), noted(vec![one]));
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let rows = |ui: &Ui, app: &AppState| {
         crate::views::session::diff::rows_of(app, ui, drawn_cols(app, ui))
     };
     assert_eq!(rows(&ui, &app), rows(&ui, &bare), "hidden behind its tick");
     assert!(!row_texts(&app, &ui).iter().any(|one| one == "this leaks"));
-    let tick = Target::Note(
-        NoteOrigin::Thread("t1".into()),
-        crate::hit::NoteButton::Fold,
-    );
+    let tick = Target::Note(String::from("t1"), crate::hit::NoteButton::Fold);
     let toggle = |ui: &mut Ui| {
         let (_, hits) = view(&app, ui, window(), &mut Fonts::embedded());
         let at = hits.rect_of(&tick).expect("the tick takes a click");

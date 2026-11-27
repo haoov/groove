@@ -3,7 +3,6 @@
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{Document, Hovered};
 use groove_types::{Diagnostic, Severity};
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::markdown::blocks;
 use groove_ui_kit::markdown::parse::{Block, Kind};
@@ -11,41 +10,57 @@ use groove_ui_kit::widgets::{Piece, Said};
 
 use crate::Ui;
 
-pub(super) fn said(app: &AppState, ui: &Ui, hovered: &Hovered) -> Vec<Said> {
+/// The lines, and the role the card is ringed in: the worst diagnostic's, else muted.
+pub(super) fn said(app: &AppState, ui: &Ui, hovered: &Hovered) -> (Vec<Said>, Role) {
     let mut out = Vec::new();
-    for (at, found) in covering(app, hovered).into_iter().enumerate() {
+    let found = covering(app, hovered);
+    let ring = found.first().map_or(Role::Muted, |one| role(one.severity));
+    for (at, found) in found.into_iter().enumerate() {
         if at > 0 {
             out.push(Said::Gap);
         }
         out.extend(diagnosed(&found));
     }
     let Some(text) = hovered.said.as_deref().filter(|one| !one.trim().is_empty()) else {
-        return out;
+        return (out, ring);
     };
+    if !out.is_empty() {
+        out.push(Said::Rule);
+    }
+    let word = if hovered.told { "definition" } else { "hover" };
+    out.push(head(word, hovered.at.line, Role::Muted));
     if hovered.told {
         out.push(plain(text, Role::Faint));
-        return out;
+        return (out, ring);
     }
-    out.push(Said::Rule);
     let read = ui
         .spoken
         .of((&hovered.path, text), || markdown(&hovered.path, text));
     out.extend(read.iter().cloned());
     out.push(Said::Rule);
     out.push(plain("ctrl+click: go to definition", Role::Ghost));
-    out
+    (out, ring)
 }
 
-/// A diagnostic: its first line as a coloured title, the rest as plain text, then its source.
+/// `WARNING · LINE 31`, the line counted from one.
+fn head(word: &str, line: usize, role: Role) -> Said {
+    Said::Head {
+        word: word.to_string(),
+        note: format!("line {}", line + 1),
+        role,
+    }
+}
+
+/// A diagnostic: its head, its first line as the title, the rest muted, then its source.
 fn diagnosed(found: &Diagnostic) -> Vec<Said> {
     let mut lines = found.message.lines().filter(|line| !line.trim().is_empty());
     let title = lines.next().unwrap_or_default();
-    let mut out = vec![prose(
-        &blocks(title),
-        role(found.severity),
-        mark(found.severity),
-    )];
-    out.extend(lines.map(|line| prose(&blocks(line.trim()), Role::Muted, None)));
+    let severity = found.severity;
+    let mut out = vec![
+        head(kind(severity), found.start.line, role(severity)),
+        prose(&blocks(title), Role::Text),
+    ];
+    out.extend(lines.map(|line| prose(&blocks(line.trim()), Role::Muted)));
     let named: Vec<&str> = [found.source.as_deref(), found.code.as_deref()]
         .into_iter()
         .flatten()
@@ -70,8 +85,8 @@ fn markdown(path: &str, text: &str) -> Vec<Said> {
         out.extend(coloured(path, std::mem::take(&mut code)));
         out.push(match block.kind {
             Kind::Rule => Said::Rule,
-            Kind::Heading(_) => prose(std::slice::from_ref(&block), Role::Text, None),
-            _ => prose(std::slice::from_ref(&block), Role::Muted, None),
+            Kind::Heading(_) => prose(std::slice::from_ref(&block), Role::Text),
+            _ => prose(std::slice::from_ref(&block), Role::Muted),
         });
     }
     out.extend(coloured(path, code));
@@ -99,7 +114,7 @@ fn coloured(path: &str, lines: Vec<String>) -> Vec<Said> {
 }
 
 /// The blocks' spans as one line, a list's items marked.
-fn prose(blocks: &[Block], role: Role, mark: Option<Mark>) -> Said {
+fn prose(blocks: &[Block], role: Role) -> Said {
     let mut pieces = Vec::new();
     for block in blocks {
         if let Kind::Item(_) = block.kind {
@@ -113,7 +128,11 @@ fn prose(blocks: &[Block], role: Role, mark: Option<Mark>) -> Said {
             code: span.code,
         }));
     }
-    Said::Prose { pieces, role, mark }
+    Said::Prose {
+        pieces,
+        role,
+        mark: None,
+    }
 }
 
 fn plain(text: &str, role: Role) -> Said {
@@ -148,15 +167,15 @@ fn role(severity: Severity) -> Role {
     match severity {
         Severity::Error => Role::Bad,
         Severity::Warning => Role::Warn,
-        Severity::Information => Role::Working,
-        Severity::Hint => Role::Faint,
+        Severity::Information | Severity::Hint => Role::Muted,
     }
 }
 
-fn mark(severity: Severity) -> Option<Mark> {
+fn kind(severity: Severity) -> &'static str {
     match severity {
-        Severity::Error => Some(Mark::Errors),
-        Severity::Warning => Some(Mark::Warnings),
-        _ => None,
+        Severity::Error => "error",
+        Severity::Warning => "warning",
+        Severity::Information => "info",
+        Severity::Hint => "hint",
     }
 }

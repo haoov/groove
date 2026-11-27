@@ -1,13 +1,10 @@
-//! The session's own notes and the merge request's threads, as one list.
+//! The merge request's threads, as the notes the surface lists.
 
-use groove_types::{
-    Anchor, Annotation, AnnotationStatus, MrNote, MrThread, Note, NoteOrigin, Said,
-};
+use groove_types::{Anchor, MrNote, MrThread, Note, Said};
 
-/// The notes of a session, then its threads, in the order a file reads.
-pub fn merged(own: &[Annotation], threads: &[MrThread]) -> Vec<Note> {
-    let mut out: Vec<Note> = own.iter().map(of_annotation).collect();
-    out.extend(threads.iter().filter_map(of_thread));
+/// The threads of the merge request, in the order a file reads.
+pub fn listed(threads: &[MrThread]) -> Vec<Note> {
+    let mut out: Vec<Note> = threads.iter().filter_map(of_thread).collect();
     out.sort_by_key(by_place);
     out
 }
@@ -23,28 +20,11 @@ fn by_place(note: &Note) -> (bool, String, u32, i64) {
     )
 }
 
-fn of_annotation(one: &Annotation) -> Note {
-    Note {
-        origin: NoteOrigin::Local(one.id.clone()),
-        anchor: Some(Anchor {
-            path: one.file_path.clone(),
-            start_line: one.start_line,
-            end_line: one.end_line,
-        }),
-        resolved: one.status == AnnotationStatus::Resolved,
-        said: vec![Said {
-            author: one.author.clone(),
-            body: one.content.clone(),
-            at: one.created_at,
-        }],
-    }
-}
-
 /// A thread the forge answered; one with nothing said, or that nobody can resolve, is none.
 fn of_thread(thread: &MrThread) -> Option<Note> {
     let first = thread.notes.first().filter(|one| one.resolvable)?;
     Some(Note {
-        origin: NoteOrigin::Thread(thread.id.clone()),
+        thread: thread.id.clone(),
         anchor: anchor_of(first),
         resolved: thread.notes.iter().all(|note| note.resolved),
         said: thread.notes.iter().map(said_of).collect(),

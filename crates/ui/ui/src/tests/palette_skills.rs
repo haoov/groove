@@ -4,11 +4,11 @@ use groove_controllers::AppState;
 use groove_types::Timestamp;
 
 use crate::palette::entries;
-use crate::tests::screen::sourced;
+use crate::tests::agent::sourced;
 
 /// The fixture's session, with the skills it can be sent.
 fn offering(skills: Vec<groove_types::Skill>) -> groove_controllers::AppState {
-    let mut app = crate::tests::screen::asking(Vec::new());
+    let mut app = crate::tests::agent::asking(Vec::new());
     app.skill.skills = skills;
     app
 }

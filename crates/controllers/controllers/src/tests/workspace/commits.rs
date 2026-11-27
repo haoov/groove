@@ -89,9 +89,6 @@ fn nothing_writes_while_a_commit_is_shown() {
     for one in [
         workspace::Command::Edit(Edit::Insert("x".into())),
         workspace::Command::SaveFile,
-        workspace::Command::Stage {
-            path: "a.txt".into(),
-        },
     ] {
         send(&mut state, &services, &spawner, one);
     }

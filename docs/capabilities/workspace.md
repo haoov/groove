@@ -1,7 +1,7 @@
 # Workspace
 
-Review, edit and land the code. Surface: the session's work region, as
-[../design.md](../design.md#workspace) draws it. Everything here follows the session's
+Review, edit and land the code. Surface: the session's `DIFF`, `FILES` and `KUBERNETES`
+modes, as [../design.md](../design.md#workspace) draws them. Everything here follows the session's
 selected worktree.
 
 ## Diff
@@ -13,14 +13,15 @@ no patch parser. Expanding a gap is a slice of a document already held.
 
 **Two modes.** Base: against the merge-base with the base branch, or the MR's target in a
 review. Local: uncommitted changes against HEAD. Untracked files are all additions. A
-throttled background fetch keeps the base fresh. The diff header's tabs and the palette's *Against the base* and *Local
+throttled background fetch keeps the base fresh. The diff band's tabs and the palette's *Against the base* and *Local
 changes* switch the mode. Enforced by
 `the_palette_reads_the_diff_against_the_base_or_the_local_changes`.
 
-**The whole change is one surface.** The file list is built from the numeric summary,
-with no content. The files on screen hold their documents; the others give theirs up. A
-file's rows fold under its own head row. The view — file, inline or split — the folds,
-the find session and the scroll are the ui's own state, not commands.
+**One file of the change takes rows.** The file list is built from the numeric summary,
+with no content. The diff focuses one file, `workspace.focus`; it alone takes rows, and it
+holds its documents while the others give theirs up. A change read again keeps its focus. The
+view — file, inline or split — the find session and the scroll are the ui's own state, not
+commands.
 
 **The syntax tree is whole-file, the query is windowed.** A document holds no colours;
 the frame asks the tree what the rows on screen mean.
@@ -54,52 +55,43 @@ second shows `Author, 5d ago · sha` at its end.
 CRDs included. A list never waits on the cluster: its watchers run on the pool and send a
 batch a frame at most.
 
-**A watcher runs while the tab reads it.** The tab holds one reader over a watcher a
+**A watcher runs while the list reads it.** The Kubernetes mode holds one reader over a watcher a
 context and namespace in scope, one a context for a kind not namespaced. A change of
 scope, kind or label lets go of them all and reads the new ones; a watcher left unread
 stops thirty seconds later.
 
 **A name word narrows in Groove, fuzzily — its characters in order; a `label=value` word
-goes to the server**, as a watcher of its own. Both are typed in the list's find bar; the sidebar's search narrows the kinds.
+goes to the server**, as a watcher of its own. Both are typed in the list's find bar.
 
 **A status and a ready count wear the colour of how the object stands**: good, waiting,
 failing, or done. A row whose status is done keeps its ready count faint. A word Groove does
 not know stays plain.
 
-## Annotations
+## MR threads
 
-**A note is the session's own**: a line range on a file's new side, its words, its
-author and its status, kept in Groove's database. The notes list shows the session's
-notes and the MR's threads as one list.
+**Groove keeps no note of its own: a note is a thread of the MR.** The forge holds it.
+The notes list shows the selected worktree's threads. The agent opens a thread on lines
+of the diff with `comment_mr`; its words carry the `agent` decoration.
 
-**One open note a line.** A note stands in the surface under the line it was left on,
-in a card from the code's column, with its buttons under it. The line it opens on carries a tile
-before its numbers: a yellow count of its open notes, or a tick when they are all
-resolved. Each comment opens on a
-header: the author's initials and name, where the note lives, its Conventional Comments
-label and decoration, its lines and its age. Its words are typed on the same kind of buffer a file is, so a
-caret, a selection, an undo and the clipboard work there too. Around it, a composer: the
-Conventional Comments labels to pick from, which write the label into the words, its
-decorations once a label is chosen, and save and cancel. Its field's edge lights while it
-has the keyboard. A label reads plain or bold, and carries its decorations as a list; a note the
-agent writes carries the `agent` decoration.
+**A thread stands in the surface under the line it hangs on**, in a card from the code's
+column, with its buttons under it. The line it opens on carries a tile before its numbers:
+a yellow count of its open threads, or a tick when they are all resolved. Each comment
+opens on a header: the author's initials and name, its Conventional Comments label and
+decorations, its lines and its age. A label reads plain or bold, and carries its
+decorations as a list.
 
-**What a note offers depends on what holds it.** A note of the session is written again,
-resolved, deleted, or posted where the worktree has an MR; posting resolves the local
-copy. A forge thread is replied to, in a field across its last row where the reply is typed,
-and resolved. A resolved note takes no row: its tick opens it, and closes
-it again. Delete
-stands alone at the row's end, in red.
-
-**A verdict carries every open note of the repo**: in one atomic call on GitHub, and a
-note at a time on GitLab, each resolved as it lands.
+**A thread is replied to and resolved.** The reply is typed in a field across its last
+row, on the same kind of buffer a file is, so a caret, a selection, an undo and the
+clipboard work there too. Send and cancel stand under it. The field's edge lights while
+it has the keyboard. A resolved thread takes no row: its tick opens it, and closes it
+again.
 
 ## Editor
 
-**One buffer a path, a worktree.** Each worktree keeps its open files in tab order;
+**One buffer a path, a worktree.** Each worktree keeps its open files in the order opened;
 switching worktree keeps them. Closing a worktree or deleting its session drops them.
 
-**One preview tab.** A single click opens a file as the preview, and the next single
+**One preview.** A single click opens a file as the preview, and the next single
 click replaces it. A double click, `workspace.keep_file` or the first edit keeps it.
 
 **A path never leaves the worktree.** Every file operation resolves against the worktree
@@ -136,8 +128,8 @@ holds this end to end.
   in batches, so a `uv sync` needs no restart; the palette restarts the servers all the
   same. `a_package_appearing_in_a_watched_directory_is_told_as_created` holds it.
 - **A diagnostic waves under what it covers, on the new side only**, in its severity's
-  colour; the line's number takes the worst one, and a file's head and row count its
-  errors and warnings. `split_marks_only_the_new_side` holds the side.
+  colour; the line's number takes the worst one, and the file's band counts its errors and
+  warnings. `split_marks_only_the_new_side` holds the side.
 - **What the servers say of a spot shows once the pointer rests on it**, after the quarter
   second blame waits, or at once at the caret on `ctrl+k`. The diagnostics stand above the
   hover, and the panel leaves with the pointer or the caret.
@@ -152,9 +144,8 @@ holds this end to end.
   arrows choose, `tab` types the choice over the word, `enter` stays a newline.
   `down_chooses_the_next_and_tab_types_it_over_the_word` holds the keys.
 
-**Search** walks the worktree in parallel, reports in batches, caps what it returns, and
-stops when the next search starts. The path search covers the whole worktree, not only
-the diff.
+**The worktree's paths are walked by its ignore rules**, off the main thread, for the
+explorer's tree and the palette's `#`; they cover the whole worktree, not only the diff.
 
 **The clipboard** is the desktop's, or Groove's own when there is no desktop.
 
@@ -169,7 +160,7 @@ adopting the session ends its terminals.
 
 ## Git
 
-**A commit takes the index**; stage and unstage are per file. The agent commits; the
+**A commit takes the index.** The agent or a terminal stages, the agent commits; the
 palette holds push and pull.
 
 **A push goes to the branch's own name on origin**, and nowhere else. A pull is

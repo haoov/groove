@@ -1,9 +1,12 @@
 //! What the pointer can reach: the last rect registered over a point wins.
 
 mod note;
+mod pointing;
+pub mod read;
 mod target;
 
 pub use note::{Composing, NoteButton};
+pub use pointing::Answering;
 pub use target::Target;
 
 use groove_gfx::Rect;
@@ -56,14 +59,18 @@ pub enum Scroller {
     /// The rail's own log.
     Feed,
     Settings,
-    /// The Resources tab's list, or the object described.
+    /// The Kubernetes list, or the object described.
     Resources,
-    /// The Resources tab's kinds sidebar.
+    /// The Kubernetes sidebar.
     Kinds,
+    /// The agent's conversation, from its end.
+    Chat,
+    /// Groove's own prompt, from its first row.
+    Prompt,
     /// One of the board's columns.
     Column(u8),
-    /// A maintenance task's alerts.
-    Alerts,
+    /// The sidebar, on a mode whose body is not a list.
+    Aside,
 }
 
 impl Scroller {
@@ -79,14 +86,16 @@ impl Scroller {
             Scroller::Across => 6,
             Scroller::Resources => 7,
             Scroller::Kinds => 8,
-            Scroller::Alerts => 9,
+            Scroller::Chat => 10,
+            Scroller::Prompt => 11,
+            Scroller::Aside => 12,
             Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
 
 /// The scrollers ahead of the board's columns.
-const OWN: usize = 10;
+const OWN: usize = 13;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]
@@ -100,6 +109,10 @@ pub struct Hits {
     chars: Chars,
     /// Under the caret, where the code surface drew it.
     caret: Option<(f32, f32)>,
+    read: Vec<read::Line>,
+    typed: read::Typed,
+    /// Each subagent's card, by the conversation's scroll that shows it whole.
+    sent: Vec<(String, f32)>,
 }
 
 impl Hits {
@@ -150,6 +163,35 @@ impl Hits {
 
     pub fn caret(&self) -> Option<(f32, f32)> {
         self.caret
+    }
+
+    /// The conversation's text, in reading order.
+    pub fn reading(&mut self, lines: Vec<read::Line>) {
+        self.read = read::ordered(lines);
+    }
+
+    pub fn read(&self) -> &[read::Line] {
+        &self.read
+    }
+
+    pub fn sent_at(&mut self, id: &str, scroll: f32) {
+        self.sent.push((id.to_string(), scroll));
+    }
+
+    /// The scroll that shows the subagent `id`'s card, as the last frame laid it.
+    pub fn sent(&self, id: &str) -> Option<f32> {
+        self.sent
+            .iter()
+            .find(|(one, _)| one == id)
+            .map(|(_, at)| *at)
+    }
+
+    pub fn typing(&mut self, typed: read::Typed) {
+        self.typed = typed;
+    }
+
+    pub fn typed(&self) -> &read::Typed {
+        &self.typed
     }
 
     /// The last thing drawn over this point.

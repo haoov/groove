@@ -1,9 +1,8 @@
-//! Leaving a note: the menu a right click opens, the words typed in place, the note
-//! the keyboard asks for.
+//! The menu a right click opens on lines, and a reply typed in place under its thread.
 
+mod asking;
 mod composer;
 mod forged;
-mod own;
 mod typing;
 
 use groove_controllers::delivery;
@@ -32,11 +31,30 @@ fn asked(app: &AppState, ui: &mut Ui, line: usize) {
     );
 }
 
-/// What picking the menu's first row leaves.
-fn pick(app: &AppState, ui: &mut Ui) -> Vec<groove_controllers::Command> {
-    let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
-    let row = hits.rect_of(&Target::MenuRow(0)).expect("a menu row");
-    click(row, ui, app, &hits)
+/// A thread of the merge request, on line 1.
+fn thread() -> groove_types::Note {
+    groove_types::Note {
+        thread: "t1".into(),
+        anchor: Some(Anchor::line("src/lib.rs", 1)),
+        resolved: false,
+        said: vec![groove_types::Said {
+            author: "reviewer".into(),
+            body: "issue: this leaks".into(),
+            at: groove_types::Timestamp::new(0),
+        }],
+    }
+}
+
+/// The thread on line 1, and a reply to it open in the file view with `text` typed in it.
+fn replying(text: &str) -> (AppState, Ui) {
+    let mut app = opened();
+    app.delivery.shown = vec![thread()];
+    let mut ui = on_diff();
+    ui.session.mode = crate::views::session::Mode::Files;
+    ui.session.noting = Some(Noting::reply(Anchor::line("src/lib.rs", 1), "t1".into()));
+    ui.focus = crate::Focus::Workspace;
+    typed(text, &mut ui, &app);
+    (app, ui)
 }
 
 fn press(key: Key, ui: &mut Ui, app: &AppState) -> Vec<groove_controllers::Command> {
@@ -53,10 +71,10 @@ fn press(key: Key, ui: &mut Ui, app: &AppState) -> Vec<groove_controllers::Comma
 }
 
 #[test]
-fn a_right_click_in_the_rows_offers_a_note_on_that_line() {
+fn a_right_click_in_the_rows_asks_about_that_line() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -68,7 +86,7 @@ fn a_right_click_in_the_rows_offers_a_note_on_that_line() {
 }
 
 #[test]
-fn a_right_click_inside_a_selection_offers_a_note_on_all_of_it() {
+fn a_right_click_inside_a_selection_asks_about_all_of_it() {
     let mut app = opened();
     let file = app.workspace.active_mut().expect("the open file");
     file.new.holding(Selection {
@@ -76,7 +94,7 @@ fn a_right_click_inside_a_selection_offers_a_note_on_all_of_it() {
         head: Caret::new(2, 1),
     });
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -88,86 +106,8 @@ fn a_right_click_inside_a_selection_offers_a_note_on_all_of_it() {
 }
 
 #[test]
-fn picking_the_note_opens_an_empty_row_to_type_in() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    asked(&app, &mut ui, 1);
-    let commands = pick(&app, &mut ui);
-    assert!(commands.is_empty(), "nothing is asked of the app yet");
-    assert_eq!(
-        ui.session.noting.as_ref().map(|one| one.anchor.clone()),
-        Some(Anchor::line("src/lib.rs", 1))
-    );
-    assert!(ui.menu().is_none(), "the menu shuts behind it");
-    typed("x", &mut ui, &app);
-    let said = ui.session.noting.as_ref().map(|one| one.buffer.text());
-    assert_eq!(said.as_deref(), Some("x"), "the row takes the keys");
-}
-
-#[test]
-fn the_words_typed_draw_in_the_row_under_the_line() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
-    ui.focus = crate::Focus::Workspace;
-    typed("leaks", &mut ui, &app);
-    let drawn = row_texts(&app, &ui);
-    assert!(
-        drawn.iter().any(|one| one.contains("leaks")),
-        "the words stand in the surface: {drawn:?}"
-    );
-    let at = |text: &str| drawn.iter().position(|one| one.contains(text));
-    assert!(
-        at("leaks") < at("TWO"),
-        "above the line under it: {drawn:?}"
-    );
-}
-
-#[test]
-fn a_note_being_typed_takes_a_row_of_its_own() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    let rows = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
-    ui.focus = crate::Focus::Workspace;
-    assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        rows + 7,
-        "its chips, its row, a rule, its buttons, and room around the chips and under the buttons"
-    );
-}
-
-#[test]
-fn the_words_leave_a_note_when_the_keyboard_says_so() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
-    typed("issue: this leaks", &mut ui, &app);
-    let commands = press(Key::Enter, &mut ui, &app);
-    assert!(ui.session.noting.is_none(), "the row closes behind it");
-    let delivery::Command::Note(act) = one_command(commands) else {
-        panic!("a note is asked for");
-    };
-    assert_eq!(
-        act,
-        groove_controllers::delivery::NoteAct::Create {
-            anchor: Anchor::line("src/lib.rs", 1),
-            content: "issue: this leaks".into(),
-        }
-    );
-}
-
-#[test]
-fn nothing_typed_leaves_no_note() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
+fn an_empty_reply_sends_nothing() {
+    let (app, mut ui) = replying("");
     let commands = press(Key::Enter, &mut ui, &app);
     assert!(commands.is_empty(), "{commands:?}");
     assert!(ui.session.noting.is_none());
@@ -175,22 +115,15 @@ fn nothing_typed_leaves_no_note() {
 
 #[test]
 fn escape_drops_the_words_and_asks_nothing() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
-    typed("issue", &mut ui, &app);
+    let (app, mut ui) = replying("issue");
     let commands = press(Key::Escape, &mut ui, &app);
     assert!(commands.is_empty(), "{commands:?}");
     assert!(ui.session.noting.is_none());
 }
 
 #[test]
-fn what_is_pasted_goes_into_the_note() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
+fn what_is_pasted_goes_into_the_reply() {
+    let (app, mut ui) = replying("");
     handle(
         Input::Paste("issue: this leaks".into()),
         &mut ui,
@@ -212,119 +145,20 @@ fn one_command(commands: Vec<groove_controllers::Command>) -> delivery::Command 
     }
 }
 
-/// A note of this session's own, on line 1.
-fn own() -> groove_types::Note {
-    groove_types::Note {
-        origin: groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        anchor: Some(Anchor::line("src/lib.rs", 1)),
-        resolved: false,
-        said: vec![groove_types::Said {
-            author: "you".into(),
-            body: "issue: this leaks".into(),
-            at: groove_types::Timestamp::new(0),
-        }],
-    }
-}
-
-/// A click on one of the note's own buttons.
-fn on_button(
-    app: &AppState,
-    ui: &mut Ui,
-    button: crate::hit::NoteButton,
-) -> Vec<groove_controllers::Command> {
-    let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
-    let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
-    let rect = hits
-        .rect_of(&Target::Note(id, button))
-        .expect("the button is drawn");
-    click(rect, ui, app, &hits)
-}
-
 #[test]
-fn a_line_that_already_carries_a_note_takes_no_other() {
+fn hovering_one_threads_button_leaves_the_others_alone() {
     let mut app = opened();
-    app.delivery.shown = vec![own()];
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    asked(&app, &mut ui, 1);
-    assert!(
-        ui.menu().is_none(),
-        "one note a line: {:?}",
-        ui.menu().map(|menu| &menu.of)
-    );
-}
-
-#[test]
-fn a_line_beside_a_noted_one_still_takes_a_note() {
-    let mut app = opened();
-    app.delivery.shown = vec![own()];
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    asked(&app, &mut ui, 0);
-    assert_eq!(
-        ui.menu().map(|menu| &menu.of),
-        Some(&crate::Of::Line {
-            path: "src/lib.rs".into(),
-            lines: (0, 0),
-        })
-    );
-}
-
-#[test]
-fn a_selection_that_runs_into_a_note_takes_no_note() {
-    let mut app = opened();
-    app.delivery.shown = vec![own()];
-    let file = app.workspace.active_mut().expect("the open file");
-    file.new.holding(Selection {
-        anchor: Caret::new(0, 0),
-        head: Caret::new(1, 1),
-    });
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    asked(&app, &mut ui, 0);
-    assert!(ui.menu().is_none(), "the note on line 1 is inside it");
-}
-
-#[test]
-fn a_note_written_again_is_typed_in_its_own_place() {
-    let mut app = opened();
-    app.delivery.shown = vec![own()];
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    let with_note = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
-    on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
-    assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
-        with_note + 1,
-        "the composer stands in place of the note, room around its chips"
-    );
-}
-
-#[test]
-fn hovering_one_notes_button_leaves_the_others_alone() {
-    let mut app = opened();
-    let mut second = own();
-    second.origin = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n2"));
+    let mut second = thread();
+    second.thread = "t2".into();
     second.anchor = Some(Anchor::line("src/lib.rs", 2));
-    app.delivery.shown = vec![own(), second];
+    app.delivery.shown = vec![thread(), second];
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let mut ui = on_diff();
-    ui.hover = Some(Target::Note(
-        groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        crate::hit::NoteButton::Edit,
-    ));
+    ui.hover = Some(Target::Note("t1".into(), crate::hit::NoteButton::Resolve));
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let buttons: Vec<groove_gfx::Rect> = ["n1", "n2"]
+    let buttons: Vec<groove_gfx::Rect> = ["t1", "t2"]
         .into_iter()
-        .flat_map(|id| {
-            let origin = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new(id));
-            [
-                crate::hit::NoteButton::Edit,
-                crate::hit::NoteButton::Resolve,
-            ]
-            .map(|button| hits.rect_of(&Target::Note(origin.clone(), button)))
-        })
-        .flatten()
+        .filter_map(|id| hits.rect_of(&Target::Note(id.into(), crate::hit::NoteButton::Resolve)))
         .collect();
     let lit = frame
         .layers()
@@ -332,49 +166,13 @@ fn hovering_one_notes_button_leaves_the_others_alone() {
         .flat_map(|layer| layer.quads.iter())
         .filter(|quad| quad.color == styles.glass_hover() && buttons.contains(&quad.rect))
         .count();
-    assert_eq!(lit, 1, "one button of one note");
+    assert_eq!(buttons.len(), 2, "a resolve under each thread");
+    assert_eq!(lit, 1, "one button of one thread");
 }
 
 #[test]
-fn a_noted_line_takes_no_other_note_in_the_diff_views() {
-    for view_kind in [DiffView::Inline, DiffView::Split] {
-        let mut app = opened();
-        app.delivery.shown = vec![own()];
-        let mut ui = on_diff();
-        ui.session.view = view_kind;
-        let row = noted_row(&app, &ui);
-        asked(&app, &mut ui, row);
-        assert!(
-            ui.menu().is_none(),
-            "{view_kind:?} offers no second note: {:?}",
-            ui.menu().map(|menu| &menu.of)
-        );
-    }
-}
-
-/// The surface row the note's own line stands on.
-fn noted_row(app: &AppState, ui: &Ui) -> usize {
-    let total = crate::views::session::diff::rows_of(app, ui, drawn_cols(app, ui));
-    (0..total)
-        .find(|row| {
-            crate::views::session::diff::line_at(
-                app,
-                ui,
-                (ui.session.face(), drawn_cols(app, ui)),
-                *row,
-            ) == Some(("src/lib.rs".to_string(), 1, 0))
-        })
-        .expect("the note's line")
-}
-
-#[test]
-fn shift_enter_breaks_the_line_and_the_note_keeps_it() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
-    ui.focus = crate::Focus::Workspace;
-    typed("issue: this leaks", &mut ui, &app);
+fn shift_enter_breaks_the_line_and_the_reply_keeps_it() {
+    let (app, mut ui) = replying("fixed");
     let before = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     let shift = Modifiers {
         shift: true,
@@ -391,11 +189,11 @@ fn shift_enter_breaks_the_line_and_the_note_keeps_it() {
         before + 1,
         "a row per line"
     );
-    let delivery::Command::Note(act) = one_command(press(Key::Enter, &mut ui, &app)) else {
-        panic!("a note is asked for");
-    };
-    let groove_controllers::delivery::NoteAct::Create { content, .. } = act else {
-        panic!("a new note");
-    };
-    assert_eq!(content, "issue: this leaks\ndrop it");
+    assert_eq!(
+        one_command(press(Key::Enter, &mut ui, &app)),
+        delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Reply {
+            thread: "t1".into(),
+            body: "fixed\ndrop it".into(),
+        })
+    );
 }

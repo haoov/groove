@@ -57,7 +57,7 @@ object that moved since is refused. Enforced by
 **The agent runs a command in a pod only through `kube_exec`.** It names the pod, its
 container and the command as an argument list; Groove runs `kubectl exec` with no shell,
 no terminal and no input, 60 seconds unless the agent asks up to 300. The command waits for
-the user as a cluster write does, shown on the Diff tab as a shell file, even with
+the user as a cluster write does, shown on the Diff as a shell file, even with
 auto-approve on, and a context set read-only refuses it. A character that does not print
 shows escaped. The answer is its output, cut at 32 KiB, then its stderr; at its timeout
 kubectl stops, and the answer says the command may still run in the pod. Enforced by
@@ -66,10 +66,21 @@ kubectl stops, and the answer says the command may still run in the pod. Enforce
 `a_command_runs_in_its_pod_s_container_after_a_double_dash` and
 `what_does_not_print_shows_escaped`.
 
+## Conversation
+
+**Read from the transcript, never stored.** A hook names the session's transcript; Groove follows
+it from its start as it grows, and a new transcript starts the conversation again. The agent
+runs headless, and a message sent from Groove's prompt goes over its stream. A pasted message shows as
+the user's; one typed while the agent works waits until its turn takes it. A record kind Groove does not know is skipped.
+Enforced by `a_new_transcript_starts_the_conversation_again_and_the_old_one_is_not_heard`,
+`a_pasted_prompt_and_one_typed_while_the_agent_works_are_heard`,
+`a_message_typed_while_the_agent_works_waits_until_its_turn_takes_it` and
+`a_record_kind_groove_does_not_know_is_skipped`.
+
 ## Activity
 
 **The timeline holds what a session did to its own work**: git — commit, push, pull; the
-forge — an MR opened, written again, merged or closed, a CI result, a review; its notes,
+forge — an MR opened, written again, merged or closed, a CI result, a review, a thread opened;
 repos and worktrees; the agent's cluster reads; each cluster write that lands, the user's or
 the agent's, as its target and the fields it set, never their values; and the agent's turns, so the feed can say when
 it worked.

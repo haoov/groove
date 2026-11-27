@@ -1,9 +1,9 @@
-//! The notes in the surface: the row each block follows, and the rows it takes.
+//! The MR's threads in the surface: the row each block follows, and the rows it takes.
 
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_types::{Anchor, Note};
+use groove_types::Anchor;
 
 mod answer;
 mod block;
@@ -25,8 +25,8 @@ struct Block {
     /// The first row the note is about.
     from: usize,
     rows: usize,
-    /// Which note of the workspace it draws; none while it is being typed.
-    at: Option<usize>,
+    /// Which note of the workspace it draws.
+    at: usize,
     /// The note's own row of buttons, under what it says.
     acts: bool,
     /// The rows of a reply being typed, in place of the buttons.
@@ -35,7 +35,7 @@ struct Block {
     said: Vec<Worded>,
 }
 
-/// A row of the surface: a view row, a note row, a note's buttons, or the note being typed.
+/// A row of the surface: a view row, a note row, a note's buttons, or a reply being typed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Slot {
     Code(usize),
@@ -46,25 +46,18 @@ pub(crate) enum Slot {
     Acts {
         at: usize,
     },
-    /// A row of the words being typed; `reply` when they answer the note they stand in.
+    /// A row of the reply being typed.
     Typed {
         row: usize,
-        reply: bool,
     },
-    /// The labels and decorations a note being written picks from.
-    Chips,
-    /// What the note being typed offers: save and cancel.
-    Footer {
-        reply: bool,
-    },
+    /// What the reply being typed offers: send and cancel.
+    Footer,
     /// A half row of room around a note's card, or across it.
     Pad {
         room: Room,
     },
 }
 
-/// The rows of room the composer keeps around its label chips, one above and one below.
-const GAPS: usize = 2;
 /// The row that rules off what a note says from what it offers, and the room under its buttons.
 const BETWEEN: usize = 1;
 const UNDER: usize = 1;
@@ -75,7 +68,7 @@ const OVER: usize = 1;
 #[derive(Default)]
 pub(crate) struct Inline {
     blocks: Vec<Block>,
-    /// The note being typed, as its rows show it.
+    /// The reply being typed, as its rows show it.
     typed: Vec<(usize, usize, usize)>,
 }
 
@@ -93,15 +86,13 @@ impl Inline {
         let typed = noting.map_or_else(Vec::new, |one| {
             super::wrap::pieces(&one.buffer.text(), cols_of(cols))
         });
-        let over = noting.and_then(|one| one.over_id());
         let mut blocks: Vec<Block> = app
             .delivery
             .shown
             .iter()
             .enumerate()
-            .filter(|(_, note)| !written(note, over))
             .filter_map(|(at, note)| {
-                let hidden = note.resolved && !ui.session.unfolded.contains(&note.origin);
+                let hidden = note.resolved && !ui.session.unfolded.contains(&note.thread);
                 block(
                     app,
                     (view, lines),
@@ -110,20 +101,8 @@ impl Inline {
                 )
             })
             .collect();
-        let answered = noting.and_then(|one| answering(app, one, (&mut blocks, typed.len())));
-        if let Some(noting) = noting.filter(|_| answered.is_none())
-            && let Some(after) = anchored(app, (view, lines), &noting.anchor)
-        {
-            let typing = typed.len();
-            blocks.push(Block {
-                after,
-                from: anchored(app, (view, lines), &starts(&noting.anchor)).unwrap_or(after),
-                rows: GAPS + 1 + typing + BETWEEN + 1 + UNDER,
-                at: None,
-                acts: false,
-                typing,
-                said: Vec::new(),
-            });
+        if let Some(noting) = noting {
+            answering(app, noting, (&mut blocks, typed.len()));
         }
         blocks.sort_by_key(|block| (block.after, block.at));
         Self { blocks, typed }
@@ -133,7 +112,7 @@ impl Inline {
     pub(crate) fn said(&self, at: usize, row: usize) -> Worded {
         self.blocks
             .iter()
-            .find(|block| block.at == Some(at))
+            .find(|block| block.at == at)
             .and_then(|block| block.said.get(row).cloned())
             .unwrap_or_default()
     }
@@ -184,7 +163,7 @@ impl Inline {
     pub(crate) fn notes(&self, code: usize) -> bool {
         self.blocks
             .iter()
-            .filter(|block| block.at.is_some() && block.rows > 0)
+            .filter(|block| block.rows > 0)
             .any(|block| (block.from..=block.after).contains(&code))
     }
 
@@ -212,21 +191,24 @@ impl Inline {
     }
 }
 
-/// Whether this note is the one being written again.
-fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
-    over.is_some_and(|id| note.id() == Some(id))
-}
-
 /// The anchor's own first line, as an anchor of its own.
 fn starts(anchor: &Anchor) -> Anchor {
     Anchor::line(anchor.path.clone(), anchor.start_line)
 }
 
-/// Whether the note being typed is drawn: no commit shown, and its line in the view.
+/// Whether the reply being typed is drawn: no commit shown, its thread listed, its line in the view.
 pub(crate) fn noting_drawn(app: &AppState, ui: &Ui) -> bool {
     let Some(noting) = ui.session.noting.as_ref() else {
         return false;
     };
+    if !app
+        .delivery
+        .shown
+        .iter()
+        .any(|note| note.thread == noting.thread)
+    {
+        return false;
+    }
     let wrapped = super::wrapping::wrap_of(app, ui).map(|(starts, _)| starts);
     !app.workspace.readonly()
         && anchored(

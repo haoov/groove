@@ -1,10 +1,10 @@
 mod agent;
-mod alerts;
 mod appearance;
 mod asks;
 mod attaching;
 mod board;
 mod budget;
+mod chat;
 mod chords;
 mod clusters;
 mod completion;
@@ -21,10 +21,12 @@ mod focus;
 mod focus_ring;
 mod frame;
 mod glass;
+mod grounds;
 mod hover;
 mod keymap;
 mod manual;
 mod mapping;
+mod modes;
 mod motion;
 mod mouse;
 mod overview;
@@ -37,7 +39,9 @@ mod panels;
 mod pasting;
 mod pending;
 mod perf;
+mod perf_chat;
 mod perf_editor;
+mod perf_moves;
 mod perf_servers;
 mod rail;
 mod rail_children;
@@ -48,10 +52,7 @@ mod resources;
 mod reviews;
 mod routines;
 mod scoping;
-mod screen;
 mod settings;
-mod staging;
-mod strip;
 mod structure;
 
 use groove_controllers::session_service::Open;
@@ -79,11 +80,6 @@ const ALT_SHIFT: Modifiers = Modifiers {
     ctrl: false,
     shift: true,
     alt: true,
-};
-const CTRL_ONLY: Modifiers = Modifiers {
-    ctrl: true,
-    shift: false,
-    alt: false,
 };
 const CTRL_SHIFT: Modifiers = Modifiers {
     ctrl: true,
@@ -184,10 +180,10 @@ fn all_texts(frame: &groove_gfx::Frame) -> Vec<String> {
         .collect()
 }
 
-/// One frame drawn: what its bottom layer says, and its hits.
+/// One frame drawn: what every layer of it says, and its hits.
 fn render(app: &AppState, ui: &Ui, metrics: Metrics) -> (Vec<String>, Hits) {
     let (frame, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
-    (texts_of(&frame), hits)
+    (all_texts(&frame), hits)
 }
 
 /// The frame's texts, a line drawn in lit pieces read back whole.
@@ -202,14 +198,14 @@ fn whole_texts(runs: &[groove_gfx::TextRun]) -> Vec<String> {
     out.into_iter().map(|(text, ..)| text).collect()
 }
 
-/// The open file, and the whole change it belongs to.
+/// The open file, and the change it belongs to, focused on it.
 fn shows(app: &mut AppState, path: &str, before: &str, after: &str) {
     use groove_controllers::workspace_service::from_text;
     open_file(app, from_text(path, before, after));
     changed_files(app, &[(path, before, after)]);
 }
 
-/// Several changed files, as one change with nothing open.
+/// Several changed files, as one change with nothing open, the first one focused.
 fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
     use groove_controllers::workspace_service::{Changes, aligned};
     let read = files
@@ -217,6 +213,8 @@ fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
         .map(|(path, before, after)| aligned(path, before, after))
         .collect();
     app.workspace.changes = Changes::new(read);
+    let first = files.first().map(|(path, ..)| path.to_string());
+    app.workspace.changes.focus(first);
     app.workspace.files = files
         .iter()
         .map(|(path, _, _)| FileDiff {
@@ -229,10 +227,10 @@ fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
         .collect();
 }
 
-/// The sidebar with the keyboard, for the bar's own clicks.
+/// The Diff's sidebar with the keyboard, for its own clicks.
 fn sidebar_ui() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = crate::views::session::Tab::Diff;
+    ui.session.mode = crate::views::session::Mode::Diff;
     ui.focus = crate::Focus::Sidebar;
     ui.split.sidebar = WIDE_SIDEBAR;
     ui
@@ -260,13 +258,13 @@ fn hit(target: &crate::hit::Target, ui: &mut Ui, app: &AppState) -> Vec<Command>
     click(rect, ui, app, &hits)
 }
 
-/// The workspace keyboard on the Files tab.
+/// The middle's keyboard on the Files mode.
 fn on_file() -> Ui {
     let mut ui = Ui {
         focus: crate::Focus::Workspace,
         ..Ui::default()
     };
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     ui
 }
 
@@ -307,8 +305,8 @@ fn open(id: &str, title: &str) -> Open {
         read: Default::default(),
         clusters: vec![],
         children: vec![],
-        log: vec![],
         alerted: vec![],
+        pins: vec![],
     }
 }
 
@@ -398,13 +396,13 @@ fn open_file(app: &mut AppState, file: groove_controllers::workspace_service::Op
     app.workspace.arrived(&worktree, file, None, true);
 }
 
-/// The session surface on the tab and view that draw this face.
+/// The session surface on the mode and view that draw this face.
 fn set_face(ui: &mut Ui, face: crate::views::session::Face) {
-    use crate::views::session::{Face, Tab};
+    use crate::views::session::{Face, Mode};
     match face {
-        Face::File => ui.session.tab = Tab::Files,
+        Face::File => ui.session.mode = Mode::Files,
         Face::Stream(view) => {
-            ui.session.tab = Tab::Diff;
+            ui.session.mode = Mode::Diff;
             ui.session.view = view;
         }
     }

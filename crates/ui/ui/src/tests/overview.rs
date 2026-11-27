@@ -11,6 +11,13 @@ use crate::input::{Delta, Input, handle};
 use crate::tests::{app, full_app, metrics, render, task, texts_of};
 use crate::{Ui, view};
 
+/// The ui on the Overview mode.
+fn overviewed() -> Ui {
+    let mut ui = Ui::default();
+    ui.session.mode = crate::views::session::Mode::Overview;
+    ui
+}
+
 /// A session that works a task, with the task and its body read.
 fn working_a_task() -> groove_controllers::AppState {
     let mut app = full_app();
@@ -34,40 +41,14 @@ fn working_a_task() -> groove_controllers::AppState {
 }
 
 #[test]
-fn a_task_session_shows_its_properties_in_columns_and_the_body() {
-    let app = working_a_task();
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics(1280, 800, 1.0),
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts = &frame.layers()[0].texts;
-    let at = |said: &str| {
-        let one = texts.iter().find(|t| t.text == said);
-        one.unwrap_or_else(|| panic!("{said}: {:?}", texts_of(&frame)))
-            .y
-    };
-    let line = at("In progress");
-    for said in ["2026-09-14 → 2026-09-30", "1.5h"] {
-        assert_eq!(at(said), line, "{said} on the status's line");
-    }
-    for name in ["STATUS", "DATES", "HOURS"] {
-        assert!(at(name) < line, "{name} over its value");
-    }
-    assert!(at("PROPERTIES") < at("STATUS"), "the heading above");
-    assert!(at("Close the gates before the release.") > line);
-}
-
-#[test]
 fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
     let mut app = working_a_task();
     let long = "Close the gates and every one of the paths behind them. ".repeat(80);
     app.task.bodies.insert("gh-haoov-groove-50".into(), long);
     let window = metrics(1280, 800, 1.0);
-    let mut ui = Ui::default();
+    let mut ui = overviewed();
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let workspace = crate::layout::Layout::of(window, &ui).workspace;
+    let workspace = crate::layout::Layout::of(window, &ui).agent;
     assert!(
         hits.extent(crate::hit::Scroller::Overview) > 0.0,
         "the body is taller than the tab"
@@ -115,7 +96,7 @@ fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
 #[test]
 fn an_explorer_shows_no_properties_and_no_body() {
     let app = full_app();
-    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
+    let (texts, _) = render(&app, &overviewed(), metrics(1280, 800, 1.0));
     assert!(!texts.iter().any(|t| t == "PROPERTIES"), "{texts:?}");
     assert!(!texts.iter().any(|t| t == "BODY"), "{texts:?}");
 }
@@ -126,43 +107,13 @@ fn a_property_the_task_lacks_is_left_out() {
     let one = app.task.tasks.first_mut().expect("the task");
     one.logged = None;
     one.dates.start = None;
-    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
+    let (texts, _) = render(&app, &overviewed(), metrics(1280, 800, 1.0));
     assert!(texts.iter().any(|t| t == "due 2026-09-30"), "{texts:?}");
     assert!(
         !texts.iter().any(|t| t == "HOURS"),
         "an estimate alone shows no hours: {texts:?}"
     );
     assert!(!texts.iter().any(|t| t == "—"), "no dash: {texts:?}");
-}
-
-#[test]
-fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
-    let app = full_app();
-    let metrics = metrics(1280, 800, 1.0);
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics,
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = texts_of(&frame);
-    assert!(texts.iter().any(|t| t == "OVERVIEW"));
-    assert!(texts.iter().any(|t| t.starts_with("REPOS AND WORKTREES")));
-    assert!(texts.iter().any(|t| t == "kiwi"));
-    assert_eq!(
-        texts.iter().filter(|t| *t == "explorer/alpha").count(),
-        2,
-        "the header and the row"
-    );
-    let icons: Vec<groove_gfx::Icon> = frame.layers()[0].icons.iter().map(|i| i.icon).collect();
-    assert!(
-        icons.contains(&groove_gfx::Icon::Cube),
-        "the repo wears a mark"
-    );
-    assert!(
-        icons.contains(&groove_gfx::Icon::Compass),
-        "the session's kind"
-    );
 }
 
 #[test]
@@ -182,11 +133,11 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
     let metrics = metrics(1280, 800, 1.0);
     let (frame, _) = view(
         &app,
-        &Ui::default(),
+        &overviewed(),
         metrics,
         &mut groove_gfx::Fonts::embedded(),
     );
-    let workspace = crate::layout::Layout::of(metrics, &Ui::default()).workspace;
+    let workspace = crate::layout::Layout::of(metrics, &overviewed()).agent;
     let icons: Vec<groove_gfx::Icon> = frame.layers()[0]
         .icons
         .iter()
@@ -213,46 +164,11 @@ fn a_session_without_a_worktree_says_so() {
     let mut app = app();
     app.session.selected = Some(SessionId::new("a"));
     let metrics = metrics(1280, 800, 1.0);
-    let (texts, _) = render(&app, &Ui::default(), metrics);
-    assert!(texts.iter().any(|t| t == "no repo"));
-    assert!(texts.iter().any(|t| t == "no worktree"));
-}
-
-#[test]
-fn each_section_stands_in_its_own_card_inset_from_the_panel() {
-    let app = working_a_task();
-    let window = metrics(1280, 800, 1.0);
-    let ui = Ui::default();
-    let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
-    let workspace = crate::layout::Layout::of(window, &ui).workspace;
-    let cards: Vec<_> = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| {
-            quad.color == styles.band()
-                && quad.shape.radius == tokens.glass_round
-                && quad.shape.stroke == 0.0
-        })
-        .collect();
-    assert_eq!(
-        cards.len(),
-        4,
-        "the properties, the repos, the log, the body"
+    let (texts, _) = render(&app, &overviewed(), metrics);
+    assert!(
+        texts.iter().any(|t| t == "no repo · no worktree"),
+        "{texts:?}"
     );
-    for card in cards {
-        assert_eq!(
-            card.rect.x,
-            workspace.x + tokens.md,
-            "a padding at the left"
-        );
-        assert_eq!(
-            card.rect.right(),
-            workspace.right() - tokens.md,
-            "and at the right"
-        );
-    }
 }
 
 #[test]
@@ -268,7 +184,7 @@ fn hours_show_what_was_logged_alone_and_nothing_offers_to_log_more() {
             unlogged_seconds: 3600,
         },
     );
-    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
+    let (texts, _) = render(&app, &overviewed(), metrics(1280, 800, 1.0));
     assert!(!texts.iter().any(|t| t.starts_with("log ")), "{texts:?}");
     assert!(!texts.iter().any(|t| t.contains(" of ")), "{texts:?}");
 }
@@ -286,7 +202,7 @@ fn a_long_repo_name_is_whole_and_stops_before_its_path() {
     }
     let (frame, _) = view(
         &app,
-        &Ui::default(),
+        &overviewed(),
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );

@@ -1,4 +1,4 @@
-//! A cluster context attached to a session, on a namespace or the whole cluster, or let go.
+//! A cluster context attached to a session or let go; a list pinned or let go.
 
 use groove_types::{Attached, Error, SessionId, Timestamp};
 
@@ -21,6 +21,8 @@ pub(super) fn dispatch(
         Command::DetachCluster { session, attached } => {
             detach(state, services, spawner, &session, attached)
         }
+        Command::Pin { session, pin } => pinned(state, services, spawner, &session, (pin, true)),
+        Command::Unpin { session, pin } => pinned(state, services, spawner, &session, (pin, false)),
         _ => {}
     }
 }
@@ -66,6 +68,25 @@ pub fn detach(
         session,
         vec![ClusterWrite::Detach(attached)],
     );
+}
+
+/// A list pinned or let go by the open session at once, and written behind.
+fn pinned(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &SessionId,
+    (pin, on): (groove_types::Pin, bool),
+) {
+    let Some(open) = state.session.get_mut(session) else {
+        return state.failed(Error::not_found(format!("no open session {session}")));
+    };
+    let write = match on {
+        true if open.pin(pin.clone()) => ClusterWrite::Pin(pin, Timestamp::now()),
+        false if open.unpin(&pin) => ClusterWrite::Unpin(pin),
+        _ => return,
+    };
+    written(services, spawner, session, vec![write]);
 }
 
 /// `writes` held behind the ones asked before, then flushed in a job.

@@ -1,9 +1,9 @@
-//! The clusters each session holds, written off the main thread in the order they changed.
+//! The clusters and pinned lists each session holds, written off the main thread in order.
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
-use groove_types::{Attached, Error, SessionId, Timestamp};
+use groove_types::{Attached, Error, Pin, SessionId, Timestamp};
 
 use super::Service;
 
@@ -11,6 +11,8 @@ use super::Service;
 pub enum ClusterWrite {
     Attach(Attached, Timestamp),
     Detach(Attached),
+    Pin(Pin, Timestamp),
+    Unpin(Pin),
 }
 
 /// The changes waiting for a flush, and the lock one flush holds.
@@ -36,6 +38,8 @@ impl Service {
             let written = match &write {
                 ClusterWrite::Attach(one, now) => self.store.attach_cluster(&id, one, *now).await,
                 ClusterWrite::Detach(one) => self.store.detach_cluster(&id, one).await,
+                ClusterWrite::Pin(one, now) => self.store.pin(&id, one, *now).await,
+                ClusterWrite::Unpin(one) => self.store.unpin(&id, one).await,
             };
             flushed = flushed.and(written.map_err(Error::from));
         }

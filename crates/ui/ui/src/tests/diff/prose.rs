@@ -1,14 +1,14 @@
 //! What a note in the surface says, drawn as the Markdown it is written in.
 
 use groove_gfx::{Font, Fonts, Weight};
-use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
+use groove_types::{Anchor, Note, Said, Timestamp};
 
 use super::*;
 
 fn noted(body: &str) -> AppState {
     let mut app = opened();
     app.delivery.shown = vec![Note {
-        origin: NoteOrigin::Thread("t1".into()),
+        thread: "t1".into(),
         anchor: Some(Anchor::line("src/lib.rs", 1)),
         resolved: false,
         said: vec![Said {
@@ -26,7 +26,7 @@ fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
         "**issue (blocking):** **always** use `drop` [here](https://example.com/a)\n\n- [ ] then this",
     );
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let runs: Vec<&groove_gfx::TextRun> = frame
         .layers()

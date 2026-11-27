@@ -135,11 +135,11 @@ fn picking_the_files_tab_fills_the_tree_it_draws() {
     let spawner = SyncSpawner::new().unwrap();
     let (mut state, services) = working(home.path(), &spawner);
     let mut ui = Ui::default();
-    ui.session.tab = groove_ui::Tab::Diff;
+    ui.session.mode = groove_ui::Mode::Diff;
 
     let (_, hits) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let rect = hits
-        .rect_of(&groove_ui::Target::Tab(groove_ui::Tab::Files))
+        .rect_of(&groove_ui::Target::ModeTab(groove_ui::Mode::Files))
         .expect("the tab is on screen");
     handle(
         Input::Press {
@@ -152,7 +152,7 @@ fn picking_the_files_tab_fills_the_tree_it_draws() {
         &hits,
         window(),
     );
-    assert_eq!(ui.session.tab, groove_ui::Tab::Files);
+    assert_eq!(ui.session.mode, groove_ui::Mode::Files);
 
     let asked = groove_ui::frame_commands(&state, &ui, window());
     assert!(
@@ -168,9 +168,10 @@ fn picking_the_files_tab_fills_the_tree_it_draws() {
     });
 
     let (frame, _) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
+    let texts: Vec<String> = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .map(|one| one.text.clone())
         .collect();
     assert!(
@@ -207,8 +208,7 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
         &spawner,
     );
     let mut ui = Ui::default();
-    ui.session.tab = groove_ui::Tab::Diff;
-    ui.session.tab = groove_ui::Tab::Files;
+    ui.session.mode = groove_ui::Mode::Files;
 
     assert!(
         !groove_ui::frame_commands(&state, &ui, window())
@@ -217,9 +217,10 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
         "with no worktree there is nothing to walk, so nothing is asked"
     );
     let (frame, _) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
+    let texts: Vec<String> = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .map(|one| one.text.clone())
         .collect();
     assert!(

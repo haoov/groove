@@ -1,10 +1,13 @@
 //! Keys and clicks to commands; the agent pane takes every key but the app ring, copy, file search and paste.
 
+mod answer;
+pub(crate) mod ask;
 pub(crate) mod follow;
 mod keys;
 mod paste;
 mod pointer;
 mod rest;
+mod reveal;
 mod scroll;
 mod selection;
 mod typed;
@@ -19,6 +22,7 @@ pub use follow::{follow, land};
 pub use keys::encode;
 pub use paste::{Aim, aim};
 pub use rest::{hovering, pointed, rest, resting, word};
+pub use reveal::reveal;
 
 /// A key as the ui reads it, free of the window library's types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,6 +144,7 @@ pub fn handle(
                     out.extend(selection::let_go(ui, app, grid, hits, metrics))
                 }
                 Some(Held::Selecting(grid)) => out.extend(selection::copied(app, grid)),
+                Some(Held::Reading) => out.extend(pointer::read_out(ui, hits)),
                 _ => {}
             }
             out
@@ -170,26 +175,17 @@ pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
 /// What a palette row asks of the window, done as its chord or its click would.
 pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     use crate::palette::Act;
-    use crate::views::session::{Noting, Pane, Tab};
+    use crate::views::session::{Mode, Pane};
     match act {
         Act::Key(action) => return keys::run(action, ui, app),
         Act::View(view) => {
             ui.session.view = view;
-            ui.session.tab = Tab::Diff;
+            ui.session.bring(Mode::Diff);
         }
         Act::Mode(mode) => {
-            ui.session.tab = Tab::Diff;
+            ui.session.bring(Mode::Diff);
             let set = groove_controllers::workspace::Command::SetMode { mode };
             return vec![Command::Workspace(set)];
-        }
-        Act::Note => {
-            let Some(open) = app.workspace.active() else {
-                return Vec::new();
-            };
-            let line = open.new.caret().line as u32;
-            let anchor = groove_types::Anchor::line(open.path.clone(), line);
-            ui.session.noting = Some(Noting::new(anchor));
-            ui.focus = crate::Focus::Workspace;
         }
         Act::Notes(showing) => {
             ui.session.pane = Pane::Notes;
@@ -203,11 +199,11 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             let held = &mut ui.session.resources;
             (held.kind, held.scroll, held.showing) = (kind.or(held.kind.take()), 0.0, None);
             ui.surface = crate::Surface::Session;
-            ui.session.tab = Tab::Resources;
+            ui.session.bring(Mode::Kubernetes);
             ui.focus = crate::Focus::Workspace;
         }
         Act::Open(path) => {
-            ui.session.tab = Tab::Files;
+            ui.session.bring(Mode::Files);
             ui.focus = crate::Focus::Workspace;
             let open = groove_controllers::workspace::Command::OpenFile { path, at: None };
             return vec![Command::Workspace(open)];

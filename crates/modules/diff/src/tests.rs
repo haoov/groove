@@ -1,5 +1,6 @@
 mod alignment;
 mod changes;
+mod focus;
 mod hunked;
 mod moved;
 mod opened;

@@ -78,7 +78,7 @@ impl Styles {
         self.sans(self.tokens.title, Weight::Medium, role)
     }
 
-    /// A session's name in the strip's header.
+    /// A session's name on its bar.
     pub fn session_title(&self, role: Role) -> TextStyle {
         self.sans(self.tokens.h3, Weight::Medium, role)
     }

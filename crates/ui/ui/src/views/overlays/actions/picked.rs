@@ -4,7 +4,7 @@ use groove_controllers::{Command, session, workspace};
 use groove_types::Section;
 
 use super::{Act, TAB, acts};
-use crate::views::session::{Asked, Naming, Noting};
+use crate::views::session::{Asked, Naming};
 use crate::{Losing, Of};
 
 /// A menu whose rows come with it: a write asked, a skill sent, or a mapping slot given a value.
@@ -45,7 +45,21 @@ fn offered(of: &Of, at: usize) -> Option<Picked> {
             })
         }
         Of::Tab { path, owes, others } => Some(closed(path, *owes, others, at)),
+        Of::Models { session, rows, .. } => Some(switched(session, rows, at)),
         _ => None,
+    }
+}
+
+/// The agent switched to the model of the row picked.
+fn switched(session: &groove_types::SessionId, rows: &[crate::menu::Told], at: usize) -> Picked {
+    let model = rows.get(at).and_then(|one| one.model.clone());
+    let switch = model.map(|model| groove_controllers::agent::Command::Model {
+        session: session.clone(),
+        model,
+    });
+    Picked {
+        commands: switch.map(Command::Agent).into_iter().collect(),
+        ..Picked::default()
     }
 }
 
@@ -121,9 +135,10 @@ pub struct Picked {
     pub commands: Vec<Command>,
     pub asking: Option<Losing>,
     pub naming: Option<Naming>,
-    pub noting: Option<Noting>,
     /// The terminal drawer opens, its new tab taking the keys.
     pub drawer: bool,
+    /// Words put in the agent's prompt.
+    pub prompting: Option<String>,
 }
 
 impl Picked {
@@ -137,13 +152,6 @@ impl Picked {
     fn names(naming: Naming) -> Self {
         Self {
             naming: Some(naming),
-            ..Self::default()
-        }
-    }
-
-    fn notes(anchor: groove_types::Anchor) -> Self {
-        Self {
-            noting: Some(Noting::new(anchor)),
             ..Self::default()
         }
     }
@@ -176,11 +184,17 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         return picked;
     }
     match (of, acts(of).get(at)) {
-        (Of::Line { path, lines }, Some(Act::Note)) => Picked::notes(groove_types::Anchor {
-            path: path.clone(),
-            start_line: lines.0,
-            end_line: lines.1,
-        }),
+        (Of::Line { path, lines }, Some(Act::Ask)) => {
+            let anchor = groove_types::Anchor {
+                path: path.clone(),
+                start_line: lines.0,
+                end_line: lines.1,
+            };
+            Picked {
+                prompting: Some(format!("{} ", crate::input::ask::place(&anchor))),
+                ..Picked::default()
+            }
+        }
         (Of::Path { path, dir }, Some(Act::NewFile)) => {
             Picked::names(named(Asked::File, path, *dir, ""))
         }

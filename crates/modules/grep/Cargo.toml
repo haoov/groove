@@ -1,6 +1,6 @@
 [package]
 name = "groove-grep"
-description = "Text across a worktree, walked in parallel and reported in batches"
+description = "The paths of a worktree, walked by its ignore rules"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

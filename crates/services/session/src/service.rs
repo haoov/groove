@@ -30,8 +30,8 @@ pub struct Contents {
     pub read: Vec<(WorktreeId, String)>,
     pub clusters: Vec<groove_types::Attached>,
     pub children: Vec<Session>,
-    pub log: Vec<groove_types::LogEntry>,
     pub alerted: Vec<groove_types::AlertChild>,
+    pub pins: Vec<groove_types::Pin>,
 }
 
 /// A worktree just made, with what the user should hear about it.
@@ -118,7 +118,7 @@ impl Service {
         Ok(self.store.rename_explorer(id, title).await?)
     }
 
-    /// The session gone: worktrees, log to its parent, row. Unforced, lost work stops it.
+    /// The session gone: worktrees, then row. Unforced, lost work stops it.
     pub async fn remove(
         &self,
         id: &SessionId,
@@ -126,7 +126,6 @@ impl Service {
         landed: &std::collections::BTreeSet<WorktreeId>,
     ) -> Result<(), Error> {
         self.pool.cleanup_session(id, force, landed).await?;
-        self.store.hand_log_over(id).await?;
         Ok(self.store.remove(id).await?)
     }
 
@@ -209,8 +208,8 @@ impl Service {
             read: self.store.reads_of(id).await?,
             clusters: self.store.clusters_of(id).await?,
             children: self.store.children(id).await?,
-            log: self.store.log_of(id).await?,
             alerted: self.store.alert_children(id).await?,
+            pins: self.store.pins_of(id).await?,
             repos,
             worktrees,
             status,

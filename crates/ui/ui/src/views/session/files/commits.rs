@@ -15,12 +15,14 @@ use groove_ui_kit::widgets::glass_hoverable;
 
 use groove_gfx::Edges;
 
-pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
+/// The branch's log; returns how far it scrolls.
+pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> f32 {
     let log = &app.workspace.log;
     if log.is_empty() {
         let style = ctx.styles.small(Role::Faint);
         let line = groove_ui_kit::shape::band(body, 0.0, ctx.tokens.row);
-        return row(ctx, line, ctx.tokens.md, said(app), style);
+        row(ctx, line, ctx.tokens.md, said(app), style);
+        return 0.0;
     }
     let height = ctx.tokens.row;
     let shown = app.workspace.commit.as_ref().map(|one| one.sha.as_str());
@@ -32,7 +34,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         log,
         |_| height,
         |ctx, line, one| entry(ctx, line, one, shown == Some(one.sha.as_str())),
-    );
+    )
 }
 
 /// What the list says instead of rows.

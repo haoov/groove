@@ -13,20 +13,6 @@ const CTRL_ALT: Modifiers = Modifiers {
 };
 
 #[test]
-fn alt_o_opens_the_workspace_then_gives_it_the_keys_then_folds_it() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    ui.session.stowed = true;
-    press(Key::Char('o'), ALT, &mut ui, &app);
-    assert_eq!((ui.session.stowed, ui.focus), (false, Focus::Workspace));
-    ui.focus = Focus::Agent;
-    press(Key::Char('o'), ALT, &mut ui, &app);
-    assert_eq!((ui.session.stowed, ui.focus), (false, Focus::Workspace));
-    press(Key::Char('o'), ALT, &mut ui, &app);
-    assert_eq!((ui.session.stowed, ui.focus), (true, Focus::Agent));
-}
-
-#[test]
 fn alt_f_opens_the_palette_on_the_worktree_s_files() {
     let app = full_app();
     let mut ui = Ui::default();
@@ -52,23 +38,17 @@ fn alt_shift_q_closes_the_session() {
 fn ctrl_alt_and_a_direction_move_the_focused_pane_s_boundary_that_way() {
     let app = full_app();
     let mut ui = Ui {
-        focus: Focus::Agent,
+        focus: Focus::Rail,
         ..Ui::default()
     };
-    let agent = ui.split.agent;
+    let rail = ui.split.rail;
     let kept = press(Key::Char('l'), CTRL_ALT, &mut ui, &app);
-    assert!(ui.split.agent > agent, "the agent's right edge goes right");
+    assert!(ui.split.rail > rail, "the rail's right edge goes right");
     let keep = groove_controllers::config::Command::KeepPanes(ui.split.panes());
     assert_eq!(kept, [Command::Config(keep)], "kept for the next run");
     press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
-    assert_eq!(ui.split.agent, agent, "and back left");
-    ui.focus = Focus::Workspace;
-    press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
-    assert!(
-        ui.split.agent < agent,
-        "the workspace's left edge goes left"
-    );
-    (ui.focus, ui.session.tab) = (Focus::Sidebar, crate::views::session::Tab::Diff);
+    assert_eq!(ui.split.rail, rail, "and back left");
+    (ui.focus, ui.session.mode) = (Focus::Sidebar, crate::views::session::Mode::Diff);
     let sidebar = ui.split.sidebar;
     press(Key::Char('h'), CTRL_ALT, &mut ui, &app);
     assert!(

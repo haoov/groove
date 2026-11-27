@@ -23,8 +23,8 @@ pub(crate) use servers::{programs as server_programs, reconfigured as servers_re
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{close_file, copy, cut, edit_file, open_file, paste, save_file};
-use self::git::{Act, Remote, index};
-use self::search::{grep, list_paths};
+use self::git::Remote;
+use self::search::list_paths;
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
@@ -48,10 +48,8 @@ pub enum Command {
     CloseFile { path: String },
     /// `workspace.mark_read`: one file read, or the mark taken off it.
     MarkRead { path: String },
-    /// `workspace.grep`: every line holding this text, in the files `under` keeps.
-    Grep { query: String, under: String },
-    /// `workspace.fold`: one file's rows hidden under its head, or shown again.
-    Fold { path: String },
+    /// `workspace.focus`: only this file takes rows, or none with none.
+    Focus { path: Option<String> },
     /// `workspace.open_gap`: a gap gives up the lines it hides, from one end or whole.
     OpenGap { row: usize, way: Way },
     /// `workspace.show`: which rows of the whole change are on screen.
@@ -70,10 +68,6 @@ pub enum Command {
     Paste,
     /// `workspace.read_clipboard`: the clipboard read off the main thread, for the surface to paste.
     ReadClipboard,
-    /// `workspace.stage`: one path into the index.
-    Stage { path: String },
-    /// `workspace.unstage`: one path back out of it.
-    Unstage { path: String },
     /// `workspace.push`: the branch to its own name on origin.
     Push,
     /// `workspace.pull`: origin's own head, fast-forward only.
@@ -121,8 +115,7 @@ impl Command {
             Command::KeepFile { .. } => "workspace.keep_file",
             Command::CloseFile { .. } => "workspace.close_file",
             Command::MarkRead { .. } => "workspace.mark_read",
-            Command::Grep { .. } => "workspace.grep",
-            Command::Fold { .. } => "workspace.fold",
+            Command::Focus { .. } => "workspace.focus",
             Command::OpenGap { .. } => "workspace.open_gap",
             Command::Show { .. } => "workspace.show",
             Command::Edit(_) => "workspace.edit",
@@ -132,8 +125,6 @@ impl Command {
             Command::CopyText { .. } => "workspace.copy_text",
             Command::Paste => "workspace.paste",
             Command::ReadClipboard => "workspace.read_clipboard",
-            Command::Stage { .. } => "workspace.stage",
-            Command::Unstage { .. } => "workspace.unstage",
             Command::Push => "workspace.push",
             Command::Pull => "workspace.pull",
             Command::ListPaths => "workspace.list_paths",
@@ -157,13 +148,7 @@ impl Command {
     pub fn writes(&self) -> bool {
         matches!(
             self,
-            Command::Edit(_)
-                | Command::SaveFile
-                | Command::Cut
-                | Command::Paste
-                | Command::Stage { .. }
-                | Command::Unstage { .. }
-                | Command::Path(_)
+            Command::Edit(_) | Command::SaveFile | Command::Cut | Command::Paste | Command::Path(_)
         )
     }
 }
@@ -184,8 +169,7 @@ pub fn dispatch(
         Command::KeepFile { path } => state.workspace.keep(&path),
         Command::CloseFile { path } => close_file(state, &path),
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
-        Command::Grep { query, under } => grep(state, spawner, query, under),
-        Command::Fold { path } => state.workspace.changes.fold(&path),
+        Command::Focus { path } => state.workspace.changes.focus(path),
         Command::OpenGap { row, way } => state.workspace.open_gap_at(row, way),
         Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),
@@ -195,8 +179,6 @@ pub fn dispatch(
         Command::CopyText { text } => copied(services, spawner, text),
         Command::Paste => paste(state, services, spawner),
         Command::ReadClipboard => editor::read_clipboard(services, spawner),
-        Command::Stage { path } => index(state, spawner, Act::Stage, path),
-        Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
         Command::Push => on_remote(state, services, spawner, Remote::Push),
         Command::Pull => on_remote(state, services, spawner, Remote::Pull),
         Command::ListPaths => list_paths(state, spawner),

@@ -111,7 +111,7 @@ fn promoted(
                     }
                     Err(e) => {
                         state.failed(e);
-                        crate::agent::start(state, spawner, explorer, crate::session::FIRST_SIZE);
+                        crate::agent::start(state, spawner, explorer);
                     }
                 }
             },
@@ -157,7 +157,7 @@ fn hand_over(state: &mut AppState, spawner: &dyn Spawner, explorer: &SessionId, 
         write,
         move |state, spawner, _| {
             state.agent.written(&explorer);
-            crate::agent::start(state, spawner, to, crate::session::FIRST_SIZE);
+            crate::agent::start(state, spawner, to);
         },
     );
 }

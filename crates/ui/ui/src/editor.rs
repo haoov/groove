@@ -7,7 +7,7 @@ use groove_controllers::{AppState, Command, cluster, workspace};
 use groove_types::{Edit, FollowKey, LogKey, LogSource};
 
 use crate::Ui;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::views::session::resources::{View, log_key};
 
 /// Which buffer an editor shows.
@@ -38,10 +38,10 @@ impl Editing {
     /// The buffer the keyboard edits: an object's YAML while its tab shows it, else the open file.
     /// None on the overview, which draws no buffer.
     pub fn keyed(app: &AppState, ui: &Ui) -> Option<Editing> {
-        if ui.session.tab == Tab::Overview {
+        if matches!(ui.session.mode, Mode::Overview | Mode::Agent) {
             return None;
         }
-        if ui.session.tab == Tab::Resources {
+        if ui.session.mode == Mode::Kubernetes {
             let tab = ui.session.resources.tab()?;
             return match tab.view {
                 View::Yaml => Some(Editing::Object(tab.link.key())),

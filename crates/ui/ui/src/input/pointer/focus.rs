@@ -7,7 +7,6 @@ use crate::{Focus, Ui};
 pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
     ui.focus = pane(target, ui.focus);
     if matches!(ui.focus, Focus::Agent | Focus::Terminal | Focus::Rail) {
-        ui.session.bar.typing = None;
         if let Some(find) = ui.session.find.as_mut() {
             find.typing = false;
         }
@@ -35,16 +34,13 @@ fn listed(target: &Option<Target>) -> bool {
 fn pane(target: &Option<Target>, focus: Focus) -> Focus {
     match target {
         Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
-        Some(Target::Agent) => Focus::Agent,
+        Some(Target::Agent | Target::Chat | Target::Prompt) => Focus::Agent,
         Some(Target::Shell(_)) => Focus::Terminal,
-        Some(Target::AlertRow(_) | Target::AlertColumn(_) | Target::AlertsFold) => Focus::Alerts,
         Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
         Some(
-            Target::Tab(_)
-            | Target::Overview
+            Target::Overview
             | Target::Worktree(_)
             | Target::Link(_)
-            | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
             | Target::ArgoSearch
@@ -65,16 +61,13 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::LogSource(_)
             | Target::LogPrevious(_)
             | Target::LogRange
-            | Target::LogFollow,
+            | Target::LogFollow
+            | Target::ResourcePin
+            | Target::PinnedList(_)
+            | Target::Unpin(_),
         ) => Focus::Workspace,
         Some(target) if listed(&Some(target.clone())) => Focus::Sidebar,
-        Some(
-            Target::File(_)
-            | Target::Stage(_)
-            | Target::Unstage(_)
-            | Target::Discard
-            | Target::Keep,
-        ) => Focus::Sidebar,
+        Some(Target::File(_) | Target::Discard | Target::Keep) => Focus::Sidebar,
         _ => focus,
     }
 }

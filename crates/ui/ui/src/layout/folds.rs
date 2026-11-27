@@ -12,22 +12,15 @@ use groove_ui_kit::base::tokens::Tokens;
 pub struct Folds {
     pub feed: bool,
     pub sessions: bool,
-    pub strip: bool,
     pub manual: bool,
-    pub sidebar: bool,
-    pub alerts: bool,
 }
 
 impl Folds {
     pub fn of(ui: &Ui) -> Self {
-        let asked = ui.examining().is_some();
         Self {
             feed: ui.rail.folded,
             sessions: ui.rail.stowed,
-            strip: ui.session.stowed && !asked,
             manual: ui.session.manual,
-            sidebar: ui.session.sidebar(),
-            alerts: ui.alerts.open,
         }
     }
 }

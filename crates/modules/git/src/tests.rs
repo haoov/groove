@@ -1,8 +1,8 @@
 mod blame;
 mod branches;
+mod commit;
 mod facts;
 mod fixture;
-mod index;
 mod log;
 mod parse;
 mod remote;

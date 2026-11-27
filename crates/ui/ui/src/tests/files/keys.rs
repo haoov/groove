@@ -1,6 +1,6 @@
-//! The sidebar from the keyboard: the arrows, Enter, Space, the folds, the lists, the box.
+//! The sidebar from the keyboard: the arrows, Enter, the folds, the lists, the box.
 
-use groove_controllers::{Command, workspace};
+use groove_controllers::Command;
 use groove_types::{CommitEntry, Timestamp};
 
 use super::*;
@@ -14,7 +14,7 @@ fn key(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
 }
 
 #[test]
-fn the_arrows_walk_the_changed_files_and_space_stages_one() {
+fn the_arrows_walk_the_changed_files_and_enter_hands_over_the_keys() {
     let app = with_files(&["a.rs", "b.rs"]);
     let mut ui = sidebar_ui();
     let moved = key(Key::Down, &mut ui, &app);
@@ -22,11 +22,6 @@ fn the_arrows_walk_the_changed_files_and_space_stages_one() {
     assert!(moved.is_empty(), "the arrows only stand on a file");
     key(Key::Down, &mut ui, &app);
     assert_eq!(ui.hover, Some(Target::File("b.rs".into())));
-    let staged = key(Key::Char(' '), &mut ui, &app);
-    assert!(matches!(
-        &staged[..],
-        [Command::Workspace(workspace::Command::Stage { path })] if path == "b.rs"
-    ));
     key(Key::Enter, &mut ui, &app);
     assert_eq!(
         ui.focus,
@@ -84,34 +79,12 @@ fn the_commits_and_the_lists_are_walked_too() {
 }
 
 #[test]
-fn while_the_path_is_typed_the_arrows_walk_its_matches() {
-    let app = with_files(&["src/alpha.rs", "src/beta.rs"]);
-    let mut ui = sidebar_ui();
-    ui.session.bar.open(crate::views::session::Term::Path);
-    crate::tests::typed("rs", &mut ui, &app);
-    key(Key::Down, &mut ui, &app);
-    key(Key::Down, &mut ui, &app);
-    assert_eq!(
-        ui.hover,
-        Some(Target::File("src/beta.rs".into())),
-        "the second match"
-    );
-    assert!(ui.session.bar.typing.is_some(), "the bar keeps the keys");
-    let opened = key(Key::Enter, &mut ui, &app);
-    assert!(
-        opened.iter().any(|one| one.id() == "workspace.open_file"),
-        "{opened:?}"
-    );
-    assert!(ui.session.bar.typing.is_none(), "Enter leaves the bar");
-}
-
-#[test]
 fn ctrl_tab_walks_the_open_files_and_ctrl_w_closes_the_active_one() {
     let mut app = crate::tests::app();
     crate::tests::shows(&mut app, "a.rs", "a\n", "a\nb\n");
     crate::tests::shows(&mut app, "b.rs", "c\n", "c\nd\n");
     let mut ui = Ui::default();
-    (ui.session.tab, ui.focus) = (Tab::Files, Focus::Workspace);
+    (ui.session.mode, ui.focus) = (Mode::Files, Focus::Workspace);
     let ctrl = Modifiers {
         ctrl: true,
         ..Modifiers::default()

@@ -1,20 +1,19 @@
-//! Every worktree's MR, the sessions' notes, the review queue, and the rules on them.
+//! Every worktree's MR and its threads, the review queue, and the rules on them.
 
 use std::collections::BTreeMap;
 
 use groove_types::{
-    Annotation, AnnotationId, AnnotationStatus, Mr, MrState, Note, RepoId, ReviewMr, SessionId,
-    TimelineKind, Timestamp, WorktreeDelivery, WorktreeId, WorktreeStatus,
+    Mr, MrState, Note, ReviewMr, TimelineKind, Timestamp, WorktreeDelivery, WorktreeId,
+    WorktreeStatus,
 };
 
-use crate::{Delivered, Held, Polling, merged};
+use crate::{Delivered, Held, Polling, listed};
 
 #[derive(Debug, Default)]
 pub struct State {
     held: BTreeMap<WorktreeId, Held>,
     pub poll: Polling,
-    notes: BTreeMap<SessionId, Vec<Annotation>>,
-    /// The selected session's notes beside the selected worktree's threads.
+    /// The selected worktree's threads.
     pub shown: Vec<Note>,
     /// What the forges ask this user to review.
     pub reviews: Vec<ReviewMr>,
@@ -168,51 +167,13 @@ impl State {
 }
 
 impl State {
-    pub fn noted(&mut self, session: SessionId, notes: Vec<Annotation>) {
-        self.notes.insert(session, notes);
-    }
-
-    /// A read of the session's notes is out: nothing held yet, and nothing to ask again.
-    pub fn reading(&mut self, session: &SessionId) {
-        self.notes.entry(session.clone()).or_default();
-    }
-
-    /// The session's notes, once they have been read.
-    pub fn notes_of(&self, session: &SessionId) -> Option<&[Annotation]> {
-        self.notes.get(session).map(Vec::as_slice)
-    }
-
-    pub fn note(&self, session: &SessionId, id: &AnnotationId) -> Option<&Annotation> {
-        self.notes_of(session)?.iter().find(|one| &one.id == id)
-    }
-
-    /// Whether an open note of the session already stands on any of those lines.
-    pub fn covered(&self, session: &SessionId, path: &str, lines: (u32, u32)) -> bool {
-        let own = self.notes_of(session).unwrap_or_default();
-        merged(own, &[])
-            .iter()
-            .any(|note| !note.resolved && note.over(path, lines))
-    }
-
-    /// The session's open notes on this repo, which the forge has not been told about.
-    pub fn unposted(&self, session: &SessionId, repo: &RepoId) -> Vec<Annotation> {
-        let own = self.notes_of(session).unwrap_or_default();
-        own.iter()
-            .filter(|note| &note.repo == repo && note.status == AnnotationStatus::Open)
-            .cloned()
-            .collect()
-    }
-
-    /// The notes the surface shows: this session's, beside this worktree's threads.
-    pub fn show(&mut self, session: Option<&SessionId>, worktree: Option<&WorktreeId>) {
-        let own = session
-            .and_then(|one| self.notes_of(one))
-            .unwrap_or_default();
+    /// The threads the surface shows: this worktree's.
+    pub fn show(&mut self, worktree: Option<&WorktreeId>) {
         let threads = worktree
             .and_then(|one| self.held(one))
             .map(Held::threads)
             .unwrap_or_default();
-        self.shown = merged(own, threads);
+        self.shown = listed(threads);
     }
 }
 

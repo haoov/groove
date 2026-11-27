@@ -1,4 +1,4 @@
-//! The sidebar's notes: open, resolved or all, under the file each stands on.
+//! The sidebar's notes, the MR's threads: open, resolved or all, under the file each stands on.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -23,7 +23,8 @@ pub(super) enum Item {
     Note(usize),
 }
 
-pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
+/// The filters, then the threads; returns the list's room and how far it scrolls.
+pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> (Rect, f32) {
     let strip = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [strip, body] = column_in(body, [strip, Spec::fill()]);
     filters(ctx, strip, app, ui.session.showing);
@@ -31,11 +32,12 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     if items.is_empty() {
         let style = ctx.styles.small(Role::Faint);
         let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-        return row(ctx, line, ctx.tokens.md, said(ui.session.showing), style);
+        row(ctx, line, ctx.tokens.md, said(ui.session.showing), style);
+        return (body, 0.0);
     }
     let (head, note) = (ctx.tokens.row, ctx.tokens.row + ctx.tokens.line);
     let at = (Scroller::Files, ui.offset(Scroller::Files));
-    crate::offsets::listed(
+    let extent = crate::offsets::listed(
         ctx,
         body,
         at,
@@ -49,6 +51,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
             Item::Note(at) => one(ctx, line, app, *at),
         },
     );
+    (body, extent)
 }
 
 /// Open, resolved, all: each counted, the one shown lit.
@@ -81,7 +84,7 @@ fn said(showing: Showing) -> &'static str {
     match showing {
         Showing::Open => "No open notes",
         Showing::Resolved => "Nothing resolved yet",
-        Showing::All => "Right click a line in the diff to add a note",
+        Showing::All => "No threads on the merge request",
     }
 }
 
@@ -185,7 +188,7 @@ fn said_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header, role: Ro
     Label::new(&subject(note), ctx.styles.body(role)).draw(ctx, room);
 }
 
-/// Who wrote it, from where, on which line, how many replies and how long ago, from the left.
+/// Who wrote it, on which line, how many replies and how long ago, from the left.
 fn who_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header) {
     let (gap, faint) = (ctx.tokens.sm, ctx.styles.small(Role::Faint));
     let age = ago(head.at.age_at(ctx.now));
@@ -196,13 +199,7 @@ fn who_line(ctx: &mut Ctx, mut room: Rect, note: &Note, head: &Header) {
     };
     let initials = ctx.styles.initials(Role::Muted);
     Label::new(&head.initials, initials).left(ctx, &mut room, ctx.tokens.xs);
-    let said = [
-        head.author.as_str(),
-        head.source,
-        head.lines.as_str(),
-        &replies,
-        &age,
-    ];
+    let said = [head.author.as_str(), head.lines.as_str(), &replies, &age];
     for text in said.into_iter().filter(|one| !one.is_empty()) {
         Label::new(text, faint).left(ctx, &mut room, gap);
     }

@@ -1,143 +1,110 @@
-//! The pointer on the agent's pane: whose selection it is, and where a press goes.
+//! The fixture's agent: its session, the writes it waits on, and a machine set up.
 
-use groove_gfx::Fonts;
-use groove_types::Ask;
+use groove_controllers::agent_service::Agent;
+use groove_types::{AgentStatus, ApprovalId, Ask, SessionActivity, SessionId, Timestamp};
 
-use crate::hit::Target;
-use crate::tests::window;
+use crate::tests::app;
 use crate::{Surface, Ui};
 
-fn agent_app(asks: Vec<Ask>) -> groove_controllers::AppState {
-    super::screen::asking(asks)
+/// The fixture's session, with the writes it waits on.
+pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
+    let mut app = app();
+    let activity = SessionActivity {
+        status: AgentStatus::Idle,
+        tool: None,
+        asks,
+        changed_at: Timestamp::new(0),
+        seen_at: None,
+    };
+
+    app.agent.agents.push((
+        SessionId::new("a"),
+        Agent {
+            stream: None,
+            permissions: Vec::new(),
+            commands: Vec::new(),
+            limits: Default::default(),
+            windows: Vec::new(),
+            chosen: None,
+            activity,
+            started_at: Timestamp::new(0),
+            launch: 0,
+        },
+    ));
+    app
 }
 
-fn session_ui() -> Ui {
+/// The fixture's agent running headless, its conversation drawn.
+pub(super) fn headless(app: &mut groove_controllers::AppState) {
+    app.agent.agents[0].1.stream = Some(groove_controllers::agent_service::Stream::idle());
+}
+
+pub(super) fn ask(id: &str, op: &str, subject: &str) -> Ask {
+    Ask {
+        id: ApprovalId::new(id),
+        op: op.to_string(),
+        subject: subject.to_string(),
+        text: subject.to_string(),
+        worktree: None,
+        reviewed: false,
+    }
+}
+
+pub(super) fn session_ui() -> Ui {
     Ui {
         surface: Surface::Session,
         ..Ui::default()
     }
 }
 
-/// A terminal whose program has asked for the mouse.
-pub(super) fn mouse_reader() -> groove_controllers::agent_service::Terminal {
-    use groove_controllers::agent_service::{Hooks, PtySpec, Terminal};
-    let spec = PtySpec {
-        program: "sh".into(),
-        args: vec![
-            "-c".into(),
-            "printf '\\033[?1000h\\033[?1006h'; sleep 30".into(),
-        ],
-        cwd: "/".into(),
-        env: Vec::new(),
-        rows: 24,
-        cols: 80,
-    };
-    let hooks = Hooks {
-        on_damage: Box::new(|| {}),
-        on_exit: Box::new(|_| {}),
-    };
-    let runtime = groove_controllers::SyncSpawner::new().expect("a runtime");
-    let terminal = runtime
-        .block_on(Terminal::spawn(
-            spec,
-            groove_types::AnsiPalette::MOCHA,
-            hooks,
-        ))
-        .expect("a terminal");
-    for _ in 0..100 {
-        if terminal.reads_mouse() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
-    assert!(terminal.reads_mouse(), "the program asked for the mouse");
-    terminal
-}
-
-pub(super) fn reading_mouse(app: &mut groove_controllers::AppState) {
-    app.agent.agents[0].1.terminal = Some(mouse_reader());
-}
-
-#[test]
-fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
-    let mut app = agent_app(Vec::new());
-    reading_mouse(&mut app);
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let pane = hits.rect_of(&Target::Agent).expect("the agent pane");
-    let press = |ui: &mut Ui, shift: bool| {
-        crate::input::handle(
-            crate::input::Input::Press {
-                x: pane.x + pane.w / 2.0,
-                y: pane.y + pane.h / 2.0,
-                mods: crate::input::Modifiers {
-                    shift,
-                    ..Default::default()
-                },
-            },
-            ui,
-            &app,
-            &hits,
-            window(),
-        )
-    };
-
-    let acted = press(&mut ui, false);
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.click"], "the program's own selection stands");
-    assert!(
-        !matches!(ui.held, Some(crate::Held::Selecting(crate::Grid::Agent))),
-        "and we take none of our own"
-    );
-
-    let released =
-        crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
-    let said: Vec<&str> = released.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.click"], "the button going up is sent on too");
-
-    let acted = press(&mut ui, true);
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.select"], "shift takes the pointer back");
-    assert!(matches!(
-        ui.held,
-        Some(crate::Held::Selecting(crate::Grid::Agent))
-    ));
-}
-
-#[test]
-fn a_press_that_begins_a_selection_claims_the_moves_that_follow() {
-    let app = agent_app(Vec::new());
-    let mut ui = session_ui();
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let pane = hits.rect_of(&Target::Agent).expect("the agent pane");
-    let (x, y) = (pane.x + pane.w / 2.0, pane.y + pane.h / 2.0);
-
-    let acted = crate::input::handle(
-        crate::input::Input::Press {
-            x,
-            y,
-            mods: Default::default(),
+/// The config of a machine whose task sources are set up.
+pub(super) fn sourced(
+    mut app: groove_controllers::AppState,
+    github: bool,
+    notion: bool,
+) -> groove_controllers::AppState {
+    let git = r#"{ "git": { "worktree_root": "code/worktrees" } }"#;
+    let mut config: groove_types::Config = serde_json::from_str(git).unwrap();
+    config.notion = notion.then(|| groove_types::NotionConfig {
+        token: "t".into(),
+        database_id: "d".into(),
+        user_id: "u".into(),
+        assignee: Some("Assignee".into()),
+        sprint: Some("Sprint".into()),
+        sprint_status: None,
+        properties: Default::default(),
+        status_map: Default::default(),
+        priority_map: Default::default(),
+        filters: groove_types::FilterConfig {
+            exclude_statuses: Vec::new(),
         },
-        &mut ui,
-        &app,
-        &hits,
-        window(),
-    );
-    assert_eq!(acted.len(), 1, "the selection begins");
-    assert!(ui.pointing(), "so the window keeps sending the moves");
+        task_template_page_id: None,
+        default_project_id: None,
+    });
+    config.github = github.then(|| groove_types::GithubConfig {
+        host: "github.com".into(),
+        token: None,
+        properties: Default::default(),
+        status_map: Default::default(),
+        priority_map: Default::default(),
+    });
+    app.config.config = Some(config);
+    app
+}
 
-    let acted = crate::input::handle(
-        crate::input::Input::Move { x: x + 40.0, y },
-        &mut ui,
-        &app,
-        &hits,
-        window(),
-    );
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.select"], "and each one carries it further");
-
-    let acted = crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
-    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
-    assert_eq!(said, ["agent.copy"], "letting go takes what it holds");
-    assert!(!ui.pointing());
+/// One of Groove's own skills, `groove:<name>`.
+pub(super) fn skill(name: &str) -> groove_types::Skill {
+    groove_types::Skill {
+        id: format!("groove:{name}"),
+        plugin: "groove".into(),
+        name: name.into(),
+        description: "What it does.".into(),
+        hint: String::new(),
+        label: name.into(),
+        kinds: Vec::new(),
+        resources: Vec::new(),
+        editable: false,
+        enabled: true,
+        changed_at: Timestamp::new(0),
+    }
 }

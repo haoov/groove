@@ -1,8 +1,7 @@
 //! What a key does, by the pane that holds the keyboard.
 
 mod agent;
-mod alerts;
-mod app;
+pub(crate) mod app;
 mod bar;
 mod board;
 mod copy;
@@ -13,8 +12,11 @@ mod noting;
 mod offered;
 mod opened;
 mod panes;
+mod prompt;
 mod resources;
 mod scope;
+mod sheet;
+mod tabbed;
 mod worded;
 
 use groove_controllers::{AppState, Command};
@@ -22,14 +24,13 @@ use groove_controllers::{AppState, Command};
 use super::typed::Typed;
 use super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
-use crate::views::session::Term;
 use crate::views::settings::Draft;
 use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
-use agent::{to_agent, to_shell};
-use bar::{finding, in_bar, opened, typing};
-pub(in crate::input) use bar::{refound, searches};
+use agent::to_shell;
+pub(in crate::input) use bar::refound;
+use bar::{finding, typing};
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
@@ -46,6 +47,9 @@ pub(super) fn key_input(
     let keymap = Keymap::of(app.config.config.as_ref());
     if let Some(action) = ui.settings.binding {
         return bound(action, key, mods, ui, app);
+    }
+    if let Some(commands) = sheet::answered((key, mods), ui) {
+        return commands;
     }
     let asking = ui.examining().is_some() || ui.menu().is_some() || ui.losing().is_some();
     if asking && key == Key::Escape {
@@ -71,6 +75,9 @@ pub(super) fn key_input(
         let outcome = palette.key(key, app);
         return ui.closed_palette(outcome, app);
     }
+    if ui.prompting() && ui.focus == Focus::Agent {
+        return prompt::typed((key, mods), ui, app, (&keymap, seen.0));
+    }
     if ui.settings.open {
         return in_settings(key, mods, ui, app);
     }
@@ -91,12 +98,6 @@ fn in_session(
     match super::typed::keyed(ui, app) {
         Some(Typed::Naming) => return in_name(key, mods, ui),
         Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
-        Some(Typed::Bar(_)) => {
-            if let Some(commands) = listed::from_bar(key, ui, app, seen) {
-                return commands;
-            }
-            return in_bar(key, mods, ui, app, keymap);
-        }
         Some(Typed::Search) => {
             return resources::in_resources((key, mods), ui, app);
         }
@@ -117,19 +118,9 @@ fn in_pane(
     keymap: &Keymap,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
+    let raw = ui.focus == Focus::Terminal;
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return copy::copied(ui.focus, app);
-    }
-    let bars = [
-        (Action::OpenPath, Term::Path, !raw),
-        (Action::SearchFiles, Term::Text, true),
-    ];
-    for (action, term, heard) in bars {
-        if heard && keymap.is(action, key, mods) {
-            opened(ui, app, term);
-            return Vec::new();
-        }
     }
     if ui.showing(app) == Surface::Board {
         return board::on_board((key, mods), ui, app, seen);
@@ -141,11 +132,9 @@ fn in_pane(
         if let Some(commands) = resources::in_table((key, mods), ui, app, seen) {
             return commands;
         }
-    }
-    if ui.focus == Focus::Workspace
-        && let Some(commands) = offered::in_list((key, mods), ui, app)
-    {
-        return commands;
+        if let Some(commands) = offered::in_list((key, mods), ui, app) {
+            return commands;
+        }
     }
     if ui.focus == Focus::Terminal
         && let Some(commands) = opened::in_terminal((key, mods), app, keymap)
@@ -166,12 +155,11 @@ fn to_focused(
     ),
 ) -> Vec<Command> {
     match ui.focus {
-        Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
+        Focus::Agent => prompt::keyed((key, mods), ui, app),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),
         Focus::Rail => in_rail(key, ui, app),
-        Focus::Alerts => alerts::in_alerts(key, ui, app),
     }
 }
 

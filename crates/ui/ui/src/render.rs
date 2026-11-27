@@ -1,12 +1,13 @@
 //! The one owner of a `Frame`, and what a new window size asks of the agents.
 
-use groove_controllers::{AppState, Command, agent};
+use groove_controllers::{AppState, Command};
 use groove_gfx::{Fonts, Frame};
+use groove_types::chat::Chat;
 
 use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
 use crate::layout::Layout;
-use crate::views::session::{Tab, resources};
+use crate::views::session::{Mode, resources};
 use crate::views::{board, focus, overlays, rail, session, settings, splitter};
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -53,6 +54,9 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         if let Some(palette) = ui.palette() {
             overlays::palette::draw(&mut ctx, app, (palette, open));
         }
+        if ui.prompting() && ui.showing(app) == Surface::Session {
+            overlays::prompt::draw(&mut ctx, app, ui, open);
+        }
         if let Some(crate::Overlay::Scope(scoping)) = &ui.overlay {
             overlays::scope::draw(&mut ctx, app, ui, scoping);
         }
@@ -63,13 +67,12 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 /// What the frame needs before it draws: the reads it lacks, every terminal fitted to its pane.
 pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
     let mut out = walks(app, ui);
-    out.extend(notes(app));
     out.extend(log(app, ui));
-    out.extend(fitted(app, ui, metrics));
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
-    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    out.extend(session::files::moded::focused(app, ui));
+    let up = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     out.extend(resources::wants(
         app,
         up,
@@ -98,7 +101,7 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
 
 /// The size code is drawn at: the small text's while a pod's logs show, else the config's.
 pub fn code_size(app: &AppState, ui: &Ui, (text, code): (f32, f32)) -> f32 {
-    let resources = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let resources = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     let tab = ui.session.resources.tab().filter(|_| resources);
     match tab.is_some_and(|one| one.view == resources::View::Logs) {
         true => text * groove_ui_kit::base::tokens::SMALL,
@@ -108,7 +111,7 @@ pub fn code_size(app: &AppState, ui: &Ui, (text, code): (f32, f32)) -> f32 {
 
 /// When the Resources panel next changes on its own: a time cell turns, a pod's usage is due.
 pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
-    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let up = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     let held = &ui.session.resources;
     let listed = held.tab().is_none().then(|| app.cluster.store.due());
     let due = [listed.flatten(), resources::tab_due(app, held)];
@@ -117,7 +120,15 @@ pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
 
 /// Whether the object's tab shown holds an Application syncing, whose mark turns.
 pub fn spins(app: &AppState, ui: &Ui) -> bool {
-    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let chat = app
+        .session
+        .selected
+        .as_ref()
+        .and_then(|one| app.agent.chat(one));
+    if ui.showing(app) == Surface::Session && chat.is_some_and(Chat::sending) {
+        return true;
+    }
+    let up = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     let read = ui
         .session
         .resources
@@ -171,16 +182,6 @@ fn log(app: &AppState, ui: &Ui) -> Vec<Command> {
     }
 }
 
-/// The notes the sidebar's list needs before it can show them.
-fn notes(app: &AppState) -> Vec<Command> {
-    match crate::views::session::files::needs_notes(app) {
-        true => vec![Command::Delivery(
-            groove_controllers::delivery::Command::GetNotes,
-        )],
-        false => Vec::new(),
-    }
-}
-
 /// The walk the explorer needs before it can draw a tree.
 fn walks(app: &AppState, ui: &Ui) -> Vec<Command> {
     match crate::views::session::files::needs_walk(app, ui) {
@@ -189,30 +190,6 @@ fn walks(app: &AppState, ui: &Ui) -> Vec<Command> {
         )],
         false => Vec::new(),
     }
-}
-
-/// Every agent's grid to the pane it stands in.
-fn fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
-    let tokens = metrics.tokens();
-    let layout = Layout::of(metrics, ui);
-    let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);
-    app.agent
-        .agents
-        .iter()
-        .filter(|(_, agent)| {
-            agent
-                .terminal
-                .as_ref()
-                .is_some_and(|t| t.size() != (cols, rows))
-        })
-        .map(|(session, _)| {
-            Command::Agent(agent::Command::Resize {
-                session: session.clone(),
-                cols,
-                rows,
-            })
-        })
-        .collect()
 }
 
 /// The open section's terminals, each to the grid its pane now holds.

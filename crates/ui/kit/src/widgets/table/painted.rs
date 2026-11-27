@@ -16,7 +16,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         line: Rect,
         spans: &[(f32, f32)],
     ) {
-        if self.rows.gridded {
+        if self.lined() {
             ctx.quad(line, ctx.styles.panel_head());
             hairline(ctx, line, ctx.styles.line());
             dividers(ctx, line, (spans, self.columns));
@@ -62,9 +62,9 @@ impl<T: Clone + PartialEq> Table<'_, T> {
     ) {
         match shown {
             Shown::Band(band) => {
-                let ruled = self.rows.ruled || self.rows.gridded;
+                let ruled = self.rows.ruled || self.lined();
                 banded(ctx, line, band, (selected, ruled));
-                if self.rows.gridded {
+                if self.lined() {
                     sides(ctx, line);
                 }
             }
@@ -113,7 +113,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             }
         }
         under(ctx, rest.take_top(self.rows.under), start, row.under);
-        if self.rows.gridded {
+        if self.lined() {
             dividers(ctx, line, (spans, self.columns));
             hairline(ctx, line, ctx.styles.line());
             sides(ctx, line);

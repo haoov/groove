@@ -16,7 +16,7 @@ fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
         "one line went and one came in its place"
     );
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (frame, _) = view_of(&app, &ui);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let grounds = frame.layers()[0]
@@ -69,29 +69,6 @@ fn split_draws_each_side_with_its_own_numbers() {
         ["1", "2", "3", "1", "2", "3"],
         "three rows a side, each numbered once: {drawn:?}"
     );
-}
-
-#[test]
-fn split_draws_one_head_across_both_sides() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.view = DiffView::Split;
-    let (frame, hits) = view_of(&app, &ui);
-    let code = hits.rect_of(&Target::Code).expect("the rows");
-    let names = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|run| run.text == "lib.rs")
-        .count();
-    assert_eq!(names, 1, "the file is named once");
-    let head = hits
-        .rect_of(&Target::Head("src/lib.rs".into()))
-        .expect("its head");
-    assert!(
-        head.x < code.x,
-        "it starts on the old side: {head:?} {code:?}"
-    );
-    assert_eq!(head.right(), code.right(), "and ends on the new");
 }
 
 #[test]
@@ -168,7 +145,7 @@ fn a_tab_is_drawn_run_out_to_its_stop() {
 fn a_click_past_a_tab_lands_on_the_character_it_points_at() {
     let app = tabbed();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let chars = hits.chars();

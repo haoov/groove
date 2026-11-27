@@ -6,6 +6,8 @@ use crate::{
     BoardUi, Drag, Focus, Menu, RailUi, SessionUi, Split, Surface, Target, palette, views,
 };
 
+pub use views::session::agent_pane::AgentUi;
+
 /// What is the ui's alone: each view's part, focus, the overlay, the pointer, the caches. Never in `AppState`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ui {
@@ -21,8 +23,9 @@ pub struct Ui {
     pub board: BoardUi,
     pub settings: views::settings::SettingsUi,
     pub agent: AgentUi,
-    pub alerts: views::alerts::AlertsUi,
     pub split: Split,
+    /// How far the session's sidebar is scrolled, in pixels.
+    pub aside: f32,
     /// What the pointer's button holds while it is down.
     pub held: Option<Held>,
     /// The last press, for the next one to know whether it carries on the same click.
@@ -34,7 +37,6 @@ pub struct Ui {
     pub painted: views::session::diff::painted::Painted,
     pub walked: views::session::files::walked::Walked,
     pub wrapping: views::session::diff::wrapping::Wrapping,
-    pub narrowing: views::session::files::Narrowing,
     pub spoken: views::session::diff::popup::Spoken,
     pub blocked: views::session::diff::blocks::Blocked,
     pub compacted: views::session::diff::wrap::Compacted,
@@ -54,6 +56,8 @@ pub enum Overlay {
     Examining(groove_types::ApprovalId),
     /// A scope picker's panel: what the session holds, then what it could attach.
     Scope(views::session::resources::Scoping),
+    /// The agent's prompt, centred at the window's foot.
+    Prompt,
 }
 
 /// What the pointer's button holds while it is down.
@@ -65,6 +69,8 @@ pub enum Held {
     Text,
     /// The change map's lens.
     Lens,
+    /// A list's scrollbar thumb.
+    Thumb(crate::hit::Scroller),
     /// A task of the plan, carried to another line.
     Task(groove_types::ExternalId),
     /// A session of the rail, pressed at `from`, `grip` below its row's top, the pointer now at `at`.
@@ -80,22 +86,16 @@ pub enum Held {
     Clicking(Grid),
     /// A column of the Resources list being made wider or narrower.
     Column(views::session::resources::Dragged),
+    /// Text of the agent's conversation, being selected.
+    Reading,
+    /// Text of Groove's own prompt, being selected.
+    Prompt,
 }
 
-/// A terminal's grid: the agent's, or one of the session's shells.
+/// A terminal's grid: one of the session's shells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Grid {
-    Agent,
     Shell(u64),
-}
-
-/// What the pointer is doing to the agent's screen.
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub struct AgentUi {
-    /// Wheel pixels not yet worth a line.
-    pub carried: f32,
-    /// Shift was held: the selection is ours even where the program reads the mouse.
-    pub bypassed: bool,
 }
 
 /// What is asked before a change is thrown away, or a cluster written to.
@@ -153,6 +153,11 @@ impl Ui {
             Some(Overlay::Palette(one)) => Some(one),
             _ => None,
         }
+    }
+
+    /// Whether the agent's prompt stands open.
+    pub fn prompting(&self) -> bool {
+        matches!(self.overlay, Some(Overlay::Prompt))
     }
 
     pub fn menu(&self) -> Option<&Menu> {

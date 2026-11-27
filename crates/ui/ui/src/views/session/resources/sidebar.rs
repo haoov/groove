@@ -1,18 +1,17 @@
-//! The Resources tab's sidebar: the kinds the contexts in scope serve, by heading.
+//! The kinds the contexts in scope serve, by heading, as the Kubernetes sidebar lists them.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::{KindHeading, KubeKind};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::lit_cut;
-use groove_ui_kit::widgets::{Heading, glass_aside, glass_hoverable};
+use groove_ui_kit::widgets::{Heading, glass_hoverable};
 
 use super::scope;
 use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
+use crate::hit::Target;
 
 /// One line of the sidebar: a heading, or a kind under it; each a stop of the arrows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,50 +21,19 @@ pub enum Line {
     Kind(KubeKind),
 }
 
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let rect = ctx.app.layout.sidebar;
-    let Some(open) = app.session.selected().filter(|_| !rect.is_empty()) else {
-        return;
-    };
-    glass_aside(ctx, rect);
-    let gap = Spec::default().height(ctx.tokens.sm);
-    let [_, body] = column_in(rect, [gap, Spec::fill()]);
-    let picked = scope::kind(app, open, &ui.session.resources);
-    let lines = lines(app, open, ui);
-    let stood = ui
-        .session
-        .resources
-        .cursor
-        .and_then(|at| lines.get(at))
-        .cloned();
-    let row = ctx.tokens.row;
-    crate::offsets::listed(
-        ctx,
-        body,
-        (Scroller::Kinds, ui.session.resources.kinds),
-        &lines,
-        |_| row,
-        |ctx, line, one| match one {
-            Line::Heading(group, open) => {
-                if stood.as_ref() == Some(one) {
-                    groove_ui_kit::widgets::glass_lit(ctx, line);
-                }
-                glass_hoverable(ctx, line, Target::ResourceGroup(group.clone()));
-                Heading::new(group.label()).fold(*open).draw(ctx, line)
-            }
-            Line::Kind(kind) => {
-                let marks = (picked.as_ref() == Some(kind), stood.as_ref() == Some(one));
-                named(ctx, line, kind, marks)
-            }
-        },
-    );
+/// A heading that folds, or a kind on the held ground while it is the one `picked`.
+pub(super) fn kind_line(ctx: &mut Ctx, line: Rect, one: &Line, picked: Option<&KubeKind>) {
+    match one {
+        Line::Heading(group, open) => {
+            glass_hoverable(ctx, line, Target::ResourceGroup(group.clone()));
+            Heading::new(group.label()).fold(*open).draw(ctx, line)
+        }
+        Line::Kind(kind) => named(ctx, line, kind, picked == Some(kind)),
+    }
 }
 
-/// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.
-fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, (picked, highlighted): (bool, bool)) {
-    if highlighted {
-        groove_ui_kit::widgets::glass_lit(ctx, line);
-    }
+/// One kind at a file's depth: listed, on the held ground between the rules.
+fn named(ctx: &mut Ctx, line: Rect, kind: &KubeKind, picked: bool) {
     glass_hoverable(ctx, line, Target::ResourceKind(kind.clone()));
     if picked {
         groove_ui_kit::widgets::glass_chosen(ctx, line);

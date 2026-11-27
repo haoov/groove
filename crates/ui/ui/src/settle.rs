@@ -3,22 +3,21 @@
 use groove_controllers::AppState;
 use groove_types::SessionId;
 
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Overlay, Surface, Ui};
 
 impl Ui {
-    /// Reads the layout's state, drops what a move left, lands a pending tab, and leaves Kubernetes with no cluster.
+    /// Reads the layout's state, drops what a move left, lands a pending mode, and leaves Kubernetes with no cluster.
     pub fn settle(&mut self, app: &AppState) {
-        let maintained = app
+        let shells = app
             .session
-            .selected()
-            .is_some_and(|open| open.state.maintenance);
-        self.alerts.shown = maintained;
-        if self.focus == crate::Focus::Alerts && !self.alerts.shown {
-            self.focus = crate::Focus::Agent;
-        }
+            .selected
+            .as_ref()
+            .and_then(|one| app.shell.shells(one));
+        self.session.terminals = shells.is_some_and(|one| !one.tabs.is_empty());
         self.session.reading = app.workspace.commit.is_some();
         self.review(app);
+        self.sheeted(app);
         self.kept_resources(app);
         self.moved(app);
         self.left(app);
@@ -27,14 +26,10 @@ impl Ui {
             .session
             .selected()
             .is_some_and(|open| open.holds_clusters());
-        if self.session.tab == Tab::Resources && !held {
-            self.session.tab = Tab::Overview;
+        if self.session.mode == Mode::Kubernetes && !held {
+            self.session.mode = Mode::Agent;
         }
-        let working = matches!(self.focus, crate::Focus::Workspace | crate::Focus::Sidebar);
-        if self.session.tab != self.session.settled || working {
-            self.session.stowed = false;
-        }
-        if !self.session.sidebar() && self.focus == crate::Focus::Sidebar {
+        if self.session.folded && self.focus == crate::Focus::Sidebar {
             self.focus = crate::Focus::Workspace;
         }
         self.unfound();
@@ -42,7 +37,7 @@ impl Ui {
         crate::views::session::diff::blocks::follow(self, app);
     }
 
-    /// A session waiting on a cluster write stands on the Diff tab until it is answered, then goes back.
+    /// A session waiting on a cluster write stands on the Diff until it is answered, then goes back.
     fn review(&mut self, app: &AppState) {
         let Some(selected) = app.session.selected.clone() else {
             return;
@@ -57,23 +52,39 @@ impl Ui {
         let held = self.session.left.as_ref();
         let left = held.filter(|(one, _)| *one == selected);
         let Some(id) = waiting else {
-            if let Some((_, tab)) = left {
-                self.session.tab = *tab;
+            if let Some((_, mode)) = left {
+                self.session.mode = *mode;
                 self.session.left = None;
             }
             return;
         };
         if left.is_none() {
-            self.session.left = Some((selected, self.session.tab));
+            self.session.left = Some((selected, self.session.mode));
         }
-        (self.session.tab, self.session.stowed) = (Tab::Diff, false);
+        self.session.mode = Mode::Diff;
         self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
     }
 
-    /// The find bar lets go of the keys on a tab change, and while no bar is drawn.
+    /// The sheet shows the selected session's write only: it closes on one of another session's,
+    /// and opens on arriving at a session that asks.
+    fn sheeted(&mut self, app: &AppState) {
+        let selected = app.session.selected.clone();
+        let arrived = std::mem::replace(&mut self.session.sheeted, selected.clone()) != selected;
+        let shown = self.examining().cloned();
+        if shown.is_some_and(|id| crate::views::session::sheet::found(app, &id).is_none()) {
+            self.close(|one| matches!(one, Overlay::Examining(_)));
+        }
+        let asks = selected.as_ref().and_then(|one| app.agent.activity(one));
+        let first = asks.and_then(|one| one.asks.iter().find(|ask| !ask.reviewed));
+        if let Some(ask) = first.filter(|_| arrived && self.overlay.is_none()) {
+            self.examine(ask.id.clone());
+        }
+    }
+
+    /// The find bar lets go of the keys on a mode change, and while no bar is drawn.
     fn unfound(&mut self) {
         let session = &mut self.session;
-        let moved = std::mem::replace(&mut session.settled, session.tab) != session.tab;
+        let moved = std::mem::replace(&mut session.settled, session.mode) != session.mode;
         let hidden = moved || !session.finds();
         if let Some(find) = session.find.as_mut().filter(|_| hidden) {
             find.typing = false;
@@ -107,7 +118,6 @@ impl Ui {
         match now {
             Surface::Board => {
                 let session = &mut self.session;
-                session.bar.typing = None;
                 session.resources.typing = false;
                 if let Some(find) = session.find.as_mut() {
                     find.typing = false;
@@ -120,7 +130,7 @@ impl Ui {
         }
     }
 
-    /// A question or a draft about the worktree, or the session, left behind, dropped; the Resources tab kept per session.
+    /// A question or a draft about the worktree, or the session, left behind, dropped; the Kubernetes mode's state kept per session.
     fn moved(&mut self, app: &AppState) {
         let session = app.session.selected.clone();
         let worktree = app.session.selected_worktree().map(|one| one.id.clone());
@@ -136,7 +146,8 @@ impl Ui {
             _ => false,
         };
         if session_left {
-            self.session.going = None;
+            (self.session.going, self.session.revealing) = (None, None);
+            (self.agent.reading, self.agent.scroll) = (None, 0.0);
         }
         if session_left && !promoted {
             self.swap_resources(was.0, now.0.clone());

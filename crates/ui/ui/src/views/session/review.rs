@@ -1,4 +1,4 @@
-//! The Diff tab while its session waits on a cluster write: the ask on a band, then the change it would make.
+//! The Diff while its session waits on a cluster write: the ask on a band, then the change it would make.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -16,14 +16,15 @@ use groove_ui_kit::widgets::Button;
 /// The ask over the diff, which holds the write's change once it is read.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     let Some(ask) = waiting(app) else {
-        return super::diff::draw(ctx, app, ui, body);
+        return super::diff::moded::body(ctx, app, ui, body);
     };
+    let diff = super::diff::moded::body;
     let tall = Spec::default().height(ctx.tokens.row * 2.0 + ctx.tokens.md * 2.0);
     let [band, rest] = column_in(body, [tall, Spec::fill()]);
     let shown = app.workspace.reviewed() == Some(ask.id.as_str());
     asking(ctx, band, &ask, shown);
     if shown {
-        return super::diff::draw(ctx, app, ui, rest);
+        return diff(ctx, app, ui, rest);
     }
     let room = rest.pad(Edges::all(ctx.tokens.md));
     let [line, _] = column_in(room, [Spec::default().height(ctx.tokens.row), Spec::fill()]);

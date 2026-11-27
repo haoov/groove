@@ -65,7 +65,7 @@ fn header(ctx: &mut Ctx, (line, card): (Rect, Rect), gutter: Block, head: &Heade
         from_left(&mut room, ctx.tokens.xs, 0.0);
     }
     let age = ago(head.at.age_at(ctx.now));
-    for said in [head.source, head.lines.as_str(), age.as_str()] {
+    for said in [head.lines.as_str(), age.as_str()] {
         Label::new(said, faint).left(ctx, &mut room, sm);
     }
 }
@@ -114,19 +114,8 @@ pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
     let card = card(ctx, line, gutter);
     let at = gutter.content(ctx, line);
     let mut room = span(line, at, card.right() - ctx.tokens.sm - at);
-    let gap = ctx.tokens.sm;
-    if acting.thread {
-        acted(ctx, acting, NoteButton::Resolve).right(ctx, &mut room, gap);
-        return reply_field(ctx, room, acting);
-    }
-    acted(ctx, acting, NoteButton::Delete).right(ctx, &mut room, gap);
-    let first = acting.post.then_some(NoteButton::Post);
-    for button in first
-        .into_iter()
-        .chain([NoteButton::Edit, NoteButton::Resolve])
-    {
-        acted(ctx, acting, button).left(ctx, &mut room, gap);
-    }
+    acted(ctx, acting, NoteButton::Resolve).right(ctx, &mut room, ctx.tokens.sm);
+    reply_field(ctx, room, acting);
 }
 
 /// Where a thread is answered: a field that starts the reply on a click.
@@ -135,16 +124,15 @@ fn reply_field(ctx: &mut Ctx, room: Rect, acting: &Acting) {
     let pad = ctx.tokens.sm;
     let words = room.pad(Edges::across(pad, 0.0));
     Label::new("Reply…", ctx.styles.body(Role::Faint)).draw(ctx, words);
-    ctx.hit(room, Target::Note(acting.origin.clone(), NoteButton::Reply));
+    ctx.hit(room, Target::Note(acting.thread.clone(), NoteButton::Reply));
 }
 
-/// One button of a note's row; delete reads in red on a dimmed red ground.
+/// One button of a thread's row.
 fn acted(ctx: &Ctx, acting: &Acting, button: NoteButton) -> Button<'static, Target> {
     let label = button.label(acting.resolved);
-    let target = Target::Note(acting.origin.clone(), button);
-    let (role, hover) = match button {
-        NoteButton::Delete => (Role::Bad, ctx.styles.tint(Role::Bad)),
-        _ => (Role::Muted, ctx.styles.glass_hover()),
-    };
-    Button::new(label, target, role, hover).flat().hover(hover)
+    let target = Target::Note(acting.thread.clone(), button);
+    let hover = ctx.styles.glass_hover();
+    Button::new(label, target, Role::Muted, hover)
+        .flat()
+        .hover(hover)
 }

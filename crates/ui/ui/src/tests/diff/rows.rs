@@ -50,9 +50,9 @@ fn a_row_says_what_it_is_with_its_ground_and_no_sign() {
 fn a_changed_row_wears_one_tint_across_its_gutter_and_its_numbers_stay_quiet() {
     let app = opened();
     let ui = on_diff();
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let surface = crate::layout::Layout::of(window(), &ui).workspace;
+    let surface = hits.rect_of(&Target::Code).expect("the rows");
     for kind in [groove_types::RowKind::Added, groove_types::RowKind::Removed] {
         let leaning = styles.gutter(kind).expect("a gutter");
         let row = styles.row_ground(kind).expect("a ground");
@@ -153,7 +153,7 @@ fn a_changed_row_shades_the_word_that_changed_and_not_the_rest() {
     let removed = shaded(groove_types::RowKind::Removed);
     assert_eq!(added.len(), 1, "one word on the new side: {added:?}");
     assert_eq!(removed.len(), 1, "and one on the old");
-    let row = crate::layout::Layout::of(window(), &ui).workspace.w;
+    let row = crate::layout::Layout::of(window(), &ui).agent.w;
     assert!(added[0] < row / 4.0, "the word only: {added:?}");
 }
 
@@ -161,7 +161,7 @@ fn a_changed_row_shades_the_word_that_changed_and_not_the_rest() {
 fn the_file_view_shades_what_changed_inside_a_changed_line() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let color = styles

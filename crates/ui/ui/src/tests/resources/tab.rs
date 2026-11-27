@@ -179,7 +179,13 @@ fn a_container_not_ready_stands_unfolded_and_its_usage_tells_request_and_limit_u
     let metrics = crate::tests::metrics(1960, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let row = hits.rect_of(&Target::ResourceFold("container/worker".into(), false));
-    click(row.expect("the worker's row"), &mut ui, &app, &hits);
+    let row = row.expect("the worker's row");
+    let at = (row.x + 2.0, row.y + row.h / 2.0);
+    assert_eq!(
+        hits.at(at.0, at.1),
+        Some(Target::ResourceFold("container/worker".into(), false))
+    );
+    crate::tests::pressed(at.0, at.1, &mut ui, &app, &hits);
     assert!(
         !shown(&app, &ui).iter().any(|text| text == "http 8080/TCP"),
         "a click folds it"

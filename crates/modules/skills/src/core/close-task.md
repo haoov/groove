@@ -16,7 +16,7 @@ on a check you have not run.
    uncommitted is work about to be destroyed.
 2. `get_commit_log` and `get_mr_state` per worktree — a branch ahead of origin,
    or an MR still open, means the work has not landed anywhere but this machine.
-3. `get_annotations` — an unresolved note is a job not finished.
+3. `get_mr_threads` per MR — an unresolved thread is a job not finished.
 4. Stop and say so when any of those find something. Offer `groove:save-task`
    to land it first. Closing anyway is the user's call, never yours.
 5. Write it up — skip this entirely when `groove:save-task` just ran, because its

@@ -1,9 +1,9 @@
-//! What a click on the Resources tab does: a kind is listed, an object opened.
+//! What a click in the Kubernetes mode does: a kind is listed, an object opened.
 
-use groove_controllers::{AppState, Command, cluster, workspace};
+use groove_controllers::{AppState, Command, cluster, session, workspace};
 
 use crate::hit::{Hits, Target};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::views::session::resources::{self, Columns, Dragged, How, Opens, ResourcesUi};
 use crate::{Corner, Menu, Of};
 use crate::{Held, Overlay, Ui};
@@ -16,8 +16,31 @@ pub(super) fn acted(
     hits: &Hits,
 ) -> Option<Vec<Command>> {
     logs(target, ui, hits)
+        .or_else(|| pinned(target, ui, app))
         .or_else(|| drafted(target, ui, app))
         .or_else(|| listed(target, ui, app))
+}
+
+/// The band's pin toggled, a pinned list shown, or let go by its cross.
+fn pinned(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    let open = app.session.selected()?;
+    let held = &mut ui.session.resources;
+    match target {
+        Target::ResourcePin => Some(resources::pins::toggled(app, held)),
+        Target::PinnedList(pin) => {
+            resources::pins::restore(held, app, open, pin);
+            Some(Vec::new())
+        }
+        Target::Unpin(pin) => {
+            let session = open.session.id.clone();
+            let pin = (**pin).clone();
+            Some(vec![Command::Session(session::Command::Unpin {
+                session,
+                pin,
+            })])
+        }
+        _ => None,
+    }
 }
 
 /// A click on the YAML's bar: EDIT, APPLY or DISCARD.
@@ -65,7 +88,6 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
             let copy = groove_controllers::cluster::Command::CopyValue { text: text.clone() };
             return Some(vec![Command::Cluster(copy)]);
         }
-        Target::ResourceList => held.showing = None,
         Target::ResourceRow(uid) => {
             let open = app.session.selected()?;
             let link = resources::row_link(app, open, &ui.session.resources, uid)?;
@@ -90,11 +112,11 @@ pub(super) fn followed(ui: &mut Ui, opens: Opens) -> Vec<Command> {
             Vec::new()
         }
         Opens::Repo { repo, target } => {
-            ui.session.going = Some((Tab::Files, None));
+            ui.session.going = Some((Mode::Files, None));
             shown(repo, target, None)
         }
         Opens::Revision { repo, target, sha } => {
-            ui.session.going = Some((Tab::Diff, Some(sha.clone())));
+            ui.session.going = Some((Mode::Diff, Some(sha.clone())));
             shown(repo, target, Some(sha))
         }
     }
@@ -124,7 +146,7 @@ pub(super) fn ranged(ui: &mut Ui, at: usize) {
     }
 }
 
-/// A click on an object's tab, in the strip or inside it. False for any other target.
+/// A click on an open object's row, or inside the object. False for any other target.
 fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
     match target {
         Target::ResourceOpen(link) => held.open((**link).clone()),
@@ -211,7 +233,6 @@ pub(super) fn dragged(ui: &mut Ui, x: f32, metrics: Metrics) {
     let widths = match drag.table {
         Columns::Kind(kind) => held.widths.entry(kind).or_default(),
         Columns::Tab => &mut held.tab_widths,
-        Columns::Alerts => &mut ui.alerts.widths,
     };
     widths.insert(drag.label, width);
 }

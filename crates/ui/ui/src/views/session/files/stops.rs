@@ -3,8 +3,8 @@
 use groove_controllers::AppState;
 use groove_ui_kit::base::tokens::Tokens;
 
+use super::Pane;
 use super::notes::{Item, items};
-use super::{Pane, browsing, explorer, listing, narrowed};
 use crate::Ui;
 use crate::hit::Target;
 
@@ -20,6 +20,21 @@ pub(crate) struct Stop {
 pub(crate) fn stops(app: &AppState, ui: &Ui, tokens: &Tokens) -> Vec<Stop> {
     let mut rows = Rows::default();
     let row = tokens.row;
+    if ui.session.mode == crate::views::session::Mode::Files {
+        for one in super::moded::browsed::lines(app, ui) {
+            rows.push(one.target(), row);
+        }
+        return rows.out;
+    }
+    if super::moded::kubing(ui) {
+        for one in crate::views::session::resources::moded::aside::lines(app, ui) {
+            rows.push(one.target(), row);
+        }
+        return rows.out;
+    }
+    if !super::moded::diffing(ui) {
+        return Vec::new();
+    }
     match ui.session.pane {
         Pane::Commits => {
             for one in &app.workspace.log {
@@ -34,17 +49,7 @@ pub(crate) fn stops(app: &AppState, ui: &Ui, tokens: &Tokens) -> Vec<Stop> {
                 }
             }
         }
-        Pane::Files if ui.session.bar.greps() => {
-            for item in super::results::items(&app.workspace.found, ui) {
-                let target = match item {
-                    super::results::Item::File(path, _) => Target::FoundIn(path.to_string()),
-                    super::results::Item::Match(at, _) => Target::Found(at),
-                };
-                rows.push(Some(target), row);
-            }
-        }
-        Pane::Files if browsing(ui) => tree(&mut rows, app, ui, row),
-        Pane::Files => changed(&mut rows, app, ui, row),
+        Pane::Files => moded(&mut rows, app, ui, row),
     }
     rows.out
 }
@@ -70,35 +75,14 @@ impl Rows {
     }
 }
 
-/// The worktree's tree: each directory standing open, each file.
-fn tree(rows: &mut Rows, app: &AppState, ui: &Ui, row: f32) {
-    let changed = narrowed(app, ui);
-    let paths = (app.workspace.paths(), app.workspace.paths_stamp());
-    for one in explorer::rows(paths, &changed, ui) {
-        let target = match one.dir {
-            true => Target::Dir(one.path),
-            false => Target::File(one.path),
+/// The Diff's changed files, as its tree or its flat list draws them.
+fn moded(rows: &mut Rows, app: &AppState, ui: &Ui, row: f32) {
+    let files: Vec<&groove_types::FileDiff> = super::changed(app).iter().collect();
+    for one in super::moded::tree::lines(&files, ui.session.flat, &ui.session.closed) {
+        let target = match one.kind {
+            super::moded::tree::Kind::Dir(..) => Target::Group(one.path),
+            super::moded::tree::Kind::File(file, _) => Target::File(file.path.clone()),
         };
         rows.push(Some(target), row);
-    }
-}
-
-/// The changed files under their directories, a folded directory's files left out.
-fn changed(rows: &mut Rows, app: &AppState, ui: &Ui, row: f32) {
-    let files = narrowed(app, ui);
-    let listed = listing(&files, !ui.session.bar.path.is_empty());
-    if !listed.root.is_empty() {
-        rows.push(None, row);
-    }
-    for group in &listed.groups {
-        if !group.dir.is_empty() {
-            rows.push(Some(Target::Group(group.dir.clone())), row);
-            if ui.session.closed.contains(&group.dir) {
-                continue;
-            }
-        }
-        for file in &group.files {
-            rows.push(Some(Target::File(file.path.clone())), row);
-        }
     }
 }

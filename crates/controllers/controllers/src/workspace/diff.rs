@@ -54,10 +54,6 @@ pub(super) fn mark_read(
         return;
     };
     let read = open.toggle_read(&worktree, &path);
-    let changes = &mut state.workspace.changes;
-    if changes.is_folded(&path) != read {
-        changes.fold(&path);
-    }
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let done = service.set_read(&id, &worktree, &path, read).await;
@@ -187,7 +183,7 @@ pub(super) fn set_mode(state: &mut AppState, spawner: &dyn Spawner, mode: DiffMo
 
 /// The selected worktree read and watched, or nothing when none is selected.
 pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
-    crate::delivery::notes::show(state);
+    crate::delivery::show(state);
     let Some(worktree) = state.session.selected_worktree().map(|one| one.id.clone()) else {
         return state.workspace.clear();
     };

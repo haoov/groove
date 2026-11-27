@@ -6,7 +6,7 @@ use groove_types::{Edit, Motion};
 use crate::input::{Key, Modifiers};
 use crate::tests::diff::opened;
 use crate::tests::press;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui};
 
 const PLAIN: Modifiers = Modifiers {
@@ -23,7 +23,7 @@ const CTRL: Modifiers = Modifiers {
 
 fn editing() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     ui.focus = Focus::Workspace;
     ui
 }
@@ -138,11 +138,8 @@ fn a_drag_over_the_file_holds_more_of_it() {
     let mut ui = editing();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
-    let point = (
-        hits.chars().left + 1.0,
-        code.y + line * groove_controllers::workspace_service::HEAD_ROWS as f32 + 1.0,
-    );
+    let _line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
+    let point = (hits.chars().left + 1.0, code.y + 1.0);
     let pressed = handle(
         Input::Press {
             x: point.0,
@@ -229,11 +226,8 @@ fn clicks(times: usize, apart: u64) -> Vec<Command> {
     let mut ui = editing();
     let (_, hits) = crate::view(&app, &ui, crate::tests::window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
-    let point = (
-        hits.chars().left + 1.0,
-        code.y + line * groove_controllers::workspace_service::HEAD_ROWS as f32 + 1.0,
-    );
+    let _line = groove_ui_kit::base::tokens::Tokens::new(1.0).code_line;
+    let point = (hits.chars().left + 1.0, code.y + 1.0);
     let mut commands = Vec::new();
     for at in 0..times {
         let mut window = metrics(1280, 800, 1.0);

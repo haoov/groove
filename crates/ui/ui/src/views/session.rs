@@ -1,108 +1,50 @@
-//! The session surface: the agent pane, and the workspace's strip with its header and tabs.
+//! The session surface: its bar, the mode in the middle, its sidebar and the terminals.
 
 pub mod agent_pane;
+mod aside;
 pub mod diff;
 mod face;
 pub(crate) mod files;
 pub mod find;
 pub mod header;
 mod manual;
-mod open_files;
+mod mode;
+mod moded;
 pub mod overview;
 pub mod resources;
 mod review;
-mod sheet;
+pub(crate) mod sheet;
 mod state;
-mod tab;
+mod working;
 
-pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Showing, Tab, Term, Writing};
+pub use state::{Asked, Face, Mode, Naming, Noting, Pane, Prompt, SessionUi, Showing};
 
 use groove_controllers::AppState;
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Edges;
 
 use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::Target;
 use crate::keymap::{Action, Keymap};
 use groove_ui_kit::base::ground::Ground;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, ground_under, solid_pane};
+use groove_ui_kit::widgets::ground_under;
 
-/// The session: the agent on its ground, the workspace in a strip of glass beside it.
+/// The session: its bar of title and tabs, the mode in the middle, its sidebar at the right.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ground_under(ctx, ctx.app.layout.board, Ground::Deep);
     groove_ui_kit::widgets::ground_lattice(ctx, ctx.app.layout.board);
     if crate::render::fires(app, ui) {
         groove_ui_kit::widgets::neurons(ctx, ctx.app.layout.board);
     }
-    if !ctx.app.layout.work.is_empty() {
-        solid_pane(ctx, ctx.app.layout.strip);
-    }
-    let on = |focus: crate::Focus| ui.focus == focus;
-    if app.session.selected().is_none() {
-        header::draw(ctx, app, ui);
+    let Some(open) = app.session.selected() else {
         empty(ctx, app);
         return crate::views::focus::draw(ctx, app, ui);
-    }
-    if !ctx.app.layout.workspace.is_empty() {
-        header::info(ctx, app, ui);
-        workspace(ctx, app, ui);
-        sidebar(ctx, app, ui);
-    }
-    // After the agent: the header, folded or not, and the drawer float over its screen.
-    agent_pane::draw(ctx, app, on(crate::Focus::Agent));
-    crate::views::alerts::draw(ctx, app, ui);
-    header::draw(ctx, app, ui);
-    if let Some(session) = app.session.selected.as_ref() {
-        manual::draw(ctx, app, ui, session);
-    }
+    };
+    moded::draw(ctx, app, ui, open);
     crate::views::focus::draw(ctx, app, ui);
     sheet::draw(ctx, app, ui);
-}
-
-/// The tab, and the sidebar when it has one.
-fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    // As far off the strip's bottom edge as the first card stands under the info line's rule.
-    let body = ctx.app.layout.workspace.pad(Edges {
-        bottom: ctx.tokens.sm,
-        ..Edges::all(0.0)
-    });
-    let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
-    match ui.session.tab {
-        Tab::Overview => overview::draw(ctx, app, ui, body),
-        Tab::Diff if ui.session.reviewing => review::draw(ctx, app, ui, body),
-        Tab::Diff => diff::draw(ctx, app, ui, body),
-        Tab::Files => {
-            let [strip, body] = column_in(body, [band, Spec::fill()]);
-            open_files::draw(ctx, strip, app, ui);
-            diff::draw(ctx, app, ui, body)
-        }
-        Tab::Resources => resources::draw(ctx, app, ui, body),
-    }
-}
-
-/// The sidebar the tab has, if any.
-fn sidebar(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    match ui.session.tab {
-        Tab::Resources => resources::sidebar(ctx, app, ui),
-        _ if ui.session.sidebar() => files::draw(ctx, app, ui),
-        _ => {}
-    }
-}
-
-/// What folds the sidebar away, at the far end of `strip`. Returns the room left of it.
-pub(crate) fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) -> Rect {
-    let role = match ui.session.folded {
-        true => Role::Ghost,
-        false => Role::Muted,
-    };
-    let mut room = strip.pad(Edges::across(0.0, ctx.tokens.sm));
-    let fold = Button::icon(Mark::Sidebar, 0, Target::Fold, role);
-    fold.right(ctx, &mut room, 0.0);
-    room
 }
 
 /// Nothing open: how to start.
@@ -113,7 +55,7 @@ fn empty(ctx: &mut Ctx, app: &AppState) {
         Spec::default().height(tokens.row),
         Spec::fill(),
     ];
-    let [_, line, _] = column_in(ctx.app.layout.workspace, bands);
+    let [_, line, _] = column_in(ctx.app.layout.agent, bands);
     let line = line.pad(Edges::across(md, md));
     let keymap = Keymap::of(app.config.config.as_ref());
     let said = match keymap.label(Action::NewExplorer) {

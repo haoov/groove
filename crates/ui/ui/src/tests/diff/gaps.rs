@@ -25,7 +25,7 @@ fn gap_row(app: &AppState) -> usize {
         .find(|row| {
             matches!(
                 app.workspace.changes.at(*row),
-                Some(groove_controllers::workspace_service::At::Row(file, at))
+                Some((file, at))
                     if file.row(at).is_some_and(|one| matches!(one.kind, groove_types::RowKind::Gap(_)))
             )
         })

@@ -99,7 +99,7 @@ The closure in `remote` runs on the main thread:
 
 ## 7. The frame — `ui`
 
-The redraw calls `view(&AppState)`, which builds a new `Frame`. The info line reads the
+The redraw calls `view(&AppState)`, which builds a new `Frame`. The overview reads the
 worktree's status again: the branch is no longer ahead. Nothing in `ui` was told that the
 push succeeded. It reads the state.
 

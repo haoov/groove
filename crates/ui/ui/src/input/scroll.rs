@@ -1,11 +1,11 @@
 //! Where the wheel leaves each column that scrolls.
 
-use groove_controllers::{AppState, Command, agent};
+use groove_controllers::{AppState, Command};
 
 use super::Delta;
 use crate::hit::{Hits, Scroller, Target};
 use crate::layout::Layout;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::views::session::resources::View;
 use crate::{Surface, Ui};
 use groove_gfx::Rect;
@@ -25,20 +25,21 @@ pub(super) fn scroll(
     let layout = Layout::of(metrics, ui);
     let tokens = metrics.tokens();
     let pixels = |height: f32| delta.down(height);
-    if ui.settings.open {
-        ui.wheeled(Scroller::Settings, pixels(tokens.row), hits);
+    if overlaid(ui, delta, point, (hits, metrics)) {
         return Vec::new();
     }
-    if ui.overlay.is_some() {
+    if overviewed(ui, &layout, point) {
+        ui.wheeled(Scroller::Overview, pixels(tokens.row), hits);
         return Vec::new();
     }
-    if ui.showing(app) == Surface::Session && layout.alerts.contains(x, y) {
-        ui.wheeled(Scroller::Alerts, pixels(tokens.row), hits);
+    if middled(ui) && layout.agent.contains(x, y) {
+        in_tab(ui, hits, delta, &tokens);
         return Vec::new();
     }
     // The agent or the board first: with the rail folded, they run across the rail's column.
     if ui.showing(app) == Surface::Session && layout.agent.contains(x, y) {
-        return agent(ui, app, delta, point, &layout, metrics);
+        agent(ui, delta, point, (hits, metrics));
+        return Vec::new();
     }
     if ui.showing(app) == Surface::Board && layout.lists.contains(x, y) {
         column(x, pixels(tokens.row), ui, hits, layout.lists);
@@ -59,15 +60,37 @@ pub(super) fn scroll(
     Vec::new()
 }
 
-/// The open tab's own column.
+/// The wheel over the settings, the floating prompt or another overlay; whether one took it.
+fn overlaid(
+    ui: &mut Ui,
+    delta: Delta,
+    point: (f32, f32),
+    (hits, metrics): (&Hits, Metrics),
+) -> bool {
+    if ui.settings.open {
+        ui.wheeled(Scroller::Settings, delta.down(metrics.tokens().row), hits);
+        return true;
+    }
+    if ui.prompting() && hits.at(point.0, point.1) == Some(Target::Prompt) {
+        agent(ui, delta, point, (hits, metrics));
+        return true;
+    }
+    ui.overlay.is_some() && !ui.prompting()
+}
+
+/// Whether the wheel stands over the Overview.
+fn overviewed(ui: &Ui, layout: &Layout, (x, y): (f32, f32)) -> bool {
+    let up = ui.session.mode == crate::views::session::Mode::Overview;
+    up && layout.agent.contains(x, y)
+}
+
+/// The middle's own column: the cluster's list, or the code.
 fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
     let pixels = |height: f32| delta.down(height);
-    match ui.session.tab {
-        Tab::Overview => ui.wheeled(Scroller::Overview, pixels(tokens.row), hits),
-        Tab::Resources if ui.session.face() != crate::views::session::Face::File => {
-            ui.wheeled(Scroller::Resources, pixels(tokens.row), hits)
-        }
-        Tab::Resources | Tab::Diff | Tab::Files => coded(
+    let listed = ui.session.face() != crate::views::session::Face::File;
+    match ui.session.mode {
+        Mode::Kubernetes if listed => ui.wheeled(Scroller::Resources, pixels(tokens.row), hits),
+        _ => coded(
             ui,
             hits,
             (pixels(tokens.code_line), delta.across(tokens.code_line)),
@@ -75,10 +98,19 @@ fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
     }
 }
 
+/// Whether the middle is a column of its own: the code, or the cluster's.
+fn middled(ui: &Ui) -> bool {
+    use crate::views::session::files::moded::{coding, kubing};
+    coding(ui) || kubing(ui)
+}
+
 /// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
 fn beside(ui: &Ui) -> Scroller {
-    match ui.session.tab {
-        Tab::Resources => Scroller::Kinds,
+    if !middled(ui) {
+        return Scroller::Aside;
+    }
+    match ui.session.mode {
+        Mode::Kubernetes => Scroller::Kinds,
         _ => Scroller::Files,
     }
 }
@@ -103,7 +135,7 @@ fn followed(ui: &Ui) -> Option<bool> {
         .session
         .resources
         .tab()
-        .filter(|_| ui.session.tab == Tab::Resources)?;
+        .filter(|_| ui.session.mode == Mode::Kubernetes)?;
     (tab.view == View::Logs).then_some(tab.logs.following)
 }
 
@@ -114,31 +146,15 @@ fn follow(ui: &mut Ui) {
     }
 }
 
-/// The wheel over the agent's screen. What is not yet worth a line is carried on.
-fn agent(
-    ui: &mut Ui,
-    app: &AppState,
-    delta: Delta,
-    point: (f32, f32),
-    layout: &Layout,
-    metrics: Metrics,
-) -> Vec<Command> {
-    let Some(session) = app.session.selected.clone() else {
-        return Vec::new();
-    };
+/// The wheel over the agent's pane: the prompt's rows under the pointer, else the conversation.
+fn agent(ui: &mut Ui, delta: Delta, point: (f32, f32), (hits, metrics): (&Hits, Metrics)) {
     let tokens = metrics.tokens();
-    let lines = turned(ui, delta, tokens.line);
-    if lines == 0 {
-        return Vec::new();
+    if hits.at(point.0, point.1) == Some(crate::hit::Target::Prompt) {
+        ui.agent.prompt.scroll = hits.typed().scroll;
+        return ui.wheeled(Scroller::Prompt, delta.down(tokens.code_line), hits);
     }
-    let origin = layout.agent_origin(&tokens);
-    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
-    vec![Command::Agent(agent::Command::Scroll {
-        session,
-        lines,
-        col,
-        row,
-    })]
+    let far = hits.extent(Scroller::Chat);
+    ui.agent.scroll = (ui.agent.scroll + delta.down(tokens.row)).clamp(0.0, far);
 }
 
 /// The wheel over one terminal of the manual section, at the cell it stands on.

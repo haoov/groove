@@ -35,8 +35,7 @@ fn write(does: Does, description: &str, schema: serde_json::Value) -> Tool {
 pub(crate) fn all() -> Vec<Tool> {
     let mut out = git();
     out.extend(delivery::forge());
-    out.extend(delivery::notes());
-    out.extend(delivery::posting());
+    out.push(delivery::comment());
     out.extend(delivery::threads());
     out.extend(repos());
     out.extend(skills());
@@ -185,41 +184,24 @@ fn rows() -> Vec<Tool> {
     ]
 }
 
-/// What a maintenance task spawns, and what a session writes to its log.
+/// What a maintenance task spawns.
 fn children() -> Vec<Tool> {
-    vec![
-        write(
-            does("spawn_session", "spawn a child", &["title"]),
-            "Spawn a child session from this maintenance task: an explorer with a clean \
+    vec![write(
+        does("spawn_session", "spawn a child", &["title"]),
+        "Spawn a child session from this maintenance task: an explorer with a clean \
              agent, which starts from your brief. Only a task marked as maintenance spawns.",
-            takes(
-                &["title", "brief"],
-                vec![
-                    ("title", text("The child's title, a few words.")),
-                    (
-                        "brief",
-                        text(
-                            "All the child gets: the goal, what is known, the limits. A link \
+        takes(
+            &["title", "brief"],
+            vec![
+                ("title", text("The child's title, a few words.")),
+                (
+                    "brief",
+                    text(
+                        "All the child gets: the goal, what is known, the limits. A link \
                              and a description when it comes from an alert.",
-                        ),
                     ),
-                ],
-            ),
+                ),
+            ],
         ),
-        write(
-            does("log_work", "log the work", &["what"]),
-            "Add to this session's log what someone coming back to the task needs: the work \
-             landed, a decision, a result that settles a question. Call it only from \
-             groove:save-task or when the user asks, never for a routine step. A child's \
-             newest entry goes to its parent's log when the child closes.",
-            takes(
-                &["what"],
-                vec![
-                    ("what", text("What was done, one or two sentences.")),
-                    ("why", text("Why, when what alone leaves it unclear.")),
-                    ("mr_url", text("The MR this work opened, only then.")),
-                ],
-            ),
-        ),
-    ]
+    )]
 }

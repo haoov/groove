@@ -1,11 +1,11 @@
 //! The notes list: its filter, its files, each note on two lines, and where a click lands.
 
 use super::*;
-use crate::views::session::{Pane, Showing, Tab};
+use crate::views::session::{Pane, Showing};
 
 fn thread(id: &str, line: Option<u32>, resolved: bool) -> Note {
     Note {
-        origin: NoteOrigin::Thread(id.into()),
+        thread: id.into(),
         anchor: line.map(|at| Anchor::line("src/lib.rs", at)),
         resolved,
         said: vec![Said {
@@ -25,9 +25,8 @@ fn a_note_reads_on_two_lines_under_its_file() {
         "src",
         "issue",
         "this leaks",
-        "ME",
-        "me",
-        "local",
+        "RE",
+        "reviewer",
         "L12",
     ] {
         assert!(drawn.iter().any(|one| one == text), "{text}: {drawn:?}");
@@ -49,7 +48,6 @@ fn a_thread_says_how_many_replies_it_holds() {
     let (app, ui) = noting(vec![one]);
     let drawn = in_sidebar(&app, &ui);
     assert!(drawn.iter().any(|one| one == "1 reply"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "MR"), "{drawn:?}");
 }
 
 #[test]
@@ -60,7 +58,10 @@ fn the_filter_counts_open_resolved_and_all_and_shows_the_one_picked() {
         note("src/lib.rs", 11, "issue: this leaks"),
     ]);
     let drawn = in_sidebar(&app, &ui);
-    assert_eq!(tab_said(&app, &ui, Pane::Notes).as_deref(), Some("2"));
+    assert_eq!(
+        tab_said(&app, &ui, Pane::Notes).as_deref(),
+        Some("THREADS · 2")
+    );
     for text in ["OPEN · 2", "RESOLVED · 1", "ALL · 3"] {
         assert!(drawn.iter().any(|one| one == text), "{text}: {drawn:?}");
     }
@@ -101,35 +102,11 @@ fn an_empty_list_says_what_it_would_hold() {
 }
 
 #[test]
-fn the_files_tab_offers_the_notes_too_and_a_click_opens_the_file_at_the_note() {
-    let (app, mut ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
-    ui.session.tab = Tab::Files;
-    let drawn = in_sidebar(&app, &ui);
-    assert_eq!(tab_said(&app, &ui, Pane::Files).as_deref(), Some(""));
-    assert!(tab_said(&app, &ui, Pane::Commits).is_none(), "{drawn:?}");
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let line = hits.rect_of(&Target::NoteAt(0)).expect("the note's row");
-    let commands = click(line, &mut ui, &app, &hits);
-    let at = commands.iter().find_map(|one| match one {
-        groove_controllers::Command::Workspace(
-            groove_controllers::workspace::Command::OpenFile { at, .. },
-        ) => *at,
-        _ => None,
-    });
-    assert_eq!(
-        at.map(|held| held.head.line),
-        Some(11),
-        "in the file, at its line"
-    );
-    assert_eq!(ui.session.tab, Tab::Files);
-}
-
-#[test]
 fn a_click_on_a_resolved_note_opens_it_from_behind_its_tick() {
     let (app, mut ui) = noting(vec![thread("closed", Some(3), true)]);
     ui.session.showing = Showing::Resolved;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let line = hits.rect_of(&Target::NoteAt(0)).expect("the note's row");
     click(line, &mut ui, &app, &hits);
-    assert_eq!(ui.session.unfolded, [NoteOrigin::Thread("closed".into())]);
+    assert_eq!(ui.session.unfolded, ["closed"]);
 }

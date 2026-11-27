@@ -11,6 +11,11 @@ use groove_ui_kit::base::ctx::Metrics;
 /// The right button on a file's row opens its actions; anywhere else closes them.
 pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let menu = match hits.at(x, y) {
+        Some(Target::Listing | Target::File(_) | Target::Group(_)) if listing(ui) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::Listing(ui.session.flat),
+        }),
         Some(Target::Dir(path)) => Some(Menu {
             at: (x, y),
             corner: Corner::TopLeft,
@@ -35,6 +40,11 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             at: (x, y),
             corner: Corner::TopLeft,
             of: session_of(app, session),
+        }),
+        Some(Target::ResourceTab(at) | Target::ResourceClose(at)) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::Object(at),
         }),
         Some(target @ (Target::ResourceRow(_) | Target::ResourceOpen(_))) => {
             super::skilled::menu(ui, app, &target, (x, y))
@@ -68,19 +78,13 @@ fn tab_of(app: &AppState, path: String) -> Of {
     Of::Tab { path, owes, others }
 }
 
-/// The lines a note would stand on: the selection under the click, else its line.
+/// The lines a click asks about: the selection under it, else its line.
 fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32)) -> Option<Of> {
     let (path, caret) = super::surface::at(ui, app, hits, metrics, at)?;
     let line = caret.line as u32;
     let held = selected(app, &path).filter(|(from, to)| (*from..=*to).contains(&line));
     let lines = held.unwrap_or((line, line));
-    let noted = app
-        .delivery
-        .shown
-        .iter()
-        .filter(|note| note.is_local() && !note.resolved)
-        .any(|note| note.over(&path, lines));
-    (!noted).then_some(Of::Line { path, lines })
+    Some(Of::Line { path, lines })
 }
 
 /// The lines a selection of the open file covers.
@@ -89,6 +93,12 @@ fn selected(app: &AppState, path: &str) -> Option<(u32, u32)> {
     let one = open.new.selections().iter().find(|one| !one.is_empty())?;
     let (from, to) = one.ends();
     Some((from.line as u32, to.line as u32))
+}
+
+/// Whether the modes Diff's sidebar lists the changed files.
+fn listing(ui: &Ui) -> bool {
+    let files = ui.session.pane == crate::views::session::Pane::Files;
+    crate::views::session::files::moded::diffing(ui) && files
 }
 
 /// Whether the sidebar is browsing the worktree rather than listing its change.
@@ -125,6 +135,15 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
+    if let Of::Listing(flat) = menu.of {
+        ui.session.flat = !flat;
+        return Vec::new();
+    }
+    if let Of::Object(open) = menu.of {
+        let act = crate::views::overlays::actions::TAB.get(at);
+        ui.session.resources.closed(open, act.copied());
+        return Vec::new();
+    }
     if menu.of == Of::LogRanges {
         super::resources::ranged(ui, at);
         return Vec::new();
@@ -139,9 +158,8 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
         ui.session.manual = true;
         ui.focus = Focus::Terminal;
     }
-    if picked.noting.is_some() {
-        ui.session.noting = picked.noting;
-        ui.focus = Focus::Workspace;
+    if let Some(about) = picked.prompting {
+        crate::input::ask::asked(ui, about);
     }
     picked.commands
 }

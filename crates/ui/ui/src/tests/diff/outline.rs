@@ -9,7 +9,7 @@ use groove_ui_kit::base::tokens::{Tokens, WORD_MS};
 use super::{row_texts, with_files};
 use crate::hit::Target;
 use crate::tests::{click, hit, on_file, shows, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Ui, view};
 
 const SOURCE: &str = "class A:\n    def f(self):\n        x = 1\n        return x\n\nb = A()\n";
@@ -157,7 +157,7 @@ fn the_word_at_the_caret_is_grounded_in_the_diff_too() {
         SOURCE,
     );
     let mut ui = on_file();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     app.workspace
         .edit(&Edit::Move(Motion::To(Caret::new(2, 8))));
     crate::input::word(&mut ui, &app, 0);

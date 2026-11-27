@@ -19,7 +19,7 @@ fn property(name: &str, kind: Kind, options: &[&str]) -> Property {
 
 /// Notion on and read, its status mapped; GitHub off.
 fn mapped() -> (AppState, Ui) {
-    let mut app = crate::tests::screen::sourced(full_app(), false, true);
+    let mut app = crate::tests::agent::sourced(full_app(), false, true);
     if let Some(notion) = app.config.config.as_mut().and_then(|c| c.notion.as_mut()) {
         notion.properties.status = "Status".into();
     }

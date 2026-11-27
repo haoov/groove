@@ -1,4 +1,4 @@
-//! A panel of lines under a point: what the language servers say of one spot.
+//! A card of lines under a point: what the language servers say of one spot.
 
 mod rows;
 
@@ -31,14 +31,20 @@ pub enum Said {
     },
     /// A line of a code block, coloured by its spans, never wrapped.
     Code { text: String, spans: Vec<Highlight> },
+    /// `WARNING · LINE 31`: a part's head in small capitals, in `role`.
+    Head {
+        word: String,
+        note: String,
+        role: Role,
+    },
     /// A rule across the panel.
     Rule,
     /// A little room between two lines.
     Gap,
 }
 
-/// The lines under `at`, the panel as wide as its widest row. Returns the panel.
-pub fn popup<A: App>(ctx: &mut Ctx<'_, A>, at: (f32, f32), said: &[Said]) -> Rect {
+/// The lines under `at` on glass ringed and tinted in `role`. Returns the panel.
+pub fn popup<A: App>(ctx: &mut Ctx<'_, A>, at: (f32, f32), said: &[Said], role: Role) -> Rect {
     let pad = ctx.tokens.sm;
     let most = ctx.tokens.popup.min(ctx.window.w - ctx.tokens.xl) - pad * 2.0;
     let laid = rows(ctx, said, most);
@@ -52,6 +58,8 @@ pub fn popup<A: App>(ctx: &mut Ctx<'_, A>, at: (f32, f32), said: &[Said]) -> Rec
         size,
         (ctx.styles.line(), Material::Glass),
     );
+    let (tint, ring) = (ctx.styles.band_tint(role), ctx.styles.band_edge(role));
+    ctx.rounded_box(rect, tint, ring, ctx.tokens.glass_round);
     let mut y = rect.y + pad;
     for one in &laid {
         let h = height(ctx, &one.row);
@@ -78,6 +86,7 @@ fn draw<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, laid: &Row) {
             ctx.quad(at, ctx.styles.line());
         }
         Row::Gap => {}
+        Row::Head { text, role } => row(ctx, line, 0.0, text, ctx.styles.tag(*role)),
         Row::Prose { pieces, role, mark } => {
             let mut x = line.x;
             if let Some(mark) = mark {

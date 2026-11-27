@@ -13,13 +13,13 @@ mod clusters;
 mod execs;
 mod forge;
 mod git;
-mod notes;
 mod patches;
 
 pub(crate) use patches::edit_asked;
 mod repos;
 mod skills;
 mod task;
+mod threads;
 
 /// One write, from the call that asked for it or the approval that let it through.
 pub(crate) struct Write {
@@ -163,19 +163,14 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "update_mr" => forge::mr(state, services, spawner, write, MrAct::Edit),
         "close_mr" => forge::mr(state, services, spawner, write, MrAct::Close),
         "comment_mr" => forge::comment(state, services, spawner, write),
-        "create_annotation" => notes::create(state, services, spawner, write),
-        "update_annotation" => notes::update(state, services, spawner, write),
-        "resolve_annotation" => notes::resolve(state, services, spawner, write),
-        "post_annotation" => notes::post(state, services, spawner, write),
-        "reply_thread" => notes::reply(state, services, spawner, write),
-        "resolve_thread" => notes::resolve_thread(state, services, spawner, write),
+        "reply_thread" => threads::reply(state, services, spawner, write),
+        "resolve_thread" => threads::resolve_thread(state, services, spawner, write),
         "add_task_repo" => repos::add_repo(state, services, spawner, write),
         "add_task_worktree" => repos::add_worktree(state, services, spawner, write),
         "log_task_hours" => task::log_hours(state, services, spawner, write),
         "finish_task" => task::finish(state, services, spawner, write),
         "adopt_task" => task::adopt(state, spawner, write),
         "spawn_session" => children::spawn(state, services, spawner, write),
-        "log_work" => children::log(state, services, spawner, write),
         "save_user_skill" => skills::save(state, spawner, write),
         "attach_cluster" => clusters::attach(state, services, spawner, write),
         "detach_cluster" => clusters::detach(state, services, spawner, write),

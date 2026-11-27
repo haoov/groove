@@ -194,10 +194,9 @@ fn a_long_message_wraps_by_words_inside_the_panel() {
     let at = std::path::Path::new("/w").join(PATH);
     app.workspace.servers.diagnosed(&key, &at, vec![found]);
     app.workspace.servers.asked(PATH, ON, false);
-    let warn = styles(&app).color(groove_ui_kit::base::style::Role::Warn);
     let rows: Vec<(String, f32)> = runs(&app)
         .into_iter()
-        .filter(|(_, color, _)| *color == warn)
+        .filter(|(text, ..)| !text.trim().is_empty() && long.contains(text.trim()))
         .map(|(text, _, y)| (text, y))
         .collect();
     assert!(rows.len() > 1, "more than one row: {rows:?}");
@@ -210,7 +209,7 @@ fn a_long_message_wraps_by_words_inside_the_panel() {
 }
 
 #[test]
-fn a_diagnostic_s_title_takes_its_colour_and_its_details_and_source_follow_plainly() {
+fn a_diagnostic_heads_on_its_kind_and_line_in_its_colour_then_its_title_details_and_source() {
     let mut app = diagnosed(groove_types::Severity::Error);
     let worktree = app.workspace.worktree.clone().expect("a worktree");
     let key = groove_controllers::workspace_service::ServerKey {
@@ -234,15 +233,16 @@ fn a_diagnostic_s_title_takes_its_colour_and_its_details_and_source_follow_plain
     let styles = styles(&app);
     let color = |role| styles.color(role);
     let of = |text: &str| runs.iter().find(|(one, ..)| one.starts_with(text)).cloned();
+    let head = of("ERROR · LINE 1").expect("the head");
     let title = of("Cannot resolve").expect("the title");
     let detail = of("info: Searched").expect("a detail, on its own line");
     let source = of("ty · unresolved-import").expect("who found it");
     use groove_ui_kit::base::style::Role;
-    assert_eq!(title.1, color(Role::Bad));
-    assert_ne!(detail.1, color(Role::Bad), "only the title is red");
+    assert_eq!(head.1, color(Role::Bad));
+    assert_ne!(title.1, color(Role::Bad), "only the head takes its colour");
     assert!(
-        title.2 < detail.2 && detail.2 < source.2,
-        "title, details, then source: {runs:?}"
+        head.2 < title.2 && title.2 < detail.2 && detail.2 < source.2,
+        "head, title, details, then source: {runs:?}"
     );
 }
 

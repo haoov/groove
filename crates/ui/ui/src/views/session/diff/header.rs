@@ -2,38 +2,21 @@
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Up;
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 use groove_types::{Config, DiffMode, DiffView, LanguageServer};
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use crate::views::session::{Tab, files};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{from_left, square};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets;
 
-/// The band over the diff or over the open file.
-pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
-    if ui.session.tab == Tab::Diff {
-        let mut room = band.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-        totals(ctx, &mut room, app);
-        switch(ctx, &mut room, ui.session.view);
-        if !app.workspace.readonly() {
-            from_left(&mut room, ctx.tokens.sm, 0.0);
-            modes(ctx, &mut room, app.workspace.mode);
-        }
-        return;
-    }
-    named(ctx, band, app, path);
-}
-
-/// The file's path from the left, then what stands beside it: unsaved, changed, faults, servers.
-fn named(ctx: &mut Ctx, band: Rect, app: &AppState, path: &str) {
+/// The file's path from the very left of `room`, then what stands beside it.
+pub(super) fn written(ctx: &mut Ctx, mut room: Rect, app: &AppState, path: &str) {
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = band.pad(Edges::across(md, md));
     let style = ctx.styles.code(Role::Muted);
     let counts = super::row::counted(app, path).unwrap_or_default();
     let tally = super::faults::tally(app, path);
@@ -91,38 +74,19 @@ fn beside(
     wide + sm
 }
 
-/// The views after the totals, the current one held.
-fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
-    let tabs = DiffView::ALL
-        .map(|view| widgets::Tab::new(view.label(), Target::View(view), view == current));
-    widgets::tab_group(ctx, room, tabs.into(), (widgets::Side::Left, ctx.tokens.xs));
-}
-
-/// What the change is read against, the one in use held.
-fn modes(ctx: &mut Ctx, room: &mut Rect, current: DiffMode) {
-    let tabs = DiffMode::ALL
-        .map(|mode| widgets::Tab::new(mode.label(), Target::Mode(mode), mode == current));
-    widgets::tab_group(ctx, room, tabs.into(), (widgets::Side::Left, ctx.tokens.xs));
-}
-
-/// How many files the change touches, then what it added and removed in all, from the left.
-fn totals(ctx: &mut Ctx, room: &mut Rect, app: &AppState) {
-    let files = files::changed(app);
-    let added: u32 = files.iter().map(|file| file.added).sum();
-    let deleted: u32 = files.iter().map(|file| file.deleted).sum();
-    let said = match files.len() {
-        1 => "1 file".to_string(),
-        many => format!("{many} files"),
-    };
-    let sm = ctx.tokens.sm;
-    Label::new(&said, ctx.styles.body(Role::Muted)).left(ctx, room, sm);
-    for (count, role, sign) in [(added, Role::Ok, '+'), (deleted, Role::Bad, '-')] {
-        if count > 0 {
-            let text = format!("{sign}{count}");
-            Label::new(&text, ctx.styles.code(role)).left(ctx, room, sm);
-        }
+/// The views, then what the change is read against unless it is read-only, at the right of `room`.
+pub(super) fn switches(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) {
+    let (right, gap) = (widgets::Side::Right, ctx.tokens.sm);
+    if !app.workspace.readonly() {
+        let mode = app.workspace.mode;
+        let tabs =
+            DiffMode::ALL.map(|one| widgets::Tab::new(one.label(), Target::Mode(one), one == mode));
+        widgets::tab_group(ctx, room, tabs.into(), (right, gap));
     }
-    from_left(room, ctx.tokens.sm, 0.0);
+    let view = ui.session.view;
+    let tabs =
+        DiffView::ALL.map(|one| widgets::Tab::new(one.label(), Target::View(one), one == view));
+    widgets::tab_group(ctx, room, tabs.into(), (right, gap));
 }
 
 /// The servers of the open file's language that have started, and where each stands.

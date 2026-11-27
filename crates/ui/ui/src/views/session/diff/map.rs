@@ -45,14 +45,16 @@ pub(crate) fn total(app: &AppState, ui: &Ui, cols: usize) -> usize {
     Inline::of(app, ui, view, cols).total(super::row::count(app, ui, view))
 }
 
-/// Every changed file, one band under another.
+/// The focused file of the change.
 fn change(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
-    for (start, shown, file) in app.workspace.changes.placed() {
-        let run = run(inline, start, shown);
-        match super::row::is_read(app, &file.path) {
-            true => read(ctx, rect, per, run),
-            false => band(ctx, rect, per, run, file, inline, start),
-        }
+    let changes = &app.workspace.changes;
+    let Some(file) = changes.focused().and_then(|path| changes.get(path)) else {
+        return;
+    };
+    let run = run(inline, 0, changes.rows());
+    match super::row::is_read(app, &file.path) {
+        true => read(ctx, rect, per, run),
+        false => band(ctx, rect, per, run, file, inline, 0),
     }
 }
 
@@ -108,7 +110,11 @@ fn band(
 
 /// One run of lines the change touched, inset from the column's edges.
 fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: LineMark) {
-    let inset = ctx.tokens.xs;
+    let inset = ctx
+        .tokens
+        .xs
+        .min(rect.w / 2.0 - ctx.tokens.hairline * 2.0)
+        .max(0.0);
     let high = (run as f32 * per).max(ctx.tokens.hairline);
     let run =
         groove_ui_kit::shape::band(rect, at as f32 * per, high).pad(Edges::across(inset, inset));

@@ -7,7 +7,7 @@ use super::{Line, Tile};
 
 impl<'a> Line<'a> {
     /// A row of code a note stands on.
-    pub fn tile(mut self, tile: Option<(Tile, Option<groove_types::NoteOrigin>)>) -> Self {
+    pub fn tile(mut self, tile: Option<(Tile, Option<String>)>) -> Self {
         self.tile = tile;
         self
     }
@@ -25,41 +25,8 @@ impl<'a> Line<'a> {
         }
     }
 
-    /// The row a file starts on, naming it.
-    pub fn head(text: &'a str) -> Self {
-        Self {
-            head: true,
-            ..Self::new(text)
-        }
-    }
-
-    pub fn folded(mut self, folded: bool) -> Self {
-        self.folded = folded;
-        self
-    }
-
-    pub fn read(mut self, read: bool) -> Self {
-        self.read = read;
-        self
-    }
-
-    pub fn part(mut self, part: (usize, usize)) -> Self {
-        self.part = part;
-        self
-    }
-
     pub fn empty(mut self, empty: bool) -> Self {
         self.empty = empty;
-        self
-    }
-
-    pub fn counts(mut self, counts: Option<(u32, u32)>) -> Self {
-        self.counts = counts;
-        self
-    }
-
-    pub fn tally(mut self, tally: Option<(u32, u32)>) -> Self {
-        self.tally = tally;
         self
     }
 

@@ -1,4 +1,4 @@
-//! The writes on the merge request and its notes: opened, said on, resolved.
+//! The writes on the merge request and its threads: opened, said on, resolved.
 
 use crate::wording::{NOTE, SUBJECT, mr_description};
 use crate::{Tool, number, takes, text, worktree};
@@ -36,73 +36,29 @@ pub(super) fn forge() -> Vec<Tool> {
             "Close the merge request with nothing merged.",
             takes(&["worktree_id"], vec![worktree()]),
         ),
-        write(
-            does("comment_mr", "comment on the MR", &["body"]),
-            "A comment on the merge request itself, under no line.",
-            takes(
-                &["worktree_id", "body"],
-                vec![worktree(), ("body", text("Markdown. Short."))],
-            ),
-        ),
     ]
 }
 
-pub(super) fn notes() -> Vec<Tool> {
-    vec![
-        write(
-            does("create_annotation", "leave a note", &["path"]),
-            "Leave a note on a line, or on a range of them. One note a line: a line that \
-             already carries an open note of this session takes no other.",
-            takes(
-                &["path", "line", "content"],
-                vec![
-                    ("path", text("The file, from the worktree's root.")),
-                    (
-                        "line",
-                        number("The line it stands on, as the file numbers it."),
-                    ),
-                    (
-                        "end_line",
-                        number("The last line, for a note over a range."),
-                    ),
-                    ("content", text(NOTE)),
-                    worktree(),
-                ],
-            ),
-        ),
-        write(
-            does("update_annotation", "edit a note", &["id"]),
-            "Write a note's words again. Its lines and its author stay as they are.",
-            takes(
-                &["id", "content"],
-                vec![
-                    ("id", text("The note's id, from get_annotations.")),
-                    ("content", text(NOTE)),
-                ],
-            ),
-        ),
-        write(
-            does("resolve_annotation", "resolve a note", &["id"]),
-            "Mark a note dealt with. It stays on the list, quiet.",
-            takes(
-                &["id"],
-                vec![("id", text("The note's id, from get_annotations."))],
-            ),
-        ),
-    ]
-}
-
-/// What sends a note of this session up to the forge.
-pub(super) fn posting() -> Vec<Tool> {
-    vec![write(
-        does("post_annotation", "post a note", &["id"]),
-        "Post a note of this session on the merge request, at its own line. It is \
-             resolved here once it is up there.",
+/// A comment on the MR, on lines of the diff or on the MR itself.
+pub(super) fn comment() -> Tool {
+    write(
+        does("comment_mr", "comment on the MR", &["body"]),
+        "A comment on the merge request. With a path and a line it opens a thread on \
+         those lines of the diff; without, it stands on the MR itself.",
         takes(
-            &["id"],
-            vec![("id", text("The note's id, from get_annotations."))],
+            &["worktree_id", "body"],
+            vec![
+                worktree(),
+                ("body", text(NOTE)),
+                ("path", text("The file, from the worktree's root.")),
+                (
+                    "line",
+                    number("The line it stands on, as the file numbers it."),
+                ),
+                ("end_line", number("The last line, for a range.")),
+            ],
         ),
-    )]
+    )
 }
 
 /// What the forge's own discussions take.

@@ -78,7 +78,9 @@ fn detach_picks_one_context_and_namespace_the_session_holds() {
 #[test]
 fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
     let app = attaching();
-    let (texts, _) = render(&app, &Ui::default(), metrics(1280, 800, 1.0));
+    let mut ui = Ui::default();
+    ui.session.mode = crate::views::session::Mode::Overview;
+    let (texts, _) = render(&app, &ui, metrics(1280, 800, 1.0));
     for shown in ["CLUSTERS · 2", "staging", "shop", "hub", "whole cluster"] {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
@@ -86,19 +88,18 @@ fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
 }
 
 #[test]
-fn alt_shift_4_opens_the_resources_tab_while_the_session_holds_a_cluster() {
-    let alt_shift = crate::input::Modifiers {
+fn alt_5_opens_the_resources_tab_while_the_session_holds_a_cluster() {
+    let alt = crate::input::Modifiers {
         alt: true,
-        shift: true,
         ..Default::default()
     };
     let mut ui = Ui::default();
-    crate::tests::press(Key::Char('4'), alt_shift, &mut ui, &full_app());
+    crate::tests::press(Key::Char('5'), alt, &mut ui, &full_app());
     assert_eq!(
-        ui.session.tab,
-        crate::views::session::Tab::Overview,
+        ui.session.mode,
+        crate::views::session::Mode::Agent,
         "no cluster, no tab"
     );
-    crate::tests::press(Key::Char('4'), alt_shift, &mut ui, &attaching());
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
+    crate::tests::press(Key::Char('5'), alt, &mut ui, &attaching());
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Kubernetes);
 }
