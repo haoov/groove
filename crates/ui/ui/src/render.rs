@@ -23,6 +23,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         let drawn = Drawn {
             layout: Layout::of(metrics, ui),
             hits: &mut hits,
+            modes: ui.modes,
         };
         let theme = app.config.theme();
         let mut ctx = Ctx::new(theme, metrics, drawn, &mut frame, fonts, ui.hover.clone());

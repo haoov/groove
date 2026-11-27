@@ -65,7 +65,10 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::LogSource(_)
             | Target::LogPrevious(_)
             | Target::LogRange
-            | Target::LogFollow,
+            | Target::LogFollow
+            | Target::ResourcePin
+            | Target::PinnedList(_)
+            | Target::Unpin(_),
         ) => Focus::Workspace,
         Some(target) if listed(&Some(target.clone())) => Focus::Sidebar,
         Some(Target::File(_) | Target::Discard | Target::Keep) => Focus::Sidebar,

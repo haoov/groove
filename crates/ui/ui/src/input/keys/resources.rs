@@ -206,7 +206,11 @@ fn pods(ui: &Ui) -> bool {
 fn followed(ui: &mut Ui, at: usize, hits: &Hits, metrics: Metrics) {
     let row = metrics.tokens().row;
     let target = ui.hover.clone();
-    let bottom = crate::layout::Layout::of(metrics, ui).workspace.bottom();
+    let layout = crate::layout::Layout::of(metrics, ui);
+    let bottom = match ui.modes {
+        true => layout.agent.bottom(),
+        false => layout.workspace.bottom(),
+    };
     let held = &mut ui.session.resources;
     let top = at as f32 * row;
     held.scroll = match target.and_then(|one| hits.rect_of(&one)) {

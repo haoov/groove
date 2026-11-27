@@ -96,6 +96,10 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// With modes: the band's pin toggle, a pinned list's row, and its cross.
+    ResourcePin,
+    PinnedList(Box<groove_types::Pin>),
+    Unpin(Box<groove_types::Pin>),
     /// An object's YAML made writable, or read-only again, its draft thrown away; and the draft applied.
     YamlWrite(bool),
     YamlApply,

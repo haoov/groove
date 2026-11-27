@@ -27,7 +27,7 @@ impl Ui {
         }
     }
 
-    fn set_offset(&mut self, which: Scroller, to: f32) {
+    pub(crate) fn set_offset(&mut self, which: Scroller, to: f32) {
         match which {
             Scroller::Rail => self.rail.scroll = to,
             Scroller::Feed => self.rail.feed = to,

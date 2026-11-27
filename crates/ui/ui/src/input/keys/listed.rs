@@ -102,13 +102,18 @@ fn first_shown(rows: &[Stop], app: &AppState, hits: &Hits) -> Option<usize> {
 /// The list scrolled until the row stands whole inside it.
 fn followed(stop: &Stop, ui: &mut Ui, hits: &Hits, metrics: Metrics) {
     let bottom = Layout::of(metrics, ui).sidebar.bottom();
-    let offset = ui.session.files;
-    ui.session.files = match hits.rect_of(&stop.target) {
+    let which = match crate::views::session::files::moded::kubing(ui) {
+        true => crate::hit::Scroller::Kinds,
+        false => crate::hit::Scroller::Files,
+    };
+    let offset = ui.offset(which);
+    let to = match hits.rect_of(&stop.target) {
         Some(rect) if rect.bottom() > bottom => offset + rect.bottom() - bottom,
         Some(_) => offset,
         None if stop.top < offset => stop.top,
         None => offset + stop.height,
     };
+    ui.set_offset(which, to);
 }
 
 /// Enter: what a click on the row does; a file hands the keys to the code.
@@ -123,6 +128,13 @@ fn entered(target: Target, ui: &mut Ui, app: &AppState, seen: (&Hits, Metrics)) 
 
 /// Left shuts a folder, Right opens it, in the tree and in the changed list alike.
 fn folded(target: &Target, ui: &mut Ui, open: bool) {
+    if let Target::ResourceGroup(group) = target {
+        let folded = &mut ui.session.resources.folded;
+        if folded.contains(group) == open {
+            groove_types::toggle(folded, group.clone());
+        }
+        return;
+    }
     let (held, path, holds_open) = match target {
         Target::Dir(path) => (&mut ui.session.opened, path, true),
         Target::Group(dir) => (&mut ui.session.closed, dir, false),

@@ -176,6 +176,11 @@ pub(crate) fn diffing(ui: &Ui) -> bool {
     ui.modes && ui.session.mode == crate::views::session::Mode::Diff
 }
 
+/// Whether the middle is the modes layout's Kubernetes.
+pub(crate) fn kubing(ui: &Ui) -> bool {
+    ui.modes && ui.session.mode == crate::views::session::Mode::Kubernetes
+}
+
 /// Whether the middle is the modes layout's Diff or Files, the code surface.
 pub(crate) fn coding(ui: &Ui) -> bool {
     use crate::views::session::Mode;

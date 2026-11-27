@@ -300,3 +300,71 @@ fn a_settings_scan_asked_while_a_read_runs_still_checks_every_added_context() {
     dispatch(scan(), &mut state, &services, &spawner);
     assert!(state.cluster.checking("kind"));
 }
+
+#[test]
+fn a_pinned_list_comes_back_with_its_session_and_an_unpinned_one_does_not() {
+    use crate::session::Command as Session;
+    use groove_types::{Attached, Pin};
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let run = |state: &mut crate::AppState, command| {
+        dispatch(command, state, &services, &spawner);
+        spawner.drain(state, &services);
+    };
+    run(
+        &mut state,
+        Cmd::Session(Session::OpenExplorer { title: None }),
+    );
+    let session = state.session.selected.clone().expect("the explorer");
+    let shop = Attached {
+        context: "kind".into(),
+        namespace: Some("shop".into()),
+    };
+    let kind = groove_types::KubeKind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Pod".into(),
+        plural: "pods".into(),
+        namespaced: true,
+        watchable: true,
+        short_names: Vec::new(),
+    };
+    let pods = Pin::new(&kind, [shop.clone()]);
+    let whole = Pin::new(
+        &kind,
+        [
+            shop.clone(),
+            Attached {
+                namespace: None,
+                ..shop
+            },
+        ],
+    );
+    for pin in [pods.clone(), whole.clone(), pods.clone()] {
+        let session = session.clone();
+        run(&mut state, Cmd::Session(Session::Pin { session, pin }));
+    }
+    let unpin = Session::Unpin {
+        session: session.clone(),
+        pin: whole,
+    };
+    run(&mut state, Cmd::Session(unpin));
+    let held = |state: &crate::AppState| state.session.get(&session).map(|one| one.pins.clone());
+    assert_eq!(held(&state), Some(vec![pods.clone()]));
+    let close = Session::Close {
+        session: session.clone(),
+    };
+    run(&mut state, Cmd::Session(close));
+    assert_eq!(held(&state), None, "the rail let it go");
+    let open = Session::Open {
+        session: session.clone(),
+    };
+    run(&mut state, Cmd::Session(open));
+    crate::tests::fixture::until(&spawner, &services, &mut state, |state| {
+        state
+            .session
+            .get(&session)
+            .is_some_and(|one| !one.pins.is_empty())
+    });
+    assert_eq!(held(&state), Some(vec![pods]));
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}

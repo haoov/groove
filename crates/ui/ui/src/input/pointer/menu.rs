@@ -41,6 +41,11 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of: session_of(app, session),
         }),
+        Some(Target::ResourceTab(at) | Target::ResourceClose(at)) if ui.modes => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::Object(at),
+        }),
         Some(target @ (Target::ResourceRow(_) | Target::ResourceOpen(_))) => {
             super::skilled::menu(ui, app, &target, (x, y))
         }
@@ -132,6 +137,11 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     };
     if let Of::Listing(flat) = menu.of {
         ui.session.flat = !flat;
+        return Vec::new();
+    }
+    if let Of::Object(open) = menu.of {
+        let act = crate::views::overlays::actions::TAB.get(at);
+        ui.session.resources.closed(open, act.copied());
         return Vec::new();
     }
     if menu.of == Of::LogRanges {

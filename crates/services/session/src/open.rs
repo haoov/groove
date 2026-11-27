@@ -20,6 +20,8 @@ pub struct Open {
     pub children: Vec<Session>,
     /// The children it spawned for alerts, by the alert as it stood then.
     pub alerted: Vec<groove_types::AlertChild>,
+    /// The lists it pins, in the order pinned.
+    pub pins: Vec<groove_types::Pin>,
 }
 
 impl Open {
@@ -53,6 +55,22 @@ impl Open {
 
     pub fn detach(&mut self, attached: &groove_types::Attached) {
         self.clusters.retain(|one| one != attached);
+    }
+
+    /// The list pinned once; returns whether it was not already.
+    pub fn pin(&mut self, pin: groove_types::Pin) -> bool {
+        let new = !self.pins.contains(&pin);
+        if new {
+            self.pins.push(pin);
+        }
+        new
+    }
+
+    /// The list let go; returns whether it was pinned.
+    pub fn unpin(&mut self, pin: &groove_types::Pin) -> bool {
+        let held = self.pins.len();
+        self.pins.retain(|one| one != pin);
+        self.pins.len() != held
     }
 
     /// One file marked read, or the mark taken off it.

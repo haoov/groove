@@ -45,20 +45,30 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         (Scroller::Kinds, ui.session.resources.kinds),
         &lines,
         |_| row,
-        |ctx, line, one| match one {
-            Line::Heading(group, open) => {
-                if stood.as_ref() == Some(one) {
-                    groove_ui_kit::widgets::glass_lit(ctx, line);
-                }
-                glass_hoverable(ctx, line, Target::ResourceGroup(group.clone()));
-                Heading::new(group.label()).fold(*open).draw(ctx, line)
-            }
-            Line::Kind(kind) => {
-                let marks = (picked.as_ref() == Some(kind), stood.as_ref() == Some(one));
-                named(ctx, line, kind, marks)
-            }
-        },
+        |ctx, line, one| kind_line(ctx, line, one, (picked.as_ref(), stood.as_ref())),
     );
+}
+
+/// A heading that folds, or a kind on the held ground while it is the one `picked`.
+pub(super) fn kind_line(
+    ctx: &mut Ctx,
+    line: Rect,
+    one: &Line,
+    (picked, stood): (Option<&KubeKind>, Option<&Line>),
+) {
+    match one {
+        Line::Heading(group, open) => {
+            if stood == Some(one) {
+                groove_ui_kit::widgets::glass_lit(ctx, line);
+            }
+            glass_hoverable(ctx, line, Target::ResourceGroup(group.clone()));
+            Heading::new(group.label()).fold(*open).draw(ctx, line)
+        }
+        Line::Kind(kind) => {
+            let marks = (picked == Some(kind), stood == Some(one));
+            named(ctx, line, kind, marks)
+        }
+    }
 }
 
 /// One kind at a file's depth: listed, on the held ground between the rules; stood on, raised.

@@ -1,6 +1,6 @@
 //! What a click on the Resources tab does: a kind is listed, an object opened.
 
-use groove_controllers::{AppState, Command, cluster, workspace};
+use groove_controllers::{AppState, Command, cluster, session, workspace};
 
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
@@ -16,8 +16,31 @@ pub(super) fn acted(
     hits: &Hits,
 ) -> Option<Vec<Command>> {
     logs(target, ui, hits)
+        .or_else(|| pinned(target, ui, app))
         .or_else(|| drafted(target, ui, app))
         .or_else(|| listed(target, ui, app))
+}
+
+/// With modes: the band's pin toggled, a pinned list shown, or let go by its cross.
+fn pinned(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    let open = app.session.selected()?;
+    let held = &mut ui.session.resources;
+    match target {
+        Target::ResourcePin => Some(resources::pins::toggled(app, held)),
+        Target::PinnedList(pin) => {
+            resources::pins::restore(held, app, open, pin);
+            Some(Vec::new())
+        }
+        Target::Unpin(pin) => {
+            let session = open.session.id.clone();
+            let pin = (**pin).clone();
+            Some(vec![Command::Session(session::Command::Unpin {
+                session,
+                pin,
+            })])
+        }
+        _ => None,
+    }
 }
 
 /// A click on the YAML's bar: EDIT, APPLY or DISCARD.

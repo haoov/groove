@@ -3,6 +3,7 @@
 mod clusters;
 mod error;
 mod maintenance;
+mod pins;
 mod promote;
 mod rows;
 mod state;

@@ -102,6 +102,7 @@ pub fn with_explorer() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
         clusters: vec![],
         children: vec![],
         alerted: vec![],
+        pins: vec![],
     });
     (home, spawner, services, state)
 }

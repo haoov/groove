@@ -1,5 +1,5 @@
 //! The modes layout: off by default, on from Settings; the bar of title and tabs, the agent in
-//! the middle, a mode not yet built saying so, and the terminals at the middle's foot.
+//! the middle, every tab built, and the terminals at the middle's foot.
 
 use groove_gfx::Fonts;
 use groove_types::chat::Heard;
@@ -12,6 +12,7 @@ use crate::views::session::Mode;
 
 mod diff;
 mod files;
+mod kubernetes;
 mod overview;
 
 fn moded() -> crate::Ui {
@@ -64,7 +65,7 @@ fn the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle() {
 }
 
 #[test]
-fn a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so() {
+fn a_tab_switches_the_middle_and_no_tab_says_it_comes_next() {
     let mut app = talking(vec![Heard::Said("on it".into())]);
     let selected = app.session.selected.clone().expect("a session");
     let open = app.session.get_mut(&selected).expect("its state");
@@ -80,17 +81,20 @@ fn a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so() {
     click(kubernetes, &mut ui, &app, &hits);
     assert_eq!(ui.session.mode, Mode::Kubernetes);
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    let texts = all_texts(&frame);
     assert!(
-        texts
-            .iter()
-            .any(|one| one.starts_with("Kubernetes comes to this layout")),
-        "{texts:?}"
-    );
-    assert!(
-        !texts.iter().any(|one| one == "on it"),
+        !all_texts(&frame).iter().any(|one| one == "on it"),
         "the transcript is out of front"
     );
+    for mode in Mode::ALL {
+        ui.session.mode = mode;
+        ui.settle(&app);
+        let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+        let texts = all_texts(&frame);
+        let pending = texts
+            .iter()
+            .find(|one| one.contains("comes to this layout next"));
+        assert!(pending.is_none(), "{mode:?}: {pending:?}");
+    }
 }
 
 #[test]

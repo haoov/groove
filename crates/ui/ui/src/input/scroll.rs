@@ -36,7 +36,7 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Overview, pixels(tokens.row), hits);
         return Vec::new();
     }
-    if crate::views::session::files::moded::coding(ui) && layout.agent.contains(x, y) {
+    if middled(ui) && layout.agent.contains(x, y) {
         in_tab(ui, hits, delta, &tokens);
         return Vec::new();
     }
@@ -104,9 +104,15 @@ fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
     }
 }
 
+/// Whether the modes layout's middle is a tab of its own: the code, or the cluster's.
+fn middled(ui: &Ui) -> bool {
+    use crate::views::session::files::moded::{coding, kubing};
+    coding(ui) || kubing(ui)
+}
+
 /// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
 fn beside(ui: &Ui) -> Scroller {
-    if ui.modes && !crate::views::session::files::moded::coding(ui) {
+    if ui.modes && !middled(ui) {
         return Scroller::Aside;
     }
     match ui.session.tab {

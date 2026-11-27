@@ -82,6 +82,8 @@ pub struct Rows {
     pub carded: bool,
     /// A grid: the header on a band in capitals, a hairline between the columns and under each row.
     pub gridded: bool,
+    /// A grid's capitals alone: no band under the header, no hairline between columns or rows.
+    pub bare: bool,
 }
 
 pub struct Table<'a, T> {
@@ -211,6 +213,11 @@ impl<T: Clone + PartialEq> Table<'_, T> {
 }
 
 impl<T> Table<'_, T> {
+    /// Whether the grid draws its band and its hairlines.
+    fn lined(&self) -> bool {
+        self.rows.gridded && !self.rows.bare
+    }
+
     /// A column's label as its header writes it: in capitals on a grid.
     fn label<'l>(&self, label: &'l str) -> std::borrow::Cow<'l, str> {
         match self.rows.gridded {

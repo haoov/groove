@@ -118,7 +118,7 @@ pub(super) fn in_sidebar(
     app: &AppState,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    if ui.session.tab == crate::views::session::Tab::Resources {
+    if ui.session.tab == crate::views::session::Tab::Resources && !ui.modes {
         return super::resources::in_kinds_list((key, mods), ui, app, seen);
     }
     super::listed::in_list(key, ui, app, seen)

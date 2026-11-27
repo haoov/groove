@@ -30,6 +30,10 @@ pub(crate) fn middle(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -
     }
     match hits.at(x, y) {
         Some(Target::OpenTab(path) | Target::CloseTab(path)) => closing(ui, app, path),
+        Some(Target::ResourceTab(at) | Target::ResourceClose(at)) => {
+            ui.session.resources.close(at);
+            Vec::new()
+        }
         _ => Vec::new(),
     }
 }

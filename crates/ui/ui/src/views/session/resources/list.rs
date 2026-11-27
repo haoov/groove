@@ -42,20 +42,10 @@ pub fn uids(app: &AppState, ui: &Ui) -> Vec<String> {
 }
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
-    let Some(open) = app.session.selected() else {
-        return;
-    };
     let held = &ui.session.resources;
     let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [strip, mut body] = column_in(body, [band, Spec::fill()]);
-    let keys = scope::keys(app, open, held);
-    let picked = (keys.as_slice(), held.search.text(), held.sort.as_ref());
-    let order = held
-        .kept
-        .of(app, picked, || order::ordered(app, &keys, held));
-    let rows = resolved(app, &keys, &order);
-    let kind = scope::kind(app, open, held);
-    title(ctx, strip, (kind.as_ref(), rows.len()), held);
+    title(ctx, strip, counted(app, ui), held);
     if let Some(tab) = held.tab() {
         return super::tab::draw(ctx, body, app, (ui, tab));
     }
@@ -64,6 +54,30 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
         found(ctx, bar, held);
         body = rest;
     }
+    rows(ctx, app, ui, body);
+}
+
+/// The kind listed and how many rows it holds.
+pub(super) fn counted(app: &AppState, ui: &Ui) -> (Option<KubeKind>, usize) {
+    let Some(open) = app.session.selected() else {
+        return (None, 0);
+    };
+    let held = &ui.session.resources;
+    (scope::kind(app, open, held), uids(app, ui).len())
+}
+
+/// The rows under their header, or why none shows yet.
+pub(super) fn rows(ctx: &mut Ctx, app: &AppState, ui: &Ui, mut body: Rect) {
+    let Some(open) = app.session.selected() else {
+        return;
+    };
+    let held = &ui.session.resources;
+    let keys = scope::keys(app, open, held);
+    let picked = (keys.as_slice(), held.search.text(), held.sort.as_ref());
+    let order = held
+        .kept
+        .of(app, picked, || order::ordered(app, &keys, held));
+    let rows = resolved(app, &keys, &order);
     if let Some((said, role)) = standing(app, open, held, &keys) {
         let line = body.pad(Edges::all(ctx.tokens.md));
         let [line, _] = column_in(line, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
@@ -81,11 +95,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
             .draw(ctx, line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md)));
         body = rest;
     }
-    let kind = kind.map(|one| one.plural).unwrap_or_default();
+    let kind = scope::kind(app, open, held).map(|one| one.plural);
     let asked = match ui.losing() {
         Some(crate::Losing::Row(written)) => Some(&**written),
         _ => None,
     };
+    let kind = kind.unwrap_or_default();
     listed(ctx, body, app, (&keys, rows), (held, &kind, asked));
 }
 
@@ -101,15 +116,10 @@ fn found(ctx: &mut Ctx, line: Rect, held: &ResourcesUi) {
 }
 
 /// The list's own tab, its kind and how many rows it holds, then a tab for each object open.
-fn title(
-    ctx: &mut Ctx,
-    strip: Rect,
-    (kind, count): (Option<&KubeKind>, usize),
-    held: &ResourcesUi,
-) {
+fn title(ctx: &mut Ctx, strip: Rect, (kind, count): (Option<KubeKind>, usize), held: &ResourcesUi) {
     let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.md));
     let xs = ctx.tokens.xs;
-    let named = kind.map(|kind| format!("{} \u{b7} {count}", plural(kind)));
+    let named = kind.map(|kind| format!("{} \u{b7} {count}", plural(&kind)));
     let mut tabs = Vec::new();
     if let Some(named) = &named {
         tabs.push(Tab::new(
@@ -216,7 +226,6 @@ fn listed(
         })
         .collect();
     let rows = rows.as_slice();
-    let offset = held.scroll;
     let table = Table {
         columns: &columns,
         rows: Rows {
@@ -225,9 +234,10 @@ fn listed(
             ruled: false,
             carded: false,
             gridded: true,
+            bare: ctx.app.modes,
         },
         count: rows.len(),
-        offset,
+        offset: held.scroll,
         selected: None,
         sorted: Some(sorted.unwrap_or(Sorted::NONE)),
     };

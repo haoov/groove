@@ -310,6 +310,7 @@ fn open(id: &str, title: &str) -> Open {
         clusters: vec![],
         children: vec![],
         alerted: vec![],
+        pins: vec![],
     }
 }
 

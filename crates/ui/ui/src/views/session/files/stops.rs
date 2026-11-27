@@ -26,6 +26,12 @@ pub(crate) fn stops(app: &AppState, ui: &Ui, tokens: &Tokens) -> Vec<Stop> {
         }
         return rows.out;
     }
+    if super::moded::kubing(ui) {
+        for one in crate::views::session::resources::moded::aside::lines(app, ui) {
+            rows.push(one.target(), row);
+        }
+        return rows.out;
+    }
     if ui.modes && !super::moded::diffing(ui) {
         return Vec::new();
     }

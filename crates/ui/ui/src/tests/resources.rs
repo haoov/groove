@@ -15,7 +15,7 @@ mod argo_find;
 mod argo_links;
 mod argo_sync;
 mod copy;
-mod fixture;
+pub(super) mod fixture;
 mod keys;
 mod kinds;
 mod list;

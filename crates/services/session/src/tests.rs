@@ -64,3 +64,32 @@ fn closing_a_session_takes_its_lines_off_the_feed() {
     state.close(&SessionId::new("a"));
     assert_eq!(subjects(&state), ["of b"]);
 }
+
+#[test]
+fn a_list_is_pinned_once_and_let_go_once() {
+    use groove_types::{Attached, KubeKind, Pin};
+    let mut state = State::default();
+    state.open(session("a"), Timestamp::new(0));
+    let kind = KubeKind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Pod".into(),
+        plural: "pods".into(),
+        namespaced: true,
+        watchable: true,
+        short_names: vec!["po".into()],
+    };
+    let hub = Attached {
+        context: "hub".into(),
+        namespace: None,
+    };
+    let pin = Pin::new(&kind, [hub.clone(), hub]);
+    assert_eq!(pin.scope.len(), 1, "each pair once");
+    let open = state.get_mut(&SessionId::new("a")).expect("open");
+    assert!(open.pin(pin.clone()));
+    assert!(!open.pin(pin.clone()), "already pinned");
+    assert_eq!(open.pins, std::slice::from_ref(&pin));
+    assert!(open.unpin(&pin));
+    assert!(!open.unpin(&pin));
+    assert!(open.pins.is_empty());
+}

@@ -120,6 +120,7 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, open: &Open) {
             ruled: false,
             carded: false,
             gridded: true,
+            bare: false,
         },
         count: all.len(),
         offset: ui.alerts.scroll,

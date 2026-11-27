@@ -26,7 +26,7 @@ impl Ui {
         }
         self.session.reading = app.workspace.commit.is_some();
         self.review(app);
-        self.moded();
+        self.moded(app);
         self.sheeted(app);
         self.kept_resources(app);
         self.moved(app);
@@ -86,20 +86,32 @@ impl Ui {
         self.close(|one| matches!(one, Overlay::Examining(asked) if *asked == id));
     }
 
-    /// With modes, the tab follows the mode; a file opened from elsewhere brings `FILES` up.
-    fn moded(&mut self) {
+    /// With modes, the tab follows the mode; a file or an object opened elsewhere brings its mode up.
+    fn moded(&mut self, app: &AppState) {
         if !self.modes {
             return;
         }
+        let held = app
+            .session
+            .selected()
+            .is_some_and(|one| one.holds_clusters());
         let session = &mut self.session;
         let opened = session.tab == Tab::Files && session.settled != Tab::Files;
         if opened && session.mode != Mode::Diff {
             session.mode = Mode::Files;
         }
+        let kubed = session.tab == Tab::Resources && session.settled != Tab::Resources;
+        if kubed && session.mode != Mode::Diff && held {
+            session.mode = Mode::Kubernetes;
+        }
+        if session.mode == Mode::Kubernetes && !held {
+            session.mode = Mode::Agent;
+        }
         session.tab = match (session.mode, session.tab) {
             (Mode::Diff, _) => Tab::Diff,
             (Mode::Files, _) => Tab::Files,
-            (_, Tab::Diff | Tab::Files) => Tab::Overview,
+            (Mode::Kubernetes, _) => Tab::Resources,
+            (_, Tab::Diff | Tab::Files | Tab::Resources) => Tab::Overview,
             (_, tab) => tab,
         };
     }

@@ -321,13 +321,22 @@ stands under the band. The `FILES` sidebar heads on the repo, then holds `OPEN �
 open file that a click shows and the middle button or its menu closes, then `WORKTREE`, the
 worktree's tree with the changed files marked with their letter. A file opened from
 elsewhere brings `FILES` up.
+`KUBERNETES` shows the list or the object open on the ground under one band, a thin rule under
+it, and no strip of tabs over it. The list's band names the kind and its count, then each
+context in its hue with its namespaces, then the pin at the right. An object's band holds its
+name, its kind, context and namespace, its status badges, then its views at the right; the logs'
+containers, run and range, and an Application's filters, stand on a second row under it. Its
+tables keep their header's capitals with no band and no rules. Its sidebar heads on the contexts,
+then holds `LISTS · n`, the pinned lists, `OPEN · n`, a row each open object that a click shows
+and its cross, the middle button or its menu closes, then `KINDS`. The arrows walk the sidebar
+as drawn, and an object opened from elsewhere brings `KUBERNETES` up.
 After the title, the bar names the worktree every tab follows, `repo · branch`; a click on it
 opens the worktree picker, as `alt+w` does. On `DIFF` and `FILES`, `ctrl+f` opens the search in a
-row over the file's band, as wide as it.
-A tab not yet built in this layout says so and how to go back. Enforced by
+row over the file's band, as wide as it; on `KUBERNETES` it opens the list's find row there.
+Enforced by
 `the_switch_is_off_by_default_and_the_setting_turns_it_on`,
 `the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle`,
-`a_tab_switches_the_middle_and_a_mode_not_yet_built_says_so`,
+`a_tab_switches_the_middle_and_no_tab_says_it_comes_next`,
 `the_overview_shows_each_repo_apart_with_its_worktree_in_a_row`,
 `a_card_s_head_folds_the_card_on_the_overview`,
 `the_middle_shows_the_first_file_alone_when_none_is_chosen`,
@@ -344,6 +353,13 @@ A tab not yet built in this layout says so and how to go back. Enforced by
 `a_directory_of_the_tree_opens_and_folds`,
 `alt_o_on_files_gives_the_keys_to_the_code`,
 `the_arrows_walk_the_open_rows_then_the_tree_as_drawn`,
+`the_list_band_names_the_kind_its_count_and_its_scope_and_no_strip_of_tabs_stands`,
+`a_click_on_a_row_opens_the_object_under_open_and_the_middle_shows_it_with_its_views`,
+`an_open_row_shows_its_object_and_its_cross_middle_button_or_menu_close_it`,
+`the_arrows_walk_lists_open_and_kinds_as_drawn_and_left_folds_a_heading`,
+`alt_o_on_kubernetes_gives_the_middle_the_keys_and_the_arrows_walk_its_rows`,
+`the_logs_second_row_holds_the_containers_the_run_and_the_range_under_the_band`,
+`the_wheel_over_the_middle_scrolls_the_list_and_over_the_sidebar_its_rows`,
 `the_wheel_over_the_open_file_scrolls_it`,
 `the_file_s_head_and_its_switches_share_one_band_over_its_rows`,
 `a_commit_says_so_over_the_file_and_offers_the_working_tree_back`,
@@ -761,6 +777,13 @@ click of something ordinary.
   fills resource by resource, then the PreSync hooks, each wave in order with its Sync
   hooks on a badge, and the hooks after, each step applied, applying, waiting or failed; a
   stage done stands folded.
+- **Pins.** **A pinned list keeps its kind and its scope, and belongs to the session.** With
+  modes, the list's pin keeps it under `LISTS` in the sidebar: the kind, and the contexts and
+  namespaces it reads as the list shows them. A click on it brings that list back; the pin
+  again or its cross lets it go. A list not pinned stands in the middle alone, and picking a
+  kind replaces it. Pins outlive the window. Enforced by
+  `pin_keeps_the_list_under_lists_a_click_brings_it_back_and_pin_or_its_cross_lets_it_go`
+  and `a_pinned_list_comes_back_with_its_session_and_an_unpinned_one_does_not`.
 - **Sidebar.** The kinds the contexts serve, indented under headings that fold: workloads,
   network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by its
   name, then cluster for the built-in kinds not namespaced. ↑ and ↓ step through the

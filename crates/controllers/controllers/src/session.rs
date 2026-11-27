@@ -122,6 +122,16 @@ pub enum Command {
         session: SessionId,
         attached: Attached,
     },
+    /// `session.pin`: a list, its kind and its scope, kept under `LISTS`.
+    Pin {
+        session: SessionId,
+        pin: groove_types::Pin,
+    },
+    /// `session.unpin`: a pinned list let go.
+    Unpin {
+        session: SessionId,
+        pin: groove_types::Pin,
+    },
     /// `session.set_maintenance`: a task marked as maintenance, or no longer.
     SetMaintenance { session: SessionId, on: bool },
     /// `session.spawn_child`: an explorer spawned from a maintenance task, selected.
@@ -157,6 +167,8 @@ impl Command {
             Command::ListBranches { .. } => "session.list_branches",
             Command::AttachCluster { .. } => "session.attach_cluster",
             Command::DetachCluster { .. } => "session.detach_cluster",
+            Command::Pin { .. } => "session.pin",
+            Command::Unpin { .. } => "session.unpin",
             Command::SetMaintenance { .. } => "session.set_maintenance",
             Command::SpawnChild { .. } => "session.spawn_child",
             Command::Place { .. } => "session.place",

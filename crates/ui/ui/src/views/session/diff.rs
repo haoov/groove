@@ -5,7 +5,7 @@ pub(crate) mod blocks;
 mod cards;
 pub(crate) mod completion;
 pub(crate) mod faults;
-mod finder;
+pub(crate) mod finder;
 mod header;
 mod heads;
 mod map;

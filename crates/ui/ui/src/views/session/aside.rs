@@ -8,7 +8,7 @@ use groove_types::SessionKind;
 use groove_ui_kit::shape::from_top;
 use groove_ui_kit::widgets::{Heading, flat_row, flowed, panel_head, scrollbar, solid_pane};
 
-use super::{Mode, agent_pane, files, overview};
+use super::{Mode, agent_pane, files, overview, resources};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -23,6 +23,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open, (rect, shown): 
     match ui.session.mode {
         Mode::Diff => files::moded::head(ctx, app, row, shown),
         Mode::Files => files::moded::browsed::head(ctx, app, row, shown),
+        Mode::Kubernetes => resources::moded::aside::head(ctx, app, row, shown),
         Mode::Agent => Heading::new("agent").fold(shown).draw(ctx, row),
         _ => Heading::new(kind(open)).fold(shown).draw(ctx, row),
     }
@@ -37,6 +38,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open, (rect, shown): 
         Mode::Files => {
             let extent = files::moded::browsed::body(ctx, app, ui, room);
             (Scroller::Files, room, extent)
+        }
+        Mode::Kubernetes => {
+            let extent = resources::moded::aside::body(ctx, app, ui, room);
+            (Scroller::Kinds, room, extent)
         }
         Mode::Agent => flow(ctx, ui, (room, room), |ctx, at| {
             agent_pane::aside::body(ctx, app, at);

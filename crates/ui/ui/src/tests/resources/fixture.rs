@@ -49,7 +49,7 @@ fn worker() -> Container {
     }
 }
 
-pub(super) fn crashing() -> Described {
+pub(in crate::tests) fn crashing() -> Described {
     let pod = PodPart {
         status: "CrashLoopBackOff".into(),
         node: Some("node-2".into()),
@@ -102,7 +102,7 @@ pub(super) fn opened() -> (AppState, Ui) {
     (app, ui)
 }
 
-pub(super) fn link(name: &str, of: groove_types::KubeKind) -> Link {
+pub(in crate::tests) fn link(name: &str, of: groove_types::KubeKind) -> Link {
     Link {
         context: "staging".into(),
         kind: of,
@@ -129,7 +129,7 @@ pub(super) fn unfold(
     click(heading, ui, app, &hits);
 }
 
-pub(super) fn lands(app: &mut AppState, key: &FollowKey, objects: Vec<Described>) {
+pub(in crate::tests) fn lands(app: &mut AppState, key: &FollowKey, objects: Vec<Described>) {
     app.cluster.store.follows.lease(key, "resource");
     app.cluster
         .store

@@ -35,7 +35,7 @@ pub const CHILD: [Act; 1] = [Act::Close];
 /// The actions a menu of fixed rows offers; none for a menu whose rows come with it.
 fn acts(of: &Of) -> &'static [Act] {
     match of {
-        Of::Tab { .. } => &TAB,
+        Of::Tab { .. } | Of::Object(_) => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
         Of::Session { section, .. } => match section {
