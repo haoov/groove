@@ -9,7 +9,7 @@ fn a_resolved_note_takes_no_row_and_its_tick_opens_and_closes_it() {
     one.resolved = true;
     let (bare, app) = (opened(), noted(vec![one]));
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let rows = |ui: &Ui, app: &AppState| {
         crate::views::session::diff::rows_of(app, ui, drawn_cols(app, ui))
     };

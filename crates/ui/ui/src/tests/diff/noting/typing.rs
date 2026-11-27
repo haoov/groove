@@ -134,14 +134,14 @@ fn ctrl_moves_the_caret_and_deletes_in_a_reply_as_the_key_alone_does() {
 #[test]
 fn a_reply_on_a_tab_not_shown_takes_no_keys_and_keeps_its_words() {
     let (app, mut ui) = replying("half");
-    ui.session.tab = crate::views::session::Tab::Overview;
+    ui.session.mode = crate::views::session::Mode::Overview;
     typed("x", &mut ui, &app);
     let posted = chord(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert!(
         !posted.iter().any(|one| matches!(one, Command::Delivery(_))),
         "{posted:?}"
     );
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     assert_eq!(said(&ui), "half", "the words wait for the tab");
 }
 
@@ -163,24 +163,17 @@ fn a_reply_on_another_file_than_the_open_one_takes_no_keys() {
 #[test]
 fn a_click_on_another_pane_takes_the_keys_from_a_reply_and_keeps_its_words() {
     let (app, mut ui) = replying("half");
-    for (pane, focus) in [
-        (Target::Agent, crate::Focus::Agent),
-        (
-            Target::Session(groove_types::SessionId::new("a")),
-            crate::Focus::Rail,
-        ),
-    ] {
-        let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-        click(hits.rect_of(&pane).expect("the pane"), &mut ui, &app, &hits);
-        assert_eq!(ui.focus, focus);
-        let posted = press(Key::Enter, &mut ui, &app);
-        assert!(
-            !posted
-                .iter()
-                .any(|one| matches!(one, groove_controllers::Command::Delivery(_))),
-            "{focus:?}: Enter sends no reply: {posted:?}"
-        );
-    }
+    let rail = Target::Session(groove_types::SessionId::new("a"));
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    click(hits.rect_of(&rail).expect("the rail"), &mut ui, &app, &hits);
+    assert_eq!(ui.focus, crate::Focus::Rail);
+    let posted = press(Key::Enter, &mut ui, &app);
+    assert!(
+        !posted
+            .iter()
+            .any(|one| matches!(one, groove_controllers::Command::Delivery(_))),
+        "Enter sends no reply: {posted:?}"
+    );
     let said = |ui: &Ui| ui.session.noting.as_ref().map(|one| one.buffer.text());
     assert_eq!(said(&ui).as_deref(), Some("half"), "the draft is kept");
 

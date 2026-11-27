@@ -39,7 +39,7 @@ pub enum Of {
     Hues(String),
     /// Where a pod's logs start, from the logs view's range picker.
     LogRanges,
-    /// An object open in the modes layout's sidebar, by its place.
+    /// An object open in the Kubernetes sidebar, by its place.
     Object(usize),
     /// The modes Diff's changed files, listed flat while `true`, else as a tree.
     Listing(bool),
@@ -48,11 +48,10 @@ pub enum Of {
         session: groove_types::SessionId,
         section: Option<groove_types::Section>,
     },
-    /// The models the agent switches to and what it uses, from its button in the top bar.
+    /// The models the agent switches to, from its row in the sidebar.
     Models {
         session: groove_types::SessionId,
         rows: Vec<Told>,
-        gauges: Vec<Gauge>,
     },
 }
 
@@ -64,7 +63,7 @@ pub struct Told {
     pub current: bool,
 }
 
-/// One gauge under the models: what is used, how much, its share, and when it starts again.
+/// One gauge of the agent's usage: what is used, how much, its share, and when it starts again.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Gauge {
     pub label: &'static str,

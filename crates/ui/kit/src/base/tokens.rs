@@ -1,11 +1,8 @@
 //! Every number the ui draws with. Nothing else in the crate holds a size.
 
 /// Unitless and non-pixel values, which no scale touches.
-pub const PALETTE_ROWS: usize = 8;
 /// Lines the centred palette shows, its headings counted.
 pub const PALETTE_LINES: usize = 14;
-/// How many suggestions the board's filter shows at once.
-pub const SUGGESTED_ROWS: usize = 6;
 /// The characters a note row holds before the frame has measured, and the fewest.
 pub const NOTE_COLS: usize = 80;
 pub const NOTE_COLS_FEWEST: usize = 20;
@@ -44,12 +41,9 @@ pub const BADGE_GROUND: u8 = 25;
 pub const BADGE_EDGE: u8 = 90;
 /// A line of prose against its type size.
 pub const LEADING: f32 = 1.5;
-/// How many lines of a commit message the box shows.
-pub const MESSAGE_LINES: usize = 10;
 /// How many scopes stand over the rows, and the share of the surface they may take.
 pub const PINNED_DEEP: usize = 3;
 pub const PINNED_SHARE: f32 = 4.0;
-pub const ALERTS_TALL: f32 = 280.0;
 /// How many rows a search keeps above the match it lands on.
 pub const ABOVE_MATCH: usize = 4;
 /// How soon and how near a press counts as the same click, in milliseconds and logical pixels.
@@ -71,15 +65,11 @@ pub const NOTCH: f32 = 3.0;
 pub const FEED_MIN: f32 = 96.0;
 /// What the rail's own rows keep whatever the feed takes.
 pub const SESSIONS_MIN: f32 = 120.0;
-/// The smallest the commit box and the list above it may be.
-pub const COMMIT_MIN: f32 = 72.0;
-pub const FILES_MIN: f32 = 120.0;
 /// The manual section open, as tall as it starts and no shorter, and the code it leaves above.
 pub const MANUAL_TALL: f32 = 220.0;
 pub const MANUAL_MIN: f32 = 96.0;
 pub const CODE_MIN: f32 = 160.0;
-pub const AGENT_MIN: f32 = 280.0;
-pub const WORKSPACE_MIN: f32 = 320.0;
+pub const MIDDLE_MIN: f32 = 280.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
 
 /// A carried row's ghost, a selection's raised ground, and the share a gauge turns peach at.
@@ -111,8 +101,6 @@ pub struct Tokens {
     pub row: f32,
     pub header: f32,
     pub rail: f32,
-    pub agent: f32,
-    pub alerts: f32,
     pub sidebar: f32,
     /// One line of text, with its leading.
     pub line: f32,
@@ -191,8 +179,6 @@ const LOGICAL: Tokens = Tokens {
     row: 26.0,
     header: 36.0,
     rail: 220.0,
-    agent: 380.0,
-    alerts: 420.0,
     sidebar: 260.0,
     line: 18.0,
     code_line: 21.0,
@@ -248,8 +234,6 @@ impl Tokens {
             row: row(ROW, text),
             header: row(HEADER, text),
             rail: s(LOGICAL.rail),
-            agent: s(LOGICAL.agent),
-            alerts: s(LOGICAL.alerts),
             sidebar: s(LOGICAL.sidebar),
             line: row(LINE, code),
             code_line: row(CODE_LINE, code),

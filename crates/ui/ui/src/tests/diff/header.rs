@@ -4,32 +4,10 @@ use super::*;
 use crate::tests::render;
 
 #[test]
-fn the_diff_header_counts_the_whole_change_and_names_no_file() {
-    let app = opened();
-    let ui = on_diff();
-    let (frame, hits) = view_of(&app, &ui);
-    let band = hits
-        .rect_of(&Target::View(DiffView::Inline))
-        .expect("the switch");
-    let header: Vec<&str> = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|text| (text.y - band.y).abs() < band.h)
-        .map(|text| text.text.as_str())
-        .collect();
-    assert!(header.contains(&"1 file"), "{header:?}");
-    assert!(
-        header.contains(&"+1") && header.contains(&"-1"),
-        "{header:?}"
-    );
-    assert!(!header.iter().any(|t| t.contains("lib.rs")), "{header:?}");
-}
-
-#[test]
 fn the_files_header_names_the_open_file() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let drawn = texts(&app, &ui);
     assert!(drawn.iter().any(|t| t == "src/lib.rs"), "{drawn:?}");
 }
@@ -72,7 +50,7 @@ fn the_switch_names_the_two_views_and_picks_one() {
 fn the_files_tab_has_no_view_to_switch() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     for view in DiffView::ALL {
         assert!(hits.rect_of(&Target::View(view)).is_none(), "{view:?}");
@@ -83,9 +61,9 @@ fn the_files_tab_has_no_view_to_switch() {
 fn the_header_says_when_the_file_owes_the_disk() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let band = crate::layout::Layout::of(window(), &ui).workspace;
+    let band = crate::layout::Layout::of(window(), &ui).agent;
     let marks = |app: &AppState| {
         let (frame, _) = view_of(app, &ui);
         frame.layers()[0]

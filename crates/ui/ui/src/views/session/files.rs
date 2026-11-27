@@ -1,98 +1,25 @@
-//! The sidebar's files tab: the selected worktree's changes, grouped by directory.
+//! The Diff and Files sidebars' lists: the change's files, the commits, the threads, the worktree's tree.
 
-mod bar;
 mod commits;
 pub(crate) mod explorer;
-mod heading;
 pub(crate) mod moded;
-mod narrowing;
 mod notes;
-mod results;
 mod rows;
 mod stops;
 mod tree;
 pub(crate) mod walked;
 
-pub use narrowing::Narrowing;
 pub(crate) use stops::{Stop, stops};
-pub(crate) use tree::{Listing, listing, reads_as};
+pub(crate) use tree::reads_as;
 
 use groove_controllers::AppState;
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 use groove_types::FileDiff;
 
-use super::state::{Pane, Tab};
+use super::state::Pane;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::mark::Mark;
-use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in};
-use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::glass_aside;
-use groove_ui_kit::widgets::marked_glass_tabs;
-
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let rect = ctx.app.layout.sidebar;
-    if rect.is_empty() {
-        return;
-    }
-    glass_aside(ctx, rect);
-    let tall = |height: f32| Spec::default().height(height);
-    let list = rect;
-    let bar = bar::draw(ctx, rect, ui);
-    let [_, mut column] = column_in(list, [tall(bar.h), Spec::fill()]);
-    if let Some(one) = app.workspace.commit.as_ref() {
-        let [head, rest] = column_in(column, [tall(ctx.tokens.header), Spec::fill()]);
-        heading::showing(ctx, head, one);
-        column = rest;
-    }
-    let [strip, column] = column_in(column, [tall(ctx.tokens.row + ctx.tokens.sm), Spec::fill()]);
-    panes(ctx, strip, app, ui);
-    match (ui.session.pane, ui.session.tab) {
-        (Pane::Notes, _) => _ = notes::draw(ctx, column, app, ui),
-        (Pane::Commits, Tab::Diff) => _ = commits::draw(ctx, column, app, ui),
-        _ => changed_files(ctx, column, app, ui),
-    }
-}
-
-/// The lists a tab's sidebar offers: the change's in the diff, the tree's beside the files.
-fn offered(ui: &Ui) -> &'static [Pane] {
-    match ui.session.tab {
-        Tab::Diff => &Pane::ALL,
-        _ => &[Pane::Files, Pane::Notes],
-    }
-}
-
-/// The lists the sidebar offers, the one up lit and counted.
-fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
-    let offered = offered(ui);
-    let labels: Vec<String> = offered
-        .iter()
-        .map(|pane| labelled(app, ui, *pane))
-        .collect();
-    let shown: Vec<(Option<Mark>, &str, Target)> = labels
-        .iter()
-        .zip(offered)
-        .map(|(label, pane)| (Some(pane.mark()), label.as_str(), Target::Pane(*pane)))
-        .collect();
-    let at = offered
-        .iter()
-        .position(|pane| *pane == ui.session.pane)
-        .unwrap_or(0);
-    marked_glass_tabs(ctx, rect, &shown, at);
-}
-
-/// How many items a list holds, beside its mark; nothing when it holds none.
-fn labelled(app: &AppState, ui: &Ui, pane: Pane) -> String {
-    if pane == Pane::Files && ui.session.tab != Tab::Diff {
-        return String::new();
-    }
-    match counted(app, pane) {
-        0 => String::new(),
-        n => n.to_string(),
-    }
-}
 
 /// What a pane's own name counts beside it.
 fn counted(app: &AppState, pane: Pane) -> usize {
@@ -108,46 +35,9 @@ fn counted(app: &AppState, pane: Pane) -> usize {
     }
 }
 
-/// The files that changed, under their own heading, with the commit box below.
-fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
-    let files = narrowed(app, ui);
-    let grep = ui.session.bar.greps();
-    if grep {
-        let band = Spec::default().height(ctx.tokens.header);
-        let [head, rest] = column_in(column, [band, Spec::fill()]);
-        column = rest;
-        heading::found(ctx, head, app.workspace.found.len());
-    }
-    let body = column;
-    if grep {
-        return results::draw(ctx, body, app, ui);
-    }
-    let open = app.workspace.active().map(|file| &file.path);
-    if browsing(ui) {
-        let held = explorer::rows(
-            (app.workspace.paths(), app.workspace.paths_stamp()),
-            &files,
-            ui,
-        );
-        return match held.is_empty() {
-            true => says(ctx, body, empty(app)),
-            false => explorer::draw(ctx, body, app, &held, open, ui),
-        };
-    }
-    if files.is_empty() {
-        let said = match ui.session.bar.path.is_empty() {
-            true => "nothing changed",
-            false => "no file of that name",
-        };
-        return says(ctx, body, said);
-    }
-    let ranked = !ui.session.bar.path.is_empty();
-    rows::draw(ctx, body, app, &listing(&files, ranked), open, ui);
-}
-
 /// Whether the list is the whole worktree, which a query flattens back to matches.
 pub(crate) fn browsing(ui: &Ui) -> bool {
-    ui.session.tab == Tab::Files && ui.session.bar.path.is_empty()
+    ui.session.mode == super::Mode::Files
 }
 
 /// Whether the commits list still needs this worktree's commits read.
@@ -175,64 +65,6 @@ fn empty(app: &AppState) -> &'static str {
         (true, true) => "reading the worktree…",
         (true, false) => "nothing in this worktree",
     }
-}
-
-fn says(ctx: &mut Ctx, body: Rect, text: &str) {
-    let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-    let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    Label::new(text, ctx.styles.small(Role::Faint)).draw(ctx, room);
-}
-
-/// How many rows the path term keeps at most.
-pub(crate) const ROWS_MAX: usize = 200;
-
-/// The changed files the path term leaves, then the other worktree files it names.
-pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
-    let (changed, paths) = (changed(app), app.workspace.paths());
-    let query = ui.session.bar.path.text();
-    if query.is_empty() {
-        return changed.iter().collect();
-    }
-    let key = (
-        query.to_string(),
-        app.workspace.paths_stamp(),
-        stamp(changed),
-    );
-    let kept = ui.narrowing.of(key, || kept_by(changed, paths, query));
-    let row = |(of_change, at): &(bool, usize)| match of_change {
-        true => changed.get(*at),
-        false => paths.get(*at),
-    };
-    kept.iter().filter_map(row).collect()
-}
-
-/// The rows the term keeps: the changed files it finds, then the other paths, best first.
-fn kept_by(changed: &[FileDiff], paths: &[FileDiff], query: &str) -> Vec<(bool, usize)> {
-    let path = |(_, file): &(usize, &FileDiff)| file.path.clone();
-    let left = crate::palette::matching(changed.iter().enumerate().collect(), path, query);
-    let shown: std::collections::HashSet<&str> =
-        left.iter().map(|(_, one)| one.path.as_str()).collect();
-    let rest = paths
-        .iter()
-        .enumerate()
-        .filter(|(_, one)| !shown.contains(one.path.as_str()));
-    let rest = crate::palette::matching(rest.collect(), path, query);
-    let left = left.into_iter().map(|(at, _)| (true, at));
-    let mut out: Vec<(bool, usize)> = left
-        .chain(rest.into_iter().map(|(at, _)| (false, at)))
-        .collect();
-    out.truncate(ROWS_MAX);
-    out
-}
-
-/// What tells one change's files from another's.
-fn stamp(files: &[FileDiff]) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    for one in files {
-        one.path.hash(&mut hasher);
-    }
-    hasher.finish()
 }
 
 /// A question in the row's own place: `yes`, or keep.

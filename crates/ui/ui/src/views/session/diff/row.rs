@@ -7,7 +7,7 @@ mod stream;
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{At, Buffer, Opened, display_of, shown};
+use groove_controllers::workspace_service::{Buffer, Opened, display_of, shown};
 use groove_types::{Caret, Highlight, LineMark, RowKind};
 
 use self::file::whole;
@@ -36,21 +36,8 @@ pub(super) struct Drawn {
     pub(super) held: Option<(usize, usize, bool)>,
     /// What the file view says happened to this line.
     pub(super) mark: Option<LineMark>,
-    /// The row a file starts on, which names it instead of showing a line.
-    pub(super) head: bool,
-    /// A head row whose file hides its rows.
-    pub(super) folded: bool,
-    /// A head row whose file has been read.
-    pub(super) read: bool,
-    /// Which of its head's rows a head row is, and how many the head takes.
-    pub(super) part: (usize, usize),
-    /// What a head row's file added and removed, and its errors and warnings.
-    pub(super) counts: Option<(u32, u32)>,
-    pub(super) tally: Option<(u32, u32)>,
     /// A side of a split row with no line on it.
     pub(super) empty: bool,
-    /// The file a head row names.
-    pub(super) file: Option<String>,
     /// What a search found on this row, in the columns the row draws.
     pub(super) found: Vec<(usize, usize)>,
     /// The columns the row it pairs with does not have.
@@ -193,13 +180,11 @@ pub(crate) fn line_at(
             };
             (row < editor.buffer.lines().max(1)).then(|| (editor.path.to_string(), row, part))
         }
-        _ => match app.workspace.changes.at(row)? {
-            At::Head(_) => None,
-            At::Row(file, at) => {
-                let line = file.row(at)?.new?;
-                Some((file.path.clone(), line as usize, 0))
-            }
-        },
+        _ => {
+            let (file, at) = app.workspace.changes.at(row)?;
+            let line = file.row(at)?.new?;
+            Some((file.path.clone(), line as usize, 0))
+        }
     }
 }
 

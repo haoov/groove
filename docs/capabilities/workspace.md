@@ -1,7 +1,7 @@
 # Workspace
 
-Review, edit and land the code. Surface: the session's work region, as
-[../design.md](../design.md#workspace) draws it. Everything here follows the session's
+Review, edit and land the code. Surface: the session's `DIFF`, `FILES` and `KUBERNETES`
+modes, as [../design.md](../design.md#workspace) draws them. Everything here follows the session's
 selected worktree.
 
 ## Diff
@@ -13,14 +13,15 @@ no patch parser. Expanding a gap is a slice of a document already held.
 
 **Two modes.** Base: against the merge-base with the base branch, or the MR's target in a
 review. Local: uncommitted changes against HEAD. Untracked files are all additions. A
-throttled background fetch keeps the base fresh. The diff header's tabs and the palette's *Against the base* and *Local
+throttled background fetch keeps the base fresh. The diff band's tabs and the palette's *Against the base* and *Local
 changes* switch the mode. Enforced by
 `the_palette_reads_the_diff_against_the_base_or_the_local_changes`.
 
-**The whole change is one surface.** The file list is built from the numeric summary,
-with no content. The files on screen hold their documents; the others give theirs up. A
-file's rows fold under its own head row. The view — file, inline or split — the folds,
-the find session and the scroll are the ui's own state, not commands.
+**One file of the change takes rows.** The file list is built from the numeric summary,
+with no content. The diff focuses one file, `workspace.focus`; it alone takes rows, and it
+holds its documents while the others give theirs up. A change read again keeps its focus. The
+view — file, inline or split — the find session and the scroll are the ui's own state, not
+commands.
 
 **The syntax tree is whole-file, the query is windowed.** A document holds no colours;
 the frame asks the tree what the rows on screen mean.
@@ -54,13 +55,13 @@ second shows `Author, 5d ago · sha` at its end.
 CRDs included. A list never waits on the cluster: its watchers run on the pool and send a
 batch a frame at most.
 
-**A watcher runs while the tab reads it.** The tab holds one reader over a watcher a
+**A watcher runs while the list reads it.** The Kubernetes mode holds one reader over a watcher a
 context and namespace in scope, one a context for a kind not namespaced. A change of
 scope, kind or label lets go of them all and reads the new ones; a watcher left unread
 stops thirty seconds later.
 
 **A name word narrows in Groove, fuzzily — its characters in order; a `label=value` word
-goes to the server**, as a watcher of its own. Both are typed in the list's find bar; the sidebar's search narrows the kinds.
+goes to the server**, as a watcher of its own. Both are typed in the list's find bar.
 
 **A status and a ready count wear the colour of how the object stands**: good, waiting,
 failing, or done. A row whose status is done keeps its ready count faint. A word Groove does
@@ -87,10 +88,10 @@ again.
 
 ## Editor
 
-**One buffer a path, a worktree.** Each worktree keeps its open files in tab order;
+**One buffer a path, a worktree.** Each worktree keeps its open files in the order opened;
 switching worktree keeps them. Closing a worktree or deleting its session drops them.
 
-**One preview tab.** A single click opens a file as the preview, and the next single
+**One preview.** A single click opens a file as the preview, and the next single
 click replaces it. A double click, `workspace.keep_file` or the first edit keeps it.
 
 **A path never leaves the worktree.** Every file operation resolves against the worktree
@@ -127,8 +128,8 @@ holds this end to end.
   in batches, so a `uv sync` needs no restart; the palette restarts the servers all the
   same. `a_package_appearing_in_a_watched_directory_is_told_as_created` holds it.
 - **A diagnostic waves under what it covers, on the new side only**, in its severity's
-  colour; the line's number takes the worst one, and a file's head and row count its
-  errors and warnings. `split_marks_only_the_new_side` holds the side.
+  colour; the line's number takes the worst one, and the file's band counts its errors and
+  warnings. `split_marks_only_the_new_side` holds the side.
 - **What the servers say of a spot shows once the pointer rests on it**, after the quarter
   second blame waits, or at once at the caret on `ctrl+k`. The diagnostics stand above the
   hover, and the panel leaves with the pointer or the caret.
@@ -143,9 +144,8 @@ holds this end to end.
   arrows choose, `tab` types the choice over the word, `enter` stays a newline.
   `down_chooses_the_next_and_tab_types_it_over_the_word` holds the keys.
 
-**Search** walks the worktree in parallel, reports in batches, caps what it returns, and
-stops when the next search starts. The path search covers the whole worktree, not only
-the diff.
+**The worktree's paths are walked by its ignore rules**, off the main thread, for the
+explorer's tree and the palette's `#`; they cover the whole worktree, not only the diff.
 
 **The clipboard** is the desktop's, or Groove's own when there is no desktop.
 

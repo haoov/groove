@@ -11,7 +11,7 @@ fn nothing() -> (AppState, Ui) {
         groove_controllers::workspace_service::from_text("src/new.rs", "", ""),
     );
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     ui.focus = crate::Focus::Workspace;
     (app, ui)
 }
@@ -40,7 +40,7 @@ fn the_editor_stands_one_row_tall_on_an_empty_file() {
 fn the_caret_shows_on_the_one_line_of_an_empty_file() {
     let (app, ui) = nothing();
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let workspace = crate::layout::Layout::of(window(), &ui).agent;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let bar = Tokens::new(1.0).hairline * 2.0;
     let carets = frame.layers()[0]

@@ -9,7 +9,7 @@ use super::agent::{ask, asking, session_ui};
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
 use crate::tests::{all_texts, click, press, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui};
 
 fn pairs() -> Vec<(String, String, String)> {
@@ -34,18 +34,20 @@ fn settled(app: &AppState, mut ui: Ui) -> Ui {
 }
 
 #[test]
-fn the_diff_tab_holds_the_ask_then_the_change_whatever_tab_was_asked() {
+fn the_diff_holds_the_ask_then_the_change_whatever_tab_was_asked() {
     let app = patching();
     let mut ui = settled(&app, session_ui());
-    assert_eq!(ui.session.tab, Tab::Diff);
+    assert_eq!(ui.session.mode, Mode::Diff);
     let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = all_texts(&frame);
     let count = |word: &str| drawn.iter().filter(|one| *one == word).count();
     assert!(count("replicas") >= 2, "removed, then added: {drawn:?}");
-    let overview = hits.rect_of(&Target::Tab(Tab::Overview)).expect("the tab");
+    let overview = hits
+        .rect_of(&Target::ModeTab(Mode::Overview))
+        .expect("the tab");
     click(overview, &mut ui, &app, &hits);
     ui.settle(&app);
-    assert_eq!(ui.session.tab, Tab::Diff, "the ask is answered first");
+    assert_eq!(ui.session.mode, Mode::Diff, "the ask is answered first");
 }
 
 #[test]
@@ -76,16 +78,16 @@ fn only_the_band_s_approve_button_lets_a_cluster_write_through() {
 }
 
 #[test]
-fn once_the_write_is_answered_the_session_goes_back_to_the_tab_it_stood_on() {
+fn once_the_write_is_answered_the_session_goes_back_to_the_mode_it_stood_on() {
     let app = patching();
     let mut ui = session_ui();
-    ui.session.tab = Tab::Overview;
+    ui.session.mode = Mode::Overview;
     ui.settle(&app);
-    assert_eq!(ui.session.tab, Tab::Diff);
+    assert_eq!(ui.session.mode, Mode::Diff);
     let mut answered = app;
     answered.agent = asking(Vec::new()).agent;
     ui.settle(&answered);
-    assert_eq!(ui.session.tab, Tab::Overview);
+    assert_eq!(ui.session.mode, Mode::Overview);
 }
 
 #[test]

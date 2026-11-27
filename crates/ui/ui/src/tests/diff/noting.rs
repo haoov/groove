@@ -50,7 +50,7 @@ fn replying(text: &str) -> (AppState, Ui) {
     let mut app = opened();
     app.delivery.shown = vec![thread()];
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     ui.session.noting = Some(Noting::reply(Anchor::line("src/lib.rs", 1), "t1".into()));
     ui.focus = crate::Focus::Workspace;
     typed(text, &mut ui, &app);
@@ -74,7 +74,7 @@ fn press(key: Key, ui: &mut Ui, app: &AppState) -> Vec<groove_controllers::Comma
 fn a_right_click_in_the_rows_asks_about_that_line() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -94,7 +94,7 @@ fn a_right_click_inside_a_selection_asks_about_all_of_it() {
         head: Caret::new(2, 1),
     });
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),

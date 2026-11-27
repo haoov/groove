@@ -67,7 +67,7 @@ fn the_agent_speaks_under_its_name_once_a_turn() {
         Heard::Said("second".into()),
     ]);
     let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
-    let texts = all_texts(&frame);
+    let texts = crate::tests::texts_of(&frame);
     let named = texts.iter().filter(|one| *one == "AGENT").count();
     assert_eq!(named, 1, "{texts:?}");
     assert!(texts.iter().any(|one| one == "YOU"));

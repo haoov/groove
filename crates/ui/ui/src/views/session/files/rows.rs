@@ -3,97 +3,14 @@
 use groove_gfx::{Edges, Rect};
 use groove_types::{FileDiff, FileStatus};
 
-use super::{Listing, reads_as};
-use crate::Ui;
+use super::reads_as;
 use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::offsets::listed;
+use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{square, stand};
-use groove_ui_kit::text::{Label, elide, lit_cut, row};
-use groove_ui_kit::widgets::glass_hoverable;
-use groove_ui_kit::widgets::{changes, folder};
-
-enum Item<'a> {
-    Root(&'a str),
-    /// A group's directory, and whether its files stand under it.
-    Dir(&'a str, bool),
-    File(&'a FileDiff, f32),
-}
-
-pub(super) fn draw(
-    ctx: &mut Ctx,
-    body: Rect,
-    app: &groove_controllers::AppState,
-    listing: &Listing<'_>,
-    open: Option<&String>,
-    ui: &Ui,
-) {
-    let height = ctx.tokens.row;
-    let items = items(ctx, listing, ui);
-    let at = (Scroller::Files, ui.offset(Scroller::Files));
-    listed(
-        ctx,
-        body,
-        at,
-        &items,
-        |_| height,
-        |ctx, line, item| match item {
-            Item::Root(text) => path(ctx, line, text, Role::Ghost),
-            Item::Dir(text, open) => group(ctx, line, text, *open),
-            Item::File(file, indent) => {
-                let reading = Reading {
-                    open: open == Some(&file.path),
-                    noted: super::noted(app, &file.path),
-                    tally: crate::views::session::diff::faults::tally(app, &file.path),
-                };
-                entry(ctx, line, file, *indent, reading, ui)
-            }
-        },
-    );
-}
-
-/// The root, then each directory over its files; a folded directory hides them.
-fn items<'a>(ctx: &Ctx, listing: &'a Listing<'_>, ui: &Ui) -> Vec<Item<'a>> {
-    let mut items = Vec::new();
-    if !listing.root.is_empty() {
-        items.push(Item::Root(&listing.root));
-    }
-    for group in &listing.groups {
-        let indent = match group.dir.is_empty() {
-            true => ctx.tokens.md,
-            false => {
-                let open = !ui.session.closed.contains(&group.dir);
-                items.push(Item::Dir(&group.dir, open));
-                if !open {
-                    continue;
-                }
-                ctx.tokens.md + ctx.tokens.md
-            }
-        };
-        items.extend(group.files.iter().map(|file| Item::File(file, indent)));
-    }
-    items
-}
-
-/// A directory of the list: a folder that folds its files away, then its path.
-fn group(ctx: &mut Ctx, line: Rect, dir: &str, open: bool) {
-    glass_hoverable(ctx, line, Target::Group(dir.to_string()));
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    folder(ctx, &mut room, open, Role::Faint);
-    let style = ctx.styles.body(Role::Faint);
-    let text = elide(ctx, dir, &style, room.w);
-    row(ctx, room, 0.0, &text, style);
-}
-
-/// A row naming a directory, elided to the room it has.
-fn path(ctx: &mut Ctx, line: Rect, text: &str, role: Role) {
-    let style = ctx.styles.body(role);
-    let room = line.w - ctx.tokens.md * 2.0;
-    let text = elide(ctx, text, &style, room);
-    row(ctx, line, ctx.tokens.md, &text, style);
-}
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::changes;
 
 /// How a file's row reads: whether it is the open one, and whether it carries a note.
 #[derive(Debug, Clone, Copy)]
@@ -104,14 +21,7 @@ pub(super) struct Reading {
     pub tally: Option<(u32, u32)>,
 }
 
-pub(super) fn entry(
-    ctx: &mut Ctx,
-    line: Rect,
-    file: &FileDiff,
-    indent: f32,
-    reading: Reading,
-    ui: &Ui,
-) {
+pub(super) fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, indent: f32, reading: Reading) {
     let on_row = pointed(ctx, &file.path);
     if on_row {
         groove_ui_kit::widgets::glass_lit(ctx, line);
@@ -138,25 +48,13 @@ pub(super) fn entry(
         groove_ui_kit::widgets::icon(ctx, mark, Mark::Note, Role::Faint);
     }
     stand(&mut room, sm, 0.0, right);
-    named(ctx, room, file, ui.session.bar.path.text());
+    named(ctx, room, file);
 }
 
-/// The file's name, the letters the path term found lit; its directory is the row above it.
-fn named(ctx: &mut Ctx, room: Rect, file: &FileDiff, query: &str) {
+/// The file's name; its directory is the row above it.
+fn named(ctx: &mut Ctx, room: Rect, file: &FileDiff) {
     let (name, _) = reads_as(&file.path);
-    let from = file.path.chars().count() - name.chars().count();
-    let found = groove_types::sought(&file.path, query)
-        .map(|one| one.at)
-        .unwrap_or_default();
-    let lit = groove_types::runs(
-        found
-            .into_iter()
-            .filter(|at| *at >= from)
-            .map(|at| at - from)
-            .collect(),
-    );
-    let (style, accent) = (ctx.styles.body(Role::Text), ctx.styles.body(Role::Accent));
-    lit_cut(ctx, (room, 0.0), &name, style, (&lit, accent));
+    Label::new(&name, ctx.styles.body(Role::Text)).draw(ctx, room);
 }
 
 /// The colour of a file's status letter.

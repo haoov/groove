@@ -175,15 +175,15 @@ pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
 /// What a palette row asks of the window, done as its chord or its click would.
 pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     use crate::palette::Act;
-    use crate::views::session::{Pane, Tab};
+    use crate::views::session::{Mode, Pane};
     match act {
         Act::Key(action) => return keys::run(action, ui, app),
         Act::View(view) => {
             ui.session.view = view;
-            ui.session.tab = Tab::Diff;
+            ui.session.bring(Mode::Diff);
         }
         Act::Mode(mode) => {
-            ui.session.tab = Tab::Diff;
+            ui.session.bring(Mode::Diff);
             let set = groove_controllers::workspace::Command::SetMode { mode };
             return vec![Command::Workspace(set)];
         }
@@ -199,11 +199,11 @@ pub(crate) fn acted(act: crate::palette::Act, ui: &mut Ui, app: &AppState) -> Ve
             let held = &mut ui.session.resources;
             (held.kind, held.scroll, held.showing) = (kind.or(held.kind.take()), 0.0, None);
             ui.surface = crate::Surface::Session;
-            ui.session.tab = Tab::Resources;
+            ui.session.bring(Mode::Kubernetes);
             ui.focus = crate::Focus::Workspace;
         }
         Act::Open(path) => {
-            ui.session.tab = Tab::Files;
+            ui.session.bring(Mode::Files);
             ui.focus = crate::Focus::Workspace;
             let open = groove_controllers::workspace::Command::OpenFile { path, at: None };
             return vec![Command::Workspace(open)];

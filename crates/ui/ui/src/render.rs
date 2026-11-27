@@ -7,7 +7,7 @@ use groove_types::chat::Chat;
 use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
 use crate::layout::Layout;
-use crate::views::session::{Tab, resources};
+use crate::views::session::{Mode, resources};
 use crate::views::{board, focus, overlays, rail, session, settings, splitter};
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -23,7 +23,6 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         let drawn = Drawn {
             layout: Layout::of(metrics, ui),
             hits: &mut hits,
-            modes: ui.modes,
         };
         let theme = app.config.theme();
         let mut ctx = Ctx::new(theme, metrics, drawn, &mut frame, fonts, ui.hover.clone());
@@ -73,7 +72,7 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
     out.extend(session::files::moded::focused(app, ui));
-    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let up = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     out.extend(resources::wants(
         app,
         up,
@@ -102,7 +101,7 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
 
 /// The size code is drawn at: the small text's while a pod's logs show, else the config's.
 pub fn code_size(app: &AppState, ui: &Ui, (text, code): (f32, f32)) -> f32 {
-    let resources = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let resources = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     let tab = ui.session.resources.tab().filter(|_| resources);
     match tab.is_some_and(|one| one.view == resources::View::Logs) {
         true => text * groove_ui_kit::base::tokens::SMALL,
@@ -112,7 +111,7 @@ pub fn code_size(app: &AppState, ui: &Ui, (text, code): (f32, f32)) -> f32 {
 
 /// When the Resources panel next changes on its own: a time cell turns, a pod's usage is due.
 pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
-    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let up = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     let held = &ui.session.resources;
     let listed = held.tab().is_none().then(|| app.cluster.store.due());
     let due = [listed.flatten(), resources::tab_due(app, held)];
@@ -129,7 +128,7 @@ pub fn spins(app: &AppState, ui: &Ui) -> bool {
     if ui.showing(app) == Surface::Session && chat.is_some_and(Chat::sending) {
         return true;
     }
-    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let up = ui.showing(app) == Surface::Session && ui.session.mode == Mode::Kubernetes;
     let read = ui
         .session
         .resources

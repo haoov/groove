@@ -5,7 +5,7 @@ use groove_gfx::{Font, TextRun, Weight};
 use super::working_a_task;
 use crate::hit::Target;
 use crate::tests::metrics;
-use crate::{Ui, view};
+use crate::view;
 
 const BODY: &str = "## Goal\n\nClose **the gates** and *then* `ship`.\n\n\
 - [x] tests\n- [ ] docs\n\n```\nlet one = 1;\n```\n\nSee [the runbook](https://example.com/run).";
@@ -17,7 +17,7 @@ fn drawn() -> (Vec<TextRun>, crate::hit::Hits) {
         .insert("gh-haoov-groove-50".into(), BODY.into());
     let (frame, hits) = view(
         &app,
-        &Ui::default(),
+        &super::overviewed(),
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );

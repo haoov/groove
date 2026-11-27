@@ -1,16 +1,13 @@
-//! The Resources tab's panel: the list tab, titled by its kind and count, over the rows.
+//! The Kubernetes list: titled by its kind and count, over the rows.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::{KubeKind, ObjectRow, WatchKey};
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{
-    Cell, Column, Laid, Rows, Search, Shown, Sorted, Steps, Tab, Table, Width, glass_field,
-};
+use groove_ui_kit::widgets::{Cell, Column, Laid, Rows, Shown, Sorted, Steps, Table, Width};
 
 mod cells;
 mod order;
@@ -39,22 +36,6 @@ pub fn uids(app: &AppState, ui: &Ui) -> Vec<String> {
         .of(app, picked, || order::ordered(app, &keys, held));
     let rows = resolved(app, &keys, &order);
     rows.into_iter().map(|(_, row)| row.uid.clone()).collect()
-}
-
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
-    let held = &ui.session.resources;
-    let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
-    let [strip, mut body] = column_in(body, [band, Spec::fill()]);
-    title(ctx, strip, counted(app, ui), held);
-    if let Some(tab) = held.tab() {
-        return super::tab::draw(ctx, body, app, (ui, tab));
-    }
-    if held.finding || !held.search.is_empty() {
-        let [bar, rest] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-        found(ctx, bar, held);
-        body = rest;
-    }
-    rows(ctx, app, ui, body);
 }
 
 /// The kind listed and how many rows it holds.
@@ -102,41 +83,6 @@ pub(super) fn rows(ctx: &mut Ctx, app: &AppState, ui: &Ui, mut body: Rect) {
     };
     let kind = kind.unwrap_or_default();
     listed(ctx, body, app, (&keys, rows), (held, &kind, asked));
-}
-
-/// The find bar over the rows: what it narrows by, typed.
-fn found(ctx: &mut Ctx, line: Rect, held: &ResourcesUi) {
-    let field = glass_field(ctx, line);
-    let search = Search::new(&held.search, Target::ResourceSearch, held.typing);
-    search
-        .hint("name, or label=value")
-        .code()
-        .faint(Role::Faint)
-        .draw(ctx, field);
-}
-
-/// The list's own tab, its kind and how many rows it holds, then a tab for each object open.
-fn title(ctx: &mut Ctx, strip: Rect, (kind, count): (Option<KubeKind>, usize), held: &ResourcesUi) {
-    let mut room = strip.pad(Edges::across(ctx.tokens.sm, ctx.tokens.md));
-    let xs = ctx.tokens.xs;
-    let named = kind.map(|kind| format!("{} \u{b7} {count}", plural(&kind)));
-    let mut tabs = Vec::new();
-    if let Some(named) = &named {
-        tabs.push(Tab::new(
-            named,
-            Target::ResourceList,
-            held.showing.is_none(),
-        ));
-    }
-    for (at, one) in held.opened.iter().enumerate() {
-        let shown = held.showing == Some(at);
-        let tab = Tab::new(&one.link.name, Target::ResourceTab(at), shown).keep_case();
-        tabs.push(tab.close(Mark::Close, Target::ResourceClose(at)));
-    }
-    if !tabs.is_empty() {
-        let side = groove_ui_kit::widgets::Side::Left;
-        groove_ui_kit::widgets::tab_group(ctx, &mut room, tabs, (side, xs));
-    }
 }
 
 /// `Pods`, from the kind's plural.
@@ -234,7 +180,7 @@ fn listed(
             ruled: false,
             carded: false,
             gridded: true,
-            bare: ctx.app.modes,
+            bare: true,
         },
         count: rows.len(),
         offset: held.scroll,

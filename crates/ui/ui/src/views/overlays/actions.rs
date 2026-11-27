@@ -80,8 +80,8 @@ pub fn rows(of: &Of) -> Vec<&str> {
 }
 
 pub fn draw(ctx: &mut Ctx, open: &Menu) {
-    if let Of::Models { rows, gauges, .. } = &open.of {
-        return crate::views::session::agent_pane::model::menu(ctx, open, (rows, gauges));
+    if let Of::Models { rows, .. } = &open.of {
+        return crate::views::session::agent_pane::model::menu(ctx, open, rows);
     }
     let within = ctx.window;
     let rows = rows(&open.of);

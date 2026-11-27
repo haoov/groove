@@ -45,6 +45,9 @@ A feature of a capability the user can name, such as Diff or Routines. Never a s
 ### Surface
 A region the user sees: the board, the rail, the session, the review sheet, settings.
 
+### Mode
+What a session's middle shows, picked from its bar's tabs: Overview, Agent, Diff, Files or Kubernetes.
+
 ### Ask
 A write from the agent that waits for the user to approve, review or refuse it.
 

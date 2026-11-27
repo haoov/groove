@@ -109,7 +109,7 @@ fn ctrl_and_a_click_follow_a_link_or_open_a_file_at_its_line() {
         at,
     };
     assert_eq!(acted, vec![Command::Workspace(open)]);
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Files);
 }
 
 #[test]

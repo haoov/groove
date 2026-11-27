@@ -15,9 +15,7 @@ use crate::views::session::resources::{View, pins};
 
 /// The listing of `staging` on `shop` and `cnpg`, with modes on `KUBERNETES`.
 fn kubed() -> (AppState, crate::Ui) {
-    let (mut app, mut ui) = listing();
-    let config = app.config.config.as_mut().expect("a config");
-    config.ui.modes = true;
+    let (app, mut ui) = listing();
     ui.session.mode = Mode::Kubernetes;
     ui.settle(&app);
     (app, ui)
@@ -50,14 +48,13 @@ fn pinned(app: &mut AppState, ui: &crate::Ui) -> Pin {
 }
 
 #[test]
-fn the_list_band_names_the_kind_its_count_and_its_scope_and_no_strip_of_tabs_stands() {
+fn the_list_band_names_the_kind_its_count_and_its_scope() {
     let (app, ui) = kubed();
     let (said, hits) = texts(&app, &ui);
     for one in ["PODS · 3", "staging", "shop", "cnpg", "api-0", "NAME"] {
         assert!(said.iter().any(|text| text == one), "{one}: {said:?}");
     }
     assert!(hits.rect_of(&Target::ResourcePin).is_some(), "the pin");
-    assert!(hits.rect_of(&Target::ResourceList).is_none(), "no strip");
     let band = hits.rect_of(&Target::ResourcePin).expect("the band");
     let first = hits.rect_of(&row("shop/api-0")).expect("a row");
     assert!(band.bottom() <= first.y, "the band over the rows");

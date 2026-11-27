@@ -26,7 +26,7 @@ fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
         "**issue (blocking):** **always** use `drop` [here](https://example.com/a)\n\n- [ ] then this",
     );
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let runs: Vec<&groove_gfx::TextRun> = frame
         .layers()

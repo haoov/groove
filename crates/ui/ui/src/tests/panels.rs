@@ -7,7 +7,7 @@ use groove_ui_kit::base::tokens::Tokens;
 use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tests::{full_app, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Ui, view};
 
 /// Each quad of the frame in `color`, with its layer and its place in that layer.
@@ -34,7 +34,6 @@ fn every_open_panel_is_headed_by_its_band_ruled_off_under_it() {
     for (name, panel) in [
         ("sessions", layout.sessions),
         ("feed", layout.feed),
-        ("strip", layout.strip),
         ("drawer", layout.manual),
     ] {
         let top = |rect: &Rect| {
@@ -56,47 +55,16 @@ fn every_open_panel_is_headed_by_its_band_ruled_off_under_it() {
 }
 
 #[test]
-fn a_folded_capsule_is_its_band_and_what_it_holds_stands_on_it() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    ui.session.stowed = true;
-    ui.session.tab = Tab::Diff;
-    ui.hover = Some(Target::Tab(Tab::Files));
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let layout = Layout::of(window(), &ui);
-    let styles = Styles::new(app.config.theme(), Tokens::new(1.0));
-    let band = quads(&frame, styles.panel_head())
-        .into_iter()
-        .find(|(_, _, one)| {
-            (one.y - layout.header.y).abs() <= 1.0
-                && (one.right() - layout.header.right()).abs() <= 1.0
-        });
-    let (layer, at, capsule) = band.expect("the capsule's band");
-    let files = hits.rect_of(&Target::Tab(Tab::Files)).expect("a tab");
-    assert!(
-        capsule.x <= files.x && capsule.right() >= files.right(),
-        "around its tabs"
-    );
-    let lit = quads(&frame, styles.glass_hover())
-        .into_iter()
-        .find(|(_, _, one)| *one == files);
-    let (lit_layer, lit_at, _) = lit.expect("the tab under the pointer is lit");
-    assert!(
-        (lit_layer, lit_at) > (layer, at),
-        "lit over the band, not under it"
-    );
-}
-
-#[test]
 fn a_set_of_tabs_stands_edge_to_edge_in_one_hairline_box() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let at = |tab: Tab| hits.rect_of(&Target::Tab(tab)).expect("a tab");
-    let (overview, diff, files) = (at(Tab::Overview), at(Tab::Diff), at(Tab::Files));
+    let at = |mode: Mode| hits.rect_of(&Target::ModeTab(mode)).expect("a tab");
+    let (overview, diff, files) = (at(Mode::Overview), at(Mode::Diff), at(Mode::Files));
+    let agent = at(Mode::Agent);
     assert!(
-        (overview.right() - diff.x).abs() < 0.5,
+        (overview.right() - agent.x).abs() < 0.5 && (agent.right() - diff.x).abs() < 0.5,
         "no gap between them"
     );
     assert!((diff.right() - files.x).abs() < 0.5);
@@ -166,8 +134,8 @@ fn a_boundary_is_grabbed_on_the_border_the_user_sees() {
         "the rail's border"
     );
     assert!(
-        across(at(Edge::Agent), layout.strip.x),
-        "the strip's border"
+        across(at(Edge::Aside), layout.sidebar.x),
+        "the sidebar's border"
     );
     let feed = at(Edge::Feed);
     assert!(

@@ -25,7 +25,7 @@ pub(super) fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> 
 
 /// Takes hold of `edge`, keeping how far from it the pointer landed.
 pub(super) fn grab(ui: &mut Ui, edge: Edge, x: f32, y: f32, metrics: Metrics) -> Vec<Command> {
-    let at = ui.split.edge_at(edge, window_of(metrics), sidebar(ui));
+    let at = ui.split.edge_at(edge, window_of(metrics));
     ui.held = Some(Held::Edge(Drag {
         edge,
         offset: along(edge, x, y, metrics) - at,
@@ -47,12 +47,7 @@ pub(super) fn drag_to(ui: &mut Ui, x: f32, y: f32, metrics: Metrics) {
         return;
     };
     let at = along(drag.edge, x, y, metrics) - drag.offset;
-    ui.split
-        .drag(drag.edge, at, window_of(metrics), sidebar(ui));
-}
-
-pub(super) fn sidebar(ui: &Ui) -> bool {
-    ui.session.sidebar()
+    ui.split.drag(drag.edge, at, window_of(metrics));
 }
 
 /// The window's size in logical pixels.
@@ -65,14 +60,12 @@ pub(super) fn logical(value: f32, metrics: Metrics) -> f32 {
     value / metrics.scale
 }
 
-/// The focused pane's boundary one row left or right, or the terminals' one up or down.
+/// The rail's or the sidebar's boundary one row left or right, or the terminals' one up or down.
 pub(in crate::input) fn nudged(ui: &mut Ui, (across, onward): (bool, bool), metrics: Metrics) {
     use crate::Focus;
     let edge = match (across, ui.focus) {
         (true, Focus::Rail) => Edge::Rail,
-        (true, Focus::Agent | Focus::Workspace | Focus::Terminal) => Edge::Agent,
-        (true, Focus::Sidebar) if ui.modes => Edge::Aside,
-        (true, Focus::Sidebar) => Edge::Sidebar,
+        (true, Focus::Sidebar) => Edge::Aside,
         (false, Focus::Terminal) => Edge::Manual,
         (false, Focus::Workspace) if ui.session.manual => Edge::Manual,
         _ => return,
@@ -80,6 +73,6 @@ pub(in crate::input) fn nudged(ui: &mut Ui, (across, onward): (bool, bool), metr
     let step = groove_ui_kit::base::tokens::Tokens::default().row;
     let step = if onward { step } else { -step };
     let window = window_of(metrics);
-    let at = ui.split.edge_at(edge, window, sidebar(ui)) + step;
-    ui.split.drag(edge, at, window, sidebar(ui));
+    let at = ui.split.edge_at(edge, window) + step;
+    ui.split.drag(edge, at, window);
 }

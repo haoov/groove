@@ -87,7 +87,7 @@ fn landing_on_a_definition_centres_it_once() {
 #[test]
 fn a_definition_the_diff_does_not_show_opens_on_the_file_tab() {
     use crate::tests::changed_files;
-    use crate::views::session::Tab;
+    use crate::views::session::Mode;
     let mut app = full_app();
     shows(&mut app, "src/model.py", "class Quote:\n", "class Quote:\n");
     changed_files(&mut app, &[("src/cache.py", "a\n", "b\n")]);
@@ -95,24 +95,24 @@ fn a_definition_the_diff_does_not_show_opens_on_the_file_tab() {
     app.workspace.focus("src/model.py", Some(Selection::at(at)));
     app.workspace.servers.landed("src/model.py", at);
     let mut ui = on_file();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     land(&mut ui, &app, &hits, window());
-    assert_eq!(ui.session.tab, Tab::Files);
+    assert_eq!(ui.session.mode, Mode::Files);
 }
 
 #[test]
 fn a_definition_the_diff_shows_stays_on_the_diff() {
-    use crate::views::session::Tab;
+    use crate::views::session::Mode;
     let mut app = full_app();
     shows(&mut app, PATH, "x = 1\n", "x = 2\n");
     let at = Caret::new(0, 0);
     app.workspace.servers.landed(PATH, at);
     let mut ui = on_file();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     land(&mut ui, &app, &hits, window());
-    assert_eq!(ui.session.tab, Tab::Diff);
+    assert_eq!(ui.session.mode, Mode::Diff);
 }
 
 #[test]

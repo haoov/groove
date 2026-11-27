@@ -141,12 +141,9 @@ fn arriving_on_a_session_that_asks_opens_its_sheet_and_another_s_never_shows() {
 }
 
 #[test]
-fn with_modes_the_sheet_floats_over_the_middle() {
+fn the_sheet_floats_over_the_middle() {
     let app = committing();
-    let mut ui = Ui {
-        modes: true,
-        ..session_ui()
-    };
+    let mut ui = session_ui();
     ui.examine(ApprovalId::new("ap-1"));
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let sheet = hits.rect_of(&Target::Sheet).expect("the sheet");

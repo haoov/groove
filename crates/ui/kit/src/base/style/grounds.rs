@@ -9,7 +9,7 @@ use crate::base::tokens::{
 };
 
 impl Styles {
-    /// The work's own ground: the window, the workspace, the agent's pane.
+    /// The work's own ground: the window and the session's middle.
     pub fn ground(&self) -> Color {
         self.palette.base
     }

@@ -2,17 +2,17 @@
 
 use groove_types::SessionId;
 
-use crate::tests::{metrics, open, texts_of};
-use crate::{Ui, view};
+use crate::tests::{all_texts, metrics, open};
+use crate::view;
 
 fn texts(app: &groove_controllers::AppState) -> Vec<String> {
     let (frame, _) = view(
         app,
-        &Ui::default(),
+        &super::overviewed(),
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    texts_of(&frame)
+    all_texts(&frame)
 }
 
 #[test]
@@ -22,13 +22,11 @@ fn a_maintenance_task_lists_its_children() {
     parent.state.maintenance = true;
     parent.children = vec![open("child-1", "VeleroBackupFailed").session];
     let said = texts(&app);
-    for one in [
-        "MAINTENANCE",
-        "CHILDREN · 1",
-        "VeleroBackupFailed",
-        "closed",
-    ] {
-        assert!(said.iter().any(|text| text == one), "{one}: {said:?}");
+    for one in ["MAINTENANCE", "CHILDREN · 1", "VeleroBackup", "closed"] {
+        assert!(
+            said.iter().any(|text| text.starts_with(one)),
+            "{one}: {said:?}"
+        );
     }
 }
 

@@ -15,9 +15,6 @@ use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
-    if code.covered {
-        return;
-    }
     if code.footer {
         return composer(ctx, line, gutter);
     }
@@ -46,12 +43,6 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         gutter: line.gutter,
         mark: line.mark,
         banner: line.banner,
-        head: line.head,
-        folded: line.folded,
-        read: line.read,
-        part: line.part,
-        counts: line.counts,
-        tally: line.tally,
         tile: line.tile.as_ref().map(|(tile, folds)| {
             let opens = folds
                 .clone()

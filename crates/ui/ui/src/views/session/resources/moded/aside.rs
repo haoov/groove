@@ -1,4 +1,4 @@
-//! The Kubernetes tab's sidebar in the modes layout: the lists pinned, the objects open, the kinds.
+//! The Kubernetes sidebar: the lists pinned, the objects open, the kinds.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -105,7 +105,7 @@ pub fn body(ctx: &mut Ctx, app: &AppState, ui: &Ui, room: Rect) -> f32 {
             }
             Line::Pinned(pin) => pinned(ctx, line, pin, shown.as_ref() == Some(*pin)),
             Line::Open(at, one) => opened(ctx, line, (*at, one), held.showing == Some(*at)),
-            Line::Kind(one) => kind_line(ctx, line, one, (kind.as_ref(), None)),
+            Line::Kind(one) => kind_line(ctx, line, one, kind.as_ref()),
         },
     )
 }

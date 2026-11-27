@@ -6,31 +6,10 @@ use groove_controllers::{AppState, Command};
 use super::super::Key;
 use crate::hit::{Hits, Target};
 use crate::layout::Layout;
+use crate::views::session::Pane;
 use crate::views::session::files::{Stop, stops};
-use crate::views::session::{Pane, Tab};
 use crate::{Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
-
-/// What the search bar passes to its list: the arrows, and Enter once a row is stood on.
-pub(super) fn from_bar(
-    key: Key,
-    ui: &mut Ui,
-    app: &AppState,
-    seen: (&Hits, Metrics),
-) -> Option<Vec<Command>> {
-    let rows = stops(app, ui, &seen.1.tokens());
-    let stood = rows
-        .iter()
-        .any(|one| ui.hover.as_ref() == Some(&one.target));
-    match key {
-        Key::Up | Key::Down => Some(in_list(key, ui, app, seen)),
-        Key::Enter if stood => {
-            ui.session.bar.typing = None;
-            Some(in_list(key, ui, app, seen))
-        }
-        _ => None,
-    }
-}
 
 pub(super) fn in_list(
     key: Key,
@@ -138,7 +117,6 @@ fn folded(target: &Target, ui: &mut Ui, open: bool) {
     let (held, path, holds_open) = match target {
         Target::Dir(path) => (&mut ui.session.opened, path, true),
         Target::Group(dir) => (&mut ui.session.closed, dir, false),
-        Target::FoundIn(path) => (&mut ui.session.shut, path, false),
         _ => return,
     };
     let wanted = open == holds_open;
@@ -148,12 +126,9 @@ fn folded(target: &Target, ui: &mut Ui, open: bool) {
     }
 }
 
-/// The next or the previous of the lists the tab offers.
+/// The next or the previous of the lists the Diff's sidebar offers.
 fn paned(ui: &mut Ui, forward: bool) -> Vec<Command> {
-    let offered: &[Pane] = match ui.session.tab {
-        Tab::Diff => &Pane::ALL,
-        _ => &[Pane::Files, Pane::Notes],
-    };
+    let offered = &Pane::ALL;
     let at = offered
         .iter()
         .position(|one| *one == ui.session.pane)

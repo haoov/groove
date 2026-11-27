@@ -68,7 +68,7 @@ pub use config::{
     Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap,
     ThemeName, UiConfig,
 };
-pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
+pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use described::{
     Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage, Used,
 };
@@ -89,7 +89,7 @@ pub use mr::{
     ReviewState, ReviewVerdict, Reviewer,
 };
 pub use naming::{explorer_branch, is_explorer_branch, names_session};
-pub use narrowing::{fuzzy, narrows, occurrences, score};
+pub use narrowing::{fuzzy, occurrences, score};
 pub use note::{Anchor, LABELS, Labelled, Note, Said, decorated, labelled};
 pub use panes::Panes;
 pub use pinned::Pin;

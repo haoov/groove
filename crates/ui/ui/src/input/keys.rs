@@ -1,7 +1,6 @@
 //! What a key does, by the pane that holds the keyboard.
 
 mod agent;
-mod alerts;
 pub(crate) mod app;
 mod bar;
 mod board;
@@ -25,14 +24,13 @@ use groove_controllers::{AppState, Command};
 use super::typed::Typed;
 use super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
-use crate::views::session::Term;
 use crate::views::settings::Draft;
 use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
 use agent::to_shell;
-use bar::{finding, in_bar, opened, typing};
-pub(in crate::input) use bar::{refound, searches};
+pub(in crate::input) use bar::refound;
+use bar::{finding, typing};
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
@@ -100,12 +98,6 @@ fn in_session(
     match super::typed::keyed(ui, app) {
         Some(Typed::Naming) => return in_name(key, mods, ui),
         Some(Typed::Noting) => return in_note(key, mods, ui, keymap),
-        Some(Typed::Bar(_)) => {
-            if let Some(commands) = listed::from_bar(key, ui, app, seen) {
-                return commands;
-            }
-            return in_bar(key, mods, ui, app, keymap);
-        }
         Some(Typed::Search) => {
             return resources::in_resources((key, mods), ui, app);
         }
@@ -129,16 +121,6 @@ fn in_pane(
     let raw = ui.focus == Focus::Terminal;
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
         return copy::copied(ui.focus, app);
-    }
-    let bars = [
-        (Action::OpenPath, Term::Path, !raw),
-        (Action::SearchFiles, Term::Text, true),
-    ];
-    for (action, term, heard) in bars {
-        if heard && keymap.is(action, key, mods) {
-            opened(ui, app, term);
-            return Vec::new();
-        }
     }
     if ui.showing(app) == Surface::Board {
         return board::on_board((key, mods), ui, app, seen);
@@ -178,7 +160,6 @@ fn to_focused(
         Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar((key, mods), ui, app, seen),
         Focus::Rail => in_rail(key, ui, app),
-        Focus::Alerts => alerts::in_alerts(key, ui, app),
     }
 }
 

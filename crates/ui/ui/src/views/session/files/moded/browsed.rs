@@ -1,4 +1,4 @@
-//! The Files tab's sidebar in the modes layout: the files open, then the worktree as a tree.
+//! The Files mode's sidebar: the files open, then the worktree as a tree.
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Opened;

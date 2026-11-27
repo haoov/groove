@@ -1,8 +1,7 @@
-//! The Files tab's strip: the preview in italic, a tab's menu, the middle button, a double click.
+//! The open rows of the Files sidebar: a row's menu, the middle button, a double click.
 
 use groove_controllers::workspace_service::from_text;
 use groove_controllers::{Command, workspace};
-use groove_gfx::Font;
 use groove_types::Edit;
 
 use super::*;
@@ -23,7 +22,7 @@ fn tabbed() -> (AppState, Ui) {
         }
     }
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Files;
+    ui.session.mode = Mode::Files;
     (app, ui)
 }
 
@@ -42,20 +41,6 @@ fn picked(app: &AppState, ui: &mut Ui, path: &str, at: usize) -> Vec<Command> {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let row = hits.rect_of(&Target::MenuRow(at)).expect("the row");
     click(row, ui, app, &hits)
-}
-
-#[test]
-fn the_preview_s_name_is_in_italic_and_the_kept_ones_are_not() {
-    let (app, ui) = tabbed();
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let font = |name: &str| {
-        let runs = frame.layers().iter().flat_map(|layer| layer.texts.iter());
-        runs.filter(|run| run.text == name)
-            .map(|run| run.style.font)
-            .next()
-    };
-    assert_eq!(font("c.rs"), Some(Font::Italic));
-    assert_ne!(font("a.rs"), Some(Font::Italic));
 }
 
 #[test]

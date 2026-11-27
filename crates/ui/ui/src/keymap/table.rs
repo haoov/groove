@@ -32,7 +32,7 @@ const fn spec(
 }
 
 /// A region the keys go to, in the Panes group.
-/// An open file's or object's tab, while the workspace has the keys.
+/// An open file's or object's tab, while the middle has the keys.
 const fn opened(
     action: Action,
     (id, label): (&'static str, &'static str),
@@ -61,7 +61,7 @@ const fn pane(
 use Action as A;
 use Ring::{App, Code, List, Terminal};
 
-pub const TABLE: [Spec; 55] = [
+pub const TABLE: [Spec; 52] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -123,13 +123,8 @@ pub const TABLE: [Spec; 55] = [
     pane(A::FocusRail, ("pane.rail", "the rail"), &["alt+r"]),
     pane(A::FocusAgent, ("pane.agent", "the agent"), &["alt+a"]),
     pane(
-        A::FocusAlerts,
-        ("pane.alerts", "the alerts: open, focus, fold"),
-        &["alt+i"],
-    ),
-    pane(
         A::FocusWorkspace,
-        ("pane.workspace", "the workspace: open, focus, fold"),
+        ("pane.workspace", "the middle"),
         &["alt+o"],
     ),
     pane(
@@ -267,16 +262,6 @@ pub const TABLE: [Spec; 55] = [
         A::FindPrevious,
         ("find.previous", "previous match"),
         &["shift+enter"],
-    ),
-    code(
-        A::OpenPath,
-        ("files.open_path", "open a file by path"),
-        &["ctrl+p"],
-    ),
-    code(
-        A::SearchFiles,
-        ("files.search", "search in files"),
-        &["ctrl+shift+f"],
     ),
     spec(
         A::TerminalCopy,

@@ -29,9 +29,10 @@ fn logged(log: Vec<CommitEntry>) -> (AppState, Ui) {
 fn in_sidebar(app: &AppState, ui: &Ui) -> Vec<String> {
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
     let rect = Layout::of(window(), ui).sidebar;
-    frame.layers()[0]
-        .texts
+    frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .filter(|run| run.x >= rect.x && run.x < rect.right())
         .map(|run| run.text.clone())
         .collect()
@@ -55,7 +56,7 @@ fn the_strip_counts_the_commits_the_branch_owns() {
     let said = tab_said(&app, &ui, Pane::Commits);
     assert_eq!(
         said.as_deref(),
-        Some("1"),
+        Some("COMMITS · 1"),
         "the base's own are not the branch's"
     );
 }
@@ -110,53 +111,15 @@ fn a_click_on_a_commit_asks_for_its_change() {
 }
 
 #[test]
-fn a_shown_commit_heads_every_list_with_the_way_back() {
-    let one = commit("abc1234", "feat: one", false);
-    let (mut app, mut ui) = logged(vec![one.clone()]);
-    app.workspace.commit = Some(one);
-    for pane in Pane::ALL {
-        ui.session.pane = pane;
-        let drawn = in_sidebar(&app, &ui);
-        let head = ["commit", "abc1234", "working tree"];
-        assert!(
-            head.iter()
-                .all(|said| drawn.iter().any(|text| text == said)),
-            "{pane:?}: {drawn:?}"
-        );
-        assert!(
-            !drawn
-                .iter()
-                .any(|text| text == "feat: one" && pane != Pane::Commits),
-            "{drawn:?}"
-        );
-    }
-
-    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let back = hits.rect_of(&Target::Working).expect("the way back");
-    let commands = click(back, &mut ui, &app, &hits);
-    assert_eq!(
-        commands,
-        [groove_controllers::Command::Workspace(
-            groove_controllers::workspace::Command::LeaveCommit
-        )]
-    );
-}
-
-#[test]
-fn no_commit_box_and_no_mode_stand_while_a_commit_is_shown() {
+fn no_mode_stands_while_a_commit_is_shown() {
     let one = commit("abc1234", "feat: one", false);
     let mut app = with_files(&["src/lib.rs"]);
     app.workspace.commit = Some(one);
     let mut ui = sidebar_ui();
     ui.settle(&app);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    for gone in [
-        Target::Message,
-        Target::Do,
-        Target::Mode(groove_types::DiffMode::Working),
-    ] {
-        assert!(hits.rect_of(&gone).is_none(), "{gone:?} is not offered");
-    }
+    let gone = Target::Mode(groove_types::DiffMode::Working);
+    assert!(hits.rect_of(&gone).is_none(), "{gone:?} is not offered");
     assert!(
         hits.rect_of(&Target::File("src/lib.rs".into())).is_some(),
         "the files it changed"

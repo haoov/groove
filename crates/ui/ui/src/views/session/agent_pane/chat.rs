@@ -67,14 +67,10 @@ pub(super) fn draw(
     held(ctx, ui, room);
 }
 
-/// Where the rows show: the pane, and with modes the room under it too, so the rows scroll on
-/// under the bottom bar.
+/// Where the rows show: the pane and the room under it, so the rows scroll on under the bottom bar.
 fn under_bars(ctx: &Ctx) -> Rect {
     let layout = &ctx.app.layout;
-    let (pane, top) = (layout.agent, layout.top);
-    if top.is_empty() {
-        return pane;
-    }
+    let pane = layout.agent;
     let floor = layout.manual.bottom().max(pane.bottom());
     pane.pad(Edges {
         bottom: pane.bottom() - floor,

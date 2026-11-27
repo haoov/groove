@@ -1,4 +1,4 @@
-//! What the session's middle shows while the modes layout is on.
+//! What the session's middle shows, picked from the bar's tabs.
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {

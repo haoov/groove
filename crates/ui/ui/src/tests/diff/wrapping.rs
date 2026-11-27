@@ -11,7 +11,8 @@ fn wrapping() -> (AppState, Ui) {
     let config = r#"{ "git": { "worktree_root": "~/code" }, "ui": { "wrap_code": true } }"#;
     app.config.config = Some(serde_json::from_str(config).expect("a config"));
     let mut ui = on_diff();
-    (ui.session.tab, ui.focus) = (Tab::Files, crate::Focus::Workspace);
+    (ui.session.mode, ui.focus) = (Mode::Files, crate::Focus::Workspace);
+    ui.split.sidebar = 700.0;
     (app, ui)
 }
 

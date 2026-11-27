@@ -3,11 +3,10 @@
 use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
-    Aligned, At, Changes, Derived, Document, HEAD_ROWS, Opened, UNSHOWN, aligned, column_of,
-    display_of, from_documents, from_text, shown, unified,
+    Aligned, Changes, Derived, Document, Opened, UNSHOWN, aligned, column_of, display_of,
+    from_documents, from_text, shown, unified,
 };
 pub use groove_editor::Clipboard;
-pub use groove_grep::{Found, Search};
 pub use groove_sync::lock;
 pub use groove_text::{
     Block, Buffer, Colours, Language, Touched, is_word, whole_words, word_around, word_start,
@@ -40,9 +39,9 @@ pub use drift::{Drift, DriftKey, DriftRead, Prepared, in_sync, prepare, prepared
 pub use git::{UNPUSHED_MAX, commit, pull, push, unpushed};
 pub use paths::{PathOp, path_op};
 pub use read::{
-    COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, against, at_commit, base_rev, changes, commits,
-    derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, revision,
-    summary, summary_against,
+    COMMITS_MAX, HEAD, PATHS_MAX, against, at_commit, base_rev, changes, commits, derived,
+    files_in, opened, opened_at, opens_in, painted, paths, reopened, revision, summary,
+    summary_against,
 };
 pub use revision::{Revision, Step};
 pub use rows::Way;
@@ -72,15 +71,11 @@ pub struct State {
     pub coloured: BTreeMap<String, Painted>,
     /// The rows the surface last drew.
     pub showing: Range<usize>,
-    /// What the last search across the worktree has found so far.
-    pub found: Vec<Found>,
     /// Every file of the worktree, for the path term to narrow by, and a count that moves with it.
     paths: Vec<FileDiff>,
     paths_stamp: u64,
     /// A walk of the worktree is out.
     pub walking: bool,
-    /// That search, while it still runs.
-    pub searching: Option<std::sync::Arc<Search>>,
     /// Bumped whenever a document is read again, for a cache to know.
     pub stamp: u64,
     /// The branch's own commits, newest first.
@@ -140,15 +135,12 @@ impl State {
         self.moved();
         if !self.holds(&worktree) {
             self.clear_paths();
-            self.stop();
-            self.found.clear();
         }
         self.worktree = Some(worktree);
         self.files = files;
-        let (shut, focus) = (self.changes.folds(), self.changes.focused());
-        let focus = focus.map(str::to_string);
+        let focus = self.changes.focused().map(str::to_string);
         self.changes = changes;
-        self.changes.refold(shut, focus);
+        self.changes.focus(focus);
         self.coloured.clear();
         self.showing = 0..0;
     }
@@ -199,8 +191,6 @@ impl State {
     /// Forgets what was loaded and stops watching.
     pub fn clear(&mut self) {
         self.moved();
-        self.stop();
-        self.found.clear();
         self.clear_paths();
         self.walking = false;
         self.log.clear();
@@ -230,15 +220,6 @@ impl State {
 pub struct Painted {
     pub old: Document,
     pub new: Document,
-}
-
-impl State {
-    /// The search across the worktree gives up, for a new one or for nothing.
-    pub fn stop(&mut self) {
-        if let Some(search) = self.searching.take() {
-            search.stop();
-        }
-    }
 }
 
 /// Whether any of these paths is git's own state rather than a file of it.

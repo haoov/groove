@@ -24,7 +24,7 @@ fn a_focused_file_alone_takes_rows_and_stays_focused_when_read_again() {
         workspace::Command::Focus { path },
     );
     assert_eq!(state.workspace.changes.rows(), 1);
-    assert_eq!(state.workspace.changes.head_of("a.txt"), None);
+    assert_eq!(state.workspace.changes.row_of("a.txt", 0), None);
 
     write("new.txt", "fresh\nagain\n");
     act(&mut state, &services, &spawner, workspace::Command::Load);
@@ -39,5 +39,5 @@ fn a_focused_file_alone_takes_rows_and_stays_focused_when_read_again() {
         &spawner,
         workspace::Command::Focus { path: None },
     );
-    assert!(state.workspace.changes.head_of("a.txt").is_some());
+    assert_eq!(state.workspace.changes.rows(), 0, "no file focused, no row");
 }

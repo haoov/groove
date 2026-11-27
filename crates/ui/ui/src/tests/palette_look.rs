@@ -63,7 +63,10 @@ fn the_selected_row_shows_under_its_heading() {
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    let texts: Vec<String> = frame.layers()[1]
+    let texts: Vec<String> = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
         .texts
         .iter()
         .map(|t| t.text.clone())
@@ -77,7 +80,10 @@ fn the_selected_row_shows_under_its_heading() {
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    let texts: Vec<String> = frame.layers()[1]
+    let texts: Vec<String> = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
         .texts
         .iter()
         .map(|t| t.text.clone())
@@ -114,7 +120,13 @@ fn the_selected_row_lights_its_icon() {
         groove_ui_kit::base::tokens::Tokens::new(1.0),
     );
     let color = |icon: groove_gfx::Icon| {
-        let drawn = frame.layers()[1].icons.iter().find(|one| one.icon == icon);
+        let drawn = frame
+            .layers()
+            .last()
+            .expect("the palette's layer")
+            .icons
+            .iter()
+            .find(|one| one.icon == icon);
         drawn.map(|one| one.color).expect("drawn")
     };
     use groove_ui_kit::base::style::Role;
@@ -145,7 +157,7 @@ fn lit_under(query: &str) -> Vec<String> {
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
-    let layer = &frame.layers()[1];
+    let layer = frame.layers().last().expect("the palette's layer");
     let lit: Vec<_> = layer
         .texts
         .iter()
@@ -193,7 +205,7 @@ fn the_palette_stands_as_glass_with_no_shadow() {
     let mut ui = Ui::default();
     press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let frame = drawn(&ui, &app);
-    let top = &frame.layers()[1];
+    let top = frame.layers().last().expect("the palette's layer");
     assert_eq!(top.glass.len(), 1);
     assert!(!top.quads.iter().any(|q| q.shape.blur > 0.0));
 }
@@ -205,7 +217,10 @@ fn a_typed_step_hints_at_enter_and_an_empty_list_says_why() {
     press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     typed("zzz", &mut ui, &app);
     let texts = |frame: &groove_gfx::Frame| -> Vec<String> {
-        frame.layers()[1]
+        frame
+            .layers()
+            .last()
+            .expect("the palette's layer")
             .texts
             .iter()
             .map(|t| t.text.clone())
@@ -248,7 +263,12 @@ fn the_last_row_selected_reaches_the_panels_bottom() {
     let boxed = hits
         .rect_of(&crate::hit::Target::Palette)
         .expect("the palette");
-    let mut quads = frame.layers()[1].quads.iter();
+    let mut quads = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
+        .quads
+        .iter();
     let row = quads
         .rfind(|q| q.color == chosen)
         .expect("the selected row");
@@ -286,7 +306,7 @@ fn a_hash_searches_the_worktree_files_and_opens_the_one_picked() {
     let mut ui = Ui::default();
     let commands = ui.closed_palette(palette.key(Key::Enter, &app), &app);
     assert_eq!(commands[0].id(), "workspace.open_file");
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Files);
 }
 
 #[test]
@@ -301,7 +321,7 @@ fn a_chord_stands_as_its_keys_each_in_a_hairline_box() {
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    let layer = &frame.layers()[1];
+    let layer = frame.layers().last().expect("the palette's layer");
     let key = |said: &str| layer.texts.iter().find(|run| run.text == said).cloned();
     let (alt, b) = (
         key("ALT").expect("the alt key"),

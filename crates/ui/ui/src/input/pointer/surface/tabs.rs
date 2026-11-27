@@ -4,11 +4,11 @@ use groove_controllers::{AppState, Command, workspace};
 
 use crate::Ui;
 use crate::hit::{Hits, Target};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 
-/// The file active in the Files tab, from its top when it was not already.
+/// The file active in the Files mode, from its top when it was not already.
 pub(in crate::input) fn in_files(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
-    ui.session.tab = Tab::Files;
+    ui.session.bring(Mode::Files);
     if app.workspace.active().is_none_or(|one| one.path != path) {
         ui.session.file = 0.0;
         ui.session.file_across = 0.0;

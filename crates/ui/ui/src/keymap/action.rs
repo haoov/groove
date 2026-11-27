@@ -15,7 +15,6 @@ pub enum Action {
     FocusAgent,
     FocusWorkspace,
     FocusSidebar,
-    FocusAlerts,
     ResizeLeft,
     ResizeRight,
     ResizeUp,
@@ -53,8 +52,6 @@ pub enum Action {
     Find,
     FindNext,
     FindPrevious,
-    OpenPath,
-    SearchFiles,
     TerminalCopy,
     TerminalPaste,
 }

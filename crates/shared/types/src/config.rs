@@ -177,9 +177,6 @@ pub struct UiConfig {
     /// Panels fold and what opens over the window appears at once, with no motion.
     #[serde(default)]
     pub reduce_motion: bool,
-    /// The session's middle shows one mode at a time, picked from tabs on top.
-    #[serde(default)]
-    pub modes: bool,
 }
 
 impl Default for UiConfig {
@@ -193,7 +190,6 @@ impl Default for UiConfig {
             mono_font_family: String::new(),
             wrap_code: false,
             reduce_motion: false,
-            modes: false,
         }
     }
 }

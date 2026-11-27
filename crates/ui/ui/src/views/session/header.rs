@@ -1,87 +1,17 @@
-mod scope;
-mod tabs;
+//! The session's title and the worktree it follows, on its bar.
 
-use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 
-use crate::components::{delivered, room_for};
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
 use groove_ui_kit::base::mark::Mark;
-use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, row_in};
-use groove_ui_kit::shape::strip;
-use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::{Button, Text, lead, panel_head, solid_pane};
+use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::widgets::{Button, lead};
 
-/// The strip's first line: what the session is, then the tabs.
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
-    let top = ctx.app.layout.header;
-    let Some(open) = app.session.selected() else {
-        let room = top.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-        Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);
-        return;
-    };
-    let page = app
-        .task
-        .worked(&open.session)
-        .and_then(|one| one.url.as_deref());
-    if !ctx.app.layout.work.is_empty() {
-        let strip_ = ctx.app.layout.strip;
-        let band = groove_ui_kit::shape::band(strip_, 0.0, top.bottom() - strip_.y);
-        panel_head(ctx, band, false);
-        let rest = tabs::draw(ctx, top, app, ui);
-        return titled(ctx, rest, open, page);
-    }
-    // Folded, the capsule is measured first: its pane and band stand under what it holds.
-    let tabs_wide = tabs::width(ctx, app, ui).min(top.w);
-    let wide = titled_width(ctx, open, page).min(top.w - tabs_wide);
-    let capsule = strip(top, top.w - tabs_wide - wide, tabs_wide + wide);
-    solid_pane(ctx, capsule);
-    panel_head(ctx, capsule, true);
-    let rest = tabs::draw(ctx, top, app, ui);
-    titled(ctx, strip(rest, rest.w - wide, wide), open, page);
-}
-
-/// What the title needs: its mark, its words, the link to its page, and the padding around.
-fn titled_width(ctx: &mut Ctx, open: &Open, page: Option<&str>) -> f32 {
-    let (md, sm, icon) = (ctx.tokens.md, ctx.tokens.sm, ctx.tokens.icon);
-    let words = ctx.measure(&open.session.title, &ctx.styles.session_title(Role::Text));
-    let link = match page {
-        Some(_) => icon + sm * 2.0 + sm,
-        None => 0.0,
-    };
-    md * 2.0 + icon + sm + words + link
-}
-
-/// The line under the header: the repo and worktree, the MR and the sidebar's fold.
-pub fn info(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
-    let Some(open) = app.session.selected() else {
-        return;
-    };
-    let (info, sm, row) = (ctx.app.layout.info, ctx.tokens.sm, ctx.tokens.row);
-    let line = groove_ui_kit::shape::band(info, sm, row);
-    let under = groove_ui_kit::shape::band(info, sm * 2.0 + row, ctx.tokens.hairline);
-    groove_ui_kit::shape::top_rule(ctx, under, ctx.styles.line());
-    let line = match ui.session.tab.has_sidebar() {
-        true => super::fold(ctx, line, ui),
-        false => line,
-    };
-    // On the Kubernetes tab the line holds the scope the list reads, in the worktrees' place.
-    match ui.session.tab {
-        super::Tab::Resources => scope::draw(ctx, line, app, open, &ui.session.resources),
-        _ => worktree_line(ctx, line, app, open),
-    }
-}
-
-/// The session's kind and its title, cut where the actions begin, then what opens its page.
-pub(super) fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
-    titled_rest(ctx, line, open, page);
-}
-
-/// The same; returns the room left after it.
+/// The session's kind and its title, then what opens its page; returns the room left after it.
 pub(super) fn titled_rest(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) -> Rect {
     let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
     let mut room = line.pad(Edges::across(md, md));
@@ -112,6 +42,13 @@ pub(super) fn titled_rest(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&
     rest
 }
 
+/// How wide `groove · feat/x` stands whole, its padding counted.
+pub(super) fn worktree_wide(ctx: &mut Ctx, open: &Open) -> f32 {
+    let (repo, branch) = named(open);
+    let said = format!("{repo} · {branch}");
+    ctx.measure(&said, &ctx.styles.code(Role::Faint)) + ctx.tokens.sm * 2.0
+}
+
 /// `groove · feat/x`, the worktree every tab follows; a click picks another.
 pub(super) fn worktree_of(ctx: &mut Ctx, room: Rect, open: &Open) {
     let (repo, branch) = named(open);
@@ -126,80 +63,9 @@ pub(super) fn worktree_of(ctx: &mut Ctx, room: Rect, open: &Open) {
     row(ctx, slot, pad, &text, style);
 }
 
-/// The repo and worktree every tab follows, each label cut to the room the line has, the MR after them.
-fn worktree_line(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
-    let worktree = open.selected_worktree();
-    let held = open.selected_repo();
-    let (repo, branch) = named(open);
-    let style = ctx.styles.body(Role::Text);
-    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
-    let x = lead(ctx, &mut room, Mark::Git, Role::Faint).right() + ctx.tokens.sm;
-    let delivery = worktree.map(|w| app.delivery.row(&w.id, open.status_of(&w.id)));
-    let until = match delivery {
-        Some(_) => refresh(ctx, line, app),
-        None => line.right(),
-    };
-    let mr = delivery.as_ref().map_or(0.0, |one| room_for(ctx, one));
-    let room = (until - ctx.tokens.md - x - around(ctx) - mr).max(0.0);
-    let repo_room = ctx.measure(repo, &style).min(room / 2.0);
-    let repo_text = elide(ctx, repo, &style, repo_room);
-    let branch_text = elide(ctx, branch, &style, room - repo_room);
-
-    let repo = shown(ctx, &repo_text, Picks::Repo, role_of(held.is_some()));
-    let box_ = repo.at(ctx, line, x);
-    let x = box_.right() + ctx.tokens.sm;
-    let branch = shown(
-        ctx,
-        &branch_text,
-        Picks::Branch,
-        role_of(worktree.is_some()),
-    );
-    let box_ = branch.at(ctx, line, x);
-    if let Some(delivery) = delivery {
-        delivered(ctx, line, box_.right() + ctx.tokens.sm, &delivery);
-    }
-}
-
-/// What reads the MR again, turning while a read is out.
-fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
-    let out = app
-        .session
-        .selected_worktree()
-        .is_some_and(|worktree| app.delivery.poll.is_out(&worktree.id));
-    let (turning, role) = match out {
-        true => (turn(ctx.tick), Role::Working),
-        false => (0, Role::Faint),
-    };
-    let hover = ctx.styles.glass_hover();
-    let refresh = Button::icon(Mark::Busy, turning, Target::Refresh, role);
-    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
-    refresh.lit(role).hover(hover).right(ctx, &mut room, 0.0).x
-}
-
-/// A label of the line, which only tells; `alt+w` changes it.
-fn shown<'a>(ctx: &Ctx, label: &'a str, which: Picks, role: Role) -> Button<'a, Target> {
-    Button::new(label, Target::Picker(which), role, ctx.styles.band())
-        .text(Text::Body)
-        .flat()
-        .inert(true)
-}
-
-/// What the two labels add around their text, and the gaps after each.
-fn around(ctx: &mut Ctx) -> f32 {
-    let bare = shown(ctx, "", Picks::Repo, Role::Text).width(ctx);
-    (bare + ctx.tokens.sm) * 2.0
-}
-
 /// The repo and the branch the line names, each as it stands or as what it lacks.
 fn named(open: &Open) -> (&str, &str) {
     let repo = open.selected_repo().map(|r| r.project.as_str());
     let branch = open.selected_worktree().map(|w| w.branch.as_str());
     (repo.unwrap_or("no repo"), branch.unwrap_or("no worktree"))
-}
-
-fn role_of(held: bool) -> Role {
-    match held {
-        true => Role::Text,
-        false => Role::Ghost,
-    }
 }

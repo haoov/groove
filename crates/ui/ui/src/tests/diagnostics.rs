@@ -148,39 +148,7 @@ fn in_role(app: &AppState, face: Face, role: Role) -> (Vec<groove_gfx::Icon>, Ve
 }
 
 #[test]
-fn a_file_head_and_its_tree_row_count_its_errors_and_warnings() {
-    let mut app = diagnosed(Severity::Error);
-    let worktree = app.workspace.worktree.clone().expect("a worktree");
-    let key = ServerKey {
-        worktree,
-        dir: "/w".into(),
-        name: "ruff".into(),
-    };
-    let warned = |line| Diagnostic {
-        start: Caret::new(line, 0),
-        end: Caret::new(line, 1),
-        severity: Severity::Warning,
-        message: "unused".into(),
-        source: None,
-        code: None,
-    };
-    let at = Path::new("/w").join(PATH);
-    app.workspace
-        .servers
-        .diagnosed(&key, &at, vec![warned(0), warned(0)]);
-    let (icons, texts) = in_role(&app, Face::Stream(DiffView::Inline), Role::Warn);
-    assert!(icons.contains(&groove_gfx::Icon::Dot), "a warning's mark");
-    assert!(
-        texts.iter().filter(|one| *one == "2").count() >= 2,
-        "on the head and the row: {texts:?}"
-    );
-    let (icons, texts) = in_role(&app, Face::Stream(DiffView::Inline), Role::Bad);
-    assert!(icons.contains(&groove_gfx::Icon::Cross), "an error's mark");
-    assert!(texts.iter().any(|one| one == "1"), "{texts:?}");
-}
-
-#[test]
-fn the_file_s_tab_and_path_bar_count_its_errors_and_name_its_server() {
+fn the_file_s_band_counts_its_errors_and_names_its_server() {
     let mut app = diagnosed(Severity::Error);
     let worktree = app.workspace.worktree.clone().expect("a worktree");
     let key = ServerKey {
@@ -195,17 +163,10 @@ fn the_file_s_tab_and_path_bar_count_its_errors_and_name_its_server() {
     };
     app.workspace.servers.tell(&key, opened);
     let (icons, texts) = in_role(&app, Face::File, Role::Bad);
+    assert!(icons.contains(&groove_gfx::Icon::Cross), "{icons:?}");
     assert!(
-        icons
-            .iter()
-            .filter(|one| **one == groove_gfx::Icon::Cross)
-            .count()
-            >= 2,
-        "{icons:?}"
-    );
-    assert!(
-        texts.iter().filter(|one| *one == "1").count() >= 2,
-        "the tab and the path bar: {texts:?}"
+        texts.iter().any(|one| one == "1"),
+        "the band over the file: {texts:?}"
     );
     let (icons, _) = in_role(&app, Face::File, Role::Working);
     assert!(icons.contains(&groove_gfx::Icon::Dot), "ty is starting");

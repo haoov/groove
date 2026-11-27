@@ -6,7 +6,7 @@ use super::*;
 fn asking_the_agent_about_lines_puts_where_they_stand_in_its_prompt() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     asked(&app, &mut ui, 1);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let row = hits.rect_of(&Target::MenuRow(0)).expect("the menu's row");

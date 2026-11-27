@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 use super::Delta;
 use crate::hit::{Hits, Scroller, Target};
 use crate::layout::Layout;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::views::session::resources::View;
 use crate::{Surface, Ui};
 use groove_gfx::Rect;
@@ -26,10 +26,6 @@ pub(super) fn scroll(
     let tokens = metrics.tokens();
     let pixels = |height: f32| delta.down(height);
     if overlaid(ui, delta, point, (hits, metrics)) {
-        return Vec::new();
-    }
-    if ui.showing(app) == Surface::Session && layout.alerts.contains(x, y) {
-        ui.wheeled(Scroller::Alerts, pixels(tokens.row), hits);
         return Vec::new();
     }
     if overviewed(ui, &layout, point) {
@@ -82,21 +78,19 @@ fn overlaid(
     ui.overlay.is_some() && !ui.prompting()
 }
 
-/// Whether the wheel stands over the modes layout's Overview.
+/// Whether the wheel stands over the Overview.
 fn overviewed(ui: &Ui, layout: &Layout, (x, y): (f32, f32)) -> bool {
-    let up = ui.modes && ui.session.mode == crate::views::session::Mode::Overview;
+    let up = ui.session.mode == crate::views::session::Mode::Overview;
     up && layout.agent.contains(x, y)
 }
 
-/// The open tab's own column.
+/// The middle's own column: the cluster's list, or the code.
 fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
     let pixels = |height: f32| delta.down(height);
-    match ui.session.tab {
-        Tab::Overview => ui.wheeled(Scroller::Overview, pixels(tokens.row), hits),
-        Tab::Resources if ui.session.face() != crate::views::session::Face::File => {
-            ui.wheeled(Scroller::Resources, pixels(tokens.row), hits)
-        }
-        Tab::Resources | Tab::Diff | Tab::Files => coded(
+    let listed = ui.session.face() != crate::views::session::Face::File;
+    match ui.session.mode {
+        Mode::Kubernetes if listed => ui.wheeled(Scroller::Resources, pixels(tokens.row), hits),
+        _ => coded(
             ui,
             hits,
             (pixels(tokens.code_line), delta.across(tokens.code_line)),
@@ -104,7 +98,7 @@ fn in_tab(ui: &mut Ui, hits: &Hits, delta: Delta, tokens: &Tokens) {
     }
 }
 
-/// Whether the modes layout's middle is a tab of its own: the code, or the cluster's.
+/// Whether the middle is a column of its own: the code, or the cluster's.
 fn middled(ui: &Ui) -> bool {
     use crate::views::session::files::moded::{coding, kubing};
     coding(ui) || kubing(ui)
@@ -112,11 +106,11 @@ fn middled(ui: &Ui) -> bool {
 
 /// What the sidebar holds: the kinds on the Kubernetes tab, else the files.
 fn beside(ui: &Ui) -> Scroller {
-    if ui.modes && !middled(ui) {
+    if !middled(ui) {
         return Scroller::Aside;
     }
-    match ui.session.tab {
-        Tab::Resources => Scroller::Kinds,
+    match ui.session.mode {
+        Mode::Kubernetes => Scroller::Kinds,
         _ => Scroller::Files,
     }
 }
@@ -141,7 +135,7 @@ fn followed(ui: &Ui) -> Option<bool> {
         .session
         .resources
         .tab()
-        .filter(|_| ui.session.tab == Tab::Resources)?;
+        .filter(|_| ui.session.mode == Mode::Kubernetes)?;
     (tab.view == View::Logs).then_some(tab.logs.following)
 }
 

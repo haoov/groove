@@ -23,11 +23,8 @@ pub struct Ui {
     pub board: BoardUi,
     pub settings: views::settings::SettingsUi,
     pub agent: AgentUi,
-    pub alerts: views::alerts::AlertsUi,
     pub split: Split,
-    /// The session's middle switches between modes, as the setting says.
-    pub modes: bool,
-    /// How far the modes layout's sidebar is scrolled, in pixels.
+    /// How far the session's sidebar is scrolled, in pixels.
     pub aside: f32,
     /// What the pointer's button holds while it is down.
     pub held: Option<Held>,
@@ -40,7 +37,6 @@ pub struct Ui {
     pub painted: views::session::diff::painted::Painted,
     pub walked: views::session::files::walked::Walked,
     pub wrapping: views::session::diff::wrapping::Wrapping,
-    pub narrowing: views::session::files::Narrowing,
     pub spoken: views::session::diff::popup::Spoken,
     pub blocked: views::session::diff::blocks::Blocked,
     pub compacted: views::session::diff::wrap::Compacted,

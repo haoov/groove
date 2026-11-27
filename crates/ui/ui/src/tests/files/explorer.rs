@@ -1,24 +1,40 @@
 //! The explorer: what the tree shows, and what opening a directory adds to it.
 
-use super::search::with_paths;
 use super::*;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
+
+/// The worktree's own files, as the walk leaves them in the slice.
+pub(super) fn with_paths(app: &mut AppState, paths: &[&str]) {
+    app.workspace.set_paths(
+        paths
+            .iter()
+            .map(|path| FileDiff {
+                path: (*path).into(),
+                added: 0,
+                deleted: 0,
+                status: FileStatus::Unchanged,
+                staged: None,
+            })
+            .collect(),
+    );
+}
 
 /// The sidebar on the whole worktree, with these paths walked.
 pub(super) fn browsing(paths: &[&str]) -> (AppState, Ui) {
     let mut app = with_files(&[]);
     with_paths(&mut app, paths);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     (app, ui)
 }
 
 fn shown(app: &AppState, ui: &Ui) -> Vec<String> {
     let sidebar = Layout::of(window(), ui).sidebar;
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());
-    let runs: Vec<_> = frame.layers()[0]
-        .texts
+    let runs: Vec<_> = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .filter(|run| run.x >= sidebar.x)
         .cloned()
         .collect();
@@ -70,7 +86,7 @@ fn a_file_of_the_tree_that_changed_keeps_its_marks() {
     let mut app = with_files(&["src/one/alpha.rs"]);
     with_paths(&mut app, &["src/one/alpha.rs"]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     ui.session.opened.insert("src".into());
     ui.session.opened.insert("src/one".into());
     let drawn = shown(&app, &ui);
@@ -85,7 +101,7 @@ fn picking_the_files_tab_shows_the_tree_and_the_frame_asks_for_the_walk() {
     let mut ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let rect = hits
-        .rect_of(&Target::Tab(Tab::Files))
+        .rect_of(&Target::ModeTab(Mode::Files))
         .expect("the tab is there to pick");
     let asked = crate::input::handle(
         crate::input::Input::Press {
@@ -98,7 +114,7 @@ fn picking_the_files_tab_shows_the_tree_and_the_frame_asks_for_the_walk() {
         &hits,
         window(),
     );
-    assert_eq!(ui.session.tab, Tab::Files);
+    assert_eq!(ui.session.mode, Mode::Files);
     assert!(asked.is_empty(), "the click itself asks nothing");
     assert!(
         crate::views::session::files::needs_walk(&app, &ui),
@@ -110,38 +126,5 @@ fn picking_the_files_tab_shows_the_tree_and_the_frame_asks_for_the_walk() {
     assert!(
         !crate::views::session::files::needs_walk(&walked, &ui),
         "the walk it already has is kept"
-    );
-}
-
-#[test]
-fn a_path_typed_while_browsing_flattens_the_tree_to_its_matches() {
-    let (app, mut ui) = browsing(&["src/one/alpha.rs", "src/two/beta.rs"]);
-    ui.session.bar.path.set("beta");
-    let drawn = shown(&app, &ui);
-    assert!(drawn.iter().any(|t| t == "beta.rs"), "{drawn:?}");
-    assert!(
-        !drawn.iter().any(|t| t == "src"),
-        "no tree while a query narrows it: {drawn:?}"
-    );
-}
-
-#[test]
-fn the_path_term_lights_what_it_found_in_each_name() {
-    let (app, mut ui) = browsing(&["src/one/alpha.rs", "src/two/beta.rs"]);
-    ui.session.bar.path.set("two bt");
-    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
-    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
-    let accent = styles.color(groove_ui_kit::base::style::Role::Accent);
-    let lit: Vec<&str> = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|run| run.style.color == accent)
-        .map(|run| run.text.as_str())
-        .collect();
-    assert_eq!(
-        lit,
-        ["b", "t"],
-        "the directory's letters stay on its own row"
     );
 }

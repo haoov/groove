@@ -4,12 +4,12 @@ use groove_types::SessionId;
 use crate::hit::Target;
 use crate::input::Key;
 use crate::tests::{ALT_SHIFT, click, full_app, press, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui, view};
 
 fn on_diff(app: &groove_controllers::AppState) -> (Ui, crate::Hits) {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     let (_, hits) = view(app, &ui, window(), &mut Fonts::embedded());
     (ui, hits)
 }
@@ -17,7 +17,8 @@ fn on_diff(app: &groove_controllers::AppState) -> (Ui, crate::Hits) {
 #[test]
 fn a_click_hands_the_keyboard_to_the_pane_it_lands_in() {
     let app = full_app();
-    let (mut ui, hits) = on_diff(&app);
+    let mut ui = Ui::default();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert_eq!(ui.focus, Focus::Agent, "the agent has it at the start");
 
     let rail = hits
@@ -38,16 +39,11 @@ fn the_chord_walks_the_panes_left_to_right() {
         focus: Focus::Rail,
         ..Ui::default()
     };
-    for expected in [
-        Focus::Agent,
-        Focus::Workspace,
-        Focus::Sidebar,
-        Focus::Sidebar,
-    ] {
+    for expected in [Focus::Agent, Focus::Sidebar, Focus::Sidebar] {
         press(Key::Right, ALT_SHIFT, &mut ui, &app);
         assert_eq!(ui.focus, expected, "right stops at the last pane");
     }
-    for expected in [Focus::Workspace, Focus::Agent, Focus::Rail, Focus::Rail] {
+    for expected in [Focus::Agent, Focus::Rail, Focus::Rail] {
         press(Key::Left, ALT_SHIFT, &mut ui, &app);
         assert_eq!(ui.focus, expected, "and left at the first");
     }
@@ -93,7 +89,7 @@ fn the_rail_walks_its_sessions() {
 }
 
 #[test]
-fn a_click_on_the_agent_takes_the_keys_from_the_search_bars() {
+fn a_click_on_another_pane_takes_the_keys_from_the_find_bar() {
     let app = full_app();
     let (mut ui, hits) = on_diff(&app);
     ui.focus = Focus::Workspace;
@@ -103,22 +99,23 @@ fn a_click_on_the_agent_takes_the_keys_from_the_search_bars() {
     };
     press(Key::Char('f'), ctrl, &mut ui, &app);
     assert!(ui.session.find.as_ref().is_some_and(|find| find.typing));
-    let agent = hits.rect_of(&Target::Agent).expect("the agent pane");
-    click(agent, &mut ui, &app, &hits);
+    let rail = hits
+        .rect_of(&Target::Session(SessionId::new("a")))
+        .expect("a rail row");
+    click(rail, &mut ui, &app, &hits);
     assert!(ui.session.find.as_ref().is_some_and(|find| !find.typing));
-    let escape = press(Key::Escape, Default::default(), &mut ui, &app);
+    press(Key::Escape, Default::default(), &mut ui, &app);
     assert!(
         ui.session.find.is_some(),
-        "Escape is the agent's, not the bar's"
+        "Escape is the rail's, not the bar's"
     );
-    assert!(!escape.is_empty(), "the agent hears it");
 }
 
 #[test]
 fn a_click_on_the_overview_takes_the_keys_from_the_agent() {
     let app = full_app();
     let mut ui = Ui::default();
-    assert_eq!(ui.session.tab, Tab::Overview);
+    ui.session.mode = Mode::Overview;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let ground = hits.rect_of(&Target::Overview).expect("the overview");
     let (x, y) = (ground.x + ground.w / 2.0, ground.bottom() - 2.0);
@@ -137,7 +134,7 @@ fn a_click_on_the_overview_takes_the_keys_from_the_agent() {
 fn alt_and_a_region_s_letter_hand_it_the_keys() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     for (key, focus) in [
         ('r', Focus::Rail),
         ('a', Focus::Agent),
@@ -153,7 +150,7 @@ fn alt_and_a_region_s_letter_hand_it_the_keys() {
 fn a_second_press_folds_the_sidebar_away() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.mode = Mode::Diff;
     press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
     assert!(!ui.session.folded && ui.focus == Focus::Sidebar);
     press(Key::Char('e'), crate::tests::ALT, &mut ui, &app);
@@ -168,7 +165,7 @@ fn a_second_press_folds_the_sidebar_away() {
 }
 
 #[test]
-fn on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask() {
+fn on_the_rail_enter_hands_the_keys_to_the_middle_and_a_and_v_answer_the_ask() {
     use crate::input::Modifiers;
     let app =
         crate::tests::agent::asking(vec![crate::tests::agent::ask("w1", "write", "src/lib.rs")]);
@@ -189,7 +186,10 @@ fn on_the_rail_enter_goes_to_the_workspace_and_a_and_v_answer_the_ask() {
     );
     ui.overlay = None;
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
-    assert_eq!(ui.focus, Focus::Workspace);
+    assert_eq!(ui.focus, Focus::Agent, "the agent's middle");
+    (ui.focus, ui.session.mode) = (Focus::Rail, crate::views::session::Mode::Diff);
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    assert_eq!(ui.focus, Focus::Workspace, "the code's");
 }
 
 #[test]
@@ -232,20 +232,22 @@ fn alt_brackets_step_through_the_terminal_tabs() {
 }
 
 #[test]
-fn alt_brackets_step_through_the_workspace_tabs_elsewhere() {
+fn alt_brackets_step_through_the_modes_elsewhere() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Overview;
+    ui.session.mode = Mode::Overview;
     press(Key::Char(']'), crate::tests::ALT, &mut ui, &app);
-    assert_eq!(ui.session.tab, Tab::Diff);
+    assert_eq!(ui.session.mode, Mode::Agent);
     press(Key::Char(']'), crate::tests::ALT, &mut ui, &app);
-    assert_eq!(ui.session.tab, Tab::Files);
+    assert_eq!(ui.session.mode, Mode::Diff);
+    press(Key::Char(']'), crate::tests::ALT, &mut ui, &app);
+    assert_eq!(ui.session.mode, Mode::Files);
     press(Key::Char(']'), crate::tests::ALT, &mut ui, &app);
     assert_eq!(
-        ui.session.tab,
-        Tab::Overview,
+        ui.session.mode,
+        Mode::Overview,
         "no cluster held: Kubernetes is skipped"
     );
     press(Key::Char('['), crate::tests::ALT, &mut ui, &app);
-    assert_eq!(ui.session.tab, Tab::Files);
+    assert_eq!(ui.session.mode, Mode::Files);
 }

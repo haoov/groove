@@ -3,7 +3,6 @@
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::At;
 
 use crate::views::session::Face;
 
@@ -126,10 +125,7 @@ fn in_file(app: &AppState, ui: &crate::Ui, query: &str) -> Vec<Hit> {
 fn in_change(app: &AppState, query: &str) -> Vec<Hit> {
     let changes = &app.workspace.changes;
     (0..changes.rows())
-        .filter_map(|row| match changes.at(row) {
-            Some(At::Row(file, at)) => Some((row, file, at)),
-            _ => None,
-        })
+        .filter_map(|row| changes.at(row).map(|(file, at)| (row, file, at)))
         .flat_map(|(row, file, at)| {
             let text = file.text(at);
             let line = file

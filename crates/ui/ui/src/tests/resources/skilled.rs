@@ -61,14 +61,15 @@ fn a_resource_row_offers_the_skills_of_its_kind_sent_with_the_resource() {
 }
 
 #[test]
-fn an_object_tab_opens_no_menu() {
+fn an_open_object_s_row_opens_its_own_menu_and_not_the_skills() {
     let (mut app, mut ui) = opened();
     skilled(&mut app);
     let (_, hits) = drawn(&app, &ui);
     let rect = hits.rect_of(&Target::ResourceTab(0)).expect("the tab");
     let (x, y) = (rect.x + rect.w / 2.0, rect.y + rect.h / 2.0);
     crate::input::handle(Input::Menu { x, y }, &mut ui, &app, &hits, window());
-    assert!(ui.menu().is_none());
+    let of = ui.menu().map(|one| &one.of);
+    assert!(matches!(of, Some(crate::Of::Object(0))), "{of:?}");
 }
 
 #[test]

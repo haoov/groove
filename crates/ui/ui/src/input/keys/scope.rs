@@ -84,7 +84,7 @@ pub(in crate::input) fn pick((at, how): (usize, How), ui: &mut Ui, app: &AppStat
     if how == How::Detach || matches!(line, ScopeLine::Heading(_)) {
         return commands;
     }
-    ui.session.tab = crate::views::session::Tab::Resources;
+    ui.session.bring(crate::views::session::Mode::Kubernetes);
     ui.session.resources.showing = None;
     if how == How::Alone {
         ui.overlay = None;

@@ -1,5 +1,5 @@
-//! The window while the modes layout is on: the rail, the session's bar of title and tabs, the
-//! middle under it with the terminals' drawer at its foot, and the right sidebar.
+//! The session's parts: its bar of title and tabs, the middle under it with the terminals'
+//! drawer at its foot, and the right sidebar.
 
 use groove_gfx::{Edges, Rect};
 
@@ -8,8 +8,7 @@ use crate::Ui;
 use groove_ui_kit::base::tokens::Tokens;
 
 impl Layout {
-    /// The board right of the rail cut into the bar, the middle, the drawer and the sidebar; the
-    /// strip and its parts empty.
+    /// The board right of the rail cut into the bar, the middle, the drawer and the sidebar.
     pub(super) fn moded(mut self, tokens: &Tokens, ui: &Ui, folds: Folds) -> Self {
         let (sm, bar) = (tokens.sm, tokens.bar);
         let (board, window) = (self.board, self.window);
@@ -45,9 +44,6 @@ impl Layout {
         }
         let tall = (foot - y).max(0.0);
         self.agent = Rect::new(left, y, (right - left).max(0.0), tall);
-        let none = Rect::new(window.w, window.h, 0.0, 0.0);
-        (self.strip, self.header, self.info) = (none, none, none);
-        (self.workspace, self.work, self.alerts) = (none, none, none);
         self
     }
 }

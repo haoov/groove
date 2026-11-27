@@ -51,13 +51,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     said(ctx, room.pad(Edges::all(ctx.tokens.md)), &ask.text);
 }
 
-/// The workspace and the sidebar together, from the header down; with modes, over the middle's
-/// top, as tall as the text with its head and its answers, never past half the middle.
+/// Over the middle's top, as tall as the text with its head and its answers, never past half
+/// the middle.
 fn area(ctx: &Ctx, text: &str) -> Rect {
     let (layout, tokens) = (&ctx.app.layout, &ctx.tokens);
-    if layout.top.is_empty() {
-        return layout.work;
-    }
     let middle = layout.agent.pad(Edges::xy(tokens.xl, tokens.lg));
     let lines = text.lines().count().max(1) as f32;
     let tall = lines * tokens.code_line + tokens.md * 2.0 + tokens.bar * 2.0;

@@ -1,4 +1,4 @@
-//! The agents the agent sends: a card in the conversation, a row in the dock while they work, and the agent's own failures.
+//! The agents the agent sends: a card in the conversation, a row in the sidebar while they work, and the agent's own failures.
 
 use groove_gfx::Fonts;
 use groove_types::chat::{Heard, Outcome};
@@ -34,14 +34,14 @@ fn said(n: usize) -> Vec<Heard> {
 }
 
 #[test]
-fn a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conversation() {
+fn a_working_agent_keeps_a_row_in_the_sidebar_that_opens_its_card_far_up_the_conversation() {
     let mut heard = vec![sent("metrics")];
     heard.extend(said(40));
     let app = talking(heard);
     let mut ui = chat_ui();
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let row = Target::Subagent("metrics".into());
-    let row = hits.rect_of(&row).expect("its row in the dock");
+    let row = hits.rect_of(&row).expect("its row in the sidebar");
     assert!(
         hits.sent("metrics").is_some_and(|scroll| scroll > 0.0),
         "the card stands far up"
@@ -49,17 +49,10 @@ fn a_working_agent_keeps_a_row_in_the_dock_that_opens_its_card_far_up_the_conver
     click(row, &mut ui, &app, &hits);
     assert_eq!(ui.agent.opened, ["metrics"]);
     assert_eq!(Some(ui.agent.scroll), hits.sent("metrics"));
-    let fold = hits.rect_of(&Target::FoldAgents).expect("the dock's fold");
-    click(fold, &mut ui, &app, &hits);
-    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(
-        hits.rect_of(&Target::Subagent("metrics".into())).is_none(),
-        "folded to its head"
-    );
 }
 
 #[test]
-fn a_finished_agent_leaves_the_dock_once_the_user_speaks_again() {
+fn a_finished_agent_leaves_the_sidebar_once_the_user_speaks_again() {
     let ended = talking(vec![sent("metrics"), answered("metrics")]);
     let ui = chat_ui();
     let (frame, hits) = crate::view(&ended, &ui, window(), &mut Fonts::embedded());
@@ -166,7 +159,7 @@ fn a_click_on_an_offered_command_takes_it() {
 }
 
 #[test]
-fn at_rest_the_usage_line_opens_the_models_over_three_gauges() {
+fn the_sidebar_holds_three_gauges_and_its_model_row_opens_the_models() {
     let used = Heard::Used {
         model: "claude-opus-5-5".into(),
         context: 82_002,
@@ -180,30 +173,25 @@ fn at_rest_the_usage_line_opens_the_models_over_three_gauges() {
         week: Some(window(0.09)),
     };
     let mut ui = chat_ui();
-    ui.session.stowed = true;
     let (frame, hits) = crate::view(&app, &ui, window_size(), &mut Fonts::embedded());
-    assert!(hits.rect_of(&Target::Prompt).is_none(), "no prompt at rest");
-    let line = hits.rect_of(&Target::ModelButton).expect("the usage line");
     let texts = all_texts(&frame);
-    for said in ["CONTEXT", "8%", "5H WINDOW", "48%"] {
+    for said in [
+        "Context",
+        "82k of 1M",
+        "Five-hour window",
+        "48%",
+        "This week",
+        "9%",
+    ] {
         assert!(texts.iter().any(|one| one == said), "{said}: {texts:?}");
     }
+    let line = hits.rect_of(&Target::ModelButton).expect("the model's row");
     click(line, &mut ui, &app, &hits);
-    let Some(crate::Of::Models { rows, gauges, .. }) = ui.menu().map(|one| &one.of) else {
+    let Some(crate::Of::Models { rows, .. }) = ui.menu().map(|one| &one.of) else {
         panic!("the models' menu");
     };
     let models: Vec<&str> = rows.iter().map(|one| one.label.as_str()).collect();
     assert_eq!(models, ["opus 5.5", "sonnet 5.5", "haiku 5.5", "fable 5.1"]);
-    let gauges: Vec<(&str, &str)> = gauges
-        .iter()
-        .map(|one| (one.label, one.value.as_str()))
-        .collect();
-    let expected = [
-        ("Context", "82k of 1M"),
-        ("Five-hour window", "48%"),
-        ("This week", "9%"),
-    ];
-    assert_eq!(gauges, expected);
 }
 
 #[test]
@@ -217,7 +205,6 @@ fn picking_a_model_switches_the_agent_to_it() {
     let of = crate::Of::Models {
         session: session.clone(),
         rows: vec![sonnet],
-        gauges: Vec::new(),
     };
     let picked = crate::views::overlays::actions::picked(&of, 0);
     let model = "claude-sonnet-5-5".to_string();

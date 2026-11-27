@@ -59,9 +59,9 @@ pub enum Scroller {
     /// The rail's own log.
     Feed,
     Settings,
-    /// The Resources tab's list, or the object described.
+    /// The Kubernetes list, or the object described.
     Resources,
-    /// The Resources tab's kinds sidebar.
+    /// The Kubernetes sidebar.
     Kinds,
     /// The agent's conversation, from its end.
     Chat,
@@ -69,10 +69,8 @@ pub enum Scroller {
     Prompt,
     /// One of the board's columns.
     Column(u8),
-    /// The modes layout's sidebar, on a tab whose body is not a list.
+    /// The sidebar, on a mode whose body is not a list.
     Aside,
-    /// A maintenance task's alerts.
-    Alerts,
 }
 
 impl Scroller {
@@ -88,7 +86,6 @@ impl Scroller {
             Scroller::Across => 6,
             Scroller::Resources => 7,
             Scroller::Kinds => 8,
-            Scroller::Alerts => 9,
             Scroller::Chat => 10,
             Scroller::Prompt => 11,
             Scroller::Aside => 12,

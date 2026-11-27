@@ -24,7 +24,7 @@ pub(crate) use servers::{programs as server_programs, reconfigured as servers_re
 use self::diff::{mark_read, reread, show};
 use self::editor::{close_file, copy, cut, edit_file, open_file, paste, save_file};
 use self::git::Remote;
-use self::search::{grep, list_paths};
+use self::search::list_paths;
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
@@ -48,11 +48,7 @@ pub enum Command {
     CloseFile { path: String },
     /// `workspace.mark_read`: one file read, or the mark taken off it.
     MarkRead { path: String },
-    /// `workspace.grep`: every line holding this text, in the files `under` keeps.
-    Grep { query: String, under: String },
-    /// `workspace.fold`: one file's rows hidden under its head, or shown again.
-    Fold { path: String },
-    /// `workspace.focus`: only this file takes rows, or every file again with none.
+    /// `workspace.focus`: only this file takes rows, or none with none.
     Focus { path: Option<String> },
     /// `workspace.open_gap`: a gap gives up the lines it hides, from one end or whole.
     OpenGap { row: usize, way: Way },
@@ -119,8 +115,6 @@ impl Command {
             Command::KeepFile { .. } => "workspace.keep_file",
             Command::CloseFile { .. } => "workspace.close_file",
             Command::MarkRead { .. } => "workspace.mark_read",
-            Command::Grep { .. } => "workspace.grep",
-            Command::Fold { .. } => "workspace.fold",
             Command::Focus { .. } => "workspace.focus",
             Command::OpenGap { .. } => "workspace.open_gap",
             Command::Show { .. } => "workspace.show",
@@ -175,8 +169,6 @@ pub fn dispatch(
         Command::KeepFile { path } => state.workspace.keep(&path),
         Command::CloseFile { path } => close_file(state, &path),
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
-        Command::Grep { query, under } => grep(state, spawner, query, under),
-        Command::Fold { path } => state.workspace.changes.fold(&path),
         Command::Focus { path } => state.workspace.changes.focus(path),
         Command::OpenGap { row, way } => state.workspace.open_gap_at(row, way),
         Command::Show { rows } => show(state, spawner, rows),

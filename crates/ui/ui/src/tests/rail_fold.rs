@@ -86,16 +86,16 @@ fn with_both_rail_windows_folded_the_agent_takes_the_whole_width() {
     );
     ui.rail.folded = true;
     let folded = Layout::of(window(), &ui);
-    assert_eq!(folded.agent.x, folded.window.x, "from the window's edge");
+    assert_eq!(
+        folded.agent.x, folded.sessions.x,
+        "from the rail's column, under its folded heads"
+    );
     assert_eq!(
         folded.agent.right(),
         open.agent.right(),
         "to where it ended"
     );
-    assert_eq!(
-        (folded.agent.y, folded.agent.h),
-        (open.agent.y, open.agent.h)
-    );
+    assert_eq!(folded.agent.y, open.agent.y);
     assert!(
         folded.sessions.bottom() <= folded.agent.y,
         "the sessions' header over it"

@@ -1,5 +1,5 @@
-//! The modes layout: off by default, on from Settings; the bar of title and tabs, the agent in
-//! the middle, every tab built, and the terminals at the middle's foot.
+//! The session's modes: the bar of title and tabs, the agent in the middle, every tab built,
+//! and the terminals at the middle's foot.
 
 use groove_gfx::Fonts;
 use groove_types::chat::Heard;
@@ -16,23 +16,7 @@ mod kubernetes;
 mod overview;
 
 fn moded() -> crate::Ui {
-    crate::Ui {
-        modes: true,
-        ..chat_ui()
-    }
-}
-
-#[test]
-fn the_switch_is_off_by_default_and_the_setting_turns_it_on() {
-    let mut app = talking(Vec::new());
-    let mut ui = chat_ui();
-    ui.settle(&app);
-    assert!(!ui.modes, "the workspace panel stays until asked");
-    let config = app.config.config.as_mut().expect("a config");
-    config.ui.modes = true;
-    ui.settle(&app);
-    assert!(ui.modes);
-    assert!(!Layout::of(window(), &ui).top.is_empty());
+    chat_ui()
 }
 
 #[test]
@@ -40,10 +24,6 @@ fn the_bar_holds_the_title_and_the_tabs_and_the_agent_takes_the_middle() {
     let app = talking(vec![Heard::Said("on it".into())]);
     let ui = moded();
     let layout = Layout::of(window(), &ui);
-    assert!(
-        layout.strip.is_empty() && layout.workspace.is_empty(),
-        "no workspace panel"
-    );
     assert!(
         layout.top.bottom() <= layout.agent.y,
         "the bar over the middle"
@@ -169,7 +149,7 @@ fn with_both_rail_windows_folded_the_middle_takes_the_rail_s_column() {
 }
 
 #[test]
-fn with_modes_the_sidebar_holds_the_model_and_the_usage_and_the_foot_stays_bare() {
+fn the_sidebar_holds_the_model_and_the_usage_and_the_foot_stays_bare() {
     let used = Heard::Used {
         model: "claude-opus-5-5".into(),
         context: 82_002,
@@ -191,13 +171,10 @@ fn with_modes_the_sidebar_holds_the_model_and_the_usage_and_the_foot_stays_bare(
         "in the sidebar"
     );
     click(model, &mut ui, &app, &hits);
-    let Some(crate::Of::Models { rows, gauges, .. }) = ui.menu().map(|one| &one.of) else {
+    let Some(crate::Of::Models { rows, .. }) = ui.menu().map(|one| &one.of) else {
         panic!("the models' menu");
     };
-    assert!(
-        !rows.is_empty() && gauges.is_empty(),
-        "the models alone: the sidebar has the usage"
-    );
+    assert!(!rows.is_empty(), "the models");
 }
 
 #[test]
@@ -216,7 +193,7 @@ fn the_terminals_bar_shows_only_with_a_terminal_and_then_runs_the_middle_s_width
 }
 
 #[test]
-fn with_modes_the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_top_one() {
+fn the_transcript_scrolls_on_under_the_bottom_bar_and_stops_at_the_top_one() {
     let said = (0..60).map(|at| Heard::Said(format!("step {at} done")));
     let app = talking(said.collect());
     let mut ui = moded();
@@ -263,7 +240,7 @@ fn the_rail_s_folded_heads_stand_over_the_middle_as_the_sidebar_s_does() {
 }
 
 #[test]
-fn with_modes_the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot() {
+fn the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot() {
     let sent = Heard::Subagent {
         id: "metrics".into(),
         kind: "Explore".into(),
@@ -274,7 +251,6 @@ fn with_modes_the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot() {
     let app = talking(heard);
     let mut ui = moded();
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(hits.rect_of(&Target::FoldAgents).is_none(), "no dock");
     let row = hits
         .rect_of(&Target::Subagent("metrics".into()))
         .expect("its row");
@@ -289,11 +265,10 @@ fn with_modes_the_agents_sent_stand_in_the_sidebar_and_no_dock_over_the_foot() {
 }
 
 #[test]
-fn with_modes_alt_o_gives_the_keys_to_the_middle_and_alt_e_to_the_sidebar_then_folds_it() {
+fn alt_o_gives_the_keys_to_the_middle_and_alt_e_to_the_sidebar_then_folds_it() {
     use crate::input::Key;
     use crate::tests::{ALT, press};
-    let mut app = talking(Vec::new());
-    app.config.config.as_mut().expect("a config").ui.modes = true;
+    let app = talking(Vec::new());
     let mut ui = moded();
     ui.focus = crate::Focus::Rail;
     press(Key::Char('o'), ALT, &mut ui, &app);

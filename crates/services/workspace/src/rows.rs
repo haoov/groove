@@ -5,7 +5,7 @@ use std::ops::Range;
 
 use groove_types::RowKind;
 
-use crate::{At, Document, Opened, Painted, State};
+use crate::{Document, Opened, Painted, State};
 
 /// How far past the rows on screen a file is read at.
 const AHEAD: usize = 200;
@@ -40,10 +40,10 @@ impl State {
     pub fn over(&self, rows: Range<usize>) -> Vec<String> {
         let mut paths: Vec<String> = Vec::new();
         for row in rows {
-            let path = match self.changes.at(row) {
-                Some(At::Head(file) | At::Row(file, _)) => &file.path,
-                None => break,
+            let Some((file, _)) = self.changes.at(row) else {
+                break;
             };
+            let path = &file.path;
             if paths.last() != Some(path) {
                 paths.push(path.clone());
             }
@@ -66,9 +66,7 @@ impl State {
 
     /// The file a gap row belongs to, and the old-side lines it hides.
     fn gap_at(&self, row: usize) -> Option<(String, Range<u32>)> {
-        let At::Row(file, at) = self.changes.at(row)? else {
-            return None;
-        };
+        let (file, at) = self.changes.at(row)?;
         let RowKind::Gap(lines) = file.row(at)?.kind else {
             return None;
         };

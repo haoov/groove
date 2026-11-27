@@ -8,7 +8,7 @@ use groove_types::SessionId;
 use super::{chat_ui, talking};
 use crate::hit::Target;
 use crate::input::{Key, Modifiers};
-use crate::tests::{ALT, all_texts, click, press, typed, window};
+use crate::tests::{ALT, click, press, typed, window};
 
 #[test]
 fn alt_a_opens_the_prompt_and_alt_a_again_closes_it() {
@@ -76,16 +76,6 @@ fn the_prompt_stays_open_while_the_keys_go_elsewhere_and_alt_a_takes_them_back()
     let prompt = hits.rect_of(&Target::Prompt).expect("the prompt");
     let _ = click(prompt, &mut ui, &app, &hits);
     assert!(ui.prompting(), "a click on it keeps it");
-}
-
-#[test]
-fn at_rest_the_pane_says_how_to_reply() {
-    let app = talking(Vec::new());
-    let (frame, _) = crate::view(&app, &chat_ui(), window(), &mut Fonts::embedded());
-    let texts = all_texts(&frame);
-    for said in ["ALT", "A", "reply"] {
-        assert!(texts.iter().any(|one| one == said), "{said}: {texts:?}");
-    }
 }
 
 #[test]

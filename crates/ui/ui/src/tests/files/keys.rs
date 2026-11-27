@@ -79,34 +79,12 @@ fn the_commits_and_the_lists_are_walked_too() {
 }
 
 #[test]
-fn while_the_path_is_typed_the_arrows_walk_its_matches() {
-    let app = with_files(&["src/alpha.rs", "src/beta.rs"]);
-    let mut ui = sidebar_ui();
-    ui.session.bar.open(crate::views::session::Term::Path);
-    crate::tests::typed("rs", &mut ui, &app);
-    key(Key::Down, &mut ui, &app);
-    key(Key::Down, &mut ui, &app);
-    assert_eq!(
-        ui.hover,
-        Some(Target::File("src/beta.rs".into())),
-        "the second match"
-    );
-    assert!(ui.session.bar.typing.is_some(), "the bar keeps the keys");
-    let opened = key(Key::Enter, &mut ui, &app);
-    assert!(
-        opened.iter().any(|one| one.id() == "workspace.open_file"),
-        "{opened:?}"
-    );
-    assert!(ui.session.bar.typing.is_none(), "Enter leaves the bar");
-}
-
-#[test]
 fn ctrl_tab_walks_the_open_files_and_ctrl_w_closes_the_active_one() {
     let mut app = crate::tests::app();
     crate::tests::shows(&mut app, "a.rs", "a\n", "a\nb\n");
     crate::tests::shows(&mut app, "b.rs", "c\n", "c\nd\n");
     let mut ui = Ui::default();
-    (ui.session.tab, ui.focus) = (Tab::Files, Focus::Workspace);
+    (ui.session.mode, ui.focus) = (Mode::Files, Focus::Workspace);
     let ctrl = Modifiers {
         ctrl: true,
         ..Modifiers::default()

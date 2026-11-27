@@ -87,7 +87,7 @@ fn a_tab_picked_in_the_palette_is_the_tab_its_chord_opens() {
     let outcome = palette.key(Key::Enter, &app);
     assert!(outcome.act.is_some(), "a window act, not a service command");
     ui.closed_palette(outcome, &app);
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
+    assert_eq!(ui.session.mode, crate::views::session::Mode::Files);
 }
 
 #[test]
@@ -259,7 +259,10 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     press(Key::Char(';'), crate::tests::ALT_SHIFT, &mut ui, &app);
     let metrics = metrics(1280, 800, 1.0);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[1]
+    let texts: Vec<String> = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
         .texts
         .iter()
         .map(|t| t.text.clone())
@@ -272,7 +275,10 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     typed("close work", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
-    let texts: Vec<String> = frame.layers()[1]
+    let texts: Vec<String> = frame
+        .layers()
+        .last()
+        .expect("the palette's layer")
         .texts
         .iter()
         .map(|t| t.text.clone())
@@ -448,7 +454,9 @@ fn the_input_line_names_the_step_it_answers() {
             metrics(1280, 800, 1.0),
             &mut groove_gfx::Fonts::embedded(),
         );
-        frame.layers()[1].texts[0].text.clone()
+        frame.layers().last().expect("the palette's layer").texts[0]
+            .text
+            .clone()
     };
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(first(&ui), "repo");

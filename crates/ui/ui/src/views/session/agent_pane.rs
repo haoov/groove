@@ -3,7 +3,6 @@
 pub(crate) mod aside;
 mod asked;
 mod chat;
-mod dock;
 mod edits;
 mod entry;
 pub(crate) mod model;
@@ -45,45 +44,31 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     }
 }
 
-/// The conversation, its usage line at the foot, and over it what the agent asks and the agents
-/// it sent that still work.
+/// The conversation, and over it what the agent asks.
 fn conversation(ctx: &mut Ctx, (app, ui): (&AppState, &Ui), (open, agent): (&Open, &Agent)) {
     let chat = app.agent.chat(&open.session.id);
-    let foot = foot(ctx, ui.modes);
+    let foot = foot(ctx);
     let working = agent.activity.status == AgentStatus::Working;
     let first = agent.permissions.first();
     let asked = first.map(|one| (one, ui.agent.picked(&one.id).len()));
     let place = placed(open);
-    let over = asked::ends(ctx, asked, foot);
-    let docked = match ui.modes {
-        true => Vec::new(),
-        false => subagent::docked(chat),
-    };
-    let dock = dock::laid(ctx, &docked, ui.agent.docked, over, foot);
-    let ends = dock.map_or(over, |one| one.y);
-    let rows = docked.iter().filter(|_| !ui.agent.docked);
-    let wanted: Vec<&str> = rows.map(|one| one.id.as_str()).collect();
+    let ends = asked::ends(ctx, asked, foot);
+    let sent = subagent::docked(chat);
+    let wanted: Vec<&str> = sent.iter().map(|one| one.id.as_str()).collect();
     chat::draw(ctx, (open, chat, working), ui, (ends, &wanted));
     ctx.layer();
     if let Some((one, picked)) = asked {
         asked::draw(ctx, one, picked, (foot, &place));
     }
-    if let Some(at) = dock {
-        dock::draw(ctx, at, &docked, ui.agent.docked);
-    }
-    if !ui.modes {
-        model::line(ctx, chat, agent, foot);
-    }
 }
 
-/// The usage line at the pane's foot, centred and no wider than the palette; none with modes.
-fn foot(ctx: &Ctx, modes: bool) -> Rect {
+/// The pane's foot, centred and no wider than the palette.
+fn foot(ctx: &Ctx) -> Rect {
     let (sm, xs) = (ctx.tokens.sm, ctx.tokens.xs);
     let room = ctx.app.layout.agent.pad(Edges::across(sm + xs, sm + xs));
     let wide = room.w.min(ctx.tokens.palette);
     let room = room.align((wide, room.h), Align::Center, Align::Start);
-    let tall = if modes { 0.0 } else { ctx.tokens.row };
-    groove_ui_kit::shape::band(room, room.h - tall - xs, tall)
+    groove_ui_kit::shape::band(room, room.h - xs, 0.0)
 }
 
 /// `groove · feat/x`: the session's first worktree, where an ask acts.

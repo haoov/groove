@@ -6,7 +6,7 @@ use groove_ui_kit::base::tokens::Tokens;
 
 use crate::layout::Layout;
 use crate::tests::{full_app, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui, view};
 
 /// Where a region stands in the layout.
@@ -29,12 +29,9 @@ fn in_colour(frame: &Frame, color: Color) -> Vec<Rect> {
 fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
     let app = full_app();
     let focus = styles(&app).focus();
-    let cases: [(Focus, Around); 4] = [
+    let cases: [(Focus, Around); 3] = [
         (Focus::Rail, |one| one.sessions),
-        (Focus::Workspace, |one| one.strip),
-        (Focus::Sidebar, |one| {
-            groove_ui_kit::widgets::aside_bounds(&Tokens::new(1.0), one.sidebar)
-        }),
+        (Focus::Sidebar, |one| one.sidebar),
         (Focus::Terminal, |one| one.manual),
     ];
     for (keys, around) in cases {
@@ -42,7 +39,7 @@ fn the_ring_stands_around_the_region_that_has_the_keys_and_nowhere_else() {
             focus: keys,
             ..Ui::default()
         };
-        ui.session.tab = Tab::Diff;
+        ui.session.mode = Mode::Diff;
         ui.session.manual = true;
         let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
         let expected = around(&Layout::of(window(), &ui));

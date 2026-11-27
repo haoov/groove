@@ -255,7 +255,7 @@ fn an_age_due_asks_a_tick_while_the_list_shows_and_the_list_reads_it_after() {
     );
     assert_eq!(crate::ages_due(&app, &ui), Some(Timestamp::new(1_180)));
     assert!(drawn(&app, &ui).0.iter().any(|one| one == "2m59s"));
-    ui.session.tab = crate::Tab::Diff;
+    ui.session.mode = crate::Mode::Diff;
     assert_eq!(
         crate::ages_due(&app, &ui),
         None,

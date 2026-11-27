@@ -17,7 +17,6 @@ use crate::views::session::Mode;
 /// The modes layout on, the worktree walked, `src/a.rs` changed, and `src/a.rs` then `b.md` open.
 fn opened() -> AppState {
     let mut app = talking(Vec::new());
-    on(&mut app);
     let worktree = WorktreeId::new("wt-1");
     let changed = FileDiff {
         path: "src/a.rs".into(),
@@ -42,11 +41,6 @@ fn opened() -> AppState {
         app.workspace.keep(path);
     }
     app
-}
-
-fn on(app: &mut AppState) {
-    let config = app.config.config.as_mut().expect("a config");
-    config.ui.modes = true;
 }
 
 /// The ui on `FILES`, settled.
@@ -216,7 +210,6 @@ fn a_fault_s_popup_heads_on_its_kind_and_line() {
     use crate::tests::diagnostics::{PATH, diagnosed};
     let mut app = diagnosed(groove_types::Severity::Warning);
     crate::tests::chat::configured(&mut app);
-    on(&mut app);
     let at = groove_types::Caret::new(0, 5);
     app.workspace.servers.asked(PATH, at, false);
     let answer = Some("The absence of a value.".into());

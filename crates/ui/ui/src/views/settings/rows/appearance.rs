@@ -65,12 +65,6 @@ fn switches(ui: &groove_types::UiConfig) -> Vec<Row> {
         still,
     );
     out.extend(grouped("Motion", vec![motion]));
-    let modes = Value::Toggle {
-        on: ui.modes,
-        flip: Preference::Modes(!ui.modes),
-    };
-    let layout = Row::new(section, "modes", "layout main region tabs workspace", modes);
-    out.extend(grouped("Layout", vec![layout]));
     out
 }
 

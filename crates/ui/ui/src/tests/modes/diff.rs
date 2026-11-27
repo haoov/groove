@@ -17,7 +17,6 @@ use crate::views::session::Mode;
 /// The modes layout switched on in the config, the change of `files` read for the session's worktree.
 fn changed(files: &[(&str, &str, &str)]) -> AppState {
     let mut app = talking(Vec::new());
-    on(&mut app);
     let read = files
         .iter()
         .map(|(path, a, b)| aligned(path, a, b))
@@ -33,11 +32,6 @@ fn changed(files: &[(&str, &str, &str)]) -> AppState {
     app.workspace
         .loaded(worktree, listed.collect(), Changes::new(read));
     app
-}
-
-fn on(app: &mut AppState) {
-    let config = app.config.config.as_mut().expect("a config");
-    config.ui.modes = true;
 }
 
 /// The ui on `DIFF`, settled, and the focus the frame asks for applied.
@@ -192,7 +186,6 @@ fn a_cluster_write_takes_the_session_to_diff_and_back_once_answered() {
     one.reviewed = true;
     let mut app = asking(vec![one]);
     crate::tests::chat::configured(&mut app);
-    on(&mut app);
     let before = "spec:\n  replicas: 1\n".to_string();
     let after = "spec:\n  replicas: 3\n".to_string();
     let pairs = vec![("kind/paxone/deployments/api.yaml".into(), before, after)];
@@ -231,11 +224,6 @@ fn the_file_s_head_and_its_switches_share_one_band_over_its_rows() {
     assert!(
         (middle(read) - middle(view)).abs() < 1.0,
         "one band: {read:?} {view:?}"
-    );
-    assert!(
-        hits.rect_of(&Target::Head("src/a/alpha.rs".into()))
-            .is_none(),
-        "no head row folds it"
     );
 }
 

@@ -14,7 +14,7 @@ use crate::input::{Key, Modifiers};
 use crate::tests::{
     all_texts, changed_files, click, drag_at, press, pressed, release, typed, window, with_repo,
 };
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Surface, Ui};
 
 mod asked;
@@ -189,7 +189,7 @@ fn a_click_on_an_edit_s_file_opens_its_hunk_in_the_diff() {
         click(rect, &mut ui, &app, &hits).is_empty(),
         "the worktree is already selected"
     );
-    assert_eq!(ui.session.tab, Tab::Diff);
+    assert_eq!(ui.session.mode, Mode::Diff);
 
     crate::input::reveal(&mut ui, &app, window());
     let row = app
@@ -306,7 +306,7 @@ fn the_prompt_follows_its_caret_past_its_tallest_and_the_wheel_scrolls_it() {
 }
 
 #[test]
-fn with_modes_an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk() {
+fn an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk() {
     let mut app = talking(edit(&format!("{WORKTREE}/src/lib.rs"), 30));
     let before: String = (1..=40).map(|n| format!("line {n}\n")).collect();
     let after = before.replace("line 30\n", "line thirty\nline 30b\n");
@@ -320,11 +320,7 @@ fn with_modes_an_edit_s_file_opens_on_diff_shown_alone_at_its_hunk() {
     );
     app.workspace
         .loaded(WorktreeId::new("wt-1"), files, changes);
-    app.config.config.as_mut().expect("a config").ui.modes = true;
-    let mut ui = crate::Ui {
-        modes: true,
-        ..chat_ui()
-    };
+    let mut ui = chat_ui();
     app.workspace.changes.focus(Some("src/a.rs".into()));
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let link = Target::Edited {

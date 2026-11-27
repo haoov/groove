@@ -1,4 +1,4 @@
-//! The Overview tab in the modes layout: the task or the MR on a card, then each repo apart
+//! The Overview mode: the task or the MR on a card, then each repo apart
 //! with its worktrees in rows, each card folding on its head, scrolled on the ground.
 
 use groove_controllers::AppState;
@@ -18,7 +18,7 @@ use crate::hit::{Scroller, Target};
 pub mod aside;
 mod repo;
 
-/// One block of the tab, top to bottom; a card's last field says it stands open.
+/// One block of the Overview, top to bottom; a card's last field says it stands open.
 enum Block<'a> {
     /// The task, its body as tall as it lays out.
     Task(&'a Task, Option<&'a str>, f32, bool),

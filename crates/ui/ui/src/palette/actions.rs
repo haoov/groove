@@ -21,7 +21,7 @@ pub enum Act {
     Notes(Showing),
     /// The agent's ask, shown in its sheet.
     Examine(ApprovalId),
-    /// A file of the selected worktree, opened on the Files tab.
+    /// A file of the selected worktree, opened in the Files mode.
     Open(String),
     /// The kind a choice of *Pick a kind* names, listed.
     Kind(String),

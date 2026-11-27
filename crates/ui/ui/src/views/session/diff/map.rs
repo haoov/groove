@@ -45,14 +45,16 @@ pub(crate) fn total(app: &AppState, ui: &Ui, cols: usize) -> usize {
     Inline::of(app, ui, view, cols).total(super::row::count(app, ui, view))
 }
 
-/// Every changed file, one band under another.
+/// The focused file of the change.
 fn change(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
-    for (start, shown, file) in app.workspace.changes.placed() {
-        let run = run(inline, start, shown);
-        match super::row::is_read(app, &file.path) {
-            true => read(ctx, rect, per, run),
-            false => band(ctx, rect, per, run, file, inline, start),
-        }
+    let changes = &app.workspace.changes;
+    let Some(file) = changes.focused().and_then(|path| changes.get(path)) else {
+        return;
+    };
+    let run = run(inline, 0, changes.rows());
+    match super::row::is_read(app, &file.path) {
+        true => read(ctx, rect, per, run),
+        false => band(ctx, rect, per, run, file, inline, 0),
     }
 }
 

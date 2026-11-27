@@ -7,7 +7,6 @@ use crate::{Focus, Ui};
 pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
     ui.focus = pane(target, ui.focus);
     if matches!(ui.focus, Focus::Agent | Focus::Terminal | Focus::Rail) {
-        ui.session.bar.typing = None;
         if let Some(find) = ui.session.find.as_mut() {
             find.typing = false;
         }
@@ -37,14 +36,11 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
         Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
         Some(Target::Agent | Target::Chat | Target::Prompt) => Focus::Agent,
         Some(Target::Shell(_)) => Focus::Terminal,
-        Some(Target::AlertRow(_) | Target::AlertColumn(_) | Target::AlertsFold) => Focus::Alerts,
         Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
         Some(
-            Target::Tab(_)
-            | Target::Overview
+            Target::Overview
             | Target::Worktree(_)
             | Target::Link(_)
-            | Target::ResourceList
             | Target::ResourceRow(_)
             | Target::ResourceSearch
             | Target::ArgoSearch

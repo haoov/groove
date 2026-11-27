@@ -15,16 +15,16 @@ fn a_file_in_the_sidebar_opens_on_a_click() {
         .expect("the sidebar lists it");
     let commands = click(rect, &mut ui, &app, &hits);
     assert_eq!(commands.len(), 1);
-    assert_eq!(commands[0].id(), "workspace.open_file");
+    assert_eq!(commands[0].id(), "workspace.focus", "the Diff on that file");
 }
 
 #[test]
 fn the_wheel_over_the_workspace_scrolls_the_file() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let workspace = crate::layout::Layout::of(window(), &ui).agent;
     let wheel = |pixels: f32, ui: &mut Ui| {
         handle(
             Input::Scroll {
@@ -65,9 +65,7 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
     let tokens = Tokens::new(1.0);
     let point = (
         code.x + tokens.sm + 1.0,
-        code.y
-            + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32
-            + 1.0,
+        code.y + tokens.code_line * 2.0 + 1.0,
     );
     let commands = handle(
         Input::Press {
@@ -98,9 +96,7 @@ fn a_click_on_a_removed_line_takes_no_caret() {
     let commands = handle(
         Input::Press {
             x: code.x + tokens.sm + 1.0,
-            y: code.y
-                + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 1) as f32
-                + 1.0,
+            y: code.y + tokens.code_line + 1.0,
             mods: Default::default(),
         },
         &mut ui,
@@ -210,7 +206,8 @@ fn the_sidebar_says_which_file_is_open() {
         .rect_of(&Target::File("src/lib.rs".into()))
         .expect("the file's row");
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let held = frame.layers()[0].quads.iter().any(|quad| {
+    let quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
+    let held = quads.into_iter().any(|quad| {
         quad.color == styles.glass_chosen() && row.contains(quad.rect.x, quad.rect.y + 1.0)
     });
     assert!(held, "the open file's row stands on a rounded held ground");
@@ -225,7 +222,7 @@ fn changing_the_view_keeps_the_same_line_in_view() {
     ui.session.diff = height * 6.0;
     let (_, hits) = view_of(&app, &ui);
     let top = |ui: &Ui| {
-        let row = crate::components::first(height, ui.session.diff);
+        let row = (ui.session.diff / height).floor() as usize;
         crate::views::session::diff::line_at(
             &app,
             ui,
@@ -252,9 +249,9 @@ fn changing_the_view_keeps_the_same_line_in_view() {
 fn a_wheel_notch_over_the_file_moves_one_code_line() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let workspace = crate::layout::Layout::of(window(), &ui).agent;
     handle(
         Input::Scroll {
             x: workspace.x + 1.0,
@@ -288,9 +285,7 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
     let tokens = Tokens::new(1.0);
     let point = (
         code.x + tokens.sm + 1.0,
-        code.y
-            + tokens.code_line * (groove_controllers::workspace_service::HEAD_ROWS + 2) as f32
-            + 1.0,
+        code.y + tokens.code_line * 2.0 + 1.0,
     );
     let commands = handle(
         Input::Press {
@@ -315,10 +310,10 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
 fn the_files_tab_draws_from_where_it_is_scrolled() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     ui.session.file = Tokens::new(1.0).code_line * 50.0;
     let (frame, _) = view_of(&app, &ui);
-    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let workspace = crate::layout::Layout::of(window(), &ui).agent;
     let numbers: Vec<u32> = frame.layers()[0]
         .texts
         .iter()

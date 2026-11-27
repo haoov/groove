@@ -9,8 +9,6 @@ use groove_ui_kit::base::ctx::App;
 pub struct Drawn<'a> {
     pub layout: Layout,
     pub hits: &'a mut Hits,
-    /// The modes layout is on.
-    pub modes: bool,
 }
 
 impl App for Drawn<'_> {

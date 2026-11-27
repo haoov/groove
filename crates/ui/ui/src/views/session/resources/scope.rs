@@ -1,4 +1,4 @@
-//! What the Resources tab reads: the contexts and namespaces picked, the kind, the search.
+//! What the Kubernetes mode reads: the contexts and namespaces picked, the kind, the search.
 
 use std::collections::BTreeSet;
 
@@ -13,7 +13,7 @@ pub const WHOLE_MARK: &str = "*";
 /// The whole cluster, as a name under its context.
 pub const WHOLE_NAME: &str = "whole cluster";
 
-/// The one reader the tab holds its watchers under.
+/// The one reader the Kubernetes mode holds its watchers under.
 pub const READER: &str = "resources";
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -29,8 +29,6 @@ pub struct ResourcesUi {
     /// The find bar stands over the list, and has the keys.
     pub finding: bool,
     pub typing: bool,
-    /// The kind the arrows stand on, by its place among the kinds shown.
-    pub cursor: Option<usize>,
     /// The sidebar's headings folded shut.
     pub folded: BTreeSet<groove_types::KindHeading>,
     /// The column the rows are ordered by, and whether downwards.
@@ -67,8 +65,6 @@ pub enum Columns {
     Kind(String),
     /// An object's own tab.
     Tab,
-    /// A maintenance task's alerts.
-    Alerts,
 }
 
 /// The contexts the session holds, in the order first attached.
@@ -87,14 +83,6 @@ pub fn shown_contexts<'a>(open: &'a Open, ui: &ResourcesUi) -> Vec<&'a str> {
     let mut out = contexts(open);
     out.retain(|one| !ui.hidden_contexts.contains(*one));
     out
-}
-
-/// The pairs the session holds whose context is picked.
-pub fn offered<'a>(open: &'a Open, ui: &ResourcesUi) -> impl Iterator<Item = &'a Attached> {
-    let hidden = ui.hidden_contexts.clone();
-    open.clusters
-        .iter()
-        .filter(move |one| !hidden.contains(&one.context))
 }
 
 /// Whether the session lets the list read `pair`: held as it is, or within a whole cluster held.

@@ -44,7 +44,6 @@ pub enum Preference {
     RoutinesPaused(bool),
     WrapCode(bool),
     ReduceMotion(bool),
-    Modes(bool),
     /// The language server of this name, on or off.
     Server(String, bool),
 }
@@ -184,7 +183,6 @@ impl State {
             Preference::RoutinesPaused(paused) => held.routines_paused = paused,
             Preference::WrapCode(on) => ui.wrap_code = on,
             Preference::ReduceMotion(on) => ui.reduce_motion = on,
-            Preference::Modes(on) => ui.modes = on,
             Preference::Server(name, on) => {
                 let held = config.language_servers.take();
                 let mut servers = held.unwrap_or_else(groove_types::LanguageServer::defaults);
@@ -203,10 +201,6 @@ impl State {
 
     pub fn reduce_motion(&self) -> bool {
         self.config.as_ref().is_some_and(|c| c.ui.reduce_motion)
-    }
-
-    pub fn modes(&self) -> bool {
-        self.config.as_ref().is_some_and(|c| c.ui.modes)
     }
 
     pub fn theme(&self) -> ThemeName {

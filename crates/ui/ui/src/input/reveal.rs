@@ -1,15 +1,15 @@
-//! An edit's file opened in the Diff tab, scrolled to its hunk once the diff holds it.
+//! An edit's file opened in the Diff, scrolled to its hunk once the diff holds it.
 
 use groove_controllers::{AppState, Command, session};
 
 use crate::Ui;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use groove_ui_kit::base::ctx::Metrics;
 
 /// The rows kept above the hunk's first line.
 const ABOVE: usize = 3;
 
-/// The Diff tab on the worktree that holds `path`, the hunk at `line` waited for.
+/// The Diff on the worktree that holds `path`, the hunk at `line` waited for.
 pub(super) fn opened(ui: &mut Ui, app: &AppState, path: &str, line: u32) -> Vec<Command> {
     let Some(open) = app.session.selected() else {
         return Vec::new();
@@ -17,11 +17,7 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, path: &str, line: u32) -> Vec<
     let Some((worktree, inside)) = crate::views::session::agent_pane::within(open, path) else {
         return Vec::new();
     };
-    (ui.session.tab, ui.session.going) = (Tab::Diff, None);
-    if ui.modes {
-        ui.session.mode = crate::views::session::Mode::Diff;
-    }
-    ui.session.stowed = false;
+    (ui.session.mode, ui.session.going) = (Mode::Diff, None);
     ui.focus = crate::Focus::Workspace;
     ui.session.revealing = Some((inside, line));
     if open.state.selected_worktree.as_ref() == Some(&worktree.id) {
@@ -39,14 +35,14 @@ pub fn reveal(ui: &mut Ui, app: &AppState, metrics: Metrics) {
     let Some((path, line)) = ui.session.revealing.as_ref() else {
         return;
     };
-    if ui.session.tab != Tab::Diff {
+    if ui.session.mode != Mode::Diff {
         ui.session.revealing = None;
         return;
     }
     let changes = &app.workspace.changes;
     let Some(row) = changes
         .row_of(path, *line)
-        .or_else(|| changes.head_of(path))
+        .or_else(|| (changes.focused() == Some(path.as_str())).then_some(0))
     else {
         return;
     };

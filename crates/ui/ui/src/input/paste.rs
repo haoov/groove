@@ -124,10 +124,6 @@ fn pasted_in_field(typed: Typed, text: &str, ui: &mut Ui) -> Vec<Command> {
                 noting.buffer.edit(&lines(text));
             }
         }
-        Typed::Bar(term) => {
-            session.bar.of(term).paste(text);
-            return keys::searches(ui);
-        }
         Typed::Search => {
             session.resources.search.paste(text);
             keys::search_changed(ui);

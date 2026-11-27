@@ -78,11 +78,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     }
 }
 
-/// Both windows folded under the modes layout: the session's middle runs across the column, and
+/// Both windows folded: the session's middle runs across the column, and
 /// their heads stand over it, drawn after it as the sidebar's is.
 pub fn over(app: &AppState, ui: &Ui) -> bool {
     let session = ui.showing(app) == Surface::Session && app.session.selected().is_some();
-    ui.modes && session && ui.rail.stowed && ui.rail.folded
+    session && ui.rail.stowed && ui.rail.folded
 }
 
 /// The two windows on the rail's ground.

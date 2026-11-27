@@ -9,7 +9,7 @@ use groove_gfx::{Color, Fonts, Renderer, Size};
 use groove_types::{DiffView, Rgb, Screen, ScreenCell};
 
 use crate::tests::{full_app, window};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Ui, view};
 
 pub(super) fn big(lines: usize) -> AppState {
@@ -249,7 +249,7 @@ fn time_a_frame_over_several_files() {
         for kind in [DiffView::Inline, DiffView::Split] {
             let mut app = several(files);
             let mut ui = Ui::default();
-            ui.session.tab = Tab::Diff;
+            ui.session.mode = Mode::Diff;
             ui.session.view = kind;
             ui.focus = crate::Focus::Workspace;
             let (frame, _) = view(&app, &ui, window(), renderer.fonts());
@@ -380,39 +380,26 @@ fn spread(count: usize, tree: usize) -> AppState {
 fn time_a_frame_over_many_changed_files() {
     let mut fonts = Fonts::embedded();
     let app = spread(1354, 12_000);
-    for (tab, browse) in [
-        (Tab::Files, false),
-        (Tab::Files, true),
-        (Tab::Diff, false),
-        (Tab::Diff, true),
-    ] {
+    for mode in [Mode::Files, Mode::Diff] {
         let mut ui = Ui::default();
-        ui.session.tab = tab;
-        if browse {
-            ui.session.bar.path.clear();
-        } else {
-            ui.session.bar.path.set("t");
-        }
+        ui.session.mode = mode;
         let _ = view(&app, &ui, window(), &mut fonts);
         let runs = 20;
         let started = Instant::now();
         for _ in 0..runs {
             let _ = view(&app, &ui, window(), &mut fonts);
         }
-        println!(
-            "{tab:?} browse={browse}: {:?} a frame",
-            started.elapsed() / runs
-        );
+        println!("{mode:?}: {:?} a frame", started.elapsed() / runs);
     }
 }
 
 #[test]
 #[ignore]
 fn time_the_file_lists_parts() {
-    use crate::views::session::files::{explorer, listing, narrowed};
+    use crate::views::session::files::{changed, explorer};
     let app = spread(1354, 12_000);
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Files;
+    ui.session.mode = Mode::Files;
     let runs = 20;
     let time = |label: &str, f: &dyn Fn()| {
         let started = Instant::now();
@@ -421,9 +408,7 @@ fn time_the_file_lists_parts() {
         }
         println!("{label}: {:?}", started.elapsed() / runs);
     };
-    time("narrowed", &|| drop(narrowed(&app, &ui)));
-    let files = narrowed(&app, &ui);
-    time("listing", &|| drop(listing(&files, false)));
+    let files: Vec<&groove_types::FileDiff> = changed(&app).iter().collect();
     time("explorer rows", &|| {
         drop(explorer::rows(
             (app.workspace.paths(), app.workspace.paths_stamp()),
@@ -431,8 +416,6 @@ fn time_the_file_lists_parts() {
             &ui,
         ))
     });
-    ui.session.bar.path.set("t1");
-    time("narrowed by a query", &|| drop(narrowed(&app, &ui)));
     let mut palette = crate::palette::Palette::default();
     palette.query.set("#t1");
     time("the palette's files, cached", &|| drop(palette.rows(&app)));
@@ -444,11 +427,5 @@ fn time_the_file_lists_parts() {
             }
             .rows(&app),
         )
-    });
-    ui.session.bar.path.set("src/compo");
-    time("narrowed by a long query", &|| drop(narrowed(&app, &ui)));
-    let fonts = std::cell::RefCell::new(groove_gfx::Fonts::embedded());
-    time("a frame under the query", &|| {
-        drop(view(&app, &ui, window(), &mut fonts.borrow_mut()))
     });
 }

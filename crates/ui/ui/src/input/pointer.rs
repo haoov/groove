@@ -1,7 +1,6 @@
 //! What a press, a drag and a click do, through what the last frame drew.
 
 mod agent;
-mod alerts;
 mod board;
 mod clusters;
 mod drag;
@@ -30,14 +29,10 @@ pub(super) use self::drag::nudged;
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
 use self::menu::{chosen, lose, palette_row, select_worktree};
-use self::sidebar::{finding, narrowing, note_at, paned, twisty};
-use self::surface::{
-    blamed, closing, defined, extended, folded, in_files, jump, landed, lensed, reached, switch,
-    unfolded,
-};
+use self::sidebar::{finding, note_at, paned, twisty};
+use self::surface::{blamed, closing, defined, extended, in_files, landed, lensed, switch};
 use super::selection;
 use crate::hit::{Hits, Target};
-use crate::views::session::Tab;
 use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -57,7 +52,6 @@ pub(super) fn press(
         Some(Target::Split(edge)) => grab(ui, edge, x, y, metrics),
         Some(Target::Place(id)) => takes(ui, id),
         Some(Target::ResourceEdge(label)) => resources::held(ui, app, hits, (label, x)),
-        Some(Target::AlertEdge(label)) => alerts::held(ui, hits, (label, x)),
         Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
         Some(target) if mods.ctrl && board::opens(&target) => opened_from_board(target, ui, false),
         Some(Target::Code) if mods.ctrl => defined(ui, app, hits, metrics, (x, y)),
@@ -138,22 +132,16 @@ fn acted(
         return commands;
     }
     match target {
-        Some(Target::Tab(tab)) => tabbed(ui, tab),
-        Some(Target::Fold) => aside(ui),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
-        Some(Target::File(path)) => opened(ui, app, path, metrics),
+        Some(Target::File(path)) => opened(ui, app, path),
         Some(Target::View(view)) => viewing(ui, app, view, (hits, metrics)),
         Some(Target::Mode(mode)) => vec![Command::Workspace(workspace::Command::SetMode { mode })],
         Some(Target::Code) => selecting(point, ui, app, hits, metrics),
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
         Some(Target::Note(origin, button)) => surface::noted(ui, app, origin, button),
         Some(Target::Compose(asked)) => surface::composing(ui, asked),
-        Some(Target::Head(path)) => folded(ui, app, metrics, path),
         Some(Target::Gap { row, way }) => one(workspace::Command::OpenGap { row, way }),
-        Some(Target::Term(term)) => narrowing(ui, term),
         Some(Target::Finding) => finding(ui),
-        Some(Target::Found(at)) => reached(ui, app, (hits, metrics), at),
-        Some(Target::FoundIn(path)) => shut(ui, path),
         Some(Target::Map) => mapping(point.1, ui, app, hits, metrics),
         Some(Target::Thumb(which)) => {
             ui.held = Some(Held::Thumb(which));
@@ -162,7 +150,7 @@ fn acted(
         }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(target @ (Target::Pane(_) | Target::Showing(_))) => paned(ui, target),
-        Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
+        Some(Target::NoteAt(at)) => note_at(ui, app, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
         Some(Target::Blamed(sha)) => blamed(ui, sha),
         Some(Target::Working) => one(workspace::Command::LeaveCommit),
@@ -175,7 +163,6 @@ fn acted(
 /// What the task and its MR are asked from the pages that show them.
 fn tasked(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     match target {
-        Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
         Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
         one => answered(one, ui, app),
@@ -202,30 +189,11 @@ fn one(command: workspace::Command) -> Vec<Command> {
 fn one_task(command: task::Command) -> Vec<Command> {
     vec![Command::Task(command)]
 }
-fn tabbed(ui: &mut Ui, tab: Tab) -> Vec<Command> {
-    if tab == ui.session.tab && !ui.session.stowed {
-        ui.session.stowed = true;
-        ui.focus = crate::Focus::Agent;
-        return Vec::new();
-    }
-    (ui.session.tab, ui.session.going) = (tab, None);
-    ui.session.stowed = false;
-    Vec::new()
-}
 
-/// The sidebar folded away, or back.
-fn aside(ui: &mut Ui) -> Vec<Command> {
-    ui.session.folded = !ui.session.folded;
-    Vec::new()
-}
-
-/// In the diff, the stream at the file's rows; anything else, the file in the Files tab.
-fn opened(ui: &mut Ui, app: &AppState, path: String, metrics: Metrics) -> Vec<Command> {
+/// In the Diff, the file focused; anything else, the file in the Files mode.
+fn opened(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
     if crate::views::session::files::moded::diffing(ui) {
-        return sidebar::shown(ui, app, path);
-    }
-    if ui.session.tab == Tab::Diff && jump(ui, app, &path, metrics) {
-        return unfolded(app, path);
+        return sidebar::shown(ui, path);
     }
     in_files(ui, app, path)
 }
@@ -245,12 +213,6 @@ fn selecting(
 ) -> Vec<Command> {
     ui.held = Some(Held::Text);
     landed(ui, app, hits, metrics, point)
-}
-
-/// One file's found lines hidden under their own row, or shown again.
-fn shut(ui: &mut Ui, path: String) -> Vec<Command> {
-    groove_types::toggle(&mut ui.session.shut, path);
-    Vec::new()
 }
 
 /// A press on the change column takes hold of the lens.
@@ -287,7 +249,6 @@ fn elsewhere(
     let target = target?;
     board::acted(target, ui)
         .or_else(|| rail::acted(target, ui, app))
-        .or_else(|| alerts::acted(target, ui, app))
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, point, ui, app, (hits, metrics)))
         .or_else(|| settings::acted(target, ui, app, hits))

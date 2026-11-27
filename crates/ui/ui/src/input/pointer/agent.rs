@@ -42,7 +42,7 @@ pub(super) fn acted(
         }
         Target::Answer(button) => Some(crate::input::answer::answered(ui, app, button.clone())),
         Target::Edited { path, line } => Some(crate::input::reveal::opened(ui, app, path, *line)),
-        Target::Picker(_) if ui.modes => {
+        Target::Picker(_) => {
             let pick = crate::keymap::Action::SelectWorktree;
             Some(crate::input::keys::app::flowed(pick, ui, app))
         }
@@ -68,7 +68,6 @@ fn toggled(target: &Target, ui: &mut Ui) -> bool {
             }
         }
         Target::ModeTab(mode) => (ui.session.mode, ui.aside) = (*mode, 0.0),
-        Target::FoldAgents => ui.agent.docked = !ui.agent.docked,
         _ => return false,
     }
     true
@@ -145,16 +144,12 @@ fn caret_at(hits: &Hits, (x, y): (f32, f32), metrics: Metrics) -> Option<Caret> 
     Some(Caret::new(line, (start + across).min(end)))
 }
 
-/// The models' menu over the right end of the usage line.
+/// The models' menu at the model's row.
 fn menu_over(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics), button: &Target) {
     let Some(session) = app.session.selected.as_ref() else {
         return;
     };
-    let now = groove_types::Timestamp::now();
-    let mut of = crate::views::session::agent_pane::model::models(app, session, now);
-    if let Some(crate::Of::Models { gauges, .. }) = of.as_mut().filter(|_| ui.modes) {
-        gauges.clear();
-    }
+    let of = crate::views::session::agent_pane::model::models(app, session);
     if let Some((of, rect)) = of.zip(hits.rect_of(button)) {
         use groove_ui_kit::widgets::Corner;
         let sm = metrics.tokens().sm;

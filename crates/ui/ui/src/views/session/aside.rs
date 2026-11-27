@@ -1,4 +1,4 @@
-//! The modes layout's sidebar, one for every tab: its pane, a head that folds it, the tab's body,
+//! The sidebar, one for every mode: its pane, a head that folds it, the tab's body,
 //! and one scrollbar over whatever the body scrolls.
 
 use groove_controllers::AppState;

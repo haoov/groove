@@ -1,6 +1,4 @@
-//! Text across the worktree, walked off the main thread and reported in batches.
-
-use groove_workspace_service::Search;
+//! The worktree's paths, walked off the main thread.
 
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -28,47 +26,5 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
                 }
             },
         ) as Continuation
-    }));
-}
-
-/// Every line of the worktree holding `query`, walked on a thread and reported in batches.
-pub(super) fn grep(state: &mut AppState, spawner: &dyn Spawner, query: String, under: String) {
-    state.workspace.stop();
-    state.workspace.found.clear();
-    let Some(dir) = state
-        .session
-        .selected_worktree()
-        .map(groove_types::Worktree::dir)
-    else {
-        return;
-    };
-    if query.is_empty() {
-        return;
-    }
-    let search = std::sync::Arc::new(Search::default());
-    state.workspace.searching = Some(search.clone());
-    let (sink, mine) = (spawner.sink(), search.clone());
-    let current = move |state: &AppState, one: &std::sync::Arc<Search>| {
-        let held = state.workspace.searching.as_ref();
-        held.is_some_and(|held| std::sync::Arc::ptr_eq(held, one))
-    };
-    let walked = search.clone();
-    let found = move |batch: Vec<groove_workspace_service::Found>| {
-        let walked = walked.clone();
-        sink.deliver(Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                if current(state, &walked) {
-                    state.workspace.found.extend(batch);
-                }
-            },
-        ));
-    };
-    spawner.spawn(Box::pin(async move {
-        let _ = groove_workspace_service::grep(&dir, &query, &under, search, found).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if current(state, &mine) {
-                state.workspace.searching = None;
-            }
-        }) as Continuation
     }));
 }

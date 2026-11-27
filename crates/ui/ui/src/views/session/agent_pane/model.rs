@@ -1,19 +1,12 @@
-//! The line under the prompt, and the menu it opens: the models, then the usage gauges.
+//! The agent's model and usage in the sidebar, and the menu of the models.
 
 use groove_controllers::AppState;
 use groove_controllers::agent_service::Agent;
-use groove_gfx::Rect;
-use groove_types::chat::{Chat, MODELS, Window, model_name, percent, resets, tokens};
+use groove_types::chat::{Chat, MODELS, model_name, percent, resets, tokens};
 use groove_types::{SessionId, Timestamp};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::from_left;
-use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{glass_hoverable, meter};
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
 use crate::menu::{Gauge, Of, Told};
-use groove_ui_kit::widgets::{cap, cap_right};
 
 use groove_ui_kit::base::tokens::GAUGE_HIGH as HIGH;
 
@@ -28,31 +21,6 @@ fn context(chat: Option<&Chat>, agent: &Agent) -> Option<(u64, Option<u64>)> {
     let window = |model: &str| agent.windows.iter().find(|(one, _)| one == model);
     let size = model.and_then(window).map(|(_, size)| *size);
     chat.and_then(Chat::context).map(|held| (held, size))
-}
-
-/// `CONTEXT 62% ▬▬──   5H WINDOW 34% · resets in 2h 14m`, the model at the right.
-pub(super) fn line(ctx: &mut Ctx, chat: Option<&Chat>, agent: &Agent, rect: Rect) {
-    glass_hoverable(ctx, rect, Target::ModelButton);
-    let mut room = rect;
-    groove_ui_kit::widgets::keycap_left(ctx, &mut room, "ALT");
-    groove_ui_kit::widgets::keycap_left(ctx, &mut room, "A");
-    Label::new("reply", ctx.styles.log(Role::Ghost)).left(ctx, &mut room, ctx.tokens.lg);
-    if let Some(model) = current(chat, agent) {
-        cap_right(ctx, &mut room, &model_name(model), Role::Faint);
-    }
-    let share = context(chat, agent).and_then(|(held, size)| Some(held as f32 / size? as f32));
-    if let Some(share) = share {
-        cap(ctx, &mut room, "context", Role::Ghost);
-        let said = percent(share);
-        Label::new(&said, ctx.styles.log(Role::Faint)).left(ctx, &mut room, ctx.tokens.xs);
-        let gauge = from_left(&mut room, ctx.tokens.row * 2.0, ctx.tokens.lg);
-        meter(ctx, gauge, share, gauge_role(share));
-    }
-    if let Some(five) = agent.limits.five_hour {
-        cap(ctx, &mut room, "5h window", Role::Ghost);
-        let said = windowed(five, ctx.now);
-        Label::new(&said, ctx.styles.log(Role::Faint)).draw(ctx, room);
-    }
 }
 
 /// `opus 5.5`: the selected session's agent's model, when known.
@@ -84,8 +52,8 @@ fn gauge_role(share: f32) -> Role {
     }
 }
 
-/// The models a headless agent switches to, then the context and the plan's windows.
-pub(crate) fn models(app: &AppState, session: &SessionId, now: Timestamp) -> Option<Of> {
+/// The models a headless agent switches to.
+pub(crate) fn models(app: &AppState, session: &SessionId) -> Option<Of> {
     let agent = app.agent.agent(session)?;
     let chat = app.agent.chat(session);
     let on = current(chat, agent);
@@ -98,13 +66,8 @@ pub(crate) fn models(app: &AppState, session: &SessionId, now: Timestamp) -> Opt
             current: on == Some(*one),
         })
         .collect();
-    let gauges = gauges(chat, agent, now);
     let session = session.clone();
-    (!rows.is_empty() || !gauges.is_empty()).then_some(Of::Models {
-        session,
-        rows,
-        gauges,
-    })
+    (!rows.is_empty()).then_some(Of::Models { session, rows })
 }
 
 /// The context, the five-hour window and the week, as far as each is known.
@@ -140,20 +103,11 @@ fn contained((held, size): (u64, Option<u64>)) -> Option<Gauge> {
     })
 }
 
-/// `34% · resets in 1h 42m`.
-fn windowed(window: Window, now: Timestamp) -> String {
-    let used = percent(window.used);
-    match window.resets {
-        Some(at) => format!("{used} · {}", resets(at, now)),
-        None => used,
-    }
-}
-
 pub(crate) use menu::draw as menu;
 pub(super) use menu::gauge;
 
 mod menu {
-    //! The models' menu on glass: `MODEL` and its rows, then `USAGE` and its gauges.
+    //! The models' menu on glass: `MODEL` and its rows; the gauges the sidebar draws.
 
     use groove_gfx::{Edges, Rect};
     use groove_ui_kit::base::style::Role;
@@ -168,10 +122,9 @@ mod menu {
     use groove_ui_kit::widgets::{cap, cap_right};
 
     /// The menu with its corner at the menu's point, kept in the window.
-    pub(crate) fn draw(ctx: &mut Ctx, open: &Menu, (rows, gauges): (&[Told], &[Gauge])) {
+    pub(crate) fn draw(ctx: &mut Ctx, open: &Menu, rows: &[Told]) {
         let row = ctx.tokens.row;
-        let heads = usize::from(!rows.is_empty()) + usize::from(!gauges.is_empty());
-        let tall = (heads + rows.len() + gauges.len() * 2) as f32 * row + ctx.tokens.sm * 2.0;
+        let tall = (1 + rows.len()) as f32 * row + ctx.tokens.sm * 2.0;
         let wide = ctx.tokens.aside_far;
         let at = match open.corner {
             Corner::BottomRight => (open.at.0 - wide, open.at.1 - tall),
@@ -183,9 +136,7 @@ mod menu {
         ctx.layer();
         glass_pane(ctx, card);
         let mut room = card.pad(Edges::xy(0.0, ctx.tokens.sm));
-        if !rows.is_empty() {
-            head(ctx, &mut room, "model");
-        }
+        head(ctx, &mut room, "model");
         for (at, one) in rows.iter().enumerate() {
             let line = from_top(&mut room, row, 0.0);
             if !glass_hoverable(ctx, line, Target::MenuRow(at)) && one.current {
@@ -196,17 +147,6 @@ mod menu {
                 cap_right(ctx, &mut inner, "current", Role::Accent);
             }
             Label::new(&one.label, ctx.styles.body(Role::Text)).draw(ctx, inner);
-        }
-        if !gauges.is_empty() {
-            head(ctx, &mut room, "usage");
-        }
-        for one in gauges {
-            let two = from_top(&mut room, row * 2.0, 0.0);
-            gauge(
-                ctx,
-                two.pad(Edges::across(ctx.tokens.md, ctx.tokens.md)),
-                one,
-            );
         }
     }
 

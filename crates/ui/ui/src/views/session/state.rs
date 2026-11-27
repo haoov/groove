@@ -2,8 +2,8 @@
 
 use groove_types::DiffView;
 
+pub use super::face::Face;
 pub use super::mode::Mode;
-pub use super::tab::{Face, Tab};
 pub use noting::Noting;
 pub use prompt::Prompt;
 
@@ -16,13 +16,12 @@ use groove_ui_kit::widgets::Field;
 /// What the session surface remembers between frames.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SessionUi {
-    pub tab: Tab,
-    /// What the middle shows while the modes layout is on.
+    /// What the middle shows.
     pub mode: Mode,
-    /// The tab shown when last settled.
-    pub settled: Tab,
-    /// The tab to show once the repo asked for is selected and read, and its commit shown when one.
-    pub going: Option<(Tab, Option<String>)>,
+    /// The mode shown when last settled.
+    pub settled: Mode,
+    /// The mode to bring up once the repo asked for is selected and read, and its commit shown when one.
+    pub going: Option<(Mode, Option<String>)>,
     /// The file and line an edit's link opened, scrolled to once the diff holds them.
     pub revealing: Option<(String, u32)>,
     /// The session and the worktree selected when last settled.
@@ -34,20 +33,18 @@ pub struct SessionUi {
     pub files: f32,
     /// The user folded the sidebar away.
     pub folded: bool,
-    /// The manual section stands open under the tab.
+    /// The terminals' drawer stands open.
     pub manual: bool,
     /// The selected session has a terminal open.
     pub terminals: bool,
     /// The session the review sheet last settled on.
     pub sheeted: Option<groove_types::SessionId>,
-    /// The workspace is folded into its strip, the agent wide.
-    pub stowed: bool,
     /// A commit is shown in place of the working tree.
     pub reading: bool,
-    /// The selected session waits on a cluster write, its change on the Diff tab under the ask.
+    /// The selected session waits on a cluster write, its change on the Diff under the ask.
     pub reviewing: bool,
-    /// The tab and the mode the session stood on before a cluster write took it to the Diff tab.
-    pub left: Option<(groove_types::SessionId, Tab, Mode)>,
+    /// The mode the session stood on before a cluster write took it to the Diff.
+    pub left: Option<(groove_types::SessionId, Mode)>,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.
@@ -77,10 +74,6 @@ pub struct SessionUi {
     pub cards: std::collections::BTreeSet<String>,
     /// Which of the two views the stream is drawn in.
     pub view: DiffView,
-    /// What the sidebar's search bar narrows by.
-    pub bar: Bar,
-    /// The files whose found lines are hidden under their own row.
-    pub shut: std::collections::BTreeSet<String>,
     /// The bar over the rows, while a search of them is live.
     pub find: Option<Finding>,
     /// Which of the sidebar's lists is up.
@@ -100,7 +93,7 @@ pub struct SessionUi {
     /// Which notes the sidebar's list shows.
     pub showing: Showing,
     pub resources: crate::views::session::resources::ResourcesUi,
-    /// The Resources tab of each other session, as it was left.
+    /// The Kubernetes mode of each other session, as it was left.
     pub resources_of: std::collections::BTreeMap<
         groove_types::SessionId,
         crate::views::session::resources::ResourcesUi,
@@ -143,7 +136,7 @@ pub enum Asked {
     Copy,
 }
 
-/// Which of the sidebar's three lists is up.
+/// Which of the Diff sidebar's three lists is up.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
     #[default]
@@ -153,25 +146,8 @@ pub enum Pane {
 }
 
 impl Pane {
-    /// Every pane, in the order the strip shows them.
+    /// Every list, in the order the Diff's sidebar offers them.
     pub const ALL: [Pane; 3] = [Pane::Files, Pane::Commits, Pane::Notes];
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Pane::Files => "changed",
-            Pane::Commits => "commits",
-            Pane::Notes => "notes",
-        }
-    }
-
-    pub fn mark(self) -> groove_ui_kit::base::mark::Mark {
-        use groove_ui_kit::base::mark::Mark;
-        match self {
-            Pane::Files => Mark::List,
-            Pane::Commits => Mark::Commits,
-            Pane::Notes => Mark::Note,
-        }
-    }
 }
 
 /// Which of the session's notes the sidebar lists.
@@ -204,87 +180,24 @@ impl Showing {
     }
 }
 
-/// What the sidebar's bar narrows by: a path, some text, or both.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Bar {
-    pub path: Field,
-    pub text: Field,
-    /// Which of the two the keyboard is in, when it is in either.
-    pub typing: Option<Term>,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum Term {
-    #[default]
-    Path,
-    Text,
-}
-
-impl Term {
-    /// Both terms, in the order the bar stacks them.
-    pub const ALL: [Term; 2] = [Term::Path, Term::Text];
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Term::Path => "path",
-            Term::Text => "text",
-        }
-    }
-}
-
-impl Bar {
-    /// The bar open on one term, the other kept, this one's text cleared.
-    pub fn open(&mut self, term: Term) {
-        self.typing = Some(term);
-        self.of(term).clear();
-    }
-
-    /// The keyboard in one term, leaving what it holds to be edited.
-    pub fn focus(&mut self, term: Term) {
-        self.typing = Some(term);
-        self.of(term).end();
-    }
-
-    pub fn shut(&mut self) {
-        *self = Self::default();
-    }
-
-    pub fn of(&mut self, term: Term) -> &mut Field {
-        match term {
-            Term::Path => &mut self.path,
-            Term::Text => &mut self.text,
-        }
-    }
-
-    /// Whether a search is on.
-    pub fn in_use(&self) -> bool {
-        self.typing.is_some() || !self.path.is_empty() || !self.text.is_empty()
-    }
-
-    /// Whether the results are lines rather than files.
-    pub fn greps(&self) -> bool {
-        !self.text.is_empty()
-    }
-}
-
 impl SessionUi {
     /// Whether a bar has the keyboard.
     pub fn typing(&self) -> bool {
-        self.bar.typing.is_some()
-            || self.find.as_ref().is_some_and(|find| find.typing)
-            || self.noting.is_some()
+        self.find.as_ref().is_some_and(|find| find.typing) || self.noting.is_some()
     }
 
-    /// Whether the sidebar stands beside the workspace right now.
-    pub fn sidebar(&self) -> bool {
-        self.tab.has_sidebar() && !self.folded
+    /// A file or an object opened elsewhere brings its mode up; the Diff keeps the middle.
+    pub fn bring(&mut self, mode: Mode) {
+        if self.mode != Mode::Diff {
+            self.mode = mode;
+        }
     }
 }
 
 impl SessionUi {
-    /// The tab gone to once what it waits for stands; nothing moves when it failed.
+    /// The mode brought up once what it waits for stands; nothing moves when it failed.
     pub fn arrive(&mut self, app: &groove_controllers::AppState) {
-        let Some((tab, sha)) = &self.going else {
+        let Some((mode, sha)) = self.going.clone() else {
             return;
         };
         if app.workspace.revision.is_some() {
@@ -292,7 +205,7 @@ impl SessionUi {
         }
         let shown = app.workspace.commit.as_ref().map(|one| &one.sha);
         if sha.is_none() || shown == sha.as_ref() {
-            self.tab = *tab;
+            self.bring(mode);
         }
         self.going = None;
     }

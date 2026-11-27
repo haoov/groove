@@ -1,12 +1,12 @@
 //! The file view and the diff keep the caret in sight once a key has moved it.
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{Document, display_of};
+use groove_controllers::workspace_service::display_of;
 use groove_types::Caret;
 
 use crate::hit::{Hits, Target};
 use crate::views::session::diff::{Inline, text_at};
-use crate::views::session::{Face, Tab};
+use crate::views::session::{Face, Mode};
 use crate::{Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -40,8 +40,8 @@ pub fn land(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     if !here || ui.session.centred == servers.landings {
         return;
     }
-    if ui.session.tab == Tab::Diff && app.workspace.changes.get(path).is_none() {
-        ui.session.tab = Tab::Files;
+    if ui.session.mode == Mode::Diff && app.workspace.changes.get(path).is_none() {
+        ui.session.mode = Mode::Files;
     }
     let (Some(rect), Some(row)) = (hits.rect_of(&Target::Code), row_of(ui, app, hits, *at)) else {
         return;
@@ -111,17 +111,6 @@ pub(crate) fn across_at(
         ),
         None => across,
     }
-}
-
-/// The sideways offset that shows column `at` of `text`, from a file view at its left edge.
-pub(crate) fn reaching(text: &str, path: &str, at: usize, hits: &Hits, metrics: Metrics) -> f32 {
-    let width = Document::plain(path, text).indent().width();
-    across_to(
-        0.0,
-        display_of(text, at, width),
-        (Target::Code, hits),
-        metrics,
-    )
 }
 
 /// The least change to `across` that shows display column `column` of the rows drawn at `rows`.

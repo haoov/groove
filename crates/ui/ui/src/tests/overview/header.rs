@@ -3,32 +3,8 @@
 use groove_types::SessionId;
 
 use super::working_a_task;
-use crate::tests::{full_app, metrics, texts_of};
-use crate::{Ui, view};
-
-#[test]
-fn the_header_names_the_session_and_what_it_points_at() {
-    let app = full_app();
-    let metrics = metrics(1280, 800, 1.0);
-    let (frame, hits) = view(
-        &app,
-        &Ui::default(),
-        metrics,
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = texts_of(&frame);
-    assert!(texts.iter().any(|t| t == "Alpha"), "the title");
-    assert!(texts.iter().any(|t| t == "kiwi"), "the repo");
-    assert_eq!(
-        texts.iter().filter(|t| *t == "explorer/alpha").count(),
-        2,
-        "the worktree and the overview row"
-    );
-    for which in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
-        let picker = crate::hit::Target::Picker(which);
-        assert!(hits.rect_of(&picker).is_none(), "{which:?} only tells");
-    }
-}
+use crate::tests::{full_app, metrics};
+use crate::view;
 
 #[test]
 fn a_long_title_is_cut_so_the_worktree_stays_inside_the_header() {
@@ -39,54 +15,27 @@ fn a_long_title_is_cut_so_the_worktree_stays_inside_the_header() {
         .session
         .title = "Harden Groove: CI gates, security fixes, defect fixes, typed errors".into();
     let window = metrics(1280, 800, 1.0);
-    let ui = Ui::default();
+    let ui = super::overviewed();
     let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let header = crate::layout::Layout::of(window, &ui).info;
-    for label in ["kiwi", "explorer/alpha"] {
-        let run = info_run(&frame, header, label);
-        assert!(run.x < header.right(), "{label} past {header:?}");
-    }
-    let cut = frame.layers()[0]
-        .texts
+    let header = crate::layout::Layout::of(window, &ui).top;
+    let run = info_run(&frame, header, "kiwi");
+    assert!(run.x < header.right(), "past {header:?}");
+    let cut = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.texts.iter())
         .any(|t| t.text.starts_with("Harden Groove") && t.text.ends_with('\u{2026}'));
     assert!(cut, "the title carries the ellipsis");
 }
 
-#[test]
-fn the_header_holds_the_title_over_the_info_line_s_worktree() {
-    let app = full_app();
-    let window = metrics(1280, 800, 1.0);
-    let ui = Ui::default();
-    let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let layout = crate::layout::Layout::of(window, &ui);
-    let title = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|t| t.text == "Alpha" && t.x >= layout.header.x)
-        .expect("the header's title")
-        .y;
-    let repo = info_run(&frame, layout.info, "kiwi");
-    assert!(
-        title < layout.header.bottom(),
-        "the title is on the first line"
-    );
-    assert!(repo.y >= layout.info.y, "the worktree is on the second");
-    assert!(repo.y + repo.height <= layout.info.bottom());
-    assert_eq!(
-        layout.workspace.y,
-        layout.info.bottom(),
-        "the tab starts under both lines"
-    );
-}
-
-/// The text run `label` draws on the info line.
+/// The text run starting with `label` inside `info`.
 fn info_run(frame: &groove_gfx::Frame, info: groove_gfx::Rect, label: &str) -> groove_gfx::TextRun {
-    let runs = frame.layers()[0].texts.iter();
-    let mut on = runs.filter(|run| run.text == label && info.contains(run.x, run.y + 1.0));
+    let runs = frame.layers().iter().flat_map(|layer| layer.texts.iter());
+    let mut on =
+        runs.filter(|run| run.text.starts_with(label) && info.contains(run.x, run.y + 1.0));
     on.next()
         .cloned()
-        .unwrap_or_else(|| panic!("{label} on the info line"))
+        .unwrap_or_else(|| panic!("{label} inside {info:?}"))
 }
 
 /// What the palette's row to delete the session here sends, if it offers one.
@@ -131,7 +80,7 @@ fn a_task_s_title_is_followed_by_what_opens_its_page() {
     let mut app = working_a_task();
     let url = "https://github.com/haoov/groove/issues/50".to_string();
     app.task.tasks[0].url = Some(url.clone());
-    let mut ui = Ui::default();
+    let mut ui = super::overviewed();
     let window = metrics(1280, 800, 1.0);
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let page = crate::hit::Target::TaskPage(url.clone());

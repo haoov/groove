@@ -8,7 +8,7 @@ use crate::base::style::{Role, Styles};
 /// A ground a view may fill.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Ground {
-    /// The work: the workspace, a header, the commit box.
+    /// The work: the session's middle and its bands.
     Work,
     /// A band beside the work or across it: the rail, the sidebar, a heading.
     Band,

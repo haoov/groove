@@ -9,8 +9,7 @@ use super::rows::{Reading, entry};
 use super::walked::Tree;
 use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::offsets::listed;
+use crate::hit::Target;
 use crate::views::session::Asked;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::{elide, row};
@@ -107,27 +106,6 @@ fn walk<'a>(
     }
 }
 
-/// The tree drawn, scrolled and clipped to the list's own room.
-pub(super) fn draw(
-    ctx: &mut Ctx,
-    body: Rect,
-    app: &groove_controllers::AppState,
-    held: &[Row<'_>],
-    open: Option<&String>,
-    ui: &Ui,
-) {
-    let height = ctx.tokens.row;
-    let at = (Scroller::Files, ui.offset(Scroller::Files));
-    listed(
-        ctx,
-        body,
-        at,
-        held,
-        |_| height,
-        |ctx, line, one| one_row(ctx, line, app, one, open, ui),
-    );
-}
-
 pub(super) fn one_row(
     ctx: &mut Ctx,
     line: Rect,
@@ -151,7 +129,7 @@ pub(super) fn one_row(
                 noted: super::noted(app, &file.path),
                 tally: crate::views::session::diff::faults::tally(app, &file.path),
             };
-            entry(ctx, line, file, indent, reading, ui)
+            entry(ctx, line, file, indent, reading)
         }
         (false, None) => plain(ctx, line, held, indent, open),
     }

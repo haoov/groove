@@ -36,7 +36,7 @@ fn noted(notes: Vec<Note>) -> AppState {
 
 fn in_editor(app: &AppState) -> Vec<String> {
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     row_texts(app, &ui)
 }
 
@@ -55,7 +55,7 @@ fn a_note_draws_under_the_line_it_was_left_on() {
 fn a_read_note_floats_over_its_rows_as_one_pane_of_glass() {
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let (frame, hits) = view_of(&app, &ui);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let tokens = Tokens::new(1.0);
@@ -119,7 +119,7 @@ fn a_note_takes_a_row_of_the_surface() {
     let bare = opened();
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 6,
@@ -134,7 +134,7 @@ fn a_thread_takes_a_header_and_a_row_for_every_comment_of_it() {
     let bare = opened();
     let app = noted(vec![one]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 8,
@@ -167,7 +167,7 @@ fn a_note_on_another_file_draws_nothing_here() {
 fn a_note_beyond_the_file_draws_nothing() {
     let app = noted(vec![note(900, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         crate::views::session::diff::rows_of(&opened(), &ui, drawn_cols(&opened(), &ui))
@@ -208,35 +208,6 @@ fn a_click_on_a_note_moves_no_caret() {
         Some(("src/lib.rs".to_string(), 1, 0)),
         "the line after it is the file's second"
     );
-}
-
-/// The note glyphs the sidebar drew on its file rows.
-fn marks_in_sidebar(app: &AppState) -> usize {
-    let ui = on_diff();
-    let (frame, hits) = view(app, &ui, window(), &mut Fonts::embedded());
-    let sidebar = crate::layout::Layout::of(window(), &ui).sidebar;
-    let shape = groove_ui_kit::base::mark::Mark::Note.shape();
-    let tab = hits
-        .rect_of(&crate::hit::Target::Pane(
-            crate::views::session::Pane::Notes,
-        ))
-        .expect("the notes tab");
-    frame
-        .layers()
-        .iter()
-        .flat_map(|layer| layer.icons.iter())
-        .filter(|icon| icon.icon == shape)
-        .filter(|icon| icon.rect.x >= sidebar.x && icon.rect.x < sidebar.right())
-        .filter(|icon| icon.rect.y > tab.bottom())
-        .count()
-}
-
-#[test]
-fn a_file_carrying_a_note_is_marked_in_the_sidebar() {
-    let bare = opened();
-    assert_eq!(marks_in_sidebar(&bare), 0, "no note, no mark");
-    let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
-    assert_eq!(marks_in_sidebar(&app), 1, "the file that carries it");
 }
 
 #[test]

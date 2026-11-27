@@ -1,4 +1,4 @@
-//! The Kubernetes tab in the modes layout: the list or the object open, under one band on the ground.
+//! The Kubernetes mode: the list or the object open, under one band on the ground.
 
 pub(crate) mod aside;
 

@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 use crate::Ui;
 use crate::hit::{Hits, Target};
 use crate::keymap::{Action, Keymap};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use groove_ui_kit::base::ctx::Metrics;
 
 use super::super::{Key, Modifiers};
@@ -20,9 +20,9 @@ pub(super) fn chord(
     let action = [Action::CloseOpen, Action::NextOpen, Action::PreviousOpen]
         .into_iter()
         .find(|one| keymap.is(*one, key, mods))?;
-    match ui.session.tab {
-        Tab::Files => Some(files(action, ui, app, seen)),
-        Tab::Resources => {
+    match ui.session.mode {
+        Mode::Files => Some(files(action, ui, app, seen)),
+        Mode::Kubernetes => {
             objects(action, ui);
             Some(Vec::new())
         }

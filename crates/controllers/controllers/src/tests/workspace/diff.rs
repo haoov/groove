@@ -3,7 +3,6 @@
 mod based;
 
 use super::*;
-use crate::workspace_service::HEAD_ROWS;
 
 #[test]
 fn load_lists_what_changed_in_the_selected_worktree() {
@@ -170,7 +169,7 @@ fn a_new_session_shows_nothing_of_the_one_before_it() {
 }
 
 #[test]
-fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
+fn the_focused_file_alone_takes_rows_and_takes_its_colours_on_screen() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     let dir = worktree(&mut state, &services, &spawner);
@@ -179,19 +178,16 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.changes.files().len() == 2
     });
+    let path = Some("b.rs".to_string());
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::Focus { path },
+    );
     let changes = &state.workspace.changes;
-    assert_eq!(
-        changes.rows(),
-        changes
-            .files()
-            .iter()
-            .map(|f| f.len() + HEAD_ROWS)
-            .sum::<usize>()
-    );
-    assert_eq!(
-        changes.head_of("b.rs"),
-        Some(changes.files()[0].len() + HEAD_ROWS)
-    );
+    let b = changes.get("b.rs").expect("the rust file").len();
+    assert_eq!(changes.rows(), b);
     assert!(
         state.workspace.coloured.is_empty(),
         "nothing is on screen yet"
@@ -206,21 +202,14 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.coloured.len() == 2
+        s.workspace.coloured.contains_key("b.rs")
     });
     let painted = state.workspace.coloured.get("b.rs").expect("the rust file");
     assert!(painted.new.is_highlighted(), "its grammar was read");
-
-    dispatch(
-        Cmd::Workspace(workspace::Command::Show { rows: 0..1 }),
-        &mut state,
-        &services,
-        &spawner,
-    );
     assert_eq!(
         state.workspace.coloured.keys().collect::<Vec<_>>(),
-        ["a.txt", "b.rs"],
-        "a file just off screen keeps its documents, ready for the row it takes"
+        ["b.rs"],
+        "a file not focused takes no colours"
     );
 }
 
@@ -244,6 +233,13 @@ fn a_file_is_read_before_its_rows_are_on_screen() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.changes.files().len() == 2
     });
+    let path = Some("b.rs".to_string());
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::Focus { path },
+    );
 
     dispatch(
         Cmd::Workspace(workspace::Command::Show { rows: 0..1 }),

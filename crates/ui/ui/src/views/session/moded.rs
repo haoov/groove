@@ -1,4 +1,4 @@
-//! The session while the modes layout is on: the bar of its title and tabs, the mode in the
+//! The session: the bar of its title and tabs, the mode in the
 //! middle, its sidebar at the right, and the terminals' drawer at the middle's foot.
 
 use groove_controllers::AppState;
@@ -9,6 +9,7 @@ use super::{Mode, agent_pane, header, manual};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::widgets::{Side, Tab, tab_group};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
@@ -49,6 +50,10 @@ fn bar(ctx: &mut Ctx, app: &AppState, ui: &Ui, open: &Open) {
         .task
         .worked(&open.session)
         .and_then(|one| one.url.as_deref());
-    let rest = header::titled_rest(ctx, room, open, page);
-    header::worktree_of(ctx, rest, open);
+    let kept = header::worktree_wide(ctx, open).min(room.w / 2.0);
+    let fixed = |width: f32| Spec::default().width(width);
+    let [title, _] = row_in(room, [Spec::fill(), fixed(kept)]);
+    let rest = header::titled_rest(ctx, title, open, page);
+    let [_, tail] = row_in(room, [fixed(rest.x - room.x), Spec::fill()]);
+    header::worktree_of(ctx, tail, open);
 }

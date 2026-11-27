@@ -1,4 +1,4 @@
-//! The agent's sidebar in the modes layout: its model, what it uses, and the agents it sent.
+//! The agent's sidebar: its model, what it uses, and the agents it sent.
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};

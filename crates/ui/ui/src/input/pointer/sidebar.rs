@@ -3,8 +3,6 @@
 use groove_controllers::{AppState, Command};
 
 use crate::Ui;
-use crate::views::session::Term;
-use crate::views::session::files::moded::diffing;
 
 /// One of the sidebar's lists up, or which notes its list shows; the frame reads what it shows.
 pub(super) fn paned(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
@@ -17,61 +15,28 @@ pub(super) fn paned(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
     Vec::new()
 }
 
-/// One note of the list, which opens the line it stands on in the tab that shows it.
-pub(super) fn note_at(
-    ui: &mut Ui,
-    app: &AppState,
-    metrics: groove_ui_kit::base::ctx::Metrics,
-    at: usize,
-) -> Vec<Command> {
-    let Some(anchor) = app
-        .delivery
-        .shown
-        .get(at)
-        .and_then(|note| note.anchor.clone())
-    else {
+/// One note of the list: the Diff on its file at its line, a resolved one opened.
+pub(super) fn note_at(ui: &mut Ui, app: &AppState, at: usize) -> Vec<Command> {
+    let Some(note) = app.delivery.shown.get(at) else {
         return Vec::new();
     };
-    let line = anchor.start_line as usize;
-    ui.focus = crate::Focus::Workspace;
-    if diffing(ui) {
-        ui.session.revealing = Some((anchor.path.clone(), anchor.start_line));
-        return shown(ui, app, anchor.path);
-    }
-    if let Some(note) = app.delivery.shown.get(at).filter(|one| one.resolved)
-        && !ui.session.unfolded.contains(&note.thread)
-    {
+    let Some(anchor) = note.anchor.clone() else {
+        return Vec::new();
+    };
+    if note.resolved && !ui.session.unfolded.contains(&note.thread) {
         ui.session.unfolded.push(note.thread.clone());
     }
-    let height = metrics.tokens().code_line;
-    let above = |row: usize| row.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH) as f32;
-    let row = app.workspace.changes.row_of(&anchor.path, line as u32);
-    if let Some(row) = row.filter(|_| ui.session.tab == crate::views::session::Tab::Diff) {
-        ui.session.diff = above(row) * height;
-        ui.session.diff_across = 0.0;
-        return Vec::new();
-    }
-    ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.file = above(line) * height;
-    ui.session.file_across = 0.0;
-    let open = groove_controllers::workspace::Command::OpenFile {
-        path: anchor.path,
-        at: Some(groove_types::Selection::at(groove_types::Caret::new(
-            line, 0,
-        ))),
-    };
-    vec![Command::Workspace(open)]
+    ui.focus = crate::Focus::Workspace;
+    ui.session.mode = crate::views::session::Mode::Diff;
+    ui.session.revealing = Some((anchor.path.clone(), anchor.start_line));
+    shown(ui, anchor.path)
 }
 
-/// The modes Diff on one file, from its top; a folded file opened.
-pub(super) fn shown(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
+/// The Diff on one file, from its top.
+pub(super) fn shown(ui: &mut Ui, path: String) -> Vec<Command> {
     (ui.session.diff, ui.session.diff_across) = (0.0, 0.0);
-    let focus = groove_controllers::workspace::Command::Focus {
-        path: Some(path.clone()),
-    };
-    let mut out = vec![Command::Workspace(focus)];
-    out.extend(super::surface::unfolded(app, path));
-    out
+    let focus = groove_controllers::workspace::Command::Focus { path: Some(path) };
+    vec![Command::Workspace(focus)]
 }
 
 /// A directory's twisty: the explorer's opens or shuts, the changed list's folds or opens.
@@ -82,12 +47,6 @@ pub(super) fn twisty(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
         _ => return Vec::new(),
     };
     groove_types::toggle(held, path);
-    Vec::new()
-}
-
-/// The keyboard into one term of the sidebar's bar.
-pub(super) fn narrowing(ui: &mut Ui, term: Term) -> Vec<Command> {
-    ui.session.bar.focus(term);
     Vec::new()
 }
 

@@ -16,8 +16,6 @@ pub struct AgentUi {
     pub reading: Option<((f32, f32), (f32, f32))>,
     /// The glances whose commands show whole, by their first command.
     pub opened: Vec<String>,
-    /// The dock of agents at work shows only its head.
-    pub docked: bool,
     /// The command `/` offers that Enter or Tab takes.
     pub offered: usize,
     /// Escape put the offers away until the prompt changes.

@@ -41,7 +41,7 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of: session_of(app, session),
         }),
-        Some(Target::ResourceTab(at) | Target::ResourceClose(at)) if ui.modes => Some(Menu {
+        Some(Target::ResourceTab(at) | Target::ResourceClose(at)) => Some(Menu {
             at: (x, y),
             corner: Corner::TopLeft,
             of: Of::Object(at),

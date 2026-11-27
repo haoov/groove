@@ -1,4 +1,4 @@
-//! The Diff and Files tabs in the modes layout: one file, its head on one band over its rows,
+//! The Diff and Files modes: one file, its head on one band over its rows,
 //! and a thin map of that file beside them, all on the ground.
 
 use groove_controllers::AppState;
@@ -26,7 +26,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     body(ctx, app, ui, column);
 }
 
-/// The Files tab: the open file's band over its rows, the thin map beside them.
+/// The Files mode: the open file's band over its rows, the thin map beside them.
 pub fn file(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let mut column = area.pad(Edges::xy(ctx.tokens.xl, ctx.tokens.sm));
     super::finder::above(ctx, &mut column, ui);

@@ -180,13 +180,8 @@ fn time_a_frame_with_agents_sent() {
             one
         });
         let app = talking(heard.collect());
-        let mut ui = chat_ui();
-        let docked = timed(&app, &ui, &mut fonts, 20);
-        ui.agent.docked = true;
-        let folded = timed(&app, &ui, &mut fonts, 20);
-        println!(
-            "{turns:>5} turns, a card each, 3 working far up: {docked:>10?} the dock open, \
-             {folded:>10?} folded"
-        );
+        let ui = chat_ui();
+        let listed = timed(&app, &ui, &mut fonts, 20);
+        println!("{turns:>5} turns, a card each, 3 working far up: {listed:>10?}");
     }
 }

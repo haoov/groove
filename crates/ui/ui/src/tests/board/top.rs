@@ -69,16 +69,18 @@ fn a_board_item_stands_on_a_sunk_card_as_the_overview_s_do() {
 }
 
 #[test]
-fn the_board_keeps_the_agent_s_room_and_with_the_rail_folded_takes_its_width() {
+fn the_board_keeps_a_bar_s_room_above_and_below_and_with_the_rail_folded_takes_its_width() {
     let ui = Ui {
         surface: Surface::Board,
         ..Ui::default()
     };
     let open = Layout::of(window(), &ui);
+    let tokens = window().tokens();
+    let room = tokens.bar + tokens.sm;
     assert_eq!(
-        (open.lists.y, open.lists.h),
-        (open.agent.y, open.agent.h),
-        "the bar's room above and below, as the agent keeps"
+        (open.lists.y, open.lists.bottom()),
+        (open.board.y + room, open.board.bottom() - room),
+        "the bar's room above and below"
     );
     let mut folded = ui;
     (folded.rail.stowed, folded.rail.folded) = (true, true);

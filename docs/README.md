@@ -40,8 +40,8 @@ Five, and they do not move. Growth is answered inside them.
 |---|---|---|
 | [Tasks](capabilities/tasks.md) | pull your tasks from their providers and work them as sessions | board |
 | [Agent](capabilities/agent.md) | run one agent per session, see what each does, approve what it writes | rail |
-| [Sessions](capabilities/sessions.md) | keep a task's repos, worktrees and agent together | session: overview and agent pane |
-| [Workspace](capabilities/workspace.md) | review, edit and land the code | session: work region |
+| [Sessions](capabilities/sessions.md) | keep a task's repos, worktrees and agent together | session: `OVERVIEW` and `AGENT` |
+| [Workspace](capabilities/workspace.md) | review, edit and land the code | session: `DIFF`, `FILES` and `KUBERNETES` |
 | [Config](capabilities/config.md) | set Groove up and keep its preferences | settings |
 
 ## Files

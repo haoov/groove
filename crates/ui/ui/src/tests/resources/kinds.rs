@@ -99,45 +99,10 @@ fn alt_k_picks_a_kind_by_its_name_its_short_name_or_its_group_and_lists_it() {
     assert_eq!(listed, Some("Ingress"));
     assert!(ui.palette().is_none(), "the palette shuts");
     assert_eq!(
-        (ui.session.tab, ui.focus),
-        (Tab::Resources, crate::Focus::Workspace),
+        (ui.session.mode, ui.focus),
+        (Mode::Kubernetes, crate::Focus::Workspace),
         "the list takes the keys"
     );
-}
-
-#[test]
-fn in_the_sidebar_the_arrows_step_through_the_lines_enter_folds_a_heading_or_lists_a_kind() {
-    use crate::views::session::resources::{Line, shown};
-    let (app, mut ui) = listing();
-    ui.focus = crate::Focus::Sidebar;
-    let key = |key, ui: &mut Ui| {
-        press(key, Default::default(), ui, &app);
-    };
-    let lines = shown(&app, &ui);
-    let stood = |ui: &Ui| ui.session.resources.cursor.map(|at| lines[at].clone());
-    key(crate::input::Key::Down, &mut ui);
-    let Some(Line::Heading(heading, _)) = stood(&ui) else {
-        panic!("a heading first: {:?}", stood(&ui));
-    };
-    key(crate::input::Key::Enter, &mut ui);
-    assert!(ui.session.resources.folded.contains(&heading));
-    let under = shown(&app, &ui);
-    assert!(
-        under.len() < lines.len(),
-        "the folded heading's kinds are gone"
-    );
-    key(crate::input::Key::Enter, &mut ui);
-    assert!(
-        !ui.session.resources.folded.contains(&heading),
-        "Enter again opens it"
-    );
-    key(crate::input::Key::Down, &mut ui);
-    let Some(Line::Kind(kind)) = stood(&ui) else {
-        panic!("a kind below it: {:?}", stood(&ui));
-    };
-    key(crate::input::Key::Enter, &mut ui);
-    assert_eq!(ui.session.resources.kind, Some(kind));
-    assert_eq!(ui.focus, crate::Focus::Workspace);
 }
 
 #[test]
@@ -157,24 +122,6 @@ fn the_kind_listed_stands_on_a_square_held_ground() {
 }
 
 #[test]
-fn the_kind_the_keys_stand_on_is_lit_as_a_row_under_the_pointer_is() {
-    use crate::views::session::resources::{Line, shown};
-    use groove_ui_kit::base::style::Styles;
-    let (app, mut ui) = listing();
-    let lines = shown(&app, &ui);
-    let at = lines.iter().position(|one| matches!(one, Line::Kind(_)));
-    let Some(Line::Kind(stood)) = at.map(|at| lines[at].clone()) else {
-        panic!("a kind listed");
-    };
-    ui.session.resources.cursor = at;
-    let (frame, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
-    let row = hits.rect_of(&Target::ResourceKind(stood)).expect("its row");
-    let lit = Styles::new(app.config.theme(), window().tokens()).glass_hover();
-    let mut quads = frame.layers().iter().flat_map(|layer| layer.quads.iter());
-    assert!(quads.any(|one| row.contains(one.rect.x, one.rect.y + 1.0) && one.color == lit));
-}
-
-#[test]
 fn the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight() {
     use crate::hit::Scroller;
     let (mut app, mut ui) = listing();
@@ -184,7 +131,7 @@ fn the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight() {
     });
     app.cluster.store.set_kinds("staging", many.collect());
     ui.focus = crate::Focus::Sidebar;
-    let lines = crate::views::session::resources::shown(&app, &ui).len();
+    let lines = crate::views::session::resources::moded::aside::lines(&app, &ui).len();
     let (_, hits) = drawn(&app, &ui);
     let extent = hits.extent(Scroller::Kinds);
     assert!(extent > 0.0, "the kinds run past the sidebar");
@@ -196,6 +143,13 @@ fn the_arrows_scroll_the_kinds_to_keep_the_line_stood_on_in_sight() {
         };
         crate::input::handle(input, &mut ui, &app, &hits, window());
     }
-    assert_eq!(ui.session.resources.cursor, Some(lines - 1));
-    assert_eq!(ui.session.resources.kinds, extent, "the last line in sight");
+    let (_, hits) = drawn(&app, &ui);
+    let stood = ui.hover.as_ref().and_then(|one| hits.rect_of(one));
+    let sidebar = crate::layout::Layout::of(window(), &ui).sidebar;
+    let stood = stood.expect("the last line drawn");
+    assert!(ui.session.resources.kinds > 0.0, "the kinds scrolled");
+    assert!(
+        stood.bottom() <= sidebar.bottom() + 0.5,
+        "the last line in sight: {stood:?} in {sidebar:?}"
+    );
 }

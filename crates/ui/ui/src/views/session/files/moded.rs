@@ -1,4 +1,4 @@
-//! The Diff tab's sidebar in the modes layout: the whole change's totals on its head, the strip
+//! The Diff's sidebar: the whole change's totals on its head, the strip
 //! that picks the list, then the changed files as a tree or flat, the MR's threads or the commits.
 
 use groove_controllers::AppState;
@@ -145,23 +145,27 @@ fn file_row(ctx: &mut Ctx, mut room: Rect, (file, name, dir): Named, read: bool)
 /// A changed file, the name its row reads as, and its folder in the flat list.
 type Named<'a> = (&'a FileDiff, &'a str, Option<&'a str>);
 
-/// The focus the change needs: the file revealed, the chosen, the first; none with modes off.
+/// The focus the change needs: the file revealed, the chosen, the first; a change no worktree
+/// lists, as a cluster write's, by its own order.
 pub(crate) fn focused(app: &AppState, ui: &Ui) -> Option<groove_controllers::Command> {
-    let now = app.workspace.changes.focused();
+    let changes = &app.workspace.changes;
+    let now = changes.focused();
     let files: Vec<&FileDiff> = super::changed(app).iter().collect();
-    let held = |path: &&str| files.iter().any(|one| one.path == *path);
+    let listed: Vec<&str> = match files.is_empty() {
+        true => changes
+            .files()
+            .iter()
+            .map(|one| one.path.as_str())
+            .collect(),
+        false => tree::order(&files, ui.session.flat)
+            .into_iter()
+            .map(|one| one.path.as_str())
+            .collect(),
+    };
+    let held = |path: &&str| listed.contains(path);
     let revealed = ui.session.revealing.as_ref().map(|(path, _)| path.as_str());
     let kept = revealed.filter(held).or(now.filter(held));
-    let first = || {
-        tree::order(&files, ui.session.flat)
-            .first()
-            .map(|one| one.path.as_str())
-    };
-    let path = match ui.modes {
-        true => kept.or_else(first),
-        false => None,
-    };
-    let changes = &app.workspace.changes;
+    let path = kept.or_else(|| listed.first().copied());
     let lacks = path.is_none_or(|one| changes.get(one).is_none());
     if path == now || (path.is_some() && lacks) {
         return None;
@@ -171,18 +175,18 @@ pub(crate) fn focused(app: &AppState, ui: &Ui) -> Option<groove_controllers::Com
     Some(groove_controllers::Command::Workspace(focus))
 }
 
-/// Whether the middle is the modes layout's Diff.
+/// Whether the middle is the Diff.
 pub(crate) fn diffing(ui: &Ui) -> bool {
-    ui.modes && ui.session.mode == crate::views::session::Mode::Diff
+    ui.session.mode == crate::views::session::Mode::Diff
 }
 
-/// Whether the middle is the modes layout's Kubernetes.
+/// Whether the middle is the Kubernetes mode.
 pub(crate) fn kubing(ui: &Ui) -> bool {
-    ui.modes && ui.session.mode == crate::views::session::Mode::Kubernetes
+    ui.session.mode == crate::views::session::Mode::Kubernetes
 }
 
-/// Whether the middle is the modes layout's Diff or Files, the code surface.
+/// Whether the middle is the Diff or Files, the code surface.
 pub(crate) fn coding(ui: &Ui) -> bool {
     use crate::views::session::Mode;
-    ui.modes && matches!(ui.session.mode, Mode::Diff | Mode::Files)
+    matches!(ui.session.mode, Mode::Diff | Mode::Files)
 }

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use groove_types::{CommitEntry, DiffMode, FileDiff, FileStatus, Result, SessionKind};
 
-use crate::{Changes, Derived, Document, Found, Opened, Painted, Search};
+use crate::{Changes, Derived, Document, Opened, Painted};
 
 pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
     groove_diff::summary(dir).await
@@ -86,20 +86,6 @@ pub async fn opened_at(dir: &Path, sha: &str, path: &str) -> Result<Opened> {
 
 /// How many commits the list holds.
 pub const COMMITS_MAX: usize = 100;
-
-/// Every line under the worktree holding `query`, in batches as they are found.
-pub async fn grep(
-    dir: &Path,
-    query: &str,
-    under: &str,
-    search: std::sync::Arc<Search>,
-    found: impl FnMut(Vec<Found>) + Send + 'static,
-) -> Result<()> {
-    groove_grep::walk(dir, (query, under), FOUND_MAX, search, found).await
-}
-
-/// How many matches a search across the worktree keeps.
-pub const FOUND_MAX: usize = 500;
 
 /// Every file of the worktree, for the path term to narrow by.
 pub async fn paths(dir: &Path) -> Result<Vec<FileDiff>> {

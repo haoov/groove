@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 
 use super::super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Overlay, Surface, Ui};
 
 /// The key as an arrow when a list has the keys and the key is bound to a step down or up it.
@@ -35,9 +35,9 @@ fn listing(ui: &Ui, app: &AppState) -> bool {
         return true;
     }
     match ui.focus {
-        Focus::Rail | Focus::Sidebar | Focus::Alerts => true,
+        Focus::Rail | Focus::Sidebar => true,
         Focus::Workspace => {
-            ui.session.tab == Tab::Resources && ui.session.resources.tab().is_none()
+            ui.session.mode == Mode::Kubernetes && ui.session.resources.tab().is_none()
         }
         Focus::Agent | Focus::Terminal => false,
     }

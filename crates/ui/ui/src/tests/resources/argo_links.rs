@@ -8,7 +8,7 @@ use super::argo_sync::{hit, managed, opened_application};
 use super::kind;
 use crate::Ui;
 use crate::hit::Target;
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::views::session::resources::{Link, Opens, View};
 
 const SHA: &str = "e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0";
@@ -121,7 +121,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
         })
     };
     assert_eq!(sent, [show(None)]);
-    let (diff, files, resources) = (Tab::Diff, Tab::Files, Tab::Resources);
+    let (diff, files, resources) = (Mode::Diff, Mode::Files, Mode::Kubernetes);
     app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
         session: app.session.selected.clone().expect("a session"),
         slug: "gitlab.example.com/billing-eu-deploy".into(),
@@ -130,14 +130,14 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     });
     ui.settle(&app);
     assert_eq!(
-        ui.session.tab, resources,
+        ui.session.mode, resources,
         "the Kubernetes tab until the repo is selected"
     );
     app.workspace.revision = None;
     ui.settle(&app);
-    assert_eq!(ui.session.tab, files, "then its files");
+    assert_eq!(ui.session.mode, files, "then its files");
 
-    ui.session.tab = resources;
+    ui.session.mode = resources;
     let revision = Opens::Revision {
         repo: REPO.into(),
         target: "main".into(),
@@ -153,7 +153,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     });
     ui.settle(&app);
     assert_eq!(
-        ui.session.tab, resources,
+        ui.session.mode, resources,
         "the Kubernetes tab until the commit shows"
     );
     app.workspace.commit = Some(groove_types::CommitEntry {
@@ -166,7 +166,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     });
     app.workspace.revision = None;
     ui.settle(&app);
-    assert_eq!(ui.session.tab, diff, "then its diff");
+    assert_eq!(ui.session.mode, diff, "then its diff");
 }
 
 #[test]

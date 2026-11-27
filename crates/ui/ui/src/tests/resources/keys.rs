@@ -10,31 +10,6 @@ fn key(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) {
 }
 
 #[test]
-fn the_kinds_walk_from_the_keyboard_and_a_letter_opens_the_kind_palette() {
-    let (app, mut ui) = listing();
-    ui.focus = Focus::Sidebar;
-    key(Key::Down, Modifiers::default(), &mut ui, &app);
-    assert_eq!(ui.session.resources.cursor, Some(0), "no search needed");
-    key(Key::Char('n'), Modifiers::default(), &mut ui, &app);
-    let query = ui.palette().map(|one| one.query.text().to_string());
-    assert_eq!(
-        query.as_deref(),
-        Some("n"),
-        "the kind palette, on the letter"
-    );
-    crate::tests::typed("ode", &mut ui, &app);
-    key(Key::Enter, Modifiers::default(), &mut ui, &app);
-    let listed = ui
-        .session
-        .resources
-        .kind
-        .as_ref()
-        .map(|one| one.kind.as_str());
-    assert_eq!(listed, Some("Node"));
-    assert_eq!(ui.focus, Focus::Workspace, "the list takes the keys");
-}
-
-#[test]
 fn the_list_s_rows_walk_and_open_on_describe_yaml_or_logs() {
     let (app, mut ui) = listing();
     ui.focus = Focus::Workspace;

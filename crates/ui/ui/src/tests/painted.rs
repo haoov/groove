@@ -61,7 +61,7 @@ fn colour_of(
 #[test]
 fn a_word_typed_takes_its_colour_once_the_parse_lands() {
     let mut ui = crate::Ui::default();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let typed = "fn one() {}\n";
     let mut fresh = crate::tests::full_app();
     crate::tests::shows(&mut fresh, "src/lib.rs", "x\n", &format!("{typed}x\n"));

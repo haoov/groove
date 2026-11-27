@@ -113,14 +113,11 @@ fn bound(editing: &Editing, keymap: &Keymap, key: Key, mods: Modifiers) -> Optio
 
 /// The sidebar's list.
 pub(super) fn in_sidebar(
-    (key, mods): (Key, Modifiers),
+    (key, _mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
     seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
-    if ui.session.tab == crate::views::session::Tab::Resources && !ui.modes {
-        return super::resources::in_kinds_list((key, mods), ui, app, seen);
-    }
     super::listed::in_list(key, ui, app, seen)
 }
 
@@ -134,7 +131,7 @@ pub(super) fn in_rail(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         .and_then(|one| one.asks.first());
     match (key, ask) {
         (Key::Enter, _) => {
-            ui.focus = crate::Focus::Workspace;
+            ui.focus = super::app::middle(ui);
             return Vec::new();
         }
         (Key::Char('a'), Some(ask)) if ask.reviewed => {

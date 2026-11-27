@@ -1,7 +1,7 @@
 # Sessions
 
-Keep a task's repos, worktrees and agent together. Surface: the session's overview and
-agent pane, as [../design.md](../design.md#session--small-scope) draws them.
+Keep a task's repos, worktrees and agent together. Surface: the session's `OVERVIEW` and
+`AGENT` modes, as [../design.md](../design.md#session--small-scope) draws them.
 
 Three kinds — [task](../glossary.md#task), [explorer](../glossary.md#explorer) and
 [review](../glossary.md#review) — on one provisioning path.
@@ -77,8 +77,9 @@ when Settings knows the cluster. Enforced by
 
 ## Overview
 
-One overview for task, explorer and review sessions: the task's properties, the repos
-with their worktree rows, the clusters it holds, then the body. An explorer has neither properties nor body.
+One overview for task, explorer and review sessions: the task, or the MR under review, on a
+card with its body, then the repos with their worktree rows; its sidebar holds the task's
+properties and the clusters it holds. An explorer has neither properties nor body.
 
 A worktree row joins its git status to its MR. Its skill button sends the skill that
 fits the row's state, with `agent.send_skill`. Finish is a palette row.
@@ -89,11 +90,13 @@ Enforced by `a_maintenance_task_lists_its_children` and `a_task_not_marked_shows
 The clusters name what is attached and nothing else: each context once, in its hue, its
 namespaces under it. No health, no counts. A session with none has no clusters section.
 
+A maintenance task's firing alerts are read and kept, and none is drawn yet.
+
 ## Agent session
 
 **The pane draws the agent's conversation**; the agent runs headless, and `alt+a` opens
 Groove's own prompt over the window. A skill is sent from the prompt's `/` or from the palette.
-Auto-approve is a setting. An ask stands on the rail row and at the pane's foot.
+Auto-approve is a setting. An ask stands on the rail row and at the conversation's foot.
 
 **Skills are scoped per launch**: the `/` offers and the palette list exactly what this agent
 was started with. A skill saved later shows after a reload, from the palette.

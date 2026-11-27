@@ -105,7 +105,7 @@ fn a_reply_is_typed_under_the_thread_it_answers() {
 fn a_reply_is_typed_inside_the_thread_s_card_in_place_of_its_buttons() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     let before = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     on(&app, &mut ui, "t1", crate::hit::NoteButton::Reply);
     typed("fixed", &mut ui, &app);
@@ -131,7 +131,7 @@ fn a_reply_is_typed_inside_the_thread_s_card_in_place_of_its_buttons() {
 fn a_line_with_a_thread_still_opens_the_line_menu() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
-    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.mode = crate::views::session::Mode::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),

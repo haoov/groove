@@ -345,6 +345,9 @@ fn a_newline_stands_as_a_row_before_the_diff_runs_again() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     editing(&mut state, &services, &spawner);
+    let path = Some("a.txt".to_string());
+    let focus = Cmd::Workspace(workspace::Command::Focus { path });
+    dispatch(focus, &mut state, &services, &spawner);
     until(&spawner, &services, &mut state, |s| {
         s.workspace.deriving.is_empty()
     });
@@ -363,7 +366,7 @@ fn a_newline_stands_as_a_row_before_the_diff_runs_again() {
     assert_eq!(
         state.workspace.changes.rows(),
         stream + 1,
-        "the stream has its row"
+        "the change has its row"
     );
     assert_eq!(Some(open.hunked.layout.len()), rows.map(|one| one + 1));
     assert!(open.hunked.marks.contains_key(&2), "and marks the new line");

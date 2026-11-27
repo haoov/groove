@@ -1,12 +1,12 @@
-//! The Resources tab's chords while the workspace has the keys, and typing in its searches.
+//! The Kubernetes chords while the middle has the keys, and typing in its searches.
 
 use groove_controllers::{AppState, Command};
 
 use super::super::{Key, Modifiers};
-use crate::hit::{Hits, Scroller};
+use crate::hit::Hits;
 use crate::keymap::{Action, Keymap};
-use crate::views::session::Tab;
-use crate::views::session::resources::{Line, View};
+use crate::views::session::Mode;
+use crate::views::session::resources::View;
 use crate::{Focus, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -21,7 +21,7 @@ pub(super) fn chord(
     let (open, true) = (app.session.selected()?, shown) else {
         return None;
     };
-    let up = ui.session.tab == Tab::Resources && open.holds_clusters();
+    let up = ui.session.mode == Mode::Kubernetes && open.holds_clusters();
     let held = &mut ui.session.resources;
     if !up || !keymap.is(Action::Find, key, mods) {
         return None;
@@ -83,74 +83,9 @@ pub(super) fn in_resources(
     Vec::new()
 }
 
-/// The kinds: arrows step through the lines; Enter folds a heading or lists a kind.
-fn in_kinds(
-    key: Key,
-    ui: &mut Ui,
-    app: &AppState,
-    (hits, metrics): (&Hits, Metrics),
-) -> Vec<Command> {
-    let shown = crate::views::session::resources::shown(app, ui);
-    let held = &mut ui.session.resources;
-    let last = shown.len().checked_sub(1);
-    let in_sight = |held: &mut crate::views::session::resources::ResourcesUi| {
-        if let Some(at) = held.cursor {
-            let extent = hits.extent(Scroller::Kinds);
-            let row = (at, metrics.tokens().row);
-            held.kinds = super::board::kept(held.kinds, row, (shown.len(), extent));
-        }
-    };
-    match key {
-        Key::Down => {
-            held.cursor = held
-                .cursor
-                .map_or(Some(0), |at| Some(at + 1))
-                .zip(last)
-                .map(|(at, end)| at.min(end));
-            in_sight(held);
-        }
-        Key::Up => {
-            held.cursor = held.cursor.map(|at| at.saturating_sub(1));
-            in_sight(held);
-        }
-        Key::Enter => match held.cursor.and_then(|at| shown.get(at)) {
-            Some(Line::Heading(heading, _)) => {
-                groove_types::toggle(&mut held.folded, heading.clone());
-            }
-            Some(Line::Kind(kind)) => {
-                (held.kind, held.scroll, held.cursor) = (Some(kind.clone()), 0.0, None);
-                ui.focus = Focus::Workspace;
-            }
-            None => held.cursor = None,
-        },
-        _ => {}
-    }
-    Vec::new()
-}
-
 /// The list search's text changed: the rows back at the top.
 pub(in crate::input) fn search_changed(ui: &mut Ui) {
     ui.session.resources.scroll = 0.0;
-}
-
-/// The kinds sidebar has the keys: the arrows walk it, Enter lists or folds, a letter opens the kinds.
-pub(super) fn in_kinds_list(
-    (key, mods): (Key, Modifiers),
-    ui: &mut Ui,
-    app: &AppState,
-    seen: (&Hits, Metrics),
-) -> Vec<Command> {
-    match key {
-        Key::Char(c) if !mods.ctrl && !mods.alt => {
-            super::app::kinds(ui, app);
-            if let Some(palette) = ui.palette_mut() {
-                palette.query.insert(c);
-            }
-            Vec::new()
-        }
-        Key::Up | Key::Down | Key::Enter => in_kinds(key, ui, app, seen),
-        _ => Vec::new(),
-    }
 }
 
 /// The list has the keys: the arrows walk its rows, Enter describes one, `y` and `l` open its
@@ -162,7 +97,7 @@ pub(super) fn in_table(
     (hits, metrics): (&Hits, Metrics),
 ) -> Option<Vec<Command>> {
     let held = &ui.session.resources;
-    let listed = ui.session.tab == Tab::Resources && held.showing.is_none() && !held.typing;
+    let listed = ui.session.mode == Mode::Kubernetes && held.showing.is_none() && !held.typing;
     if !listed || mods.ctrl || mods.alt {
         return None;
     }
@@ -207,10 +142,7 @@ fn followed(ui: &mut Ui, at: usize, hits: &Hits, metrics: Metrics) {
     let row = metrics.tokens().row;
     let target = ui.hover.clone();
     let layout = crate::layout::Layout::of(metrics, ui);
-    let bottom = match ui.modes {
-        true => layout.agent.bottom(),
-        false => layout.workspace.bottom(),
-    };
+    let bottom = layout.agent.bottom();
     let held = &mut ui.session.resources;
     let top = at as f32 * row;
     held.scroll = match target.and_then(|one| hits.rect_of(&one)) {

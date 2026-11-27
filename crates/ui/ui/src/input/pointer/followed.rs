@@ -4,10 +4,10 @@ use groove_controllers::{AppState, Command, session, task, workspace};
 use groove_types::{Caret, Selection};
 
 use crate::hit::{Hits, read};
-use crate::views::session::Tab;
+use crate::views::session::Mode;
 use crate::{Focus, Ui};
 
-/// The token under the point followed: a URL in the browser, a path in the Files tab at its line.
+/// The token under the point followed: a URL in the browser, a path in the Files mode at its line.
 pub(super) fn followed(
     ui: &mut Ui,
     app: &AppState,
@@ -30,7 +30,7 @@ pub(super) fn followed(
     filed(ui, app, path, line)
 }
 
-/// A path in the Files tab, its worktree selected first when another holds it.
+/// A path in the Files mode, its worktree selected first when another holds it.
 fn filed(ui: &mut Ui, app: &AppState, path: &str, line: Option<usize>) -> Vec<Command> {
     let Some(open) = app.session.selected() else {
         return Vec::new();
@@ -50,7 +50,8 @@ fn filed(ui: &mut Ui, app: &AppState, path: &str, line: Option<usize>) -> Vec<Co
         None if path.starts_with('/') => return Vec::new(),
         None => path.to_string(),
     };
-    (ui.session.tab, ui.session.stowed, ui.focus) = (Tab::Files, false, Focus::Workspace);
+    ui.session.bring(Mode::Files);
+    ui.focus = Focus::Workspace;
     let at = line.map(|line| Selection::at(Caret::new(line.saturating_sub(1), 0)));
     let opened = workspace::Command::OpenFile { path: inside, at };
     out.push(Command::Workspace(opened));
